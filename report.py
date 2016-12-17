@@ -4,7 +4,7 @@ import time
 
 from enum import Enum
 
-from color import RGB
+from byte_args import ByteArgs
 
 
 # response codes
@@ -27,7 +27,8 @@ class RazerReport(object):
     BUF_SIZE = 90
     DATA_BUF_SIZE = 80
 
-    def __init__(self, hid, cmd, status=0x00, transaction_id=0xFF, remaining_packets=0x00,
+    def __init__(self, hid, command_class, command_id, data_size,
+                 status=0x00, transaction_id=0xFF, remaining_packets=0x00,
                  protocol_type=0x00, data=None, crc=None, reserved=None):
 
         self._logger = logging.getLogger('uchroma.report')
@@ -39,14 +40,12 @@ class RazerReport(object):
         self._remaining_packets = remaining_packets
         self._protocol_type = protocol_type
 
-        self._command_name = cmd.name
-
-        self._command_class = cmd.value[0]
-        self._command_id = cmd.value[1]
+        self._command_class = command_class
+        self._command_id = command_id
 
         self._result = None
 
-        self._data = RazerReport.Args(data=data, size=cmd.value[2])
+        self._data = ByteArgs(data=data, size=data_size)
 
         if reserved is None:
             self._reserved = 0
@@ -133,63 +132,8 @@ class RazerReport(object):
         if self._status == Status.OK:
             return True
 
-        self._logger.error("Got error %s for %s (raw response: %s)", self._status.name,
-                           self._command_name, repr(data))
+        self._logger.error("Got error %s for command %02x,%02x (raw response: %s)", self._status.name,
+                           self._command_class, self._command_id, repr(data))
 
         return False
-
-
-    class Args(object):
-        def __init__(self, size=0, data=None):
-            self._size = size
-
-            if data is None:
-                self._data = bytearray()
-            else:
-                self._data = data
-
-        @property
-        def data(self):
-            if self._size is None or len(self._data) == self._size:
-                return self._data
-            else:
-                return self._data + (b'\x00' * (self._size - len(self._data)))
-
-        @property
-        def size(self):
-            if self._size is None:
-                return len(self._data)
-            return self._size
-
-        def _ensure_space(self, size):
-            if self._size is None:
-                return
-            assert (len(self._data) + size) <= self._size, 'Additional argument (len=%d) would exceed size limit %d (cur=%d)' % (size, self._size, len(self._data))
-
-        def clear(self):
-            self._data.clear()
-            return self
-
-        def put_byte(self, arg):
-            if isinstance(arg, RGB):
-                self._ensure_space(3)
-                for component in arg.get():
-                    self._data += struct.pack('=B', component)
-            elif isinstance(arg, Enum):
-                self._ensure_space(1)
-                self._data += struct.pack('=B', arg.value)
-            else:
-                self._ensure_space(1)
-                self._data += struct.pack('=B', arg)
-            return self
-
-        def put_short(self, arg):
-            self._ensure_space(2)
-            self._data += struct.pack('=H', arg)
-            return self
-
-        def put_int(self, arg):
-            self._ensure_space(4)
-            self._data += struct.pack('=I', arg)
-            return self
 
