@@ -3,37 +3,22 @@ from enum import Enum
 
 import hidapi
 from color import RGB
+from frame import Frame
 from led import LED
 from report import RazerReport
+
 
 RAZER_VENDOR_ID = 0x1532
 
 
-# commands
-class Command(Enum):
-    # info queries, class 0
-    SET_DEVICE_MODE = (0x00, 0x04, 0x02)
-
-    GET_FIRMWARE_VERSION = (0x00, 0x81, 0x02)
-    GET_SERIAL = (0x00, 0x82, 0x16)
-    GET_DEVICE_MODE = (0x00, 0x84, 0x02)
-
-    # device commands, class 3
-    SET_EFFECT = (0x03, 0x0A, None)
-
-    # blade commands
-    SET_BRIGHTNESS = (0x0e, 0x04, 0x02)
-    GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
-
-
 # Effects
-class ChromaEffect(Enum):
+class Effect(Enum):
     NONE = 0x00
     WAVE = 0x01
     REACTIVE = 0x02
     BREATHE = 0x03
     SPECTRUM = 0x04
-    CUSTOM = 0x05
+    CUSTOM_FRAME = 0x05
     STATIC = 0x06
     STARLIGHT = 0x19
 
@@ -56,6 +41,24 @@ class EffectMode(Enum):
 
 class RazerChromaDriver(object):
 
+    # commands
+    class Command(Enum):
+        # info queries, class 0
+        SET_DEVICE_MODE = (0x00, 0x04, 0x02)
+
+        GET_FIRMWARE_VERSION = (0x00, 0x81, 0x02)
+        GET_SERIAL = (0x00, 0x82, 0x16)
+        GET_DEVICE_MODE = (0x00, 0x84, 0x02)
+
+        # device commands, class 3
+        SET_EFFECT = (0x03, 0x0A, None)
+        SET_CUSTOM_FRAME_DATA = (0x03, 0x0B, None)
+
+        # blade commands
+        SET_BRIGHTNESS = (0x0e, 0x04, 0x02)
+        GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
+
+
     def __init__(self, path):
 
         self._path = path
@@ -77,6 +80,7 @@ class RazerChromaDriver(object):
         except Exception as ex:
             self._logger.error('Error opening %s: %s', path, ex)
             raise
+
 
     def _get_report(self, command_class, command_id, data_size, *args):
         report = RazerReport(self._dev, command_class, command_id, data_size)
@@ -101,15 +105,15 @@ class RazerChromaDriver(object):
 
 
     def _set_effect(self, effect, *args):
-        return self.run_command(Command.SET_EFFECT, effect, *args)
+        return self.run_command(RazerChromaDriver.Command.SET_EFFECT, effect, *args)
 
 
     def get_serial(self):
-        return self.run_with_result(Command.GET_SERIAL)
+        return self.run_with_result(RazerChromaDriver.Command.GET_SERIAL)
 
 
     def get_firmware_version(self):
-        version = self.run_with_result(Command.GET_FIRMWARE_VERSION)
+        version = self.run_with_result(RazerChromaDriver.Command.GET_FIRMWARE_VERSION)
         if version is None:
             return None
 
@@ -117,11 +121,11 @@ class RazerChromaDriver(object):
 
 
     def get_device_mode(self):
-        return self.run_with_result(Command.GET_DEVICE_MODE)
+        return self.run_with_result(RazerChromaDriver.Command.GET_DEVICE_MODE)
 
 
     def set_device_mode(self, mode, param=0):
-        return self.run_command(Command.SET_DEVICE_MODE, mode, param)
+        return self.run_command(RazerChromaDriver.Command.SET_DEVICE_MODE, mode, param)
 
 
     def get_led(self, led_type):
@@ -129,11 +133,11 @@ class RazerChromaDriver(object):
 
 
     def set_blade_brightness(self, brightness):
-        return self.run_command(Command.SET_BRIGHTNESS, 0x01, brightness)
+        return self.run_command(RazerChromaDriver.Command.SET_BRIGHTNESS, 0x01, brightness)
 
 
     def get_blade_brightness(self):
-        value = self.run_with_result(Command.GET_BRIGHTNESS)
+        value = self.run_with_result(RazerChromaDriver.Command.GET_BRIGHTNESS)
 
         if value is None:
             return 0
@@ -142,22 +146,22 @@ class RazerChromaDriver(object):
 
 
     def disable_effects(self):
-        return self._set_effect(ChromaEffect.NONE)
+        return self._set_effect(Effect.NONE)
 
 
     def set_color(self, rgb=None):
         if rgb is None:
             rgb = RGB(0, 64, 255)
 
-        return self._set_effect(ChromaEffect.STATIC, rgb)
+        return self._set_effect(Effect.STATIC, rgb)
 
 
     def wave_effect(self, direction=WaveDirection.RIGHT):
-        return self._set_effect(ChromaEffect.WAVE, direction)
+        return self._set_effect(Effect.WAVE, direction)
 
 
     def spectrum_effect(self):
-        return self._set_effect(ChromaEffect.SPECTRUM)
+        return self._set_effect(Effect.SPECTRUM)
 
 
     def reactive_effect(self, rgb=None, speed=1):
@@ -167,7 +171,7 @@ class RazerChromaDriver(object):
         if speed < 1 or speed > 4:
             raise ValueError('Speed for reactive effect must be between 1 and 4 (got: %d)', speed)
 
-        return self._set_effect(ChromaEffect.REACTIVE, speed, rgb.red, rgb.green, rgb.blue)
+        return self._set_effect(Effect.REACTIVE, speed, rgb.red, rgb.green, rgb.blue)
 
 
     def _set_multi_mode_effect(self, effect, rgb1=None, rgb2=None, speed=1, splotch=None):
@@ -191,9 +195,17 @@ class RazerChromaDriver(object):
 
 
     def starlight_effect(self, rgb1=None, rgb2=None, speed=1, splotch=None):
-        return self._set_multi_mode_effect(ChromaEffect.STARLIGHT, rgb1, rgb2, speed, splotch)
+        return self._set_multi_mode_effect(Effect.STARLIGHT, rgb1, rgb2, speed, splotch)
 
 
     def breathe_effect(self, rgb1=None, rgb2=None, speed=1, splotch=None):
-        return self._set_multi_mode_effect(ChromaEffect.BREATHE, rgb1, rgb2, speed, splotch)
+        return self._set_multi_mode_effect(Effect.BREATHE, rgb1, rgb2, speed, splotch)
+
+
+    def show_custom_frame(self):
+        return self._set_effect(Effect.CUSTOM_FRAME, 0x01)
+
+
+    def get_frame_control(self, width, height, base_rgb=None):
+        return Frame(self, width, height, base_rgb)
 

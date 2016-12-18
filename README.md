@@ -4,7 +4,7 @@ uChroma - Userspace Razer Chroma Driver
 Based on work by Tim Theede and Terry Cain
 https://github.com/terrycain/razer-drivers
 
-See the LICENSE file for information regarding the GPLv2.
+See the LICENSE file for information regarding the LGPL.
 
 The Razer Chroma input peripherials are exotic, but fully HID-compliant
 and work well with the generic HID drivers in the Linux kernel. For
