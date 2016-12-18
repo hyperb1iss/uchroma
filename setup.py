@@ -8,4 +8,5 @@ setup(name='uchroma',
       author_email='shade@chemlab.org',
       license='LGPL',
       packages=['uchroma'],
+      scripts=['scripts/uchroma'],
       zip_safe=False)

@@ -65,7 +65,7 @@ class RazerReport(object):
         self._ensure_open()
 
         self._hid.send_feature_report(self._pack_request(), self.REQ_REPORT_ID)
-        time.sleep(0.2)
+        time.sleep(0.005)
         return self._unpack_response(self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE))
 
     @property
