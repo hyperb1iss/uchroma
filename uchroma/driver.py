@@ -2,10 +2,7 @@ import logging
 from enum import Enum
 
 import hidapi
-from color import RGB
-from frame import Frame
-from led import LED
-from report import RazerReport
+from uchroma.report import RazerReport
 
 
 RAZER_VENDOR_ID = 0x1532
@@ -39,7 +36,7 @@ class EffectMode(Enum):
     DUAL = 2
 
 
-class RazerChromaDriver(object):
+class Driver(object):
 
     # commands
     class Command(Enum):
@@ -105,15 +102,15 @@ class RazerChromaDriver(object):
 
 
     def _set_effect(self, effect, *args):
-        return self.run_command(RazerChromaDriver.Command.SET_EFFECT, effect, *args)
+        return self.run_command(Driver.Command.SET_EFFECT, effect, *args)
 
 
     def get_serial(self):
-        return self.run_with_result(RazerChromaDriver.Command.GET_SERIAL)
+        return self.run_with_result(Driver.Command.GET_SERIAL)
 
 
     def get_firmware_version(self):
-        version = self.run_with_result(RazerChromaDriver.Command.GET_FIRMWARE_VERSION)
+        version = self.run_with_result(Driver.Command.GET_FIRMWARE_VERSION)
         if version is None:
             return None
 
@@ -121,11 +118,11 @@ class RazerChromaDriver(object):
 
 
     def get_device_mode(self):
-        return self.run_with_result(RazerChromaDriver.Command.GET_DEVICE_MODE)
+        return self.run_with_result(Driver.Command.GET_DEVICE_MODE)
 
 
     def set_device_mode(self, mode, param=0):
-        return self.run_command(RazerChromaDriver.Command.SET_DEVICE_MODE, mode, param)
+        return self.run_command(Driver.Command.SET_DEVICE_MODE, mode, param)
 
 
     def get_led(self, led_type):
@@ -133,11 +130,11 @@ class RazerChromaDriver(object):
 
 
     def set_blade_brightness(self, brightness):
-        return self.run_command(RazerChromaDriver.Command.SET_BRIGHTNESS, 0x01, brightness)
+        return self.run_command(Driver.Command.SET_BRIGHTNESS, 0x01, brightness)
 
 
     def get_blade_brightness(self):
-        value = self.run_with_result(RazerChromaDriver.Command.GET_BRIGHTNESS)
+        value = self.run_with_result(Driver.Command.GET_BRIGHTNESS)
 
         if value is None:
             return 0

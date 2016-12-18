@@ -4,7 +4,7 @@ import time
 
 from enum import Enum
 
-from byte_args import ByteArgs
+from uchroma.byte_args import ByteArgs
 
 
 # response codes

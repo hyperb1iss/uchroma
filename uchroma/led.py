@@ -1,7 +1,5 @@
 from enum import Enum
 
-from color import RGB
-
 
 NOSTORE = 0
 VARSTORE = 1

@@ -1,7 +1,7 @@
 import struct
 from enum import Enum
 
-from color import RGB
+from uchroma.color import RGB
 
 class ByteArgs(object):
     def __init__(self, size=0, data=None):

@@ -2,9 +2,6 @@ from enum import Enum
 
 import numpy as np
 
-from color import RGB
-
-
 
 class Frame(object):
 
