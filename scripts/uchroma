@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import sys
 
 import uchroma
 
@@ -31,31 +32,36 @@ args = parser.parse_args()
 
 driver = uchroma.Driver(args.device)
 
-if args.breathe:
-    if not driver.breathe_effect():
-        sys.exit(1)
+try:
+    if args.breathe:
+        if not driver.breathe_effect(splotch=get_splotch()):
+            sys.exit(1)
 
-elif args.disable:
-    if not driver.disable_effects():
-        sys.exit(1)
+    elif args.disable:
+        if not driver.disable_effects():
+            sys.exit(1)
 
-elif args.starlight:
-    if not driver.starlight_effect(splotch=get_splotch()):
-        sys.exit(1)
+    elif args.starlight:
+        if not driver.starlight_effect(splotch=get_splotch()):
+            sys.exit(1)
 
-elif args.reactive:
-    if not driver.reactive_effect():
-        sys.exit(1)
+    elif args.reactive:
+        if not driver.reactive_effect():
+            sys.exit(1)
 
-elif args.spectrum:
-    if not driver.spectrum_effect(splotch=get_splotch()):
-        sys.exit(1)
+    elif args.spectrum:
+        if not driver.spectrum_effect():
+            sys.exit(1)
 
-elif args.static:
-    if not driver.set_color():
-        sys.exit(1)
+    elif args.static:
+        if not driver.set_color():
+            sys.exit(1)
 
-elif args.wave:
-    if not driver.wave_effect():
-        sys.exit(1)
+    elif args.wave:
+        if not driver.wave_effect():
+            sys.exit(1)
 
+finally:
+    driver.close()
+
+print("OK")

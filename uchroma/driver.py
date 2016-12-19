@@ -2,6 +2,7 @@ import logging
 from enum import Enum
 
 import hidapi
+from uchroma.color import RGB
 from uchroma.report import RazerReport
 
 
@@ -79,6 +80,20 @@ class Driver(object):
             raise
 
 
+    def close(self):
+        if self._dev is not None:
+            try:
+                self._dev.close()
+            except Exception:
+                pass
+
+            self._dev = None
+
+
+    def __del__(self):
+        self.close()
+
+
     def _get_report(self, command_class, command_id, data_size, *args):
         report = RazerReport(self._dev, command_class, command_id, data_size)
         if args is not None:
@@ -102,6 +117,10 @@ class Driver(object):
 
 
     def _set_effect(self, effect, *args):
+        if args is not None:
+            if isinstance(args[0], list):
+                args = args[0]
+
         return self.run_command(Driver.Command.SET_EFFECT, effect, *args)
 
 
@@ -171,32 +190,42 @@ class Driver(object):
         return self._set_effect(Effect.REACTIVE, speed, rgb.red, rgb.green, rgb.blue)
 
 
-    def _set_multi_mode_effect(self, effect, rgb1=None, rgb2=None, speed=1, splotch=None):
-        if speed < 1 or speed > 4:
+    def _set_multi_mode_effect(self, effect, rgb1=None, rgb2=None, speed=None, splotch=None):
+        if speed is not None and (speed < 1 or speed > 4):
             raise ValueError('Speed for effect must be between 1 and 4 (got: %d)', speed)
 
         if splotch is not None:
             rgb1 = splotch.value[0]
             rgb2 = splotch.value[1]
 
-        if rgb1 is None and rgb2 is None:
-            return self._set_effect(effect, EffectMode.RANDOM, speed)
+        mode = EffectMode.RANDOM
 
-        elif rgb1 is not None and rgb2 is not None:
-            return self._set_effect(effect, EffectMode.DUAL, speed, rgb1, rgb2)
+        if rgb1 is not None and rgb2 is not None:
+            mode = EffectMode.DUAL
 
         elif rgb1 is not None:
-            return self._set_effect(effect, EffectMode.SINGLE, speed, rgb1)
+            mode = EffectMode.SINGLE
 
-        raise ValueError('Invalid arguments for effect')
+        args = [ mode ]
+
+        if speed is not None:
+            args.append(speed)
+
+        if rgb1 is not None:
+            args.append(rgb1)
+
+        if rgb2 is not None:
+            args.append(rgb2)
+
+        self._set_effect(effect, args)
 
 
     def starlight_effect(self, rgb1=None, rgb2=None, speed=1, splotch=None):
-        return self._set_multi_mode_effect(Effect.STARLIGHT, rgb1, rgb2, speed, splotch)
+        return self._set_multi_mode_effect(Effect.STARLIGHT, rgb1, rgb2, speed=speed, splotch=splotch)
 
 
-    def breathe_effect(self, rgb1=None, rgb2=None, speed=1, splotch=None):
-        return self._set_multi_mode_effect(Effect.BREATHE, rgb1, rgb2, speed, splotch)
+    def breathe_effect(self, rgb1=None, rgb2=None, splotch=None):
+        return self._set_multi_mode_effect(Effect.BREATHE, rgb1, rgb2, splotch=splotch)
 
 
     def show_custom_frame(self):
