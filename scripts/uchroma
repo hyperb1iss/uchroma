@@ -3,24 +3,26 @@
 import argparse
 import sys
 
-import uchroma
+from uchroma import DeviceManager, Splotch
 
 
 def get_splotch():
     if args.splotch is None:
         return None
-    return uchroma.color.Splotch[args.splotch.upper()]
+    return Splotch[args.splotch.upper()]
 
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('device', type=str,
+devs = parser.add_mutually_exclusive_group()
+devs.add_argument("-d", "--device", type=str,
                     help='HID device to use (/dev/hidrawX)') 
+devs.add_argument("-l", "--list-devices", action='store_true')
 
-action = parser.add_mutually_exclusive_group(required=True)
+action = parser.add_mutually_exclusive_group()
 action.add_argument("-b", "--breathe", action='store_true')
-action.add_argument("-d", "--disable", action='store_true')
-action.add_argument("-l", "--starlight", action='store_true')
+action.add_argument("-n", "--disable", action='store_true')
+action.add_argument("-i", "--starlight", action='store_true')
 action.add_argument("-r", "--reactive", action='store_true')
 action.add_argument("-s", "--spectrum", action='store_true')
 action.add_argument("-t", "--static", action='store_true')
@@ -30,7 +32,22 @@ parser.add_argument('-x', '--splotch', type=str, help='Color splotch [earth|air|
 
 args = parser.parse_args()
 
-driver = uchroma.Driver(args.device)
+dm = DeviceManager()
+
+if args.list_devices:
+    for key in dm.devices:
+        d = dm.devices[key]
+        print('%s: [%04x] %s' % (key, d.product_id, d.name))
+    sys.exit(0)
+
+driver = None
+if args.device is not None:
+    driver = dm.devices[driver]
+elif len(dm.devices) == 1:
+    driver = dm.devices[list(dm.devices.keys())[0]]
+else:
+    raise ValueError("Multiple devices found, select one with --device")
+
 
 try:
     if args.breathe:
