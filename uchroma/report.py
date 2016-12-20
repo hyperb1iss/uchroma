@@ -64,8 +64,9 @@ class RazerReport(object):
     def run(self):
         self._ensure_open()
 
+        time.sleep(0.008)
         self._hid.send_feature_report(self._pack_request(), self.REQ_REPORT_ID)
-        time.sleep(0.005)
+        time.sleep(0.008)
         return self._unpack_response(self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE))
 
     @property

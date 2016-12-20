@@ -19,21 +19,20 @@ class DeviceManager(object):
 
 
     def discover(self):
-        devinfos = hidapi.enumerate()
+        devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
         for devinfo in devinfos:
-            if devinfo.vendor_id == RAZER_VENDOR_ID:
-                for devtype in RazerDeviceType:
-                    if devinfo.product_id in devtype.value:
-                        add = True
-                        if devtype == RazerDeviceType.KEYBOARD or devtype == RazerDeviceType.LAPTOP:
-                            if devinfo.interface_number != 2:
-                                add = False
-                        elif devtype == RazerDeviceType.MOUSEPAD:
-                            if devinfo.interface_number != 1:
-                                add = False
+            for devtype in RazerDeviceType:
+                if devinfo.product_id in devtype.value:
+                    add = True
+                    if devtype == RazerDeviceType.KEYBOARD or devtype == RazerDeviceType.LAPTOP:
+                        if devinfo.interface_number != 2:
+                            add = False
+                    elif devtype == RazerDeviceType.MOUSEPAD:
+                        if devinfo.interface_number != 1:
+                            add = False
 
-                        if add:
-                            self._devices[devinfo.path.decode()] = RazerChromaDevice(devinfo, devtype.name, devtype.value[devinfo.product_id])
+                    if add:
+                        self._devices[devinfo.path.decode()] = RazerChromaDevice(devinfo, devtype.name, devtype.value[devinfo.product_id])
 
 
     @property

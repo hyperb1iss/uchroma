@@ -1,5 +1,6 @@
 from enum import Enum
 
+from uchroma.color import RGB
 
 NOSTORE = 0
 VARSTORE = 1
@@ -55,6 +56,11 @@ class LED(object):
 
     def _set(self, cmd, *args):
         return self._driver.run_command(cmd, *(VARSTORE, self._led_type) + args)
+
+
+    @property
+    def led_type(self):
+        return self._led_type
 
 
     @property

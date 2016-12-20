@@ -2,6 +2,7 @@ import logging
 from enum import Enum
 
 from uchroma.device_base import RazerDevice
+from uchroma.device_base import RazerDeviceType
 from uchroma.color import RGB
 from uchroma.frame import Frame
 from uchroma.led import LED
