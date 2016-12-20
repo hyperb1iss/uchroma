@@ -1,8 +1,8 @@
 import logging
 from enum import Enum
 
-from uchroma.device_base import RazerDevice
-from uchroma.device_base import RazerDeviceType
+from uchroma.device_base import BaseUChromaDevice
+from uchroma.device_base import Model
 from uchroma.color import RGB
 from uchroma.frame import Frame
 from uchroma.led import LED
@@ -38,7 +38,7 @@ class EffectMode(Enum):
     DUAL = 2
 
 
-class RazerChromaDevice(RazerDevice):
+class UChromaDevice(BaseUChromaDevice):
 
     # commands
     class Command(Enum):
@@ -52,14 +52,14 @@ class RazerChromaDevice(RazerDevice):
 
 
     def __init__(self, devinfo, devtype, devname):
-        super(RazerChromaDevice, self).__init__(devinfo, devtype, devname)
+        super(UChromaDevice, self).__init__(devinfo, devtype, devname)
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
 
 
     def _set_effect(self, effect, *args):
-        return self.run_command(RazerChromaDevice.Command.SET_EFFECT, effect, *args)
+        return self.run_command(UChromaDevice.Command.SET_EFFECT, effect, *args)
 
 
     def get_led(self, led_type):
@@ -70,11 +70,11 @@ class RazerChromaDevice(RazerDevice):
 
 
     def _set_blade_brightness(self, level):
-        return self.run_command(RazerChromaDevice.Command.SET_BRIGHTNESS, 0x01, level)
+        return self.run_command(UChromaDevice.Command.SET_BRIGHTNESS, 0x01, level)
 
 
     def _get_blade_brightness(self):
-        value = self.run_with_result(RazerChromaDevice.Command.GET_BRIGHTNESS)
+        value = self.run_with_result(UChromaDevice.Command.GET_BRIGHTNESS)
 
         if value is None:
             return 0
@@ -84,7 +84,7 @@ class RazerChromaDevice(RazerDevice):
 
     @property
     def brightness(self):
-        if self._devtype == RazerDeviceType.LAPTOP:
+        if self._devtype == Model.LAPTOP:
             return self._get_blade_brightness()
         else:
             return self.get_led(LED.Type.BACKLIGHT).brightness
@@ -95,7 +95,7 @@ class RazerChromaDevice(RazerDevice):
         if level < 0 or level > 255:
             raise ValueError('Brightness must be between 0 and 255')
 
-        if self._devtype == RazerDeviceType.LAPTOP:
+        if self._devtype == Model.LAPTOP:
             self._set_blade_brightness(level)
         else:
             self.get_led(LED.Type.BACKLIGHT).brightness = level

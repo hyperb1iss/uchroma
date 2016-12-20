@@ -4,7 +4,7 @@ import hidapi
 from uchroma.report import RazerReport
 
 
-class RazerDeviceType(Enum):
+class Model(Enum):
     KEYBOARD = {
         0x010D: 'BlackWidow Ultimate 2012',
         0x011A: 'BlackWidow Ultimate 2013',
@@ -35,7 +35,7 @@ class RazerDeviceType(Enum):
     }
 
 
-class RazerDevice(object):
+class BaseUChromaDevice(object):
 
     # commands
     class Command(Enum):
@@ -101,20 +101,20 @@ class RazerDevice(object):
 
 
     def get_device_mode(self):
-        return self.run_with_result(RazerDevice.Command.GET_DEVICE_MODE)
+        return self.run_with_result(BaseUChromaDevice.Command.GET_DEVICE_MODE)
 
 
     def set_device_mode(self, mode, param=0):
-        return self.run_command(RazerDevice.Command.SET_DEVICE_MODE, mode, param)
+        return self.run_command(BaseUChromaDevice.Command.SET_DEVICE_MODE, mode, param)
 
 
     @property
     def serial_number(self):
-        if self._devtype == RazerDeviceType.LAPTOP:
+        if self._devtype == Model.LAPTOP:
             return 'BUILTIN'
 
         if self._serial_number is None:
-            self._serial_number = self.run_with_result(RazerDevice.Command.GET_SERIAL)
+            self._serial_number = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
 
         return self._serial_number
 
@@ -122,7 +122,7 @@ class RazerDevice(object):
     @property
     def firmware_version(self):
         if self._firmware_version is None:
-            version = self.run_with_result(RazerDevice.Command.GET_FIRMWARE_VERSION)
+            version = self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
             if version is None:
                 self._firmware_version = '(unknown)'
             else:

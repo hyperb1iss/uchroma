@@ -1,14 +1,14 @@
 import logging
 
 import hidapi
-from uchroma.device import RazerChromaDevice
-from uchroma.device_base import RazerDeviceType
+from uchroma.device import UChromaDevice
+from uchroma.device_base import Model
 
 
 RAZER_VENDOR_ID = 0x1532
 
 
-class DeviceManager(object):
+class UChromaDeviceManager(object):
 
     def __init__(self):
         self._logger = logging.getLogger('uchroma.devicemanager')
@@ -21,18 +21,18 @@ class DeviceManager(object):
     def discover(self):
         devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
         for devinfo in devinfos:
-            for devtype in RazerDeviceType:
+            for devtype in Model:
                 if devinfo.product_id in devtype.value:
                     add = True
-                    if devtype == RazerDeviceType.KEYBOARD or devtype == RazerDeviceType.LAPTOP:
+                    if devtype == Model.KEYBOARD or devtype == Model.LAPTOP:
                         if devinfo.interface_number != 2:
                             add = False
-                    elif devtype == RazerDeviceType.MOUSEPAD:
+                    elif devtype == Model.MOUSEPAD:
                         if devinfo.interface_number != 1:
                             add = False
 
                     if add:
-                        self._devices[devinfo.path.decode()] = RazerChromaDevice(devinfo, devtype.name, devtype.value[devinfo.product_id])
+                        self._devices[devinfo.path.decode()] = UChromaDevice(devinfo, devtype.name, devtype.value[devinfo.product_id])
 
 
     @property

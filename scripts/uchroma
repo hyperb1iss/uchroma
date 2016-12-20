@@ -3,8 +3,7 @@
 import argparse
 import sys
 
-from uchroma import DeviceManager, Splotch
-from uchroma.color import RGB
+from uchroma import UChromaDeviceManager, Splotch
 from uchroma.led import LED
 
 
@@ -20,11 +19,15 @@ class UChromaTool(object):
         devs = parser.add_mutually_exclusive_group()
         devs.add_argument("-d", "--device", type=str,
                           help='HID device to use (/dev/hidrawX)')
-        devs.add_argument("-l", "--list-devices", action='store_true', help='List all connected devices')
-
-        parser.add_argument("--test", action='store_true', help='For use by udev')
 
         sub = parser.add_subparsers()
+
+        test = sub.add_parser('test', help='Test commands')
+        test.add_argument('path', metavar='Device path', type=str, help='Test if path is a uChroma device (udev)')
+        test.set_defaults(func=self._test_device)
+
+        list_devs = sub.add_parser('list', help='List devices')
+        list_devs.set_defaults(func=self._list_devices)
 
         fx = sub.add_parser('fx', help='Lighting effects')
         action = fx.add_mutually_exclusive_group()
@@ -53,28 +56,18 @@ class UChromaTool(object):
         led.set_defaults(func=self._led_parser)
         self._args = parser.parse_args()
 
+        if not hasattr(self._args, 'func'):
+            parser.print_help()
+            sys.exit(1)
+
         self._driver = None
         self._dm = None
 
 
-    def run(self):
-        self._dm = DeviceManager()
-
-        if self._args.list_devices:
-            for key in self._dm.devices:
-                if self._args.device is None or self._args.device == key:
-                    d = self._dm.devices[key]
-                    print('%s: [%04x] %s' % (key, d.product_id, d.name))
-            sys.exit(0)
-
-        self._driver = None
+    def _get_driver(self):
         if self._args.device is not None:
             if self._args.device not in self._dm.devices:
                 sys.exit(1)
-
-            if self._args.test:
-                print('UCHROMA_DEVICE=%s' % self._args.device)
-                sys.exit(0)
 
             self._driver = self._dm.devices[self._args.device]
 
@@ -84,6 +77,10 @@ class UChromaTool(object):
             print_err("Multiple devices found, select one with --device")
             sys.exit(1)
 
+
+    def run(self):
+        self._dm = UChromaDeviceManager()
+
         self._args.func(self._args)
 
 
@@ -92,13 +89,44 @@ class UChromaTool(object):
             self._driver.close()
 
 
+    def _list_devices(self, args):
+        for key in self._dm.devices:
+            if self._args.device is None or self._args.device == key:
+                d = self._dm.devices[key]
+                print('%s: [%04x] %s' % (key, d.product_id, d.name))
+        sys.exit(0)
+
+
     def _get_splotch(self, args):
         if args.splotch is None:
             return None
         return Splotch[args.splotch.upper()]
 
 
+
+    def _test_device(self, args):
+        if args.path.startswith('/dev/hidraw'):
+            if args.path not in self._dm.devices:
+                sys.exit(1)
+        elif args.path.startswith('/dev/bus/usb'):
+            found = False
+            ids = args.path.split('/')
+            match = '%04x:%04x:' % (int(ids[-2]), int(ids[-1]))
+            for key in self._dm.devices:
+                if key.startswith(match):
+                    found = True
+                    break
+
+            if not found:
+                sys.exit(1)
+
+            print('UCHROMA_DEVICE=1')
+            sys.exit(0)
+
+
     def _fx_parser(self, args):
+        self._get_driver()
+
         if args.set_brightness is not None:
             if args.set_brightness < 0 or args.set_brightness > 255:
                 print_err('Brightness must be between 0 and 255')
@@ -139,6 +167,8 @@ class UChromaTool(object):
 
 
     def _led_parser(self, args):
+        self._get_driver()
+
         led = self._driver.get_led(LED.Type[args.led_type.upper()])
         if led is None:
             sys.exit(1)
