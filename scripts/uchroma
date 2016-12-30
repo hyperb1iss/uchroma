@@ -45,6 +45,9 @@ class UChromaTool(object):
         action.add_argument("-b", "--breathe", action='store_true', help='Colors fade in and out in sequence')
         action.add_argument("-i", "--starlight", action='store_true', help='Keys sparkle with color')
         action.add_argument("-o", "--rainbow", action='store_true', help='A rainbow of hues')
+        action.add_argument("-m", "--morph", action='store_true', help='Morphing colors as you type')
+        action.add_argument("-f", "--fire", action='store_true', help='Keys on fire!')
+        action.add_argument("-l", "--wash", action='store_true', help='Color washing over a another')
 
         fx.add_argument('-x', '--splotch', type=str, choices=[x.name.lower() for x in Splotch], help='Color pairs (use with breathe and starlight effects)')
         fx.set_defaults(func=self._fx_parser)
@@ -150,8 +153,16 @@ class UChromaTool(object):
             if not self._driver.disable():
                 sys.exit(1)
 
-        elif args.starlight:
-            if not self._driver.starlight(splotch=self._get_splotch(args)):
+        elif args.fire:
+            if not self._driver.fire():
+                sys.exit(1)
+
+        elif args.morph:
+            if not self._driver.morph(splotch=self._get_splotch(args)):
+                sys.exit(1)
+
+        elif args.rainbow:
+            if not self._driver.rainbow():
                 sys.exit(1)
 
         elif args.reactive:
@@ -162,16 +173,20 @@ class UChromaTool(object):
             if not self._driver.spectrum():
                 sys.exit(1)
 
+        elif args.starlight:
+            if not self._driver.starlight(splotch=self._get_splotch(args)):
+                sys.exit(1)
+
         elif args.static:
             if not self._driver.static_color():
                 sys.exit(1)
 
-        elif args.wave:
-            if not self._driver.wave():
+        elif args.wash:
+            if not self._driver.wash(splotch=self._get_splotch(args)):
                 sys.exit(1)
 
-        elif args.rainbow:
-            if not self._driver.rainbow():
+        elif args.wave:
+            if not self._driver.wave():
                 sys.exit(1)
 
 

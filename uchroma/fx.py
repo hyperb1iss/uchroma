@@ -14,6 +14,13 @@ class FX(object):
         SPECTRUM = 0x04
         CUSTOM_FRAME = 0x05
         STATIC_COLOR = 0x06
+        WASH = 0x0C
+        CIRCLE = 0x0D
+        HIGHLIGHT = 0x10
+        MORPH = 0x11
+        FIRE = 0x12
+        RIPPLE_SOLID = 0x13
+        RIPPLE = 0x14
         STARLIGHT = 0x19
         RAINBOW = 0xFF
 
@@ -70,12 +77,47 @@ class FX(object):
         if color is None:
             color = Color.NewFromHtml('skyblue')
 
-        rgb = color.intTuple
-
         if speed < 1 or speed > 4:
             raise ValueError('Speed for reactive effect must be between 1 and 4 (got: %d)', speed)
 
-        return self._set_effect(FX.Type.REACTIVE, speed, rgb[0], rgb[1], rgb[2])
+        return self._set_effect(FX.Type.REACTIVE, speed, color)
+
+
+    def wash(self, direction=Direction.RIGHT, base_color=None, color=None, speed=0x10, splotch=None):
+        if splotch is None:
+            if base_color is None:
+                base_color = Color.NewFromHtml('black')
+
+            if color is None:
+                color = Color.NewFromHtml('skyblue')
+
+        else:
+            color = splotch.value[0]
+            base_color = splotch.value[1]
+
+        return self._set_effect(FX.Type.WASH, direction, speed, base_color, color)
+
+
+    def morph(self, base_color=None, color=None, speed=0x02, splotch=None):
+        if splotch is None:
+            if base_color is None:
+                base_color = Color.NewFromHtml('blue')
+
+            if color is None:
+                color = Color.NewFromHtml('magenta')
+
+        else:
+            color = splotch.value[0]
+            base_color = splotch.value[1]
+
+        return self._set_effect(FX.Type.MORPH, 0x04, speed, base_color, color)
+
+
+    def fire(self, color=None, speed=0x40):
+        if color is None:
+            color = Color.NewFromHtml('red')
+
+        return self._set_effect(FX.Type.FIRE, 0x01, speed, color)
 
 
     def _set_multi_mode_effect(self, effect, color1=None, color2=None, speed=None, splotch=None):

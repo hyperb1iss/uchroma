@@ -29,7 +29,8 @@ class UChromaDevice(BaseUChromaDevice):
         # TODO: check device capabilities
         for fxtype in FX.Type:
             method = fxtype.name.lower()
-            setattr(self, method, getattr(self._fx, method))
+            if hasattr(self._fx, method):
+               setattr(self, method, getattr(self._fx, method))
 
 
     def get_led(self, led_type):
