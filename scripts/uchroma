@@ -138,31 +138,31 @@ class UChromaTool(object):
             print('%d' % self._driver.brightness)
 
         if args.breathe:
-            if not self._driver.breathe_effect(splotch=self._get_splotch(args)):
+            if not self._driver.breathe(splotch=self._get_splotch(args)):
                 sys.exit(1)
 
         elif args.disable:
-            if not self._driver.disable_effects():
+            if not self._driver.disable():
                 sys.exit(1)
 
         elif args.starlight:
-            if not self._driver.starlight_effect(splotch=self._get_splotch(args)):
+            if not self._driver.starlight(splotch=self._get_splotch(args)):
                 sys.exit(1)
 
         elif args.reactive:
-            if not self._driver.reactive_effect():
+            if not self._driver.reactive():
                 sys.exit(1)
 
         elif args.spectrum:
-            if not self._driver.spectrum_effect():
+            if not self._driver.spectrum():
                 sys.exit(1)
 
         elif args.static:
-            if not self._driver.set_color():
+            if not self._driver.static_color():
                 sys.exit(1)
 
         elif args.wave:
-            if not self._driver.wave_effect():
+            if not self._driver.wave():
                 sys.exit(1)
 
 

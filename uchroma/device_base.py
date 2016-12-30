@@ -86,18 +86,28 @@ class BaseUChromaDevice(object):
         return report
 
 
-    def run_with_result(self, command, *args):
+    def run_with_result(self, command, *args, defer_close=False):
         self._ensure_open()
         report = self._get_report(*command.value, *args)
-        if not report.run():
-            return None
+        result = None
 
-        return report.result
+        if report.run():
+            result = report.result
+
+        if not defer_close:
+            self.close()
+
+        return result
 
 
-    def run_command(self, command, *args):
+    def run_command(self, command, *args, defer_close=False):
         self._ensure_open()
-        return self._get_report(*command.value, *args).run()
+        status = self._get_report(*command.value, *args).run()
+
+        if not defer_close:
+            self.close()
+
+        return status
 
 
     def get_device_mode(self):
@@ -118,7 +128,7 @@ class BaseUChromaDevice(object):
 
         return self._serial_number
 
-    
+
     @property
     def firmware_version(self):
         if self._firmware_version is None:

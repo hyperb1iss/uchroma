@@ -51,8 +51,10 @@ class LED(object):
         self._driver = driver
         self._led_type = led_type
 
+
     def _get(self, cmd):
         return self._driver.run_with_result(cmd, VARSTORE, self._led_type)
+
 
     def _set(self, cmd, *args):
         return self._driver.run_command(cmd, *(VARSTORE, self._led_type) + args)
@@ -117,3 +119,4 @@ class LED(object):
     @brightness.setter
     def brightness(self, led_brightness):
         return self._set(LED.Command.SET_LED_BRIGHTNESS, led_brightness)
+
