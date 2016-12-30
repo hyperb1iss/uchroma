@@ -1,6 +1,6 @@
 from enum import Enum
 
-from uchroma.color import RGB
+from grapefruit import Color
 
 
 class FX(object):
@@ -51,11 +51,11 @@ class FX(object):
         return self._set_effect(FX.Type.DISABLE)
 
 
-    def static_color(self, rgb=None):
-        if rgb is None:
-            rgb = RGB(0, 64, 255)
+    def static_color(self, color=None):
+        if color is None:
+            color = Color.NewFromHtml('white')
 
-        return self._set_effect(FX.Type.STATIC_COLOR, rgb)
+        return self._set_effect(FX.Type.STATIC_COLOR, color)
 
 
     def wave(self, direction=Direction.RIGHT):
@@ -66,29 +66,31 @@ class FX(object):
         return self._set_effect(FX.Type.SPECTRUM)
 
 
-    def reactive(self, rgb=None, speed=1):
-        if rgb is None:
-            rgb = RGB(0, 64, 255)
+    def reactive(self, color=None, speed=1):
+        if color is None:
+            color = Color.NewFromHtml('skyblue')
+
+        rgb = color.intTuple
 
         if speed < 1 or speed > 4:
             raise ValueError('Speed for reactive effect must be between 1 and 4 (got: %d)', speed)
 
-        return self._set_effect(FX.Type.REACTIVE, speed, rgb.red, rgb.green, rgb.blue)
+        return self._set_effect(FX.Type.REACTIVE, speed, rgb[0], rgb[1], rgb[2])
 
 
-    def _set_multi_mode_effect(self, effect, rgb1=None, rgb2=None, speed=None, splotch=None):
+    def _set_multi_mode_effect(self, effect, color1=None, color2=None, speed=None, splotch=None):
         if speed is not None and (speed < 1 or speed > 4):
             raise ValueError('Speed for effect must be between 1 and 4 (got: %d)', speed)
 
         if splotch is not None:
-            rgb1 = splotch.value[0]
-            rgb2 = splotch.value[1]
+            color1 = splotch.value[0]
+            color2 = splotch.value[1]
 
         mode = None
 
-        if rgb1 is not None and rgb2 is not None:
+        if color1 is not None and color2 is not None:
             mode = FX.Mode.DUAL.value
-        elif rgb1 is not None:
+        elif color1 is not None:
             mode = FX.Mode.SINGLE.value
         else:
             mode = FX.Mode.RANDOM.value
@@ -98,23 +100,33 @@ class FX(object):
         if speed is not None:
             args.append(speed)
 
-        if rgb1 is not None:
-            args.append(rgb1)
+        if color1 is not None:
+            args.append(color1)
 
-        if rgb2 is not None:
-            args.append(rgb2)
+        if color2 is not None:
+            args.append(color2)
 
         self._set_effect(effect, *args)
 
 
-    def starlight(self, rgb1=None, rgb2=None, speed=1, splotch=None):
-        return self._set_multi_mode_effect(FX.Type.STARLIGHT, rgb1, rgb2, speed=speed, splotch=splotch)
+    def starlight(self, color1=None, color2=None, speed=1, splotch=None):
+        return self._set_multi_mode_effect(FX.Type.STARLIGHT, color1, color2, speed=speed, splotch=splotch)
 
 
-    def breathe(self, rgb1=None, rgb2=None, splotch=None):
-        return self._set_multi_mode_effect(FX.Type.BREATHE, rgb1, rgb2, splotch=splotch)
+    def breathe(self, color1=None, color2=None, splotch=None):
+        return self._set_multi_mode_effect(FX.Type.BREATHE, color1, color2, splotch=splotch)
 
 
     def custom_frame(self):
         return self._set_effect(FX.Type.CUSTOM_FRAME, 0x01)
 
+
+# Splotches
+class Splotch(Enum):
+    EARTH = (Color.NewFromHtml('green'), Color.NewFromHtml('#8b4513'))
+    AIR = (Color.NewFromHtml('white'), Color.NewFromHtml('skyblue'))
+    FIRE = (Color.NewFromHtml('red'), Color.NewFromHtml('orange'))
+    WATER = (Color.NewFromHtml('blue'), Color.NewFromHtml('white'))
+    SUN = (Color.NewFromHtml('white'), Color.NewFromHtml('yellow'))
+    MOON = (Color.NewFromHtml('grey'), Color.NewFromHtml('cyan'))
+    HOTPINK = (Color.NewFromHtml('hotpink'), Color.NewFromHtml('purple'))

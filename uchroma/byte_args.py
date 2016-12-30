@@ -1,7 +1,8 @@
 import struct
 from enum import Enum
 
-from uchroma.color import RGB
+from grapefruit import Color
+
 
 class ByteArgs(object):
     def __init__(self, size=0, data=None):
@@ -12,6 +13,7 @@ class ByteArgs(object):
         else:
             self._data = data
 
+
     @property
     def data(self):
         if self._size is None or len(self._data) == self._size:
@@ -19,25 +21,29 @@ class ByteArgs(object):
         else:
             return self._data + (b'\x00' * (self._size - len(self._data)))
 
+
     @property
     def size(self):
         if self._size is None:
             return len(self._data)
         return self._size
 
+
     def _ensure_space(self, size):
         if self._size is None:
             return
         assert (len(self._data) + size) <= self._size, 'Additional argument (len=%d) would exceed size limit %d (cur=%d)' % (size, self._size, len(self._data))
 
+
     def clear(self):
         self._data.clear()
         return self
 
+
     def put_byte(self, arg):
-        if isinstance(arg, RGB):
+        if isinstance(arg, Color):
             self._ensure_space(3)
-            for component in arg.get():
+            for component in arg.intTuple:
                 self._data += struct.pack('=B', component)
         elif isinstance(arg, Enum):
             self._ensure_space(1)
@@ -47,10 +53,12 @@ class ByteArgs(object):
             self._data += struct.pack('=B', arg)
         return self
 
+
     def put_short(self, arg):
         self._ensure_space(2)
         self._data += struct.pack('=H', arg)
         return self
+
 
     def put_int(self, arg):
         self._ensure_space(4)

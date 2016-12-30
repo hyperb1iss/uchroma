@@ -1,5 +1,6 @@
 from enum import Enum
 
+from grapefruit import Color
 import numpy as np
 
 
@@ -9,14 +10,14 @@ class Frame(object):
         SET_FRAME_DATA = (0x03, 0x0B, None)
 
 
-    def __init__(self, driver, width, height, base_rgb=None):
+    def __init__(self, driver, width, height, base_color=None):
         self._width = width
         self._height = height
         self._driver = driver
 
         self._matrix = np.zeros(shape=(width, height, 3), dtype=np.uint8)
 
-        self.set_base_color(base_rgb)
+        self.set_base_color(base_color)
         self.clear()
 
 
@@ -35,19 +36,19 @@ class Frame(object):
         return self._matrix
 
 
-    def set_base_color(self, rgb):
-        if rgb is None:
-            self._base_rgb = RGB().get()
+    def set_base_color(self, color):
+        if color is None:
+            self._base_color = Color.NewFromHtml('black')
         else:
-            self._base_rgb = rgb.get()
+            self._base_color = color
 
 
     def clear(self):
-        self._matrix.fill(self._base_rgb)
+        self._matrix.fill(self._base_color.intTuple)
 
 
-    def put(self, row, col, rgb):
-        self._matrix[row][col] = rgb.get()
+    def put(self, row, col, color):
+        self._matrix[row][col] = color.intTuple
 
 
     def flip(self, clear=True):

@@ -3,6 +3,7 @@
 import argparse
 import sys
 
+from grapefruit import Color
 from uchroma import UChromaDeviceManager, Splotch
 from uchroma.led import LED
 
@@ -194,6 +195,9 @@ class UChromaTool(object):
 
         elif args.mode:
             led.mode = LED.Mode[args.mode.upper()]
+
+        elif args.color:
+            led.color = Color.NewFromHtml(args.color.lower())
 
         elif args.brightness:
             if args.brightness < 0 or args.brightness > 255:

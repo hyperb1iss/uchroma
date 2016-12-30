@@ -39,8 +39,8 @@ class UChromaDevice(BaseUChromaDevice):
         return self._leds[led_type]
 
 
-    def get_frame_control(self, width, height, base_rgb=None):
-        return Frame(self, width, height, base_rgb)
+    def get_frame_control(self, width, height, base_color=None):
+        return Frame(self, width, height, base_color)
 
 
     def _set_blade_brightness(self, level):

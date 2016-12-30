@@ -9,4 +9,5 @@ setup(name='uchroma',
       license='LGPL',
       packages=['uchroma'],
       scripts=['scripts/uchroma'],
+      install_requires=['grapefruit'],
       zip_safe=False)

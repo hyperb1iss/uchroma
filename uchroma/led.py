@@ -1,6 +1,6 @@
 from enum import Enum
 
-from uchroma.color import RGB
+from grapefruit import Color
 
 NOSTORE = 0
 VARSTORE = 1
@@ -85,12 +85,12 @@ class LED(object):
         if value is None:
             return None
 
-        return RGB(value[2], value[3], value[4])
+        return Color.NewFromRgb(value[2], value[3], value[4])
 
 
     @color.setter
-    def color(self, rgb):
-        return self._set(LED.Command.SET_LED_COLOR, rgb)
+    def color(self, color):
+        return self._set(LED.Command.SET_LED_COLOR, color)
 
 
     @property
