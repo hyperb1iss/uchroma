@@ -15,7 +15,7 @@ class FX(object):
         CUSTOM_FRAME = 0x05
         STATIC_COLOR = 0x06
         STARLIGHT = 0x19
-
+        RAINBOW = 0xFF
 
     # Modes for the Wave effect
     # The "chase" modes add a circular spin around the trackpad (if supported)
@@ -119,6 +119,21 @@ class FX(object):
 
     def custom_frame(self):
         return self._set_effect(FX.Type.CUSTOM_FRAME, 0x01)
+
+
+    def _hue_gradient(self, start, length):
+        step = 360 / length
+        return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
+
+
+    def rainbow(self, width=24, height=6, stagger=30):
+        frame = self._driver.get_frame_control(width, height)
+        gradient = self._hue_gradient(75, width + (height * stagger))
+        for row in range(0, height):
+            for col in range(0, width):
+                frame.put(row, col, gradient[(row * stagger) + col])
+
+        frame.flip()
 
 
 # Splotches

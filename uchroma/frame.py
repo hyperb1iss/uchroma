@@ -15,7 +15,7 @@ class Frame(object):
         self._height = height
         self._driver = driver
 
-        self._matrix = np.zeros(shape=(width, height, 3), dtype=np.uint8)
+        self._matrix = np.zeros(shape=(height, width, 3), dtype=np.uint8)
 
         self.set_base_color(base_color)
         self.clear()
@@ -37,26 +37,31 @@ class Frame(object):
 
 
     def set_base_color(self, color):
-        if color is None:
-            self._base_color = Color.NewFromHtml('black')
-        else:
-            self._base_color = color
+        self._base_color = color
 
 
     def clear(self):
-        self._matrix.fill(self._base_color.intTuple)
+        if self._base_color is None:
+            self._matrix.fill(0)
+        else:
+            rgb = self._base_color.intTuple
+            for row in range(0, self._height):
+                for col in range(0, self._width):
+                    self._matrix[row][col] = [rgb[0], rgb[1], rgb[2]]
 
 
     def put(self, row, col, color):
-        self._matrix[row][col] = color.intTuple
+        rgb = color.intTuple
+        self._matrix[row][col] = [rgb[0], rgb[1], rgb[2]]
 
 
-    def flip(self, clear=True):
+    def flip(self, frame_id=0xFF, clear=True):
         for row in range(0, self._height):
-            self._driver.run_command(Frame.Command.SET_FRAME_DATA, 0xFF, row, 0,
-                                     self._width, self._matrix[row].data.tobytes())
+            self._driver.run_command(Frame.Command.SET_FRAME_DATA, frame_id, row, 0,
+                                     self._width, self._matrix[row].data.tobytes(),
+                                     transaction_id=0x80)
 
-        self._driver.show_custom_frame()
+        self._driver.custom_frame()
 
         if clear:
             self.clear()

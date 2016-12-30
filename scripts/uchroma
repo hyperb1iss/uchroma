@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import sys
 
 from grapefruit import Color
 from uchroma import UChromaDeviceManager, Splotch
 from uchroma.led import LED
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 def print_err(*args):
@@ -41,6 +44,7 @@ class UChromaTool(object):
         action.add_argument("-w", "--wave", action='store_true', help='Waves of color')
         action.add_argument("-b", "--breathe", action='store_true', help='Colors fade in and out in sequence')
         action.add_argument("-i", "--starlight", action='store_true', help='Keys sparkle with color')
+        action.add_argument("-o", "--rainbow", action='store_true', help='A rainbow of hues')
 
         fx.add_argument('-x', '--splotch', type=str, choices=[x.name.lower() for x in Splotch], help='Color pairs (use with breathe and starlight effects)')
         fx.set_defaults(func=self._fx_parser)
@@ -164,6 +168,10 @@ class UChromaTool(object):
 
         elif args.wave:
             if not self._driver.wave():
+                sys.exit(1)
+
+        elif args.rainbow:
+            if not self._driver.rainbow():
                 sys.exit(1)
 
 

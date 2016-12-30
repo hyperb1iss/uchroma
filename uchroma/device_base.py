@@ -76,19 +76,19 @@ class BaseUChromaDevice(object):
             self._dev = hidapi.Device(self._devinfo)
 
 
-    def _get_report(self, command_class, command_id, data_size, *args):
-        report = RazerReport(self._dev, command_class, command_id, data_size)
+    def _get_report(self, command_class, command_id, data_size, *args, transaction_id=0xFF):
+        report = RazerReport(self._dev, command_class, command_id, data_size, transaction_id=transaction_id)
         if args is not None:
             for arg in args:
                 if arg is not None:
-                    report.args.put_byte(arg)
+                    report.args.put(arg)
 
         return report
 
 
-    def run_with_result(self, command, *args, defer_close=False):
+    def run_with_result(self, command, *args, transaction_id=0xFF, defer_close=False):
         self._ensure_open()
-        report = self._get_report(*command.value, *args)
+        report = self._get_report(*command.value, *args, transaction_id=transaction_id)
         result = None
 
         if report.run():
@@ -100,9 +100,9 @@ class BaseUChromaDevice(object):
         return result
 
 
-    def run_command(self, command, *args, defer_close=False):
+    def run_command(self, command, *args, transaction_id=0xFF, defer_close=False):
         self._ensure_open()
-        status = self._get_report(*command.value, *args).run()
+        status = self._get_report(*command.value, *args, transaction_id=transaction_id).run()
 
         if not defer_close:
             self.close()

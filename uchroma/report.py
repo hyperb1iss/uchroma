@@ -61,13 +61,20 @@ class RazerReport(object):
         if self._hid is None:
             raise ValueError('No valid HID device!')
 
+    def _hexdump(self, data, tag=""):
+        self._logger.debug('%s%s' % (tag, "".join('%02x ' % b for b in data)))
+
     def run(self):
         self._ensure_open()
+        req = self._pack_request()
+        self._hexdump(req, 'request:  ')
+        time.sleep(0.008)
+        self._hid.send_feature_report(req, self.REQ_REPORT_ID)
+        time.sleep(0.008)
+        resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+        self._hexdump(resp, 'response: ')
 
-        time.sleep(0.008)
-        self._hid.send_feature_report(self._pack_request(), self.REQ_REPORT_ID)
-        time.sleep(0.008)
-        return self._unpack_response(self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE))
+        return self._unpack_response(resp)
 
     @property
     def args(self):

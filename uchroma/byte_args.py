@@ -40,7 +40,7 @@ class ByteArgs(object):
         return self
 
 
-    def put_byte(self, arg):
+    def put(self, arg):
         if isinstance(arg, Color):
             self._ensure_space(3)
             for component in arg.intTuple:
@@ -48,6 +48,9 @@ class ByteArgs(object):
         elif isinstance(arg, Enum):
             self._ensure_space(1)
             self._data += struct.pack('=B', arg.value)
+        elif isinstance(arg, bytes):
+            self._ensure_space(len(arg))
+            self._data += arg
         else:
             self._ensure_space(1)
             self._data += struct.pack('=B', arg)
