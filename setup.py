@@ -9,5 +9,5 @@ setup(name='uchroma',
       license='LGPL',
       packages=['uchroma'],
       scripts=['scripts/uchroma'],
-      install_requires=['grapefruit'],
+      install_requires=['grapefruit', 'numpy'],
       zip_safe=False)
