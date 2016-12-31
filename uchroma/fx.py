@@ -1,5 +1,7 @@
 from enum import Enum
 
+from uchroma.led import LED
+
 from grapefruit import Color
 
 
@@ -26,6 +28,18 @@ class FX(object):
         SPECTRUM_BLADE = 0x1C
         RAINBOW = 0xFF
 
+
+    class ExtendedType(Enum):
+        DISABLE = 0x00
+        STATIC_COLOR = 0x01
+        BREATHE = 0x02
+        SPECTRUM = 0x03
+        WAVE = 0x04
+        REACTIVE = 0x05
+        STARLIGHT = 0x07
+        CUSTOM_FRAME = 0x08
+
+
     # Modes for the Wave effect
     # The "chase" modes add a circular spin around the trackpad (if supported)
     class Direction(Enum):
@@ -46,6 +60,7 @@ class FX(object):
         # device commands, class 3
         SET_EFFECT = (0x03, 0x0A, None)
         SET_CUSTOM_FRAME_DATA = (0x03, 0x0B, None)
+        SET_EFFECT_EXTENDED  = (0x0F, 0x02, None)
 
 
     def __init__(self, driver):
@@ -54,6 +69,10 @@ class FX(object):
 
     def _set_effect(self, effect, *args):
         return self._driver.run_command(FX.Command.SET_EFFECT, effect, *args)
+
+
+    def _set_effect_extended(self, effect, *args):
+        return self._driver.run_command(FX.Command.SET_EFFECT_EXTENDED, 0x01, LED.Type.BACKLIGHT, effect, *args, transaction_id=0x3F)
 
 
     def disable(self):
