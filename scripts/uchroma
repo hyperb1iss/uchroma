@@ -20,6 +20,7 @@ class UChromaTool(object):
     def __init__(self):
         parser = argparse.ArgumentParser(description='Color control for Razer Chroma peripherals')
         parser.add_argument("-v", "--version", action='version', version='uChroma-%s' % __version__)
+        parser.add_argument("--debug", action='store_true', help='Enable debug output')
 
         sub = parser.add_subparsers(title='Subcommands')
 
@@ -76,6 +77,9 @@ class UChromaTool(object):
 
 
         self._args = parser.parse_args()
+
+        if self._args.debug:
+            logging.getLogger().setLevel(logging.DEBUG)
 
         if not hasattr(self._args, 'func'):
             parser.print_help()
