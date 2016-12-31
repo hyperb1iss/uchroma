@@ -4,9 +4,9 @@ import argparse
 import logging
 import sys
 
+from uchroma import UChromaDeviceManager, LED, Splotch, __version__
+
 from grapefruit import Color
-from uchroma import UChromaDeviceManager, Splotch
-from uchroma.led import LED
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -18,50 +18,63 @@ def print_err(*args):
 class UChromaTool(object):
 
     def __init__(self):
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(description='Color control for Razer Chroma peripherals')
+        parser.add_argument("-v", "--version", action='version', version='uChroma-%s' % __version__)
 
-        devs = parser.add_mutually_exclusive_group()
-        devs.add_argument("-d", "--device", type=str,
-                          help='HID device to use (/dev/hidrawX)')
-
-        sub = parser.add_subparsers()
-
-        test = sub.add_parser('test', help='Test commands')
-        test.add_argument('path', metavar='Device path', type=str, help='Test if path is a uChroma device (udev)')
-        test.set_defaults(func=self._test_device)
+        sub = parser.add_subparsers(title='Subcommands')
 
         list_devs = sub.add_parser('list', help='List devices')
         list_devs.set_defaults(func=self._list_devices)
 
         fx = sub.add_parser('fx', help='Lighting effects')
-        action = fx.add_mutually_exclusive_group()
-        action.add_argument("--set-brightness", metavar='BRIGHTNESS', type=int, help='Set brightness (0-255)')
-        action.add_argument("--get-brightness", action='store_true', help='Get current brightness level')
-        action.add_argument("-n", "--disable", action='store_true', help='Disable all effects')
-        action.add_argument("-r", "--reactive", action='store_true', help='Enable the reactive keys effect')
-        action.add_argument("-s", "--spectrum", action='store_true', help='Cycle colors thru the spectrum')
-        action.add_argument("-t", "--static", action='store_true', help='Set a static lighting color')
-        action.add_argument("-w", "--wave", action='store_true', help='Waves of color')
-        action.add_argument("-b", "--breathe", action='store_true', help='Colors fade in and out in sequence')
-        action.add_argument("-i", "--starlight", action='store_true', help='Keys sparkle with color')
-        action.add_argument("-o", "--rainbow", action='store_true', help='A rainbow of hues')
-        action.add_argument("-m", "--morph", action='store_true', help='Morphing colors as you type')
-        action.add_argument("-f", "--fire", action='store_true', help='Keys on fire!')
-        action.add_argument("-l", "--wash", action='store_true', help='Color washing over a another')
+        fx.add_argument("-d", "--device", type=str,
+                        help='HID device to use (/dev/hidrawX or USB identifier)')
 
-        fx.add_argument('-x', '--splotch', type=str, choices=[x.name.lower() for x in Splotch], help='Color pairs (use with breathe and starlight effects)')
+        action = fx.add_mutually_exclusive_group(required=True)
+        action.add_argument("--get-brightness", action='store_true', help='Get current brightness level')
+        action.add_argument("--set-brightness", metavar='BRIGHTNESS', type=int, help='Set brightness (0-255)')
+        action.add_argument("--disable", action='store_true', help='Disable all effects')
+        action.add_argument("--rainbow", action='store_true', help='A rainbow of hues')
+        action.add_argument("--spectrum", action='store_true', help='Cycle colors thru the spectrum')
+        action.add_argument("--wave", action='store_true', help='Waves of color')
+
+        action.add_argument("--breathe", action='store_true', help='Colors fade in and out in sequence')
+        action.add_argument("--fire", action='store_true', help='Keys on fire!')
+        action.add_argument("--morph", action='store_true', help='Morphing colors as you type')
+        action.add_argument("--reactive", action='store_true', help='Enable the reactive keys effect')
+        action.add_argument("--starlight", action='store_true', help='Keys sparkle with color')
+        action.add_argument("--static", action='store_true', help='Set a static lighting color')
+        action.add_argument("--wash", action='store_true', help='Color washing over a another')
+
+        custom_group = fx.add_argument_group('Effect customization options')
+        custom_group.add_argument('-s', '--speed', type=int, help='Effect speed')
+
+        color = custom_group.add_mutually_exclusive_group()
+        color.add_argument('-x', '--splotch', type=str, choices=[x.name.lower() for x in Splotch], help='Predefined color pairs')
+        color.add_argument('-c', '--color', type=str, action='append', help='Color name or hexcode')
+
         fx.set_defaults(func=self._fx_parser)
 
         led = sub.add_parser('led', help='LED control')
-        led.add_argument('led_type', metavar='LED type', type=str, choices=[x.name.lower() for x in LED.Type], help='Type of LED to control')
+        led.add_argument("-d", "--device", type=str,
+                         help='HID device to use (/dev/hidrawX or USB identifier)')
 
-        ledx = led.add_mutually_exclusive_group()
+        led.add_argument('led_type', metavar='LED type', type=str, choices=[x.name.lower() for x in LED.Type], help='Type of LED to control')
+        led.add_argument('-i', '--info', action='store_true', help='Get status of LED')
+
+        ledx = led.add_argument_group('LED attributes')
         ledx.add_argument('-s', '--state', type=str, choices=[x.name.lower() for x in LED.State], help='State for the LED')
         ledx.add_argument('-m', '--mode', type=str, choices=[x.name.lower() for x in LED.Mode], help='Mode for the LED')
         ledx.add_argument('-c', '--color', type=str, help='RGB color for the LED')
         ledx.add_argument('-b', '--brightness', metavar='BRIGHTNESS', type=int, help='Set brightness (0-255)')
-        ledx.add_argument('-i', '--info', action='store_true', help='Get status of LED')
         led.set_defaults(func=self._led_parser)
+
+
+        test = sub.add_parser('test', help='Test commands')
+        test.add_argument('path', metavar='Device path', type=str, help='Test if path is a uChroma device (udev)')
+        test.set_defaults(func=self._test_device)
+
+
         self._args = parser.parse_args()
 
         if not hasattr(self._args, 'func'):
@@ -72,12 +85,12 @@ class UChromaTool(object):
         self._dm = None
 
 
-    def _get_driver(self):
-        if self._args.device is not None:
-            if self._args.device not in self._dm.devices:
+    def _get_driver(self, args):
+        if args.device is not None:
+            if args.device not in self._dm.devices:
                 sys.exit(1)
 
-            self._driver = self._dm.devices[self._args.device]
+            self._driver = self._dm.devices[args.device]
 
         elif len(self._dm.devices) == 1:
             self._driver = self._dm.devices[list(self._dm.devices.keys())[0]]
@@ -99,9 +112,8 @@ class UChromaTool(object):
 
     def _list_devices(self, args):
         for key in self._dm.devices:
-            if self._args.device is None or self._args.device == key:
-                d = self._dm.devices[key]
-                print('%s: [%04x] %s' % (key, d.product_id, d.name))
+            d = self._dm.devices[key]
+            print('%s: [%04x] %s' % (key, d.product_id, d.name))
         sys.exit(0)
 
 
@@ -110,6 +122,15 @@ class UChromaTool(object):
             return None
         return Splotch[args.splotch.upper()]
 
+
+    def _get_color(self, args, num):
+        if args.color is None:
+            return None
+
+        if len(args.color) <= num:
+            return None
+
+        return Color.NewFromHtml(args.color[num])
 
 
     def _test_device(self, args):
@@ -133,7 +154,7 @@ class UChromaTool(object):
 
 
     def _fx_parser(self, args):
-        self._get_driver()
+        self._get_driver(args)
 
         if args.set_brightness is not None:
             if args.set_brightness < 0 or args.set_brightness > 255:
@@ -146,7 +167,7 @@ class UChromaTool(object):
             print('%d' % self._driver.brightness)
 
         if args.breathe:
-            if not self._driver.breathe(splotch=self._get_splotch(args)):
+            if not self._driver.breathe(color1=self._get_color(args, 0), color2=self._get_color(args, 1), splotch=self._get_splotch(args), speed=args.speed):
                 sys.exit(1)
 
         elif args.disable:
@@ -154,11 +175,11 @@ class UChromaTool(object):
                 sys.exit(1)
 
         elif args.fire:
-            if not self._driver.fire():
+            if not self._driver.fire(color=self._get_color(args, 0), speed=args.speed):
                 sys.exit(1)
 
         elif args.morph:
-            if not self._driver.morph(splotch=self._get_splotch(args)):
+            if not self._driver.morph(base_color=self._get_color(args, 0), color=self._get_color(args, 1), splotch=self._get_splotch(args), speed=args.speed):
                 sys.exit(1)
 
         elif args.rainbow:
@@ -166,7 +187,7 @@ class UChromaTool(object):
                 sys.exit(1)
 
         elif args.reactive:
-            if not self._driver.reactive():
+            if not self._driver.reactive(color=self._get_color(args, 0), speed=args.speed):
                 sys.exit(1)
 
         elif args.spectrum:
@@ -174,15 +195,15 @@ class UChromaTool(object):
                 sys.exit(1)
 
         elif args.starlight:
-            if not self._driver.starlight(splotch=self._get_splotch(args)):
+            if not self._driver.starlight(color1=self._get_color(args, 0), color2=self._get_color(args, 1), splotch=self._get_splotch(args), speed=args.speed):
                 sys.exit(1)
 
         elif args.static:
-            if not self._driver.static_color():
+            if not self._driver.static_color(color=self._get_color(args, 0)):
                 sys.exit(1)
 
         elif args.wash:
-            if not self._driver.wash(splotch=self._get_splotch(args)):
+            if not self._driver.wash(base_color=self._get_color(args, 0), color=self._get_color(args, 1), splotch=self._get_splotch(args), speed=args.speed):
                 sys.exit(1)
 
         elif args.wave:
@@ -191,7 +212,7 @@ class UChromaTool(object):
 
 
     def _led_parser(self, args):
-        self._get_driver()
+        self._get_driver(args)
 
         led = self._driver.get_led(LED.Type[args.led_type.upper()])
         if led is None:
@@ -213,21 +234,22 @@ class UChromaTool(object):
 
             print('type=%s,state=%s,color=%s,mode=%s,brightness=%d' % (led_type, state, repr(led.color), mode, led.brightness))
 
-        elif args.state:
-            led.state = LED.State[args.state.upper()]
+        else:
+            if args.state is not None:
+                led.state = LED.State[args.state.upper()]
 
-        elif args.mode:
-            led.mode = LED.Mode[args.mode.upper()]
+            if args.mode is not None:
+                led.mode = LED.Mode[args.mode.upper()]
 
-        elif args.color:
-            led.color = Color.NewFromHtml(args.color.lower())
+            if args.color is not None:
+                led.color = Color.NewFromHtml(args.color.lower())
 
-        elif args.brightness:
-            if args.brightness < 0 or args.brightness > 255:
-                print_err("Brightness value must be between 0 and 255")
-                exit(1)
+            if args.brightness is not None:
+                if args.brightness < 0 or args.brightness > 255:
+                    print_err("Brightness value must be between 0 and 255")
+                    exit(1)
 
-            led.brightness = args.brightness
+                led.brightness = args.brightness
 
 
 tool = UChromaTool()

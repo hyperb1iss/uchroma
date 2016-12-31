@@ -4,3 +4,6 @@ from uchroma.frame import Frame
 from uchroma.fx import FX
 from uchroma.fx import Splotch
 from uchroma.led import LED
+
+__version__ = "0.99"
+

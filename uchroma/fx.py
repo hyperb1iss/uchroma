@@ -14,6 +14,7 @@ class FX(object):
         SPECTRUM = 0x04
         CUSTOM_FRAME = 0x05
         STATIC_COLOR = 0x06
+        GRADIENT = 0x0A
         WASH = 0x0C
         CIRCLE = 0x0D
         HIGHLIGHT = 0x10
@@ -22,6 +23,7 @@ class FX(object):
         RIPPLE_SOLID = 0x13
         RIPPLE = 0x14
         STARLIGHT = 0x19
+        SPECTRUM_BLADE = 0x1C
         RAINBOW = 0xFF
 
     # Modes for the Wave effect
@@ -83,7 +85,7 @@ class FX(object):
         return self._set_effect(FX.Type.REACTIVE, speed, color)
 
 
-    def wash(self, direction=Direction.RIGHT, base_color=None, color=None, speed=0x10, splotch=None):
+    def wash(self, direction=Direction.RIGHT, base_color=None, color=None, speed=None, splotch=None):
         if splotch is None:
             if base_color is None:
                 base_color = Color.NewFromHtml('black')
@@ -95,10 +97,13 @@ class FX(object):
             color = splotch.value[0]
             base_color = splotch.value[1]
 
+        if speed is None:
+            speed = 15
+
         return self._set_effect(FX.Type.WASH, direction, speed, base_color, color)
 
 
-    def morph(self, base_color=None, color=None, speed=0x02, splotch=None):
+    def morph(self, base_color=None, color=None, speed=None, splotch=None):
         if splotch is None:
             if base_color is None:
                 base_color = Color.NewFromHtml('blue')
@@ -110,12 +115,18 @@ class FX(object):
             color = splotch.value[0]
             base_color = splotch.value[1]
 
+        if speed is None:
+            speed = 2
+
         return self._set_effect(FX.Type.MORPH, 0x04, speed, base_color, color)
 
 
-    def fire(self, color=None, speed=0x40):
+    def fire(self, color=None, speed=None):
         if color is None:
             color = Color.NewFromHtml('red')
+
+        if speed is None:
+            speed = 0x40
 
         return self._set_effect(FX.Type.FIRE, 0x01, speed, color)
 
@@ -151,7 +162,10 @@ class FX(object):
         self._set_effect(effect, *args)
 
 
-    def starlight(self, color1=None, color2=None, speed=1, splotch=None):
+    def starlight(self, color1=None, color2=None, speed=None, splotch=None):
+        if speed is None:
+            speed = 1
+
         return self._set_multi_mode_effect(FX.Type.STARLIGHT, color1, color2, speed=speed, splotch=splotch)
 
 
