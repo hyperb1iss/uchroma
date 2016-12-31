@@ -1,0 +1,6 @@
+*.swo
+*.swp
+build
+dist
+uchroma.egg-info
+__pycache__
