@@ -2,10 +2,7 @@ import logging
 
 import hidapi
 from uchroma.device import UChromaDevice
-from uchroma.device_base import Model
-
-
-RAZER_VENDOR_ID = 0x1532
+from uchroma.models import Model, RAZER_VENDOR_ID
 
 
 class UChromaDeviceManager(object):

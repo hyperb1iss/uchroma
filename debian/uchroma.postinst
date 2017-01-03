@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+udevadm control --reload-rules
+
+echo -e "\n\033[1;36mADD YOUR USER TO THE PLUGDEV GROUP '\033[1;35msudo gpasswd -a <USERNAME> plugdev\033[1;36m'\033[0m"
+

@@ -2,12 +2,10 @@ import logging
 from enum import Enum
 
 from uchroma.device_base import BaseUChromaDevice
-from uchroma.device_base import Model
 from uchroma.frame import Frame
 from uchroma.fx import FX
 from uchroma.led import LED
-
-RAZER_VENDOR_ID = 0x1532
+from uchroma.models import Model
 
 
 class UChromaDevice(BaseUChromaDevice):
@@ -30,7 +28,7 @@ class UChromaDevice(BaseUChromaDevice):
         for fxtype in FX.Type:
             method = fxtype.name.lower()
             if hasattr(self._fx, method):
-               setattr(self, method, getattr(self._fx, method))
+                setattr(self, method, getattr(self._fx, method))
 
 
     def get_led(self, led_type):

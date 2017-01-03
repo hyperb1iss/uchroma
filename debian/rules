@@ -1,0 +1,38 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system.
+#export DH_VERBOSE = 1
+
+export PYBUILD_NAME=uchroma
+export DH_OPTIONS
+PYTHON3S:=$(shell py3versions -vr)
+%:
+	dh $@  --with-python3 --buildsystem=pybuild
+
+override_dh_clean:
+	dh_clean -O--buildsystem=pybuild
+	rm -rf build
+	rm -rf uchroma/__pycache__
+
+override_dh_install:
+	set -e ; for pyvers in $(PYTHON3S); do \
+		python$$pyvers setup.py install --install-layout=deb \
+			--root $(CURDIR)/debian/python3-uchroma; \
+	done
+	mkdir -p $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d
+	python3 setup.py -q hwdb > $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d/90-uchroma.hwdb
+	rm -rf $(CURDIR)/debian/python*-uchroma/usr/lib/python*/dist-packages/uchroma/__pycache__
+	rm -rf $(CURDIR)/debian/python*-uchroma/usr/lib/python3.*
+
+override_dh_installudev:
+	cp $(CURDIR)/udev/90-uchroma.rules $(CURDIR)/debian/python3-uchroma.uchroma.udev
+	dh_installudev --name=uchroma --priority 90
+
+
+# If you need to rebuild the Sphinx documentation
+# Add spinxdoc to the dh --with line
+#override_dh_auto_build:
+#	dh_auto_build
+#	PYTHONPATH=. http_proxy='127.0.0.1:9' sphinx-build -N -bhtml        docs/ build/html # HTML generator
+#	PYTHONPATH=. http_proxy='127.0.0.1:9' sphinx-build -N -bman        docs/ build/man # Manpage generator
+

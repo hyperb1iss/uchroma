@@ -11,7 +11,11 @@ install_library: purge_pycache
 	python3 setup.py install --root=$(DESTDIR)
 
 install_udev:
-	install -m 644 -v -D udev/99-uchroma.rules $(DESTDIR)/lib/udev/rules.d/99-uchroma.rules
+	install -m 644 -v -D udev/90-uchroma.rules $(DESTDIR)/etc/udev/rules.d/90-uchroma.rules
+	$(eval HWDB := $(shell mktemp))
+	python3 setup.py -q hwdb > $(HWDB)
+	install -m 644 -v -D $(HWDB) $(DESTDIR)/etc/udev/hwdb.d/90-uchroma.hwdb
+	@rm -v -f $(HWDB)
 
 uninstall_library:
 	$(eval UCPATH := $(shell find $(DESTDIR)/usr/local/lib/python3* -maxdepth 2 -name "uchroma"))
@@ -21,7 +25,8 @@ uninstall_library:
 	@rm -v -f $(DESTDIR)/usr/local/bin/uchroma
 
 uninstall_udev:
-	@rm -v -f $(DESTDIR)/lib/udev/rules.d/99-uchroma.rules
+	@rm -v -f $(DESTDIR)/etc/udev/rules.d/90-uchroma.rules
+	@rm -v -f $(DESTDIR)/etc/udev/hwdb.d/90-uchroma.hwdb
 
 install: install_library install_udev
 

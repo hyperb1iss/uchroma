@@ -60,7 +60,7 @@ class FX(object):
         # device commands, class 3
         SET_EFFECT = (0x03, 0x0A, None)
         SET_CUSTOM_FRAME_DATA = (0x03, 0x0B, None)
-        SET_EFFECT_EXTENDED  = (0x0F, 0x02, None)
+        SET_EFFECT_EXTENDED = (0x0F, 0x02, None)
 
 
     def __init__(self, driver):

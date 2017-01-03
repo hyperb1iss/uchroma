@@ -1,2 +1,0 @@
-ACTION=="add", SUBSYSTEM=="hidraw|usb", ATTRS{idVendor}=="1532", IMPORT{program}="/usr/local/bin/uchroma test $env{DEVNAME}"
-ENV{UCHROMA_DEVICE}=="?*", GROUP="plugdev", MODE="0660"

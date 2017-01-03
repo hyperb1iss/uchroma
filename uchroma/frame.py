@@ -1,6 +1,5 @@
 from enum import Enum
 
-from grapefruit import Color
 import numpy as np
 
 

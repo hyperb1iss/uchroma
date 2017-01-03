@@ -1,6 +1,14 @@
+*.log
+*.substvars
 *.swo
 *.swp
+*.tmp
+.pybuild
+__pycache__
 build
+debhelper-build-stamp
+debian/files
+debian/python3-uchroma
+debian/python3-uchroma.uchroma.udev
 dist
 uchroma.egg-info
-__pycache__
