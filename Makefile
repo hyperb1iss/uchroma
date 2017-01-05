@@ -6,6 +6,7 @@ purge_pycache:
 
 clean: purge_pycache
 	@rm -rf build dist uchroma.egg-info
+	make -C doc clean
 
 install_library: purge_pycache
 	python3 setup.py install --root=$(DESTDIR)
@@ -28,6 +29,20 @@ uninstall_udev:
 	@rm -v -f $(DESTDIR)/etc/udev/rules.d/90-uchroma.rules
 	@rm -v -f $(DESTDIR)/etc/udev/hwdb.d/90-uchroma.hwdb
 
+sphinx_clean:
+	@rm -f doc/uchroma.*
+
+sphinx: sphinx_clean
+	sphinx-apidoc -o doc -M -f -e .
+
+docs: sphinx
+	make -C doc html
+
 install: install_library install_udev
 
 uninstall: uninstall_library uninstall_udev
+
+debs:
+	debuild -i -us -uc -b
+
+all: install docs

@@ -5,6 +5,13 @@ RAZER_VENDOR_ID = 0x1532
 
 
 class Model(Enum):
+    """
+    Enumeration of all models supported by uChroma
+
+    This enumeration is used for device discovery as well
+    as detection, and is parsed into a set of HWDB entries
+    at build time.
+    """
     KEYBOARD = {
         0x010D: 'BlackWidow Ultimate 2012',
         0x011A: 'BlackWidow Ultimate 2013',

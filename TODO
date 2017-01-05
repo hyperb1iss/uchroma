@@ -1,9 +1,10 @@
 Various things that need done:
 
  * Testing on lots of hardware!  I only have a Blade Pro laptop!
- * DOCS!
- * Test cases!
- * Commandline tools!
+ * Improve the framebuffer API and implement a few cool animated effects with it
+ * Device capabilities
+ * Disable effects when the screen is turned off (without suspend)
+ * Test coverage!
  * Developer needs additional beer! (PayPal: shade@chemlab.org)
  * All the things!
 

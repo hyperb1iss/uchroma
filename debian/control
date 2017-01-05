@@ -21,3 +21,13 @@ Description: Razer Chroma peripheral interface library (Python 3)
  the Razer Chroma line of peripherals.
  .
  This package installs the library for Python 3.
+
+Package: python3-uchroma-doc
+Section: doc
+Architecture: all
+Depends: ${sphinxdoc:Depends}, ${misc:Depends}
+Description: Razer Chroma peripheral interface library (Python 3)
+ A library which enables control of color schemes and effects on
+ the Razer Chroma line of peripherals.
+ .
+ This package installs the documentation for Python 3.

@@ -5,6 +5,10 @@ from grapefruit import Color
 
 
 class ByteArgs(object):
+    """
+    Helper class for assembling byte arrays from
+    argument lists of varying types
+    """
     def __init__(self, size=0, data=None):
         self._size = size
 
@@ -16,6 +20,9 @@ class ByteArgs(object):
 
     @property
     def data(self):
+        """
+        The byte array assembled from supplied arguments
+        """
         if self._size is None or len(self._data) == self._size:
             return self._data
         else:
@@ -24,6 +31,9 @@ class ByteArgs(object):
 
     @property
     def size(self):
+        """
+        Size of the byte array
+        """
         if self._size is None:
             return len(self._data)
         return self._size
@@ -32,39 +42,76 @@ class ByteArgs(object):
     def _ensure_space(self, size):
         if self._size is None:
             return
-        assert (len(self._data) + size) <= self._size, 'Additional argument (len=%d) would exceed size limit %d (cur=%d)' % (size, self._size, len(self._data))
+        assert (len(self._data) + size) <= self._size, \
+                ('Additional argument (len=%d) would exceed size limit %d (cur=%d)'
+                 % (size, self._size, len(self._data)))
 
 
     def clear(self):
+        """
+        Empty the contents of the array
+
+        :return: The empty ByteArgs
+        :rtype: ByteArgs
+        """
         self._data.clear()
         return self
 
 
-    def put(self, arg):
+    def put(self, arg, packing='=B'):
+        """
+        Add an argument to this array
+
+        :param arg: The argument to append
+        :type arg: varies
+
+        :param packing: The representation passed to struct.pack
+        :type packing: str
+
+        :return: This ByteArgs instance
+        :rtype: ByteArgs
+        """
+        data = bytearray()
         if isinstance(arg, Color):
-            self._ensure_space(3)
             for component in arg.intTuple:
-                self._data += struct.pack('=B', component)
+                data += struct.pack(packing, component)
         elif isinstance(arg, Enum):
-            self._ensure_space(1)
-            self._data += struct.pack('=B', arg.value)
+            data += struct.pack(packing, arg.value)
         elif isinstance(arg, bytes):
-            self._ensure_space(len(arg))
-            self._data += arg
+            data += arg
         else:
-            self._ensure_space(1)
-            self._data += struct.pack('=B', arg)
+            data += struct.pack(packing, arg)
+
+        if len(data) > 0:
+            self._ensure_space(len(data))
+            self._data += data
+
         return self
 
 
     def put_short(self, arg):
-        self._ensure_space(2)
-        self._data += struct.pack('=H', arg)
-        return self
+        """
+        Convenience method to add an argument as a short to
+        the array
+
+        :param arg: The argument to append
+        :type arg: varies
+
+        :return: This ByteArgs instance
+        :rtype: ByteArgs
+        """
+        return self.put(arg, '=H')
 
 
     def put_int(self, arg):
-        self._ensure_space(4)
-        self._data += struct.pack('=I', arg)
-        return self
+        """
+        Convenience method to add an argument as an integer to
+        the array
 
+        :param arg: The argument to append
+        :type arg: varies
+
+        :return: This ByteArgs instance
+        :rtype: ByteArgs
+        """
+        return self.put(arg, '=I')

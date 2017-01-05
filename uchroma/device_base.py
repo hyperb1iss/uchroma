@@ -4,11 +4,23 @@ import hidapi
 from uchroma.models import Model
 from uchroma.report import RazerReport
 
+class BaseCommand(Enum):
+    """
+    Base class for Command enumerations
+
+    Tuples, in the form of:
+        (command_class, command_id, data_length)
+    """
 
 class BaseUChromaDevice(object):
+    """
+    Base class for device objects
+    """
 
-    # commands
-    class Command(Enum):
+    class Command(BaseCommand):
+        """
+        Standard commands used by all Chroma devices
+        """
         # info queries, class 0
         SET_DEVICE_MODE = (0x00, 0x04, 0x02)
 
@@ -28,6 +40,12 @@ class BaseUChromaDevice(object):
 
 
     def close(self):
+        """
+        Close this device
+
+        Not strictly necessary to call this unless the device was opened with
+        the defer_close flag.
+        """
         if self._dev is not None:
             try:
                 self._dev.close()
@@ -47,7 +65,9 @@ class BaseUChromaDevice(object):
 
 
     def _get_report(self, command_class, command_id, data_size, *args, transaction_id=0xFF):
-        report = RazerReport(self._dev, command_class, command_id, data_size, transaction_id=transaction_id)
+        report = RazerReport(self._dev, command_class, command_id,
+                             data_size, transaction_id=transaction_id)
+
         if args is not None:
             for arg in args:
                 if arg is not None:
@@ -56,7 +76,33 @@ class BaseUChromaDevice(object):
         return report
 
 
-    def run_with_result(self, command, *args, transaction_id=0xFF, defer_close=False):
+    def run_with_result(self, command: BaseCommand, *args,
+                        transaction_id=0xFF, defer_close=False) -> RazerReport:
+        """
+        Run a command and return the result
+
+        Executes the given command with the provided list of arguments, returning
+        the result report.
+
+        Transaction id is only necessary for specialized commands or hardware.
+
+        The connection to the device will be automatically closed by default. If
+        many commands will be sent rapidly (like when using a Frame to do animations),
+        set the defer_close flag to True and close it manually when finished.
+
+        :param command: The command to run
+
+        :param args: The list of arguments to call the command with
+        :type args: varies
+
+        :param transaction_id: Transaction identified, defaults to 0xFF
+        :type transaction_id: int
+
+        :param defer_close: Whether the device should be closed after execution, defaults to False
+        :type defer_close: bool
+
+        :return: The result report from the hardware
+        """
         self._ensure_open()
         report = self._get_report(*command.value, *args, transaction_id=transaction_id)
         result = None
@@ -70,7 +116,31 @@ class BaseUChromaDevice(object):
         return result
 
 
-    def run_command(self, command, *args, transaction_id=0xFF, defer_close=False):
+    def run_command(self, command: BaseCommand, *args,
+                    transaction_id=0xFF, defer_close=False) -> bool:
+        """
+        Run a command
+
+        Executes the given command with the provided list of arguments.
+        Transaction id is only necessary for specialized commands or hardware.
+
+        The connection to the device will be automatically closed by default. If
+        many commands will be sent rapidly (like when using a Frame to do animations),
+        set the defer_close flag to True and close it manually when finished.
+
+        :param command: The command to run
+
+        :param args: The list of arguments to call the command with
+        :type args: varies
+
+        :param transaction_id: Transaction identified, defaults to 0xFF
+        :type transaction_id: int
+
+        :param defer_close: Whether the device should be closed after execution, defaults to False
+        :type defer_close: bool
+
+        :return: True if the command was successful
+        """
         self._ensure_open()
         status = self._get_report(*command.value, *args, transaction_id=transaction_id).run()
 
@@ -81,15 +151,30 @@ class BaseUChromaDevice(object):
 
 
     def get_device_mode(self):
+        """
+        Gets the current device mode
+
+        FIXME: implement this correctly
+        """
         return self.run_with_result(BaseUChromaDevice.Command.GET_DEVICE_MODE)
 
 
-    def set_device_mode(self, mode, param=0):
+    def set_device_mode(self, mode, param=0) -> bool:
+        """
+        Sets the requested device mode
+
+        FIXME: implement this correctly
+        """
         return self.run_command(BaseUChromaDevice.Command.SET_DEVICE_MODE, mode, param)
 
 
     @property
-    def serial_number(self):
+    def serial_number(self) -> str:
+        """
+        The hardware serial number of this device
+
+        On laptops, this is not available.
+        """
         if self._devtype == Model.LAPTOP:
             return 'BUILTIN'
 
@@ -100,7 +185,10 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def firmware_version(self):
+    def firmware_version(self) -> str:
+        """
+        The firmware version present on this device
+        """
         if self._firmware_version is None:
             version = self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
             if version is None:
@@ -112,20 +200,32 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """
+        The name of this device
+        """
         return self._devname
 
 
     @property
-    def product_id(self):
+    def product_id(self) -> str:
+        """
+        The USB product identifier of this device
+        """
         return self._devinfo.product_id
 
 
     @property
-    def vendor_id(self):
+    def vendor_id(self) -> str:
+        """
+        The USB vendor identifier of this device
+        """
         return self._devinfo.vendor_id
 
 
     @property
-    def device_type(self):
+    def device_type(self) -> str:
+        """
+        The type of this device, from the Model enumeration
+        """
         return self._devtype

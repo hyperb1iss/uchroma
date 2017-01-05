@@ -9,6 +9,9 @@ from uchroma.byte_args import ByteArgs
 
 # response codes
 class Status(Enum):
+    """
+    Enumeration of status codes returned by the hardware
+    """
     BUSY = 0x01
     OK = 0x02
     FAIL = 0x03
@@ -17,7 +20,31 @@ class Status(Enum):
 
 
 class RazerReport(object):
+    """
+    Generates and parses HID reports to and from the hardware.
 
+    The HID set_report is sent to report id 2 and the result is
+    read with get_report from report id 0.
+
+    The raw report data is always 90 bytes and has the following
+    structure:
+
+        Bytes       Contents
+        ---------   ----------------------
+        0           Status code
+        1           Transaction id
+        2           Remaining packets
+        3           Protocol type
+        4           Data size
+        5           Command class
+        6           Command id
+        8 - 87      Report data
+        88          CRC
+        89          Reserved byte (zero)
+
+    When sending a report, the status code is not sent and the bytes
+    are shifted by one.
+    """
     REQ_HEADER = '=BHBBBB'
     RSP_HEADER = '=BBHBBBB'
 
@@ -26,6 +53,7 @@ class RazerReport(object):
 
     BUF_SIZE = 90
     DATA_BUF_SIZE = 80
+
 
     def __init__(self, hid, command_class, command_id, data_size,
                  status=0x00, transaction_id=0xFF, remaining_packets=0x00,
@@ -57,44 +85,90 @@ class RazerReport(object):
         else:
             self._crc = crc
 
+
     def _ensure_open(self):
         if self._hid is None:
             raise ValueError('No valid HID device!')
 
-    def _hexdump(self, data, tag=""):
-        self._logger.debug('%s%s' % (tag, "".join('%02x ' % b for b in data)))
 
-    def run(self):
+    def _hexdump(self, data, tag=""):
+        self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
+
+
+    def run(self, delay: float=0.008) -> 'RazerReport':
+        """
+        Run this report and retrieve the result from the hardware.
+
+        Sends the feature report and parses the result. A small delay
+        is required between calls to the hardware or a BUSY status
+        will be returned. This delay may need adjusted on a per-model
+        basis.
+
+        If debug loglevel is enabled, the raw report data from both
+        the request and the response will be logged.
+
+        :param delay: Time to delay between requests (defaults to 0.008 sec)
+
+        :return: The parsed result from the hardware
+        """
         self._ensure_open()
         req = self._pack_request()
-        self._hexdump(req, 'request:  ')
-        time.sleep(0.008)
+        self._hexdump(req, '--> ')
+        time.sleep(delay)
         self._hid.send_feature_report(req, self.REQ_REPORT_ID)
-        time.sleep(0.008)
+        time.sleep(delay)
         resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-        self._hexdump(resp, 'response: ')
+        self._hexdump(resp, '<-- ')
 
         return self._unpack_response(resp)
 
+
     @property
     def args(self):
+        """
+        The byte array containing the raw report data to be sent to
+        the hardware when run() is called.
+        """
         return self._data
 
     @property
     def status(self):
+        """
+        Status code of this report.
+        """
         return self._status
+
 
     @property
     def result(self):
+        """
+        The byte array containing the raw result data after run() is called.
+        """
         return bytes(self._result)
 
-    def _calculate_crc(self, buf):
+
+    @staticmethod
+    def _calculate_crc(buf: bytearray) -> int:
+        """
+        Calculated the CRC byte for the given buffer
+
+        The CRC is calculated by iteratively XORing all bytes.
+        It is verified by the hardware and we verify it when parsing
+        result reports.
+
+        :param buf: The 90-byte array of the report
+        :type buf: bytearray
+
+        :return: The calculated crc
+        :rtype: int
+        """
         crc = 0
         for byte in buf[1:87]:
             crc ^= int(byte)
         return crc
 
-    def _pack_request(self):
+
+    def _pack_request(self) -> bytes:
         buf = bytearray(self.BUF_SIZE)
 
         struct.pack_into(self.REQ_HEADER, buf, 0, self._transaction_id, self._remaining_packets,
@@ -104,13 +178,16 @@ class RazerReport(object):
         if len(data_buf) > 0:
             buf[7:len(data_buf) + 7] = data_buf
 
-        assert len(buf) == self.BUF_SIZE, 'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
-        struct.pack_into('B', buf, 87, self._calculate_crc(buf))
+        assert len(buf) == self.BUF_SIZE, \
+                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
+        struct.pack_into('B', buf, 87, RazerReport._calculate_crc(buf))
 
         return bytes(buf)
 
-    def _unpack_response(self, buf):
-        assert len(buf) == self.BUF_SIZE, 'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
+
+    def _unpack_response(self, buf: bytes) -> bool:
+        assert len(buf) == self.BUF_SIZE, \
+                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
 
         header = struct.unpack(self.RSP_HEADER, buf[:8])
         status = header[0]
@@ -125,8 +202,7 @@ class RazerReport(object):
         crc = buf[88]
         reserved = buf[89]
 
-        crc_check = self._calculate_crc(buf[1:88])
-
+        crc_check = RazerReport._calculate_crc(buf[1:88])
 
         assert crc == crc_check, 'Checksum of data should be %d, got %d' % (crc, crc_check)
         assert transaction_id == self._transaction_id, 'Transaction id does not match'
@@ -140,8 +216,8 @@ class RazerReport(object):
         if self._status == Status.OK:
             return True
 
-        self._logger.error("Got error %s for command %02x,%02x (raw response: %s)", self._status.name,
-                           self._command_class, self._command_id, repr(data))
+        self._logger.error("Got error %s for command %02x,%02x (raw response: %s)",
+                           self._status.name, self._command_class, self._command_id, repr(data))
 
         return False
 

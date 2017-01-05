@@ -1,21 +1,32 @@
 from enum import Enum
 
 from grapefruit import Color
+from uchroma.device_base import BaseCommand, BaseUChromaDevice
+
 
 NOSTORE = 0
 VARSTORE = 1
 
 
 class LED(object):
+    """
+    Control individual LEDs which may be present on a device
 
-    # LED states
-    class State(Enum):
-        OFF = 0x00
-        ON = 0x01
+    This class should not need to be instantiated directly, the
+    correct singleton instance is obtained by calling the
+    get_led() method of UChromaDevice.
+
+    The API does not yet support listing the LED types actually
+    available on a device.
+    """
 
 
-    # LED types
     class Type(Enum):
+        """
+        Enumeration of LED types
+
+        All types not available on all devices.
+        """
         SCROLL_WHEEL = 0x01
         BATTERY = 0x03
         LOGO = 0x04
@@ -27,15 +38,20 @@ class LED(object):
         PROFILE_BLUE = 0x0D
 
 
-    # LED modes
     class Mode(Enum):
+        """
+        Enumeration of LED effect modes
+        """
         STATIC = 0x00
         BLINK = 0x01
         PULSE = 0x02
         SPECTRUM = 0x04
 
 
-    class Command(Enum):
+    class Command(BaseCommand):
+        """
+        Commands used by this class
+        """
         SET_LED_STATE = (0x03, 0x00, 0x03)
         SET_LED_COLOR = (0x03, 0x01, 0x05)
         SET_LED_MODE = (0x03, 0x02, 0x03)
@@ -47,7 +63,7 @@ class LED(object):
         GET_LED_BRIGHTNESS = (0x03, 0x83, 0x03)
 
 
-    def __init__(self, driver, led_type):
+    def __init__(self, driver: BaseUChromaDevice, led_type: Type):
         self._driver = driver
         self._led_type = led_type
 
@@ -61,26 +77,40 @@ class LED(object):
 
 
     @property
-    def led_type(self):
+    def led_type(self) -> Type:
+        """
+        The LED.Type controlled by this instance
+        """
         return self._led_type
 
 
     @property
-    def state(self):
+    def state(self) -> bool:
+        """
+        The on/off state of this LED
+        """
         value = self._get(LED.Command.GET_LED_STATE)
         if value is None:
-            return None
+            return False
 
-        return LED.State(value[2])
+        return bool(value[2])
 
 
     @state.setter
-    def state(self, led_state):
-        return self._set(LED.Command.SET_LED_STATE, led_state)
+    def state(self, led_state: bool):
+        """
+        Set the on/off state of this LED
+        """
+        self._set(LED.Command.SET_LED_STATE, int(led_state))
 
 
     @property
-    def color(self):
+    def color(self) -> Color:
+        """
+        The current color of this LED
+
+        May return None if unsupported
+        """
         value = self._get(LED.Command.GET_LED_COLOR)
         if value is None:
             return None
@@ -89,12 +119,22 @@ class LED(object):
 
 
     @color.setter
-    def color(self, color):
-        return self._set(LED.Command.SET_LED_COLOR, color)
+    def color(self, color: Color):
+        """
+        Set the color of this LED
+
+        :param color: The color to set
+        """
+        self._set(LED.Command.SET_LED_COLOR, color)
 
 
     @property
-    def mode(self):
+    def mode(self) -> Mode:
+        """
+        The current mode of this LED
+
+        May return None if unsupported
+        """
         value = self._get(LED.Command.GET_LED_MODE)
         if value is None:
             return None
@@ -103,12 +143,20 @@ class LED(object):
 
 
     @mode.setter
-    def mode(self, led_mode):
-        return self._set(LED.Command.SET_LED_MODE, led_mode)
+    def mode(self, led_mode: Mode):
+        """
+        Set the mode of this LED
+
+        :param led_mode: The mode to set
+        """
+        self._set(LED.Command.SET_LED_MODE, led_mode)
 
 
     @property
-    def brightness(self):
+    def brightness(self) -> int:
+        """
+        The current brightness of this LED
+        """
         value = self._get(LED.Command.GET_LED_BRIGHTNESS)
         if value is None:
             return 0
@@ -117,6 +165,10 @@ class LED(object):
 
 
     @brightness.setter
-    def brightness(self, led_brightness):
-        return self._set(LED.Command.SET_LED_BRIGHTNESS, led_brightness)
+    def brightness(self, led_brightness: int):
+        """
+        Set the brightness of this LED
 
+        :param led_brightness: The brightness level to set, 0-255
+        """
+        return self._set(LED.Command.SET_LED_BRIGHTNESS, led_brightness)
