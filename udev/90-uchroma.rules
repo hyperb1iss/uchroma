@@ -1,3 +1,2 @@
-ACTION=="add", SUBSYSTEM=="hidraw|usb", ATTRS{idVendor}=="1532", IMPORT{builtin}="hwdb --subsystem=usb --lookup-prefix=uchroma:" 
-#'uchroma:usb:v$attr{id/vendor}p$attr{id/product}'"
-ENV{UCHROMA_DEVICE}=="?*", GROUP="plugdev", MODE="0660"
+ACTION=="add|change", SUBSYSTEM=="hidraw|usb|input", ATTRS{idVendor}=="1532", IMPORT{builtin}="hwdb --subsystem=usb --lookup-prefix=uchroma:"
+ENV{UCHROMA_DEVICE}=="?*", TAG+="uchroma", TAG+="uaccess"

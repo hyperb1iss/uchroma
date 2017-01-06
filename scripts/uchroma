@@ -140,7 +140,7 @@ class UChromaTool(object):
     def _list_devices(self, args):
         for key in self._dm.devices:
             d = self._dm.devices[key]
-            print('%s: [%04x] %s' % (key, d.product_id, d.name))
+            print('[%s]: %s' % (key, d.name))
         sys.exit(0)
 
 

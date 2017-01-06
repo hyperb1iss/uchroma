@@ -15,7 +15,8 @@ Architecture: all
 Depends: python3,
          python3-grapefruit,
          python3-hidapi,
-         python3-numpy
+         python3-numpy,
+         python3-pyudev
 Description: Razer Chroma peripheral interface library (Python 3)
  A library which enables control of color schemes and effects on
  the Razer Chroma line of peripherals.

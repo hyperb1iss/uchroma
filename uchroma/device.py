@@ -23,12 +23,13 @@ class UChromaDevice(BaseUChromaDevice):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, devinfo, devtype, devname):
+    def __init__(self, devinfo, devtype, devname, input_devices=[]):
         super(UChromaDevice, self).__init__(devinfo, devtype, devname)
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
         self._fx = FX(self)
+        self._input_devices = input_devices
 
         # TODO: check device capabilities
         for fxtype in FX.Type:
@@ -77,6 +78,14 @@ class UChromaDevice(BaseUChromaDevice):
             return 0
 
         return value[1]
+
+
+    @property
+    def input_devices(self):
+        """
+        List of associated input device path
+        """
+        return self._input_devices
 
 
     @property

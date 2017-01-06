@@ -1,6 +1,9 @@
 import logging
 
 import hidapi
+
+from pyudev import Context, Monitor, MonitorObserver
+
 from uchroma.device import UChromaDevice
 from uchroma.models import Model, RAZER_VENDOR_ID
 
@@ -18,12 +21,24 @@ class UChromaDeviceManager(object):
     fail.
     """
 
-    def __init__(self):
+    def __init__(self, *callbacks):
         self._logger = logging.getLogger('uchroma.devicemanager')
 
         self._devices = {}
+        self._monitor = False
+        self._udev_context = Context()
+        self._udev_observer = None
+        self._callbacks = []
+
+        if callbacks is not None:
+            self._callbacks.extend(callbacks)
 
         self.discover()
+
+
+    def _fire_callbacks(self, action, device):
+        for callback in self._callbacks:
+            callback(action, device)
 
 
     def discover(self):
@@ -55,23 +70,104 @@ class UChromaDeviceManager(object):
                     elif devtype == Model.MOUSEPAD:
                         if devinfo.interface_number != 1:
                             add = False
+                    else:
+                        if devinfo.interface_number != 0:
+                            add = False
 
                     if add:
-                        self._devices[devinfo.path.decode()] = UChromaDevice(
-                            devinfo, devtype.name, devtype.value[devinfo.product_id])
+                        pid = '%04x' % devinfo.product_id
+                        key = '%04x:%s' % (devinfo.vendor_id, pid)
+                        if key in self._devices:
+                            continue
+
+                        self._devices[key] = UChromaDevice(
+                            devinfo, devtype.name, devtype.value[devinfo.product_id],
+                            self._get_input_devices(self._get_parent(pid)))
+
+                        self._fire_callbacks('add', self._devices[key])
 
 
     @property
     def devices(self):
         """
         Dict of available devices, empty if no devices are detected.
-
-        The keys of this dict depend on the backend used by HIDAPI.
-        If the HIDRAW backend is used, the keys will be an absolute
-        path to the device (/dev/hidraw2). If the libusb backend
-        is used, the keys will contain the USB identifier string
-        in the format "bus_id:dev_id:interface_id" (0001:0004:02).
-        On Linux this corresponds to the path /dev/bus/usb/001/004.
         """
         return self._devices
+
+
+    @property
+    def callbacks(self):
+        """
+        List of callbacks invoked when device changes are detected
+        """
+        return self._callbacks
+
+
+    def _get_parent(self, product_id: str):
+        devs = self._udev_context.list_devices(tag='uchroma', subsystem='usb',
+                                               ID_MODEL_ID=product_id)
+        for dev in devs:
+            if dev['DEVTYPE'] == 'usb_device':
+                return dev
+
+        return None
+
+
+    def _get_input_devices(self, parent) -> list:
+        inputs = []
+        if parent is not None:
+            for child in parent.children:
+                if child.subsystem == 'input' and 'DEVNAME' in child:
+                    inputs.append(child['DEVNAME'])
+
+        return inputs
+
+
+    def _udev_event(self, device):
+        self._logger.debug('Device event [%s]: %s', device.action, device.device_path)
+
+        if device.action == 'remove':
+            key = '%s:%s' % (device['ID_VENDOR_ID'], device['ID_MODEL_ID'])
+            removed = self._devices.pop(key, None)
+            if removed is not None:
+                removed.close()
+                self._fire_callbacks('remove', removed)
+
+        else:
+            self.discover()
+
+
+    def monitor_start(self):
+        """
+        Start watching for device changes
+
+        Listen for relevant add/remove events from udev and fire callbacks.
+        """
+
+        if self._monitor:
+            return
+
+        udev_monitor = Monitor.from_netlink(self._udev_context)
+        udev_monitor.filter_by_tag('uchroma')
+        udev_monitor.filter_by(subsystem='usb', device_type=u'usb_device')
+
+        self._udev_observer = MonitorObserver(udev_monitor, callback=self._udev_event,
+                                              name='uchroma-monitor')
+        self._udev_observer.start()
+        self._monitor = True
+
+        self._logger.debug('Udev monitor started')
+
+
+    def monitor_stop(self):
+        """
+        Stop watching for device changes
+        """
+        if not self._monitor:
+            return
+
+        self._udev_observer.send_stop()
+        self._monitor = False
+
+        self._logger.debug('Udev monitor stopped')
 

@@ -53,6 +53,6 @@ setup(name='uchroma',
       license='LGPL',
       packages=['uchroma'],
       scripts=['scripts/uchroma'],
-      install_requires=['grapefruit', 'hidapi', 'numpy'],
+      install_requires=['grapefruit', 'hidapi', 'numpy', 'pyudev'],
       cmdclass={'hwdb': HWDBGenerator},
       zip_safe=False)
