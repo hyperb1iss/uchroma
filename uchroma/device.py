@@ -23,13 +23,19 @@ class UChromaDevice(BaseUChromaDevice):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, devinfo, devtype, devname, input_devices=[]):
+    def __init__(self, devinfo, devtype, devname, input_devices=None):
         super(UChromaDevice, self).__init__(devinfo, devtype, devname)
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
         self._fx = FX(self)
-        self._input_devices = input_devices
+        self._input_devices = []
+
+        if input_devices is not None:
+            self._input_devices.extend(input_devices)
+
+        self._last_brightness = None
+        self._suspended = False
 
         # TODO: check device capabilities
         for fxtype in FX.Type:
@@ -80,6 +86,37 @@ class UChromaDevice(BaseUChromaDevice):
         return value[1]
 
 
+    def suspend(self):
+        """
+        Suspend the device
+
+        Performs any actions necessary to suspend the device. By default,
+        the current brightness level is saved and set to zero.
+        """
+        if self._suspended:
+            return
+
+        self._last_brightness = self.brightness
+        self.brightness = 0
+
+        self._suspended = True
+
+
+    def resume(self):
+        """
+        Resume the device
+
+        Performs any actions necessary to resume the device. By default,
+        the saved brightness level is restored.
+        """
+        if not self._suspended:
+            return
+
+        self.brightness = self._last_brightness
+
+        self._suspended = False
+
+
     @property
     def input_devices(self):
         """
@@ -107,7 +144,9 @@ class UChromaDevice(BaseUChromaDevice):
         if level < 0 or level > 255:
             raise ValueError('Brightness must be between 0 and 255')
 
-        if self._devtype == Model.LAPTOP:
+        if self._suspended:
+            self._last_brightness = level
+        elif self._devtype == Model.LAPTOP:
             self._set_blade_brightness(level)
         else:
             self.get_led(LED.Type.BACKLIGHT).brightness = level
