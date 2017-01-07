@@ -6,7 +6,6 @@ import sys
 
 from uchroma import UChromaDeviceManager, LED, Splotch, __version__
 
-from grapefruit import Color
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -159,7 +158,7 @@ class UChromaTool(object):
         if len(args.color) <= num:
             return None
 
-        return Color.NewFromHtml(args.color[num])
+        return args.color[num]
 
 
     def _test_device(self, args):
@@ -280,7 +279,7 @@ class UChromaTool(object):
                 led.mode = LED.Mode[args.mode.upper()]
 
             if args.color is not None:
-                led.color = Color.NewFromHtml(args.color.lower())
+                led.color = args.color.lower()
 
             if args.brightness is not None:
                 if args.brightness < 0 or args.brightness > 255:

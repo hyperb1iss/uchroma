@@ -1,7 +1,7 @@
 import numpy as np
-from grapefruit import Color
 
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
+from uchroma.util import colorarg
 
 
 class Frame(object):
@@ -28,8 +28,9 @@ class Frame(object):
         SET_FRAME_DATA = (0x03, 0x0B, None)
 
 
+    @colorarg('base_color')
     def __init__(self, driver: BaseUChromaDevice, width: int, height: int,
-                 base_color: Color=None):
+                 base_color=None):
         self._width = width
         self._height = height
         self._driver = driver
@@ -66,7 +67,8 @@ class Frame(object):
         return self._matrix
 
 
-    def set_base_color(self, color: Color) -> 'Frame':
+    @colorarg('color')
+    def set_base_color(self, color) -> 'Frame':
         """
         Sets the background color of this Frame
 
@@ -94,7 +96,8 @@ class Frame(object):
         return self
 
 
-    def put(self, row: int, col: int, color: Color) -> 'Frame':
+    @colorarg('color')
+    def put(self, row: int, col: int, color) -> 'Frame':
         """
         Set the color of an individual pixel
 

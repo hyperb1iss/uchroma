@@ -2,6 +2,7 @@ from enum import Enum
 
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.led import LED
+from uchroma.util import colorarg
 
 from grapefruit import Color
 
@@ -10,13 +11,17 @@ class Splotch(Enum):
     """
     Predefined color pairs
     """
-    EARTH = (Color.NewFromHtml('green'), Color.NewFromHtml('#8b4513'))
-    AIR = (Color.NewFromHtml('white'), Color.NewFromHtml('skyblue'))
-    FIRE = (Color.NewFromHtml('red'), Color.NewFromHtml('orange'))
-    WATER = (Color.NewFromHtml('blue'), Color.NewFromHtml('white'))
-    SUN = (Color.NewFromHtml('white'), Color.NewFromHtml('yellow'))
-    MOON = (Color.NewFromHtml('grey'), Color.NewFromHtml('cyan'))
-    HOTPINK = (Color.NewFromHtml('hotpink'), Color.NewFromHtml('purple'))
+    EARTH = ('green', '#8b4513')
+    AIR = ('white', 'skyblue')
+    FIRE = ('red', 'orange')
+    WATER = ('blue', 'white')
+    SUN = ('white', 'yellow')
+    MOON = ('grey', 'cyan')
+    HOTPINK = ('hotpink', 'purple')
+
+    def __init__(self, first, second):
+        self.first = Color.NewFromHtml(first)
+        self.second = Color.NewFromHtml(second)
 
 
 class FX(object):
@@ -132,7 +137,8 @@ class FX(object):
         return self._set_effect(FX.Type.DISABLE)
 
 
-    def static_color(self, color: Color=None) -> bool:
+    @colorarg('color')
+    def static_color(self, color=None) -> bool:
         """
         Sets lighting to a static color
 
@@ -169,7 +175,8 @@ class FX(object):
         return self._set_effect(FX.Type.SPECTRUM)
 
 
-    def reactive(self, color: Color=None, speed: int=1) -> bool:
+    @colorarg('color')
+    def reactive(self, color=None, speed: int=1) -> bool:
         """
         Lights up keys when they are pressed
 
@@ -187,7 +194,8 @@ class FX(object):
         return self._set_effect(FX.Type.REACTIVE, speed, color)
 
 
-    def sweep(self, color: Color=None, base_color: Color=None, direction: Direction=None,
+    @colorarg('color', 'base_color')
+    def sweep(self, color=None, base_color=None, direction: Direction=None,
               speed: int=None, splotch: Splotch=None) -> bool:
         """
         Produces colors which sweep across the device
@@ -211,8 +219,8 @@ class FX(object):
                 color = Color.NewFromHtml('skyblue')
 
         else:
-            color = splotch.value[0]
-            base_color = splotch.value[1]
+            color = splotch.first
+            base_color = splotch.second
 
         if speed is None:
             speed = 15
@@ -220,7 +228,8 @@ class FX(object):
         return self._set_effect(FX.Type.WASH, direction, speed, base_color, color)
 
 
-    def morph(self, color: Color=None, base_color: Color=None,
+    @colorarg('color', 'base_color')
+    def morph(self, color=None, base_color=None,
               speed: int=None, splotch: Splotch=None) -> bool:
         """
         A "morphing" color effect when keys are pressed
@@ -240,8 +249,8 @@ class FX(object):
                 color = Color.NewFromHtml('magenta')
 
         else:
-            color = splotch.value[0]
-            base_color = splotch.value[1]
+            color = splotch.first
+            base_color = splotch.second
 
         if speed is None:
             speed = 2
@@ -249,7 +258,8 @@ class FX(object):
         return self._set_effect(FX.Type.MORPH, 0x04, speed, base_color, color)
 
 
-    def fire(self, color: Color=None, speed: int=None) -> bool:
+    @colorarg('color')
+    def fire(self, color=None, speed: int=None) -> bool:
         """
         Animated fire!
 
@@ -273,8 +283,8 @@ class FX(object):
             raise ValueError('Speed for effect must be between 1 and 4 (got: %d)', speed)
 
         if splotch is not None:
-            color1 = splotch.value[0]
-            color2 = splotch.value[1]
+            color1 = splotch.first
+            color2 = splotch.second
 
         mode = None
 
@@ -299,7 +309,8 @@ class FX(object):
         return self._set_effect(effect, *args)
 
 
-    def starlight(self, color1: Color=None, color2: Color=None,
+    @colorarg('color1', 'color2')
+    def starlight(self, color1=None, color2=None,
                   speed: int=None, splotch: Splotch=None) -> bool:
         """
         Activate the "starlight" effect. Colors sparkle across the device.
@@ -321,7 +332,8 @@ class FX(object):
                                            speed=speed, splotch=splotch)
 
 
-    def breathe(self, color1: Color=None, color2: Color=None, splotch: Splotch=None) -> bool:
+    @colorarg('color1', 'color2')
+    def breathe(self, color1=None, color2=None, splotch: Splotch=None) -> bool:
         """
         Activate the "breathe" effect. Colors pulse in and out.
 

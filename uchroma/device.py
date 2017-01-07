@@ -6,8 +6,6 @@ from uchroma.fx import FX
 from uchroma.led import LED
 from uchroma.models import Model
 
-from grapefruit import Color
-
 
 class UChromaDevice(BaseUChromaDevice):
     """
@@ -58,7 +56,7 @@ class UChromaDevice(BaseUChromaDevice):
         return self._leds[led_type]
 
 
-    def get_frame_control(self, width: int, height: int, base_color: Color=None) -> Frame:
+    def get_frame_control(self, width: int, height: int, base_color=None) -> Frame:
         """
         Gets the Frame object for creating custom effects on this device
 
@@ -66,7 +64,7 @@ class UChromaDevice(BaseUChromaDevice):
 
         :param width: The width of the matrix
         :param height: The height of the matrix
-        :param base_color: The background color for the Frame
+        :param base_color: Background color for the Frame (defaults to black)
 
         :return: The Frame interface
         """

@@ -1,7 +1,9 @@
 from enum import Enum
 
-from grapefruit import Color
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
+from uchroma.util import to_color
+
+from grapefruit import Color
 
 
 NOSTORE = 0
@@ -77,7 +79,7 @@ class LED(object):
 
 
     @property
-    def led_type(self) -> Type:
+    def led_type(self) -> 'Type':
         """
         The LED.Type controlled by this instance
         """
@@ -119,17 +121,17 @@ class LED(object):
 
 
     @color.setter
-    def color(self, color: Color):
+    def color(self, color):
         """
         Set the color of this LED
 
         :param color: The color to set
         """
-        self._set(LED.Command.SET_LED_COLOR, color)
+        self._set(LED.Command.SET_LED_COLOR, to_color(color))
 
 
     @property
-    def mode(self) -> Mode:
+    def mode(self) -> 'Mode':
         """
         The current mode of this LED
 
