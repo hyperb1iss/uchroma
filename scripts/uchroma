@@ -33,8 +33,8 @@ class UChromaTool(object):
         action = fx.add_mutually_exclusive_group(required=True)
         action.add_argument("--get-brightness", action='store_true',
                             help='Get current brightness level')
-        action.add_argument("--set-brightness", metavar='BRIGHTNESS', type=int,
-                            help='Set brightness (0-255)')
+        action.add_argument("--set-brightness", metavar='BRIGHTNESS', type=float,
+                            help='Set brightness (0-100)')
         action.add_argument("--disable", action='store_true',
                             help='Disable all effects')
         action.add_argument("--rainbow", action='store_true',
@@ -87,8 +87,8 @@ class UChromaTool(object):
                           help='Mode for the LED')
         ledx.add_argument('-c', '--color', type=str,
                           help='RGB color for the LED')
-        ledx.add_argument('-b', '--brightness', metavar='BRIGHTNESS', type=int,
-                          help='Set brightness (0-255)')
+        ledx.add_argument('-b', '--brightness', metavar='BRIGHTNESS', type=float,
+                          help='Set brightness (0-100)')
         led.set_defaults(func=self._led_parser)
 
 
@@ -185,14 +185,14 @@ class UChromaTool(object):
         self._get_driver(args)
 
         if args.set_brightness is not None:
-            if args.set_brightness < 0 or args.set_brightness > 255:
-                print_err('Brightness must be between 0 and 255')
+            if args.set_brightness < 0 or args.set_brightness > 100:
+                print_err('Brightness must be between 0 and 100')
                 sys.exit(1)
 
             self._driver.brightness = args.set_brightness
 
         elif args.get_brightness:
-            print('%d' % self._driver.brightness)
+            print('%f' % self._driver.brightness)
 
         if args.breathe:
             if not self._driver.breathe(color1=UChromaTool._get_color(args, 0),
@@ -268,7 +268,7 @@ class UChromaTool(object):
             if led.mode is not None:
                 mode = led.mode.name
 
-            print('type=%s,state=%s,color=%s,mode=%s,brightness=%d' \
+            print('type=%s,state=%s,color=%s,mode=%s,brightness=%f' \
                   % (led_type, state, repr(led.color), mode, led.brightness))
 
         else:
@@ -282,8 +282,8 @@ class UChromaTool(object):
                 led.color = args.color.lower()
 
             if args.brightness is not None:
-                if args.brightness < 0 or args.brightness > 255:
-                    print_err("Brightness value must be between 0 and 255")
+                if args.brightness < 0 or args.brightness > 100:
+                    print_err("Brightness value must be between 0 and 100")
                     exit(1)
 
                 led.brightness = args.brightness

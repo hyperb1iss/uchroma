@@ -1,7 +1,7 @@
 from enum import Enum
 
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
-from uchroma.util import to_color
+from uchroma.util import scale_brightness, to_color
 
 from grapefruit import Color
 
@@ -155,22 +155,20 @@ class LED(object):
 
 
     @property
-    def brightness(self) -> int:
+    def brightness(self) -> float:
         """
         The current brightness of this LED
         """
         value = self._get(LED.Command.GET_LED_BRIGHTNESS)
-        if value is None:
-            return 0
 
-        return int(value[2])
+        return scale_brightness(int(value[2]), True)
 
 
     @brightness.setter
-    def brightness(self, led_brightness: int):
+    def brightness(self, level: float):
         """
         Set the brightness of this LED
 
-        :param led_brightness: The brightness level to set, 0-255
+        :param level: The brightness level to set, 0-100
         """
-        return self._set(LED.Command.SET_LED_BRIGHTNESS, led_brightness)
+        return self._set(LED.Command.SET_LED_BRIGHTNESS, scale_brightness(level))

@@ -5,6 +5,7 @@ from uchroma.frame import Frame
 from uchroma.fx import FX
 from uchroma.led import LED
 from uchroma.models import Model
+from uchroma.util import scale_brightness
 
 
 class UChromaDevice(BaseUChromaDevice):
@@ -71,17 +72,14 @@ class UChromaDevice(BaseUChromaDevice):
         return Frame(self, width, height, base_color)
 
 
-    def _set_blade_brightness(self, level):
-        return self.run_command(UChromaDevice.Command.SET_BRIGHTNESS, 0x01, level)
+    def _set_blade_brightness(self, level: float):
+        return self.run_command(UChromaDevice.Command.SET_BRIGHTNESS, 0x01, scale_brightness(level))
 
 
-    def _get_blade_brightness(self):
+    def _get_blade_brightness(self) -> float:
         value = self.run_with_result(UChromaDevice.Command.GET_BRIGHTNESS)
 
-        if value is None:
-            return 0
-
-        return value[1]
+        return scale_brightness(int(value[1]), True)
 
 
     def suspend(self):
@@ -95,7 +93,7 @@ class UChromaDevice(BaseUChromaDevice):
             return
 
         self._last_brightness = self.brightness
-        self.brightness = 0
+        self.brightness = 0.0
 
         self._suspended = True
 
@@ -135,13 +133,12 @@ class UChromaDevice(BaseUChromaDevice):
 
 
     @brightness.setter
-    def brightness(self, level):
+    def brightness(self, level: float):
         """
-        Set the brightness level of the device lighting
-        """
-        if level < 0 or level > 255:
-            raise ValueError('Brightness must be between 0 and 255')
+        Set the brightness level of the main device lighting
 
+        :param level: Brightness level, 0-100
+        """
         if self._suspended:
             self._last_brightness = level
         elif self._devtype == Model.LAPTOP:
