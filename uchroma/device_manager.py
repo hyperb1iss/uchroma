@@ -118,7 +118,10 @@ class UChromaDeviceManager(object):
         if parent is not None:
             for child in parent.children:
                 if child.subsystem == 'input' and 'DEVNAME' in child:
-                    inputs.append(child['DEVNAME'])
+                    for link in child.device_links:
+                        if link.startswith('/dev/input/by-id/'):
+                            inputs.append(link)
+                            continue
 
         return inputs
 
