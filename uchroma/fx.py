@@ -84,7 +84,7 @@ class FX(object):
         on devices with an illuminated trackpad such as the Blade Pro, and
         produce a rotating animation around the trackpad.
         """
-        RIGHT = 0
+        RIGHT = 1
         LEFT = 2
         LEFT_CHASE = 3
         RIGHT_CHASE = 4
@@ -366,7 +366,7 @@ class FX(object):
         return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
 
 
-    def rainbow(self, width=24, height=6, stagger=30) -> bool:
+    def rainbow(self, stagger: int=None, length: int=None) -> bool:
         """
         Show a rainbow of colors across the device
 
@@ -375,10 +375,17 @@ class FX(object):
 
         :return: True if successful
         """
-        frame = self._driver.get_frame_control(width, height)
-        gradient = FX._hue_gradient(75, width + (height * stagger))
-        for row in range(0, height):
-            for col in range(0, width):
-                frame.put(row, col, gradient[(row * stagger) + col])
+        if stagger is None:
+            stagger = 4
+
+        if length is None:
+            length = 75
+
+        frame = self._driver.frame_control
+
+        gradient = FX._hue_gradient(length, frame.width + (frame.height * stagger))
+        for row in range(0, frame.height):
+            data = [gradient[(row * stagger) + col] for col in range(0, frame.width)]
+            frame.put(row, 0, *data)
 
         frame.flip()

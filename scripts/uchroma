@@ -67,6 +67,8 @@ class UChromaTool(object):
                            help='Predefined color pairs')
         color.add_argument('-c', '--color', type=str, action='append',
                            help='Color name or hexcode')
+        color.add_argument('-z', '--size', type=int,
+                           help='Size parameter for some effects')
 
         fx.set_defaults(func=self._fx_parser)
 
@@ -215,7 +217,7 @@ class UChromaTool(object):
                 sys.exit(1)
 
         elif args.rainbow:
-            if not self._driver.rainbow():
+            if not self._driver.rainbow(length=args.size):
                 sys.exit(1)
 
         elif args.reactive:
