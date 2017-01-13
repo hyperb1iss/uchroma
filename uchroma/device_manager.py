@@ -1,4 +1,5 @@
 import logging
+import time
 
 import hidapi
 
@@ -36,7 +37,10 @@ class UChromaDeviceManager(object):
         self.discover()
 
 
-    def _fire_callbacks(self, action, device):
+    def _fire_callbacks(self, action: str, device: UChromaDevice):
+        # delay for udev setup
+        time.sleep(0.2)
+
         for callback in self._callbacks:
             callback(action, device)
 
@@ -173,4 +177,3 @@ class UChromaDeviceManager(object):
         self._monitor = False
 
         self._logger.debug('Udev monitor stopped')
-
