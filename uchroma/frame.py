@@ -1,7 +1,11 @@
+import asyncio
+import logging
+import time
+
 import numpy as np
 
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
-from uchroma.util import colorarg
+from uchroma.util import to_rgb
 
 
 class Frame(object):
@@ -21,6 +25,10 @@ class Frame(object):
     is introduced in a future release.
     """
 
+    MAX_WIDTH = 24
+    DEFAULT_FRAME_ID = 0xFF
+
+
     class Command(BaseCommand):
         """
         Enumeration of raw hardware command data
@@ -28,12 +36,17 @@ class Frame(object):
         SET_FRAME_DATA = (0x03, 0x0B, None)
 
 
-    @colorarg('base_color')
     def __init__(self, driver: BaseUChromaDevice, width: int, height: int,
-                 base_color=None):
+                 base_color=None, fps: int=30):
+        self._driver = driver
         self._width = width
         self._height = height
-        self._driver = driver
+        self._fps = fps
+
+        self._logger = logging.getLogger('uchroma.frame')
+
+        self._anim_start_time = None
+        self._last_frame_time = None
 
         self._matrix = np.zeros(shape=(height, width, 3), dtype=np.uint8)
 
@@ -67,14 +80,16 @@ class Frame(object):
         return self._matrix
 
 
-    @colorarg('color')
     def set_base_color(self, color) -> 'Frame':
         """
         Sets the background color of this Frame
 
         :param color: Desired background color
         """
-        self._base_color = color
+        if color is None:
+            self._base_color = None
+        else:
+            self._base_color = to_rgb(color)
 
         return self
 
@@ -88,32 +103,56 @@ class Frame(object):
         if self._base_color is None:
             self._matrix.fill(0)
         else:
-            rgb = self._base_color.intTuple
             for row in range(0, self._height):
-                for col in range(0, self._width):
-                    self._matrix[row][col] = [rgb[0], rgb[1], rgb[2]]
+                self._matrix[row] = [self._base_color] * self._width
 
         return self
 
 
-    @colorarg('color')
-    def put(self, row: int, col: int, color) -> 'Frame':
+    def put(self, row: int, col: int, *color) -> 'Frame':
         """
         Set the color of an individual pixel
 
         :param row: Y-coordinate of the pixel
         :param col: X-coordinate of the pixel
-        :param color: Color of the pixel
+        :param colors: Color of the pixel (may also be a list)
 
         :return: This Frame instance
         """
-        rgb = color.intTuple
-        self._matrix[row][col] = [rgb[0], rgb[1], rgb[2]]
+        count = min(len(color) + col, self._width - col)
+        self._matrix[row][col:col+count] = to_rgb(color[:count])
 
         return self
 
 
-    def flip(self, clear: bool=True, frame_id: int=0xFF) -> 'Frame':
+    def put_all(self, data: list) -> 'Frame':
+        """
+        Set the color of all pixels
+
+        :param data: List of lists (row * col) of colors
+        """
+        for row in range(0, len(data)):
+            self.put(row, 0, *data[row])
+
+        return self
+
+
+    def _set_frame_data(self, frame_id: int=None):
+        if frame_id is None:
+            frame_id = Frame.DEFAULT_FRAME_ID
+
+        width = min(self._width, Frame.MAX_WIDTH)
+
+        for row in range(0, self._height):
+            data = self._matrix[row][0:width].data.tobytes()
+            remaining = self._height - row - 1
+            self._logger.debug("remaining: %d", remaining)
+            self._driver.run_command(Frame.Command.SET_FRAME_DATA, frame_id, row, 0,
+                                     width, data, transaction_id=0x80,
+                                     remaining_packets=remaining)
+
+
+    def flip(self, clear: bool=True, frame_id: int=None) -> 'Frame':
         """
         Display this frame and prepare for the next frame
 
@@ -126,10 +165,7 @@ class Frame(object):
 
         :return: This Frame instance
         """
-        for row in range(0, self._height):
-            self._driver.run_command(Frame.Command.SET_FRAME_DATA, frame_id, row, 0,
-                                     self._width, self._matrix[row].data.tobytes(),
-                                     transaction_id=0x80)
+        self._set_frame_data(frame_id)
 
         self._driver.custom_frame()
 
@@ -137,3 +173,54 @@ class Frame(object):
             self.clear()
 
         return self
+
+
+    @asyncio.coroutine
+    def _frame_loop(self):
+        self._anim_start_time = time.perf_counter()
+
+        while self._anim_start_time is not None:
+            # yield from self._interactive.wait()
+
+            if self._anim_start_time is not None:
+                break
+
+            now = time.perf_counter()
+
+            self._matrix.setflags(write=False)
+
+            # go ahead and send to the hardware now so it's ready
+            # in case we need to sync to the next tick
+            self._set_frame_data()
+
+            #if self._last_frame_time is not None:
+            #    # wait until it's time for the next frame
+            #    # since we could have been sleeping
+            #    delay = (now - self._last_frame_time) % (1 / self._fps)
+            #    yield from asyncio.sleep(delay)
+
+            self._driver.custom_frame()
+
+            self._matrix.setflags(write=True)
+
+            #self._last_frame_time = time.perf_counter()
+
+            # wait for the next tick
+            next_tick = now + (1 / self._fps)
+            yield from asyncio.sleep(next_tick)
+
+
+
+    def start_animation(self, fps: int=30):
+        if self._anim_start_time is not None:
+            return
+
+        self._anim_start_time = time.perf_counter()
+
+
+    def stop_animation(self):
+        if self._anim_start_time is None:
+            return
+
+        self._anim_start_time = None
+

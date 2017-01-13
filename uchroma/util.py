@@ -2,6 +2,7 @@ from decorator import decorator
 
 from grapefruit import Color
 
+
 def to_color(arg) -> Color:
     """
     Convert various color representations to grapefruit.Color
@@ -14,10 +15,42 @@ def to_color(arg) -> Color:
         return None
     if isinstance(arg, Color):
         return arg
-    if (isinstance(arg, tuple) or isinstance(arg, list)) and len(arg) >= 3:
-        return Color.NewFromRgb(arg[0], arg[1], arg[2])
     if isinstance(arg, str):
         return Color.NewFromHtml(arg)
+    if isinstance(arg, tuple) or isinstance(arg, list):
+        if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
+                or isinstance(arg[0], str) or isinstance(arg[0], Color):
+            return [to_color(item) for item in arg]
+        if len(arg) >= 3:
+            if isinstance(arg[0], int):
+                return Color.NewFromRgb(arg[0] / 255.0, arg[1] / 255.0, arg[2] / 255.0)
+            elif isinstance(arg[0], float):
+                return Color.NewFromRgb(arg[0], arg[1], arg[2])
+
+    raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+
+
+def to_rgb(arg) -> tuple:
+    """
+    Convert various representations to RGB tuples
+
+    :return: An RGB tuple
+    """
+    if arg is None:
+        return (0, 0, 0)
+    if isinstance(arg, Color):
+        return arg.intTuple[:3]
+    if isinstance(arg, str):
+        return Color.NewFromHtml(arg).intTuple[:3]
+    if isinstance(arg, tuple) or isinstance(arg, list):
+        if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
+                or isinstance(arg[0], str) or isinstance(arg[0], Color):
+            return [to_rgb(item) for item in arg]
+        if len(arg) >= 3:
+            if isinstance(arg[0], int):
+                return tuple(arg[:3])
+            elif isinstance(arg[0], float):
+                return (255 * arg[0], 255 * arg[1], 255 * arg[2])
 
     raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
 

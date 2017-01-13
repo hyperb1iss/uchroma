@@ -30,6 +30,11 @@ class UChromaDevice(BaseUChromaDevice):
         self._fx = FX(self)
         self._input_devices = []
 
+        self._frame_control = None
+
+        self._width = 25
+        self._height = 6
+
         if input_devices is not None:
             self._input_devices.extend(input_devices)
 
@@ -57,19 +62,45 @@ class UChromaDevice(BaseUChromaDevice):
         return self._leds[led_type]
 
 
-    def get_frame_control(self, width: int, height: int, base_color=None) -> Frame:
+    @property
+    def width(self) -> int:
+        """
+        Gets the width of the key matrix (if applicable)
+        """
+        return self._width
+
+
+    @property
+    def height(self) -> int:
+        """
+        Gets the height of the key matrix (if applicable)
+        """
+        return self._height
+
+
+    @property
+    def has_matrix(self):
+        """
+        True if the device supports matrix control
+        """
+        return True
+
+
+    @property
+    def frame_control(self, base_color=None) -> Frame:
         """
         Gets the Frame object for creating custom effects on this device
 
         NOTE: This API is a work-in-progress and subject to change
 
-        :param width: The width of the matrix
-        :param height: The height of the matrix
         :param base_color: Background color for the Frame (defaults to black)
 
         :return: The Frame interface
         """
-        return Frame(self, width, height, base_color)
+        if self._frame_control is None:
+            self._frame_control = Frame(self, self.width, self.height, base_color)
+
+        return self._frame_control
 
 
     def _set_blade_brightness(self, level: float):
@@ -80,6 +111,16 @@ class UChromaDevice(BaseUChromaDevice):
         value = self.run_with_result(UChromaDevice.Command.GET_BRIGHTNESS)
 
         return scale_brightness(int(value[1]), True)
+
+
+    def _set_mouse_brightness(self, level: float):
+        self.get_led(LED.Type.BACKLIGHT).brightness = level
+        self.get_led(LED.Type.LOGO).brightness = level
+        self.get_led(LED.Type.SCROLL_WHEEL).brightness = level
+
+
+    def _get_mouse_brightness(self) -> float:
+        return self.get_led(LED.Type.BACKLIGHT).brightness
 
 
     def suspend(self):
@@ -128,6 +169,8 @@ class UChromaDevice(BaseUChromaDevice):
         """
         if self._devtype == Model.LAPTOP:
             return self._get_blade_brightness()
+        elif self._devtype == Model.MOUSE:
+            return self._get_mouse_brightness()
         else:
             return self.get_led(LED.Type.BACKLIGHT).brightness
 
@@ -143,5 +186,7 @@ class UChromaDevice(BaseUChromaDevice):
             self._last_brightness = level
         elif self._devtype == Model.LAPTOP:
             self._set_blade_brightness(level)
+        elif self._devtype == Model.MOUSE:
+            self._set_mouse_brightness(level)
         else:
             self.get_led(LED.Type.BACKLIGHT).brightness = level

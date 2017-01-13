@@ -1,8 +1,12 @@
+import re
 from enum import Enum
 
 import hidapi
+
 from uchroma.models import Model
 from uchroma.report import RazerReport
+
+from uchroma import __version__
 
 class BaseCommand(Enum):
     """
@@ -64,9 +68,11 @@ class BaseUChromaDevice(object):
             self._dev = hidapi.Device(self._devinfo)
 
 
-    def _get_report(self, command_class, command_id, data_size, *args, transaction_id=0xFF):
-        report = RazerReport(self._dev, command_class, command_id,
-                             data_size, transaction_id=transaction_id)
+    def _get_report(self, command_class: int, command_id: int, data_size: int,
+                    *args, transaction_id: int=0xFF, remaining_packets: int=0x00) -> RazerReport:
+        report = RazerReport(self._dev, command_class, command_id, data_size,
+                             transaction_id=transaction_id,
+                             remaining_packets=remaining_packets)
 
         if args is not None:
             for arg in args:
@@ -77,7 +83,8 @@ class BaseUChromaDevice(object):
 
 
     def run_with_result(self, command: BaseCommand, *args,
-                        transaction_id=0xFF, defer_close=False) -> RazerReport:
+                        transaction_id: int=0xFF, defer_close: bool=False,
+                        delay: float=None, remaining_packets: int=0x00) -> RazerReport:
         """
         Run a command and return the result
 
@@ -94,20 +101,17 @@ class BaseUChromaDevice(object):
 
         :param args: The list of arguments to call the command with
         :type args: varies
-
         :param transaction_id: Transaction identified, defaults to 0xFF
-        :type transaction_id: int
-
         :param defer_close: Whether the device should be closed after execution, defaults to False
-        :type defer_close: bool
 
         :return: The result report from the hardware
         """
         self._ensure_open()
-        report = self._get_report(*command.value, *args, transaction_id=transaction_id)
+        report = self._get_report(*command.value, *args, transaction_id=transaction_id,
+                                  remaining_packets=remaining_packets)
         result = None
 
-        if report.run():
+        if report.run(delay=delay):
             result = report.result
 
         if not defer_close:
@@ -116,8 +120,9 @@ class BaseUChromaDevice(object):
         return result
 
 
-    def run_command(self, command: BaseCommand, *args,
-                    transaction_id=0xFF, defer_close=False) -> bool:
+    def run_command(self, command: BaseCommand, *args, transaction_id: int=0xFF,
+                    defer_close: bool=False, delay: float=None,
+                    remaining_packets: int=0x00) -> bool:
         """
         Run a command
 
@@ -134,15 +139,13 @@ class BaseUChromaDevice(object):
         :type args: varies
 
         :param transaction_id: Transaction identified, defaults to 0xFF
-        :type transaction_id: int
-
         :param defer_close: Whether the device should be closed after execution, defaults to False
-        :type defer_close: bool
 
         :return: True if the command was successful
         """
         self._ensure_open()
-        status = self._get_report(*command.value, *args, transaction_id=transaction_id).run()
+        status = self._get_report(*command.value, *args, transaction_id=transaction_id,
+                                  remaining_packets=remaining_packets).run(delay=delay)
 
         if not defer_close:
             self.close()
@@ -175,14 +178,24 @@ class BaseUChromaDevice(object):
 
         On laptops, this is not available.
         """
-        if self._devtype == Model.LAPTOP:
-            return 'BUILTIN'
+        if self._serial_number is not None:
+            return self._serial_number
 
-        if self._serial_number is None:
-            self._serial_number = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
+        serial = None
+
+        if self._devtype == Model.LAPTOP.name:
+            serial = self.name
+        else:
+            value = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
+            if value is not None:
+                try:
+                    serial = value.decode()
+                except UnicodeDecodeError:
+                    serial = self.device_id
+
+        self._serial_number = re.sub(r'\W+', r'', serial)
 
         return self._serial_number
-
 
     @property
     def firmware_version(self) -> str:
@@ -208,7 +221,7 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def product_id(self) -> str:
+    def product_id(self) -> int:
         """
         The USB product identifier of this device
         """
@@ -216,7 +229,7 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def vendor_id(self) -> str:
+    def vendor_id(self) -> int:
         """
         The USB vendor identifier of this device
         """
@@ -229,3 +242,18 @@ class BaseUChromaDevice(object):
         The type of this device, from the Model enumeration
         """
         return self._devtype
+
+
+    @property
+    def device_id(self) -> str:
+        """
+        A unique identifier for this device
+        """
+        return '%04x:%04x' % (self.vendor_id, self.product_id)
+
+    @property
+    def driver_version(self):
+        """
+        Get the uChroma version
+        """
+        return __version__

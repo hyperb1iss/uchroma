@@ -54,6 +54,8 @@ class RazerReport(object):
     BUF_SIZE = 90
     DATA_BUF_SIZE = 80
 
+    # Time to sleep between requests, needed to avoid BUSY replies
+    CMD_DELAY_TIME = 0.005
 
     def __init__(self, hid, command_class, command_id, data_size,
                  status=0x00, transaction_id=0xFF, remaining_packets=0x00,
@@ -72,6 +74,7 @@ class RazerReport(object):
         self._command_id = command_id
 
         self._result = None
+        self._last_cmd_time = None
 
         self._data = ByteArgs(data=data, size=data_size)
 
@@ -95,7 +98,23 @@ class RazerReport(object):
         self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 
-    def run(self, delay: float=0.008) -> 'RazerReport':
+    def _delay(self, delay: float=None):
+        if delay is None:
+            delay = RazerReport.CMD_DELAY_TIME
+
+        now = time.perf_counter()
+
+        if self._remaining_packets == 0 and self._last_cmd_time is not None and delay > 0:
+            delta = now - self._last_cmd_time
+            if delta < delay:
+                sleeptime = delay - delta
+                self._logger.info('delay: %f', sleeptime)
+                time.sleep(sleeptime)
+
+        self._last_cmd_time = now
+
+
+    def run(self, delay: float=None) -> 'RazerReport':
         """
         Run this report and retrieve the result from the hardware.
 
@@ -107,20 +126,23 @@ class RazerReport(object):
         If debug loglevel is enabled, the raw report data from both
         the request and the response will be logged.
 
-        :param delay: Time to delay between requests (defaults to 0.008 sec)
+        :param delay: Time to delay between requests (defaults to 0.005 sec)
 
         :return: The parsed result from the hardware
         """
         self._ensure_open()
         req = self._pack_request()
         self._hexdump(req, '--> ')
-        time.sleep(delay)
+        self._delay(delay)
         self._hid.send_feature_report(req, self.REQ_REPORT_ID)
-        time.sleep(delay)
-        resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-        self._hexdump(resp, '<-- ')
+        if self._remaining_packets == 0:
+            self._delay(delay)
+            resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+            self._hexdump(resp, '<-- ')
 
-        return self._unpack_response(resp)
+            return self._unpack_response(resp)
+
+        return None
 
 
     @property
@@ -130,6 +152,7 @@ class RazerReport(object):
         the hardware when run() is called.
         """
         return self._data
+
 
     @property
     def status(self):
@@ -205,7 +228,8 @@ class RazerReport(object):
         crc_check = RazerReport._calculate_crc(buf[1:88])
 
         assert crc == crc_check, 'Checksum of data should be %d, got %d' % (crc, crc_check)
-        assert transaction_id == self._transaction_id, 'Transaction id does not match'
+        assert transaction_id == self._transaction_id, 'Transaction id does not match (%d vs %d)' \
+                % (transaction_id, self._transaction_id)
         assert command_class == self._command_class, 'Command class does not match'
         assert command_id == self._command_id, 'Command id does not match'
         assert protocol_type == self._protocol_type, 'Protocol type does not match'
