@@ -23,11 +23,11 @@ override_dh_install:
 	python3 setup.py install --install-layout=deb \
 		--root $(CURDIR)/debian/python3-uchroma
 	mkdir -p $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d
-	python3 setup.py -q hwdb > $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d/90-uchroma.hwdb
+	python3 setup.py -q hwdb > $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d/70-uchroma.hwdb
 	rm -rf $(CURDIR)/debian/python*-uchroma/usr/lib/python*/dist-packages/uchroma/__pycache__
 	rm -rf $(CURDIR)/debian/python*-uchroma/usr/lib/python3.*
 
 override_dh_installudev:
-	cp $(CURDIR)/udev/90-uchroma.rules $(CURDIR)/debian/python3-uchroma.uchroma.udev
-	dh_installudev --name=uchroma --priority 90
+	cp $(CURDIR)/udev/70-uchroma.rules $(CURDIR)/debian/python3-uchroma.uchroma.udev
+	dh_installudev --name=uchroma --priority 70
 

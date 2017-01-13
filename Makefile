@@ -12,10 +12,10 @@ install_library: purge_pycache
 	python3 setup.py install --root=$(DESTDIR)
 
 install_udev:
-	install -m 644 -v -D udev/90-uchroma.rules $(DESTDIR)/etc/udev/rules.d/90-uchroma.rules
+	install -m 644 -v -D udev/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
 	$(eval HWDB := $(shell mktemp))
 	python3 setup.py -q hwdb > $(HWDB)
-	install -m 644 -v -D $(HWDB) $(DESTDIR)/etc/udev/hwdb.d/90-uchroma.hwdb
+	install -m 644 -v -D $(HWDB) $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
 	@rm -v -f $(HWDB)
 
 uninstall_library:
@@ -26,8 +26,8 @@ uninstall_library:
 	@rm -v -f $(DESTDIR)/usr/local/bin/uchroma
 
 uninstall_udev:
-	@rm -v -f $(DESTDIR)/etc/udev/rules.d/90-uchroma.rules
-	@rm -v -f $(DESTDIR)/etc/udev/hwdb.d/90-uchroma.hwdb
+	@rm -v -f $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
+	@rm -v -f $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
 
 sphinx_clean:
 	@rm -f doc/uchroma.*

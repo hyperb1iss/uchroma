@@ -33,7 +33,7 @@ class HWDBGenerator(install):
         hwdb = ""
         for model_type in models:
             for devid in model_type.value:
-                hwdb += ('uchroma:usb:v%04xp%04x*\n'
+                hwdb += ('uchroma:usb:v%04Xp%04X*\n'
                          ' UCHROMA_DEVICE=%s\n\n'
                          % (RAZER_VENDOR_ID, devid, model_type.name.lower()))
 
