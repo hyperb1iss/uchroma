@@ -1,9 +1,8 @@
-from uchroma.device_manager import UChromaDeviceManager
-from uchroma.device import UChromaDevice
-from uchroma.frame import Frame
-from uchroma.fx import FX
-from uchroma.fx import Splotch
-from uchroma.led import LED
+from .device_manager import UChromaDeviceManager
+from .device import UChromaDevice
+from .frame import Frame
+from .fx import FX
+from .fx import Splotch
+from .led import LED
 
 __version__ = "0.99"
-
