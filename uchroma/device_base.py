@@ -192,7 +192,8 @@ class BaseUChromaDevice(object):
                 except UnicodeDecodeError:
                     serial = self.device_id
 
-        self._serial_number = re.sub(r'\W+', r'', serial)
+        if serial is not None:
+            self._serial_number = re.sub(r'\W+', r'', serial)
 
         return self._serial_number
 

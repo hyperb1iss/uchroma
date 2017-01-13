@@ -7,6 +7,7 @@ from pyudev import Context, Monitor, MonitorObserver
 
 from uchroma.device import UChromaDevice
 from uchroma.models import Model, RAZER_VENDOR_ID
+from uchroma.mouse import UChromaMouse
 
 
 class UChromaDeviceManager(object):
@@ -84,8 +85,12 @@ class UChromaDeviceManager(object):
             if key in self._devices:
                 continue
 
-            self._devices[key] = UChromaDevice(model, devinfo,
-                                               self._get_input_devices(self._get_parent(pid)))
+            if model.type == Model.Type.MOUSE:
+                self._devices[key] = \
+                        UChromaMouse(model, devinfo, self._get_input_devices(self._get_parent(pid)))
+            else:
+                self._devices[key] = \
+                        UChromaDevice(model, devinfo, self._get_input_devices(self._get_parent(pid)))
 
             self._fire_callbacks('add', self._devices[key])
 

@@ -141,7 +141,7 @@ class UChromaTool(object):
     def _list_devices(self, args):
         for key in self._dm.devices:
             d = self._dm.devices[key]
-            print('[%s]: %s' % (key, d.name))
+            print('[%s]: %s (%s / %s)' % (key, d.name, d.serial_number, d.firmware_version))
         sys.exit(0)
 
 

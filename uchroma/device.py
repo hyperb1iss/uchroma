@@ -43,6 +43,7 @@ class UChromaDevice(BaseUChromaDevice):
         self._last_brightness = None
         self._suspended = False
 
+        # Patch in effects
         # TODO: check device capabilities
         for fxtype in FX.Type:
             method = fxtype.name.lower()
