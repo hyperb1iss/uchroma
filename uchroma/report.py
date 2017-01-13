@@ -55,7 +55,7 @@ class RazerReport(object):
     DATA_BUF_SIZE = 80
 
     # Time to sleep between requests, needed to avoid BUSY replies
-    CMD_DELAY_TIME = 0.005
+    CMD_DELAY_TIME = 0.007
 
     def __init__(self, hid, command_class, command_id, data_size,
                  status=0x00, transaction_id=0xFF, remaining_packets=0x00,
@@ -130,18 +130,34 @@ class RazerReport(object):
 
         :return: The parsed result from the hardware
         """
-        self._ensure_open()
-        req = self._pack_request()
-        self._hexdump(req, '--> ')
-        self._delay(delay)
-        self._hid.send_feature_report(req, self.REQ_REPORT_ID)
-        if self._remaining_packets > 0:
-            return True
+        retry_count = 3
 
-        self._delay(delay)
-        resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-        self._hexdump(resp, '<-- ')
-        return self._unpack_response(resp)
+        while retry_count > 0:
+            self._ensure_open()
+            req = self._pack_request()
+            self._hexdump(req, '--> ')
+            self._delay(delay)
+            self._hid.send_feature_report(req, self.REQ_REPORT_ID)
+            if self._remaining_packets > 0:
+                return True
+
+            self._delay(delay)
+            resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+            self._hexdump(resp, '<-- ')
+            if self._unpack_response(resp):
+                return True
+
+            if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
+                return False
+
+            self._logger.debug("Retrying request due to status %s (%d)",
+                               self.status.name, retry_count)
+
+            time.sleep(0.1)
+
+            retry_count -= 1
+
+        return False
 
 
     @property
