@@ -45,7 +45,7 @@ class FX(object):
         CUSTOM_FRAME = 0x05
         STATIC_COLOR = 0x06
         GRADIENT = 0x0A
-        WASH = 0x0C
+        SWEEP = 0x0C
         CIRCLE = 0x0D
         HIGHLIGHT = 0x10
         MORPH = 0x11
@@ -176,7 +176,7 @@ class FX(object):
 
 
     @colorarg('color')
-    def reactive(self, color=None, speed: int=1) -> bool:
+    def reactive(self, color=None, speed: int=None) -> bool:
         """
         Lights up keys when they are pressed
 
@@ -187,6 +187,9 @@ class FX(object):
         """
         if color is None:
             color = Color.NewFromHtml('skyblue')
+
+        if speed is None:
+            speed = 1
 
         if speed < 1 or speed > 4:
             raise ValueError('Speed for reactive effect must be between 1 and 4 (got: %d)', speed)
@@ -225,7 +228,7 @@ class FX(object):
         if speed is None:
             speed = 15
 
-        return self._set_effect(FX.Type.WASH, direction, speed, base_color, color)
+        return self._set_effect(FX.Type.SWEEP, direction, speed, base_color, color)
 
 
     @colorarg('color', 'base_color')

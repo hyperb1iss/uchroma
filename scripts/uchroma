@@ -199,7 +199,7 @@ class UChromaTool(object):
         if args.breathe:
             if not self._driver.breathe(color1=UChromaTool._get_color(args, 0),
                                         color2=UChromaTool._get_color(args, 1),
-                                        splotch=UChromaTool._get_splotch(args), speed=args.speed):
+                                        splotch=UChromaTool._get_splotch(args)):
                 sys.exit(1)
 
         elif args.disable:
