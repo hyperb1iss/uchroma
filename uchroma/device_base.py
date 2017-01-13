@@ -5,8 +5,8 @@ import hidapi
 
 from uchroma.models import Model
 from uchroma.report import RazerReport
+from uchroma.version import __version__
 
-from uchroma import __version__
 
 class BaseCommand(Enum):
     """
@@ -33,12 +33,11 @@ class BaseUChromaDevice(object):
         GET_DEVICE_MODE = (0x00, 0x84, 0x02)
 
 
-    def __init__(self, devinfo, devtype, devname):
+    def __init__(self, model: Model, devinfo: hidapi.DeviceInfo):
+        self._model = model
         self._devinfo = devinfo
-        self._devtype = devtype
-        self._devname = devname
-        self._dev = None
 
+        self._dev = None
         self._serial_number = None
         self._firmware_version = None
 
@@ -84,7 +83,7 @@ class BaseUChromaDevice(object):
 
     def run_with_result(self, command: BaseCommand, *args,
                         transaction_id: int=0xFF, defer_close: bool=False,
-                        delay: float=None, remaining_packets: int=0x00) -> RazerReport:
+                        delay: float=None, remaining_packets: int=0x00) -> bytes:
         """
         Run a command and return the result
 
@@ -183,7 +182,7 @@ class BaseUChromaDevice(object):
 
         serial = None
 
-        if self._devtype == Model.LAPTOP.name:
+        if self._model.type == Model.Type.LAPTOP:
             serial = self.name
         else:
             value = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
@@ -196,6 +195,7 @@ class BaseUChromaDevice(object):
         self._serial_number = re.sub(r'\W+', r'', serial)
 
         return self._serial_number
+
 
     @property
     def firmware_version(self) -> str:
@@ -217,7 +217,15 @@ class BaseUChromaDevice(object):
         """
         The name of this device
         """
-        return self._devname
+        return self._model.name
+
+
+    @property
+    def model(self) -> Enum:
+        """
+        The sub-enumeration of Model
+        """
+        return self._model.id
 
 
     @property
@@ -237,11 +245,11 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def device_type(self) -> str:
+    def device_type(self) -> Model.Type:
         """
         The type of this device, from the Model enumeration
         """
-        return self._devtype
+        return self._model.type
 
 
     @property
@@ -250,6 +258,7 @@ class BaseUChromaDevice(object):
         A unique identifier for this device
         """
         return '%04x:%04x' % (self.vendor_id, self.product_id)
+
 
     @property
     def driver_version(self):

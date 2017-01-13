@@ -108,13 +108,13 @@ class RazerReport(object):
             delta = now - self._last_cmd_time
             if delta < delay:
                 sleeptime = delay - delta
-                self._logger.info('delay: %f', sleeptime)
+                self._logger.debug('delay: %f', sleeptime)
                 time.sleep(sleeptime)
 
         self._last_cmd_time = now
 
 
-    def run(self, delay: float=None) -> 'RazerReport':
+    def run(self, delay: float=None) -> bool:
         """
         Run this report and retrieve the result from the hardware.
 
@@ -135,18 +135,17 @@ class RazerReport(object):
         self._hexdump(req, '--> ')
         self._delay(delay)
         self._hid.send_feature_report(req, self.REQ_REPORT_ID)
-        if self._remaining_packets == 0:
-            self._delay(delay)
-            resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-            self._hexdump(resp, '<-- ')
+        if self._remaining_packets > 0:
+            return True
 
-            return self._unpack_response(resp)
-
-        return None
+        self._delay(delay)
+        resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+        self._hexdump(resp, '<-- ')
+        return self._unpack_response(resp)
 
 
     @property
-    def args(self):
+    def args(self) -> bytes:
         """
         The byte array containing the raw report data to be sent to
         the hardware when run() is called.
@@ -155,7 +154,7 @@ class RazerReport(object):
 
 
     @property
-    def status(self):
+    def status(self) -> int:
         """
         Status code of this report.
         """
@@ -163,7 +162,7 @@ class RazerReport(object):
 
 
     @property
-    def result(self):
+    def result(self) -> bytes:
         """
         The byte array containing the raw result data after run() is called.
         """

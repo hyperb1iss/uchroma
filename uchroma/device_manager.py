@@ -65,30 +65,29 @@ class UChromaDeviceManager(object):
         """
         devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
         for devinfo in devinfos:
-            for devtype in Model:
-                if devinfo.product_id in devtype.value:
-                    add = True
-                    if devtype == Model.KEYBOARD or devtype == Model.LAPTOP:
-                        if devinfo.interface_number != 2:
-                            add = False
-                    elif devtype == Model.MOUSEPAD:
-                        if devinfo.interface_number != 1:
-                            add = False
-                    else:
-                        if devinfo.interface_number != 0:
-                            add = False
+            model = Model.get(devinfo.product_id)
+            if model is None:
+                continue
 
-                    if add:
-                        pid = '%04x' % devinfo.product_id
-                        key = '%04x:%s' % (devinfo.vendor_id, pid)
-                        if key in self._devices:
-                            continue
+            if model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
+                if devinfo.interface_number != 2:
+                    continue
+            elif model.type == Model.Type.MOUSEPAD:
+                if devinfo.interface_number != 1:
+                    continue
+            else:
+                if devinfo.interface_number != 0:
+                    continue
 
-                        self._devices[key] = UChromaDevice(
-                            devinfo, devtype.name, devtype.value[devinfo.product_id],
-                            self._get_input_devices(self._get_parent(pid)))
+            pid = '%04x' % devinfo.product_id
+            key = '%04x:%s' % (devinfo.vendor_id, pid)
+            if key in self._devices:
+                continue
 
-                        self._fire_callbacks('add', self._devices[key])
+            self._devices[key] = UChromaDevice(model, devinfo,
+                                               self._get_input_devices(self._get_parent(pid)))
+
+            self._fire_callbacks('add', self._devices[key])
 
 
     @property

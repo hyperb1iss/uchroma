@@ -11,7 +11,7 @@ RAZER_VENDOR_ID = 0x1532
 
 
 def get_version():
-    module_init = 'uchroma/__init__.py'
+    module_init = 'uchroma/version.py'
 
     if not os.path.isfile(module_init):
         module_init = '../' + module_init
@@ -27,15 +27,15 @@ class HWDBGenerator(install):
 
     @staticmethod
     def generate():
-        models = locate('uchroma.models.Model')
-        assert models is not None
+        model = locate('uchroma.models.Model')
+        assert model is not None
 
         hwdb = ""
-        for model_type in models:
-            for devid in model_type.value:
+        for model_type in model.Type:
+            for mod in model_type.value:
                 hwdb += ('uchroma:usb:v%04Xp%04X*\n'
                          ' UCHROMA_DEVICE=%s\n\n'
-                         % (RAZER_VENDOR_ID, devid, model_type.name.lower()))
+                         % (RAZER_VENDOR_ID, mod.value[0], model_type.name.lower()))
 
         return hwdb
 

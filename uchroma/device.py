@@ -1,5 +1,7 @@
 import logging
 
+import hidapi
+
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.frame import Frame
 from uchroma.fx import FX
@@ -22,8 +24,8 @@ class UChromaDevice(BaseUChromaDevice):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, devinfo, devtype, devname, input_devices=None):
-        super(UChromaDevice, self).__init__(devinfo, devtype, devname)
+    def __init__(self, model: Model, devinfo: hidapi.DeviceInfo, input_devices=None):
+        super(UChromaDevice, self).__init__(model, devinfo)
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
@@ -167,9 +169,9 @@ class UChromaDevice(BaseUChromaDevice):
         """
         The current brightness level of the device lighting
         """
-        if self._devtype == Model.LAPTOP:
+        if self._model.type == Model.Type.LAPTOP:
             return self._get_blade_brightness()
-        elif self._devtype == Model.MOUSE:
+        elif self._model.type == Model.Type.MOUSE:
             return self._get_mouse_brightness()
         else:
             return self.get_led(LED.Type.BACKLIGHT).brightness
@@ -184,9 +186,9 @@ class UChromaDevice(BaseUChromaDevice):
         """
         if self._suspended:
             self._last_brightness = level
-        elif self._devtype == Model.LAPTOP:
+        elif self._model.type == Model.Type.LAPTOP:
             self._set_blade_brightness(level)
-        elif self._devtype == Model.MOUSE:
+        elif self._model.type == Model.Type.MOUSE:
             self._set_mouse_brightness(level)
         else:
             self.get_led(LED.Type.BACKLIGHT).brightness = level
