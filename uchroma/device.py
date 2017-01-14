@@ -152,9 +152,9 @@ class UChromaDevice(BaseUChromaDevice):
         if not self._suspended:
             return
 
-        self.brightness = self._last_brightness
-
         self._suspended = False
+
+        self.brightness = self._last_brightness
 
 
     @property
