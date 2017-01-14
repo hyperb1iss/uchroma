@@ -30,7 +30,7 @@ class BaseUChromaDevice(object):
         GET_SERIAL = (0x00, 0x82, 0x16)
 
 
-    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo):
+    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None):
         self._model = model
         self._devinfo = devinfo
 
@@ -38,6 +38,9 @@ class BaseUChromaDevice(object):
         self._serial_number = None
         self._firmware_version = None
 
+        self._input_devices = []
+        if input_devices is not None:
+            self._input_devices.extend(input_devices)
 
     def close(self):
         """
@@ -147,6 +150,14 @@ class BaseUChromaDevice(object):
             self.close()
 
         return status
+
+
+    @property
+    def input_devices(self):
+        """
+        List of associated input device path
+        """
+        return self._input_devices
 
 
     def _get_serial_number(self) -> str:

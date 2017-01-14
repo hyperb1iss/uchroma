@@ -8,7 +8,7 @@ from uchroma.byte_args import ByteArgs
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.fx import Splotch
 from uchroma.models import Model
-from uchroma.util import colorarg, smart_delay, set_bits, scale_brightness, test_bit, to_byte, to_color
+from uchroma.util import colorarg, smart_delay, set_bits, scale_brightness, test_bit, to_byte, to_color, to_rgb
 
 
 # Output report 4, input report 5

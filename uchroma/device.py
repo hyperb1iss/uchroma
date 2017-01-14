@@ -26,20 +26,16 @@ class UChromaDevice(BaseUChromaDevice):
 
 
     def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None):
-        super(UChromaDevice, self).__init__(model, devinfo)
+        super(UChromaDevice, self).__init__(model, devinfo, input_devices)
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
         self._fx = FX(self)
-        self._input_devices = []
 
         self._frame_control = None
 
         self._width = 25
         self._height = 6
-
-        if input_devices is not None:
-            self._input_devices.extend(input_devices)
 
         self._last_brightness = None
         self._suspended = False
@@ -156,14 +152,6 @@ class UChromaDevice(BaseUChromaDevice):
         self._suspended = False
 
         self.brightness = self._last_brightness
-
-
-    @property
-    def input_devices(self):
-        """
-        List of associated input device path
-        """
-        return self._input_devices
 
 
     @property
