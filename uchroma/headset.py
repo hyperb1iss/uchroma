@@ -329,6 +329,19 @@ class UChromaHeadset(BaseUChromaDevice):
         return self._get_led_mode()
 
 
+    def get_current_colors(self) -> list:
+        """
+        Gets the colors currently in use
+
+        :return: List of RGB tuples
+        """
+        colors = self._get_rgb()
+        if colors is None or len(colors) == 0:
+            return None
+
+        return [to_rgb(color) for color in colors]
+
+
     @property
     def brightness(self) -> float:
         """
