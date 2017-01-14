@@ -17,7 +17,7 @@ class Status(Enum):
     FAIL = 0x03
     TIMEOUT = 0x04
     UNSUPPORTED = 0x05
-
+    OSERROR = 0xFF
 
 class RazerReport(object):
     """
@@ -133,29 +133,35 @@ class RazerReport(object):
         retry_count = 3
 
         while retry_count > 0:
-            self._ensure_open()
-            req = self._pack_request()
-            self._hexdump(req, '--> ')
-            self._delay(delay)
-            self._hid.send_feature_report(req, self.REQ_REPORT_ID)
-            if self._remaining_packets > 0:
-                return True
+            try:
+                self._ensure_open()
+                req = self._pack_request()
+                self._hexdump(req, '--> ')
+                self._delay(delay)
+                self._hid.send_feature_report(req, self.REQ_REPORT_ID)
+                if self._remaining_packets > 0:
+                    return True
 
-            self._delay(delay)
-            resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-            self._hexdump(resp, '<-- ')
-            if self._unpack_response(resp):
-                return True
+                self._delay(delay)
+                resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+                self._hexdump(resp, '<-- ')
+                if self._unpack_response(resp):
+                    return True
 
-            if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
+                if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
+                    return False
+
+                self._logger.debug("Retrying request due to status %s (%d)",
+                                   self.status.name, retry_count)
+
+                time.sleep(0.1)
+
+                retry_count -= 1
+
+            except OSError as err:
+                self._logger.exception("Exception while sending a feature report", exc_info=err)
+                self._status = Status.OSERROR
                 return False
-
-            self._logger.debug("Retrying request due to status %s (%d)",
-                               self.status.name, retry_count)
-
-            time.sleep(0.1)
-
-            retry_count -= 1
 
         return False
 
