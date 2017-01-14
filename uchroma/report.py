@@ -5,6 +5,7 @@ import time
 from enum import Enum
 
 from uchroma.byte_args import ByteArgs
+from uchroma.util import smart_delay
 
 
 # response codes
@@ -98,22 +99,6 @@ class RazerReport(object):
         self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 
-    def _delay(self, delay: float=None):
-        if delay is None:
-            delay = RazerReport.CMD_DELAY_TIME
-
-        now = time.perf_counter()
-
-        if self._remaining_packets == 0 and self._last_cmd_time is not None and delay > 0:
-            delta = now - self._last_cmd_time
-            if delta < delay:
-                sleeptime = delay - delta
-                self._logger.debug('delay: %f', sleeptime)
-                time.sleep(sleeptime)
-
-        self._last_cmd_time = now
-
-
     def run(self, delay: float=None) -> bool:
         """
         Run this report and retrieve the result from the hardware.
@@ -130,6 +115,9 @@ class RazerReport(object):
 
         :return: The parsed result from the hardware
         """
+        if delay is None:
+            delay = RazerReport.CMD_DELAY_TIME
+
         retry_count = 3
 
         while retry_count > 0:
@@ -137,12 +125,14 @@ class RazerReport(object):
                 self._ensure_open()
                 req = self._pack_request()
                 self._hexdump(req, '--> ')
-                self._delay(delay)
+                self._last_cmd_time = smart_delay(delay, self._last_cmd_time,
+                                                  self._remaining_packets)
                 self._hid.send_feature_report(req, self.REQ_REPORT_ID)
                 if self._remaining_packets > 0:
                     return True
 
-                self._delay(delay)
+                self._last_cmd_time = smart_delay(delay, self._last_cmd_time,
+                                                  self._remaining_packets)
                 resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
                 self._hexdump(resp, '<-- ')
                 if self._unpack_response(resp):

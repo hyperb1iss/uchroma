@@ -1,6 +1,8 @@
 """
 Various helper functions that are used across the library.
 """
+import struct
+import time
 
 from decorator import decorator
 
@@ -171,7 +173,7 @@ def scale_brightness(brightness, from_hw=False):
     """
     if from_hw:
         if brightness < 0 or brightness > 255:
-            raise ValueError('Integer brightness must be between 0 and 255')
+            raise ValueError('Integer brightness must be between 0 and 255 (%d)' % brightness)
 
         if brightness is None:
             return 0.0
@@ -179,9 +181,71 @@ def scale_brightness(brightness, from_hw=False):
         return round(float(brightness) * (100.0 / 255.0), 2)
 
     if brightness < 0.0 or brightness > 100.0:
-        raise ValueError('Float brightness must be between 0 and 100')
+        raise ValueError('Float brightness must be between 0 and 100 (%f)' % brightness)
 
     if brightness is None:
         return 0
 
     return int(round(brightness * (255.0 / 100.0)))
+
+
+def to_byte(value: int) -> bytes:
+    """
+    Convert a single int to a single byte
+    """
+    return struct.pack('=B', value)
+
+
+def smart_delay(delay: float, last_cmd: float, remain: int=0) -> float:
+    """
+    A "smart" delay mechanism which tries to reduce the
+    delay as much as possible based on the time the last
+    delay happened.
+
+    :param delay: delay in seconds
+    :param last_cmd: time of last command
+    :param remain: counter, skip delay unless it's zero
+
+    :return: timestamp to feed to next invocation
+    """
+    now = time.perf_counter()
+
+    if remain == 0 and last_cmd is not None and delay > 0.0:
+
+        delta = now - last_cmd
+        if delta < delay:
+            sleep = delay - delta
+            time.sleep(sleep)
+
+    return now
+
+
+def test_bit(value: int, bit: int) -> bool:
+    """
+    Test if the bit at the specified position is set.
+
+    :param value: The value to test
+    :param bit: The bit to check
+
+    :return: True if the bit is set
+    """
+    return (value & 1 << bit) == 1 << bit
+
+
+def set_bits(value: int, *bits) -> int:
+    """
+    Given a list of bools, set (or clear) the bits in
+    value and return it as an int.
+
+    :param value: The initial value
+    :param bits: Tuple of bools
+
+    :return: Integer with bits set or cleared
+    """
+    for bit in range(0, len(bits)):
+        if bits[bit]:
+            value |= 1 << bit
+        else:
+            value &= ~(1 << bit)
+
+    return value

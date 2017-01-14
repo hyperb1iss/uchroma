@@ -26,14 +26,11 @@ class BaseUChromaDevice(object):
         Standard commands used by all Chroma devices
         """
         # info queries, class 0
-        SET_DEVICE_MODE = (0x00, 0x04, 0x02)
-
         GET_FIRMWARE_VERSION = (0x00, 0x81, 0x02)
         GET_SERIAL = (0x00, 0x82, 0x16)
-        GET_DEVICE_MODE = (0x00, 0x84, 0x02)
 
 
-    def __init__(self, model: Model, devinfo: hidapi.DeviceInfo):
+    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo):
         self._model = model
         self._devinfo = devinfo
 
@@ -152,34 +149,10 @@ class BaseUChromaDevice(object):
         return status
 
 
-    def get_device_mode(self):
+    def _get_serial_number(self) -> str:
         """
-        Gets the current device mode
-
-        FIXME: implement this correctly
+        Get the serial number from the hardware directly
         """
-        return self.run_with_result(BaseUChromaDevice.Command.GET_DEVICE_MODE)
-
-
-    def set_device_mode(self, mode, param=0) -> bool:
-        """
-        Sets the requested device mode
-
-        FIXME: implement this correctly
-        """
-        return self.run_command(BaseUChromaDevice.Command.SET_DEVICE_MODE, mode, param)
-
-
-    @property
-    def serial_number(self) -> str:
-        """
-        The hardware serial number of this device
-
-        On laptops, this is not available.
-        """
-        if self._serial_number is not None:
-            return self._serial_number
-
         serial = None
 
         if self._model.type == Model.Type.LAPTOP:
@@ -192,10 +165,32 @@ class BaseUChromaDevice(object):
                 except UnicodeDecodeError:
                     serial = self.device_id
 
+        return serial
+
+
+    @property
+    def serial_number(self) -> str:
+        """
+        The hardware serial number of this device
+
+        On laptops, this is not available.
+        """
+        if self._serial_number is not None:
+            return self._serial_number
+
+        serial = self._get_serial_number()
+
         if serial is not None:
             self._serial_number = re.sub(r'\W+', r'', serial)
 
         return self._serial_number
+
+
+    def _get_firmware_version(self) -> str:
+        """
+        Get the firmware version from the hardware directly
+        """
+        return self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
 
 
     @property
@@ -204,7 +199,8 @@ class BaseUChromaDevice(object):
         The firmware version present on this device
         """
         if self._firmware_version is None:
-            version = self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
+            version = self._get_firmware_version()
+
             if version is None:
                 self._firmware_version = '(unknown)'
             else:

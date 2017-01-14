@@ -16,6 +16,14 @@ class Model(object):
     USB product ID and display name.
     """
 
+    class Headset(Enum):
+        """
+        Headsets
+        """
+        KRAKEN = (0x0504, 'Kraken 7.1 (Rainie)')
+        KRAKEN_V2 = (0x0510, 'Kraken 7.1 V2 (Kylie)')
+
+
     class Keyboard(Enum):
         """
         Keyboards
@@ -69,6 +77,7 @@ class Model(object):
         """
         All supported hardware types
         """
+        HEADSET = 'Headset'
         KEYBOARD = 'Keyboard'
         LAPTOP = 'Laptop'
         MOUSE = 'Mouse'

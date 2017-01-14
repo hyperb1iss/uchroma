@@ -44,7 +44,7 @@ class UChromaMouse(UChromaDevice):
         MHZ_128 = 0x08
 
 
-    def __init__(self, model: Model, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, model: Model.Mouse, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaMouse, self).__init__(model, devinfo, input_devices)
 
 

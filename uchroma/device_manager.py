@@ -6,6 +6,8 @@ import hidapi
 from pyudev import Context, Monitor, MonitorObserver
 
 from uchroma.device import UChromaDevice
+from uchroma.headset import UChromaHeadset
+from uchroma.keyboard import UChromaKeyboard
 from uchroma.models import Model, RAZER_VENDOR_ID
 from uchroma.mouse import UChromaMouse
 
@@ -66,11 +68,16 @@ class UChromaDeviceManager(object):
         """
         devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
         for devinfo in devinfos:
+            self._logger.debug('Check device %04x interface %d (%s)',
+                               devinfo.product_id, devinfo.interface_number, devinfo.product_string)
             model = Model.get(devinfo.product_id)
             if model is None:
                 continue
 
-            if model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
+            if model.type == Model.Type.HEADSET:
+                if devinfo.interface_number != 3:
+                    continue
+            elif model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
                 if devinfo.interface_number != 2:
                     continue
             elif model.type == Model.Type.MOUSEPAD:
@@ -88,9 +95,13 @@ class UChromaDeviceManager(object):
             if model.type == Model.Type.MOUSE:
                 self._devices[key] = \
                         UChromaMouse(model, devinfo, self._get_input_devices(self._get_parent(pid)))
-            else:
+            elif model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
                 self._devices[key] = \
-                        UChromaDevice(model, devinfo, self._get_input_devices(self._get_parent(pid)))
+                        UChromaKeyboard(model, devinfo, self._get_input_devices(self._get_parent(pid)))
+            elif model.type == Model.Type.HEADSET:
+                self._devices[key] = UChromaHeadset(model, devinfo)
+            else:
+                self._devices[key] = UChromaDevice(model, devinfo)
 
             self._fire_callbacks('add', self._devices[key])
 

@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 
 import hidapi
 
@@ -24,7 +25,7 @@ class UChromaDevice(BaseUChromaDevice):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, model: Model, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaDevice, self).__init__(model, devinfo)
 
         self._logger = logging.getLogger('uchroma.driver')
