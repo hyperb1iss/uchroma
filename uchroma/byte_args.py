@@ -77,7 +77,7 @@ class ByteArgs(object):
                 data += struct.pack(packing, component)
         elif isinstance(arg, Enum):
             data += struct.pack(packing, arg.value)
-        elif isinstance(arg, bytes):
+        elif isinstance(arg, bytes) or isinstance(arg, bytearray):
             data += arg
         else:
             data += struct.pack(packing, arg)
