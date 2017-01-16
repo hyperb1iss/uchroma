@@ -7,7 +7,7 @@ from grapefruit import Color
 from uchroma.byte_args import ByteArgs
 from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
-from uchroma.models import Model
+from uchroma.models import Headset
 from uchroma.util import colorarg, smart_delay, set_bits, scale_brightness, test_bit, to_byte, to_color, to_rgb
 
 
@@ -130,20 +130,20 @@ class UChromaHeadset(BaseUChromaDevice):
             return self._address
 
 
-    def __init__(self, model: Model.Headset, devinfo: hidapi.DeviceInfo):
+    def __init__(self, model: Headset, devinfo: hidapi.DeviceInfo):
         super(UChromaHeadset, self).__init__(model, devinfo)
 
         self._last_cmd_time = None
 
         self._revision = None
-        if self.model == Model.Headset.KRAKEN:
+        if self.model == Headset.KRAKEN:
             self._revision = 1
             self._cmd_get_led = UChromaHeadset.Command.RAINIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.RAINIE_SET_LED_MODE
             self._cmd_get_rgb = [UChromaHeadset.Command.RAINIE_GET_RGB]
             self._cmd_set_rgb = [UChromaHeadset.Command.RAINIE_SET_RGB]
 
-        elif self.model == Model.Headset.KRAKEN_V2:
+        elif self.model == Headset.KRAKEN_V2:
             self._revision = 2
             self._cmd_get_led = UChromaHeadset.Command.KYLIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.KYLIE_SET_LED_MODE

@@ -8,7 +8,7 @@ from grapefruit import Color
 from uchroma.device import UChromaDevice
 from uchroma.device_base import BaseCommand
 from uchroma.led import LED
-from uchroma.models import Model
+from uchroma.models import Mouse
 from uchroma.util import clamp, scale, scale_brightness
 
 
@@ -44,7 +44,7 @@ class UChromaMouse(UChromaDevice):
         MHZ_128 = 0x08
 
 
-    def __init__(self, model: Model.Mouse, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, model: Mouse, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaMouse, self).__init__(model, devinfo, input_devices)
 
 
@@ -97,9 +97,9 @@ class UChromaMouse(UChromaDevice):
         """
         The brightness level of dock illumination
         """
-        if self.model == Model.Mouse.MAMBA_WIRELESS:
+        if self.model == Mouse.MAMBA_WIRELESS:
             return self._get_dock_brightness()
-        if self.model == Model.Mouse.OROCHI_CHROMA:
+        if self.model == Mouse.OROCHI_CHROMA:
             return self.get_led(LED.Type.SCROLL_WHEEL).brightness
 
         return self.get_led(LED.Type.BACKLIGHT).brightness
@@ -110,9 +110,9 @@ class UChromaMouse(UChromaDevice):
         """
         Set brightness level of dock illumination
         """
-        if self.model == Model.Mouse.MAMBA_WIRELESS:
+        if self.model == Mouse.MAMBA_WIRELESS:
             self._set_dock_brightness(brightness)
-        elif self.model == Model.Mouse.OROCHI_CHROMA:
+        elif self.model == Mouse.OROCHI_CHROMA:
             self.get_led(LED.Type.SCROLL_WHEEL).brightness = brightness
         else:
             self.get_led(LED.Type.BACKLIGHT).brightness = brightness

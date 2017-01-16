@@ -34,9 +34,6 @@ class UChromaDevice(BaseUChromaDevice):
 
         self._frame_control = None
 
-        self._width = 25
-        self._height = 6
-
         self._last_brightness = None
         self._suspended = False
 
@@ -67,7 +64,10 @@ class UChromaDevice(BaseUChromaDevice):
         """
         Gets the width of the key matrix (if applicable)
         """
-        return self._width
+        if not self.has_matrix:
+            return 0
+
+        return self.model.matrix_dims[1]
 
 
     @property
@@ -75,19 +75,22 @@ class UChromaDevice(BaseUChromaDevice):
         """
         Gets the height of the key matrix (if applicable)
         """
-        return self._height
+        if not self.has_matrix:
+            return 0
+
+        return self.model.matrix_dims[0]
 
 
     @property
-    def has_matrix(self):
+    def has_matrix(self) -> bool:
         """
         True if the device supports matrix control
         """
-        return True
+        return self.model.has_matrix
 
 
     @property
-    def frame_control(self, base_color=None) -> Frame:
+    def frame_control(self) -> Frame:
         """
         Gets the Frame object for creating custom effects on this device
 
@@ -97,8 +100,11 @@ class UChromaDevice(BaseUChromaDevice):
 
         :return: The Frame interface
         """
+        if not self.has_matrix:
+            return None
+
         if self._frame_control is None:
-            self._frame_control = Frame(self, self.width, self.height, base_color)
+            self._frame_control = Frame(self, self.width, self.height)
 
         return self._frame_control
 
@@ -182,3 +188,17 @@ class UChromaDevice(BaseUChromaDevice):
             self._set_mouse_brightness(level)
         else:
             self.get_led(LED.Type.BACKLIGHT).brightness = level
+
+
+    def reset(self) -> bool:
+        """
+        Clear all effects and custom frame
+
+        :return: True if successful
+        """
+        if self.has_matrix:
+            self.frame_control.set_base_color(None).reset()
+            self.frame_control.reset()
+
+        if hasattr(self, 'disable'):
+            self._fx.disable()

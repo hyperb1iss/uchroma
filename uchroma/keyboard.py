@@ -2,7 +2,7 @@ import hidapi
 
 from uchroma.device import UChromaDevice
 from uchroma.device_base import BaseCommand
-from uchroma.models import Model
+from uchroma.models import Keyboard, Model
 
 
 class UChromaKeyboard(UChromaDevice):
@@ -19,7 +19,7 @@ class UChromaKeyboard(UChromaDevice):
         GET_DEVICE_MODE = (0x00, 0x84, 0x02)
 
 
-    def __init__(self, model: Model.Keyboard, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, model: Keyboard, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaKeyboard, self).__init__(model, devinfo, input_devices)
 
 

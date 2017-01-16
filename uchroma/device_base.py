@@ -233,7 +233,7 @@ class BaseUChromaDevice(object):
         """
         The sub-enumeration of Model
         """
-        return self._model.id
+        return self._model.hardware
 
 
     @property
@@ -274,3 +274,10 @@ class BaseUChromaDevice(object):
         Get the uChroma version
         """
         return __version__
+
+
+    def reset(self) -> bool:
+        """
+        Reset effects and other configuration to defaults
+        """
+        return True
