@@ -5,8 +5,8 @@ import hidapi
 from grapefruit import Color
 
 from uchroma.byte_args import ByteArgs
+from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
-from uchroma.fx import Splotch
 from uchroma.models import Model
 from uchroma.util import colorarg, smart_delay, set_bits, scale_brightness, test_bit, to_byte, to_color, to_rgb
 

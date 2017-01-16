@@ -1,27 +1,11 @@
 from enum import Enum
 
+from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.led import LED
 from uchroma.util import colorarg
 
 from grapefruit import Color
-
-
-class Splotch(Enum):
-    """
-    Predefined color pairs
-    """
-    EARTH = ('green', '#8b4513')
-    AIR = ('white', 'skyblue')
-    FIRE = ('red', 'orange')
-    WATER = ('blue', 'white')
-    SUN = ('white', 'yellow')
-    MOON = ('grey', 'cyan')
-    HOTPINK = ('hotpink', 'purple')
-
-    def __init__(self, first, second):
-        self.first = Color.NewFromHtml(first)
-        self.second = Color.NewFromHtml(second)
 
 
 class FX(object):
