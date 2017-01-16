@@ -23,19 +23,25 @@ class UChromaKeyboard(UChromaDevice):
         super(UChromaKeyboard, self).__init__(model, devinfo, input_devices)
 
 
-    def get_device_mode(self):
+    def get_device_mode(self) -> tuple:
         """
         Gets the current device mode
-
-        FIXME: implement this correctly
         """
-        return self.run_with_result(UChromaKeyboard.Command.GET_DEVICE_MODE)
+        if self.device_type == Model.Type.LAPTOP:
+            return None
+
+        value = self.run_with_result(UChromaKeyboard.Command.GET_DEVICE_MODE)
+        if value is None:
+            return None
+
+        return (value[0], value[1])
 
 
     def set_device_mode(self, mode, param=0) -> bool:
         """
         Sets the requested device mode
-
-        FIXME: implement this correctly
         """
+        if self.device_type == Model.Type.LAPTOP:
+            return None
+
         return self.run_command(UChromaKeyboard.Command.SET_DEVICE_MODE, mode, param)
