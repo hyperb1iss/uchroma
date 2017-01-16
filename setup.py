@@ -50,9 +50,22 @@ setup(name='uchroma',
       url='https://github.com/cyanogen/uchroma',
       author='Steve Kondik',
       author_email='shade@chemlab.org',
+      platform='Linux',
       license='LGPL',
       packages=['uchroma'],
       scripts=['scripts/uchroma'],
       install_requires=['grapefruit', 'hidapi', 'numpy', 'pyudev'],
       cmdclass={'hwdb': HWDBGenerator},
-      zip_safe=False)
+      zip_safe=False,
+      keywords='razer chroma uchroma driver keyboard mouse',
+      classifiers=[
+          'Development Status :: 3 - Alpha',
+          'Environment :: Console',
+          'Intended Audience :: Developers',
+          'Intended Audience :: End Users/Desktop',
+          'Topic :: Software Development :: Build Tools',
+          'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+          'Operating System :: POSIX :: Linux',
+          'Programming Language :: Python :: 3 :: Only',
+          'Topic :: System :: Hardware :: Hardware Drivers'
+      ])
