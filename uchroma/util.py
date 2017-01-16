@@ -51,14 +51,9 @@ def rgb_from_tuple(arg: tuple) -> Color:
     :return: The Color object
     """
     if len(arg) >= 3:
-        if isinstance(arg[0], int):
-            return Color.NewFromRgb(clamp(arg[0], 0, 255) / 255.0,
-                                    clamp(arg[1], 0, 255) / 255.0,
-                                    clamp(arg[2], 0, 255) / 255.0)
-        if isinstance(arg[1], float):
-            return Color.NewFromRgb(clamp(arg[0], 0.0, 1.0) * 255,
-                                    clamp(arg[1], 0.0, 1.0) * 255,
-                                    clamp(arg[2], 0.0, 1.0) * 255)
+        return Color.NewFromRgb(clamp(arg[0], 0, 255) / 255.0,
+                                clamp(arg[1], 0, 255) / 255.0,
+                                clamp(arg[2], 0, 255) / 255.0)
 
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
 
@@ -72,10 +67,7 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
     :return: Tuple of RGB ints
     """
     if len(arg) >= 3:
-        if isinstance(arg[0], int):
-            return tuple([clamp(x, 0, 255) for x in arg[:3]])
-        if isinstance(arg[0], float):
-            return tuple([int(round(clamp(x, 0.0, 1.0) * 255)) for x in arg[:3]])
+        return tuple([clamp(round(x), 0, 255) for x in arg[:3]])
 
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
 
@@ -112,7 +104,7 @@ def to_rgb(arg) -> tuple:
     if arg is None:
         return (0, 0, 0)
     if isinstance(arg, Color):
-        return rgb_to_int_tuple(arg.intTuple[:3])
+        return arg.intTuple[:3]
     if isinstance(arg, str):
         return Color.NewFromHtml(arg).intTuple[:3]
     if isinstance(arg, tuple) or isinstance(arg, list):
@@ -249,3 +241,4 @@ def set_bits(value: int, *bits) -> int:
             value &= ~(1 << bit)
 
     return value
+
