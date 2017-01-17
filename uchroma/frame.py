@@ -4,10 +4,11 @@ import time
 
 import numpy as np
 from grapefruit import Color
+from skimage import draw
 
 from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
-from uchroma.util import to_color, to_rgb
+from uchroma.util import clamp, colorarg, to_color, to_rgb
 
 
 class Frame(object):
@@ -66,6 +67,11 @@ class Frame(object):
 
     @property
     def callback(self):
+        """
+        Callback to invoke when a buffer needs to be drawn.
+        The callback should be an asyncio.coroutine which we will
+        yield from.
+        """
         return self._callback
 
 
@@ -174,6 +180,14 @@ class Frame(object):
 
 
     def prepare(self, frame_id: int=None):
+        """
+        Send the current frame to the hardware but do not
+        display it. This frees up the buffer for drawing
+        the next frame. Call commit() to display the
+        frame after calling this method.
+
+        Use flip() unless you you need custom behavior.
+        """
         try:
             self._matrix.setflags(write=False)
             self._set_frame_data(frame_id)
@@ -184,6 +198,11 @@ class Frame(object):
 
 
     def commit(self):
+        """
+        Display the last frame sent to the hardware
+
+        Use flip() unless you need custom behavior.
+        """
         self._driver.custom_frame()
 
 
@@ -194,7 +213,7 @@ class Frame(object):
         width = min(self._width, Frame.MAX_WIDTH)
 
         for row in range(0, self._height):
-            data = self._matrix[row][0:width].data.tobytes()
+            data = self._matrix[row][:width].data.tobytes()
             remaining = self._height - row - 1
             self._driver.run_command(Frame.Command.SET_FRAME_DATA, frame_id, row, 0,
                                      width, data, transaction_id=0x80,
@@ -202,6 +221,11 @@ class Frame(object):
 
 
     def update(self, frame_id: int=None):
+        """
+        Sends the current frame to the hardware and displays it.
+
+        Use flip() unless you need custom behavior.
+        """
         try:
             self._matrix.setflags(write=False)
             self._set_frame_data(frame_id)
@@ -240,6 +264,71 @@ class Frame(object):
         """
         self.clear()
         self.update(frame_id)
+
+        return self
+
+
+    @colorarg('color')
+    def circle(self, row: int, col: int, radius: float, color: Color=None,
+               colorizer=None, fill: bool=False, blend: bool=False) -> 'Frame':
+        """
+        Draw a circle centered on the specified row and column,
+        with the given radius.
+
+        :param row: Center row of circle
+        :param col: Center column of circle
+        :param radius: Radius of circle
+        :param color: Color to draw with
+        :param colorizer: Optional color function to apply for each pixel
+        :param fill: True if the circle should be filled
+        :param blend: True if the color should be blended into the current color
+
+        :return: This frame instance
+        """
+        if color is None and colorizer is None:
+            raise ValueError('Color or colorizer must be specified.')
+
+        rr = cc = None
+        if fill:
+            rr, cc = draw.circle(row, col, round(radius), shape=self._matrix.shape)
+        else:
+            rr, cc = draw.circle_perimeter(row, col, round(radius), shape=self._matrix.shape)
+
+        for y, x in zip(rr.flatten(), cc.flatten()):
+            if colorizer is not None:
+                color = colorizer(y, x)
+
+            self.put(y, x, color, blend=blend)
+
+        return self
+
+
+    @colorarg('color')
+    def line(self, row1: int, col1: int, row2: int, col2: int, color: Color=None,
+             colorizer=None, blend: bool=False) -> 'Frame':
+        """
+        Draw a line between two points
+
+        :param row1: Start row
+        :param col1: Start column
+        :param row2: End row
+        :param col2: End column
+        :param color: Color to draw with
+        :param colorizer: Optional color function to apply for each pixel
+        :param blend: True if the color should be blended into the current color
+        """
+        if color is None and colorizer is None:
+            raise ValueError('Color or colorizer must be specified.')
+
+
+        rr, cc = draw.line(clamp(0, self.height, row1), clamp(0, self.width, col1),
+                           clamp(0, self.height, row2), clamp(0, self.width, col2))
+
+        for y, x in zip(rr.flatten(), cc.flatten()):
+            if colorizer is not None:
+                color = colorizer(y, x)
+
+            self.put(y, x, color, blend=blend)
 
         return self
 
