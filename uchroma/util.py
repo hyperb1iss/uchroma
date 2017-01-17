@@ -5,8 +5,9 @@ import math
 import struct
 import time
 
-from decorator import decorator
+from threading import Timer
 
+from decorator import decorator
 from grapefruit import Color
 from numpy import interp
 
@@ -273,3 +274,46 @@ def lerp_degrees(start: float, end: float, amount: float) -> float:
     end_r = math.radians(end)
     delta = math.atan2(math.sin(end_r - start_r), math.cos(end_r - start_r))
     return (math.degrees(start_r + delta * amount) + 360.0) % 360.0
+
+
+
+class RepeatingTimer(object):
+    def __init__(self, interval, func, *args, **kwargs):
+        self._interval = interval
+        self._func = func
+        self._args = args
+        self._kwargs = kwargs
+
+        self._timer = None
+        self._running = False
+        self._finished = False
+
+    def _callback(self):
+        self._func(*self._args, **self._kwargs)
+        self._running = False
+
+    def cancel(self):
+        self._timer.cancel()
+        self._running = False
+
+    def start(self):
+        if self._finished:
+            raise ValueError('Timer has been shut down')
+
+        if self._timer is not None:
+            self._timer.cancel()
+        self._timer = Timer(self._interval, self._callback)
+        self._timer.daemon = True
+        self._timer.start()
+        self._running = True
+
+    @property
+    def is_running(self):
+        return self._running
+
+    @property
+    def is_finished(self):
+        return self._finished
+
+    def set_defaults(self):
+        self._running = False

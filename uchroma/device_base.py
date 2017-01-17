@@ -3,8 +3,11 @@ from enum import Enum
 
 import hidapi
 
+from wrapt import synchronized
+
 from uchroma.models import Model
 from uchroma.report import RazerReport
+from uchroma.util import RepeatingTimer
 from uchroma.version import __version__
 
 
@@ -38,17 +41,23 @@ class BaseUChromaDevice(object):
         self._serial_number = None
         self._firmware_version = None
 
+        self._defer_close = True
+
+        self._close_timer = RepeatingTimer(5.0, self.close, True)
+
         self._input_devices = []
         if input_devices is not None:
             self._input_devices.extend(input_devices)
 
-    def close(self):
-        """
-        Close this device
 
-        Not strictly necessary to call this unless the device was opened with
-        the defer_close flag.
-        """
+
+    def _close(self, force: bool=False):
+        if self._defer_close:
+            if not force:
+                self._close_timer.start()
+                return
+            self._close_timer.cancel()
+
         if self._dev is not None:
             try:
                 self._dev.close()
@@ -58,8 +67,20 @@ class BaseUChromaDevice(object):
             self._dev = None
 
 
+    @synchronized
+    def close(self, force: bool=False):
+        """
+        Close this device
+
+        Not strictly necessary to call this unless the device was opened with
+        the defer_close flag.
+        """
+        self._close(force)
+
+
     def __del__(self):
-        self.close()
+        self._defer_close = False
+        self.close(True)
 
 
     def _ensure_open(self):
@@ -81,9 +102,30 @@ class BaseUChromaDevice(object):
         return report
 
 
+    @synchronized
+    @property
+    def defer_close(self) -> bool:
+        """
+        True if we want to keep the device open
+        """
+        return self._defer_close
+
+
+    @synchronized
+    @defer_close.setter
+    def defer_close(self, defer: bool):
+        """
+        True if we want to keep the device open
+        """
+        self._defer_close = defer
+        if not defer:
+            self._close(True)
+
+
+    @synchronized
     def run_with_result(self, command: BaseCommand, *args,
-                        transaction_id: int=0xFF, defer_close: bool=False,
-                        delay: float=None, remaining_packets: int=0x00) -> bytes:
+                        transaction_id: int=0xFF, delay: float=None,
+                        remaining_packets: int=0x00) -> bytes:
         """
         Run a command and return the result
 
@@ -101,27 +143,27 @@ class BaseUChromaDevice(object):
         :param args: The list of arguments to call the command with
         :type args: varies
         :param transaction_id: Transaction identified, defaults to 0xFF
-        :param defer_close: Whether the device should be closed after execution, defaults to False
 
         :return: The result report from the hardware
         """
-        self._ensure_open()
-        report = self._get_report(*command.value, *args, transaction_id=transaction_id,
-                                  remaining_packets=remaining_packets)
-        result = None
+        try:
+            self._ensure_open()
+            report = self._get_report(*command.value, *args, transaction_id=transaction_id,
+                                      remaining_packets=remaining_packets)
+            result = None
 
-        if report.run(delay=delay):
-            result = report.result
+            if report.run(delay=delay):
+                result = report.result
 
-        if not defer_close:
-            self.close()
+            return result
 
-        return result
+        finally:
+            self._close()
 
 
+    @synchronized
     def run_command(self, command: BaseCommand, *args, transaction_id: int=0xFF,
-                    defer_close: bool=False, delay: float=None,
-                    remaining_packets: int=0x00) -> bool:
+                    delay: float=None, remaining_packets: int=0x00) -> bool:
         """
         Run a command
 
@@ -138,18 +180,18 @@ class BaseUChromaDevice(object):
         :type args: varies
 
         :param transaction_id: Transaction identified, defaults to 0xFF
-        :param defer_close: Whether the device should be closed after execution, defaults to False
 
         :return: True if the command was successful
         """
-        self._ensure_open()
-        status = self._get_report(*command.value, *args, transaction_id=transaction_id,
-                                  remaining_packets=remaining_packets).run(delay=delay)
+        try:
+            self._ensure_open()
+            status = self._get_report(*command.value, *args, transaction_id=transaction_id,
+                                      remaining_packets=remaining_packets).run(delay=delay)
 
-        if not defer_close:
-            self.close()
+            return status
 
-        return status
+        finally:
+            self._close()
 
 
     @property
