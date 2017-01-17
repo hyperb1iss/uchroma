@@ -39,6 +39,7 @@ class UChromaMouse(UChromaDevice):
         """
         Enumeration of polling rates
         """
+        INVALID = 0x00
         MHZ_1000 = 0x01
         MHZ_500 = 0x02
         MHZ_128 = 0x08
@@ -84,12 +85,22 @@ class UChromaMouse(UChromaDevice):
 
     @property
     def polling_rate(self) -> 'PollingRate':
-        return None
+        """
+        Get the current polling rate
+        """
+        value = self.run_with_result(UChromaMouse.Command.GET_POLLING_RATE)
+        if value is None:
+            return UChromaMouse.PollingRate.INVALID
+
+        return UChromaMouse.PollingRate(value[0])
 
 
     @polling_rate.setter
     def polling_rate(self, rate: PollingRate):
-        pass
+        """
+        Set the polling rate
+        """
+        self.run_command(UChromaMouse.Command.SET_POLLING_RATE, rate)
 
 
     @property
@@ -120,12 +131,28 @@ class UChromaMouse(UChromaDevice):
 
     @property
     def dpi_xy(self) -> tuple:
-        return None
+        """
+        Get an (x, y) tuple of the current device DPI
+        """
+        value = self.run_with_result(UChromaMouse.Command.GET_DPI_XY)
+        if value is None:
+            return (-1, -1)
+
+        return struct.unpack('>HH', value[1:5])
 
 
     @dpi_xy.setter
-    def dpi_xy(self, x, y):
-        pass
+    def dpi_xy(self, dpi):
+        """
+        Set the (x, y) device DPI
+        """
+        args = None
+        if isinstance(args, tuple):
+            args = struct.pack('>HH', dpi[0], dpi[1])
+        else:
+            args = struct.pack('>H', dpi)
+
+        self.run_with_result(UChromaMouse.Command.SET_DPI_XY, 0x01, args)
 
 
     def set_dock_charge_effect(self, enable: bool) -> bool:
