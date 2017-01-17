@@ -1,6 +1,7 @@
 """
 Various helper functions that are used across the library.
 """
+import math
 import struct
 import time
 
@@ -242,3 +243,33 @@ def set_bits(value: int, *bits) -> int:
 
     return value
 
+
+def lerp(start: float, end: float, amount: float) -> float:
+    """
+    Linear interpolation
+
+    Return a value between start and stop at the requested percentage
+
+    :param start: Range start
+    :param end: Range end
+    :param amount: Position in range (0.0 - 1.0)
+
+    :return: The interpolated value
+    """
+    return start + (end - start) * amount
+
+
+def lerp_degrees(start: float, end: float, amount: float) -> float:
+    """
+    Linear interpolation between angles
+
+    :param start: Range start angle in degrees
+    :param end: Range end angle in degrees
+    :param amount: Angle in range (0.0 - 1.0)
+
+    :return: The interpolated angle in degrees
+    """
+    start_r = math.radians(start)
+    end_r = math.radians(end)
+    delta = math.atan2(math.sin(end_r - start_r), math.cos(end_r - start_r))
+    return (math.degrees(start_r + delta * amount) + 360.0) % 360.0

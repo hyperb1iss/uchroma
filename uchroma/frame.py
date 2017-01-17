@@ -5,6 +5,7 @@ import time
 import numpy as np
 from grapefruit import Color
 
+from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.util import to_color, to_rgb
 
@@ -140,7 +141,7 @@ class Frame(object):
         return to_color(tuple(self._matrix[row][col]))
 
 
-    def put(self, row: int, col: int, *color, blend: float=None) -> 'Frame':
+    def put(self, row: int, col: int, *color, blend: bool=False) -> 'Frame':
         """
         Set the color of an individual pixel
 
@@ -152,8 +153,8 @@ class Frame(object):
         """
         count = min(len(color) + col, self._width - col)
         rgb = color[:count]
-        if blend is not None:
-            rgb = [x.ColorWithAlpha(blend).AlphaBlend(to_color(self.get(row, col))) for x in rgb]
+        if blend:
+            rgb = [ColorUtils.composite(x, self.get(row, col)) for x in rgb]
 
         self._matrix[row][col:col+count] = to_rgb(rgb)
 

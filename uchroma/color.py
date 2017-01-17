@@ -4,7 +4,7 @@ import random
 
 from enum import Enum
 
-from uchroma.util import colorarg, to_rgb
+from uchroma.util import colorarg, lerp, lerp_degrees, to_rgb
 
 from grapefruit import Color
 
@@ -33,9 +33,9 @@ class ColorUtils(object):
 
     @staticmethod
     @colorarg('color1', 'color2')
-    def lab_gradient(color1: Color, color2: Color, steps: int=100, loop=False) -> list:
+    def hsv_gradient(color1: Color, color2: Color, steps: int) -> list:
         """
-        Generate a gradient between two points in Lab colorspace
+        Generate a gradient between two points in HSV colorspace
 
         :param color1: Starting color
         :param color2: Ending color
@@ -44,53 +44,56 @@ class ColorUtils(object):
 
         :return: List of colors in the gradient
         """
-        lab1 = color1.lab
-        lab2 = color2.lab
-        gradient = []
-        for i in range(0, steps):
-            alpha = float(i) / (steps - 1)
-            L = (1 - alpha) * lab1[0] + alpha * lab2[0]
-            a = (1 - alpha) * lab1[1] + alpha * lab2[1]
-            b = (1 - alpha) * lab1[2] + alpha * lab2[2]
-            gradient.append(Color.NewFromLab(L, a, b))
+        start = color1.hsv
+        end = color2.hsv
 
-        if loop:
-            gradient.extend(gradient[::-1])
+        gradient = []
+        for x in range(0, steps):
+            pos = float(x) / float(steps - 1)
+            h = lerp_degrees(start[0], end[0], pos)
+            s = lerp(start[1], end[1], pos)
+            v = lerp(start[2], end[2], pos)
+            a = lerp(color1.alpha, color2.alpha, pos)
+
+            gradient.append(Color.NewFromHsv(h, s, v, alpha=a))
 
         return gradient
+
 
 
     @staticmethod
-    @colorarg('color')
-    def hue_gradient(color: Color, to_hue: float, steps: int=100, loop=False) -> list:
-        """
-        Generate a gradient by rotating the hue
+    def _generator(gradient: list, randomize: bool=False, alternate: bool=False, rgb: bool=False):
+        grad = gradient[:]
 
-        :param color: Starting color
-        :param to_hue: Ending hue
-        :param steps: Length of the gradient
-        :param loop: If the gradient should "loop" back around to it's starting point
+        if not randomize:
+            grad.extend(grad[::-1])
 
-        :return: List of colors in the gradient
-        """
-        gradient = []
-        from_hue = color.hue
+        if rgb:
+            grad = [to_rgb(x) for x in grad]
 
-        for i in range(0, steps):
-            alpha = float(i) / (steps - 1)
-            hue = (1 - alpha) * from_hue + alpha * to_hue
-            gradient.append(color.ColorWithHue(hue))
+        if randomize:
+            while True:
+                yield random.choice(grad)
+        else:
+            cycle = itertools.cycle(grad)
+            cycle2 = None
+            if alternate:
+                mid = int(len(grad) / 2)
+                grad2 = grad[mid:]
+                grad2.extend(grad[:mid])
+                cycle2 = itertools.cycle(grad2)
 
-        if loop:
-            gradient.extend(gradient[::-1])
+            while True:
+                yield next(cycle)
+                if alternate:
+                    yield next(cycle2)
 
-        return gradient
 
 
     @staticmethod
     @colorarg('color', 'base_color')
     def scheme_generator(color=None, base_color=None, randomize: bool=False,
-                         steps: int=10, rgb: bool=False):
+                         alternate: bool=False, steps: int=11, rgb: bool=False):
         """
         Generator which produces a continuous stream of colors based on a
         color scheme of two overlapping colors.
@@ -107,20 +110,11 @@ class ColorUtils(object):
         if base_color is not None and color is not None:
             c0, c1 = color.AnalogousScheme(angle=15, mode='rgb')
         elif base_color is not None:
-            c0, c1 = base_color.TriadicScheme(angle=180, mode='rgb')
+            c0, c1 = base_color.TriadicScheme(angle=160, mode='rgb')
 
-        gradient = ColorUtils.hue_gradient(c0, c1.hue, steps, not randomize)
+        gradient = ColorUtils.hsv_gradient(c0, c1, steps)
 
-        if rgb:
-            gradient = [to_rgb(x) for x in gradient]
-
-        if randomize:
-            while True:
-                yield random.choice(gradient)
-        else:
-            cycle = itertools.cycle(gradient)
-            while True:
-                yield next(cycle)
+        return ColorUtils._generator(gradient, randomize, alternate, rgb)
 
 
     @staticmethod
@@ -149,23 +143,22 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def rainbow_generator(steps: int=64, rgb: bool=False):
+    def rainbow_generator(randomize: bool=False, alternate: bool=False,
+                          steps: int=33, rgb: bool=False):
         """
         Generate a smooth rainbow gradient
 
         :param steps: Length or smoothness of the gradient
         :param rgb: True if RGB tuples should be generated
+        :param alternate: If alternating values (moving in opposite directions
+                          should be returned on subsequent calls
 
         :return: generator
         """
         gradient = ColorUtils.interference(steps)
-        if rgb:
-            gradient = [to_rgb(x) for x in gradient]
 
-        it = itertools.cycle(gradient)
+        return ColorUtils._generator(gradient, randomize, alternate, rgb)
 
-        while True:
-            yield next(it)
 
     @staticmethod
     def random_generator(rgb: bool=False):
@@ -187,3 +180,41 @@ class ColorUtils(object):
                 yield to_rgb(value)
             else:
                 yield value
+
+
+    @staticmethod
+    def composite_alpha(fg_alpha: float, bg_alpha: float) -> float:
+        """
+        Blend alpha
+        """
+        return 1.0 - (((1.0 - bg_alpha) * (1.0 - fg_alpha)))
+
+
+    @staticmethod
+    def composite_value(fg_color: float, fg_alpha: float, bg_color: float,
+                        bg_alpha: float, a: float) -> float:
+        """
+        Blend component
+        """
+        if a == 0:
+            return 0
+        return ((fg_color * fg_alpha) + (bg_color * bg_alpha * (1.0 - fg_alpha))) / (a)
+
+
+    @staticmethod
+    @colorarg('fg', 'bg')
+    def composite(fg: Color, bg: Color) -> Color:
+        """
+        Blends two colors, including alpha
+
+        :param fg: Foreground color
+        :param bg: Background color
+
+        :return: The blended color
+        """
+        alpha = ColorUtils.composite_alpha(fg.alpha, bg.alpha)
+
+        rgb = [ColorUtils.composite_value(fg_rgb, fg.alpha, bg_rgb, bg.alpha, alpha) \
+            for fg_rgb, bg_rgb in zip(fg.rgb, bg.rgb)]
+
+        return Color.NewFromRgb(*rgb, alpha)
