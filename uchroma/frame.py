@@ -9,7 +9,7 @@ from skimage import draw
 from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.models import Quirks
-from uchroma.util import clamp, colorarg, to_color, to_rgb
+from uchroma.util import clamp, colorarg, to_color
 
 
 class Frame(object):
@@ -57,7 +57,7 @@ class Frame(object):
         self._anim_task = None
         self._callback = None
         self._running = False
-        self._matrix = np.zeros(shape=(height, width, 3), dtype=np.uint8)
+        self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float32)
 
         self.set_base_color(base_color)
 
@@ -110,6 +110,7 @@ class Frame(object):
         return self._matrix
 
 
+    @colorarg('color')
     def set_base_color(self, color) -> 'Frame':
         """
         Sets the background color of this Frame
@@ -117,9 +118,9 @@ class Frame(object):
         :param color: Desired background color
         """
         if color is None:
-            self._base_color = None
+            self._base_color = Color.NewFromRgb(0, 0, 0)
         else:
-            self._base_color = to_rgb(color)
+            self._base_color = color
 
         return self
 
@@ -130,11 +131,7 @@ class Frame(object):
 
         Defaults to black if no background color is set.
         """
-        if self._base_color is None:
-            self._matrix.fill(0)
-        else:
-            for row in range(0, self._height):
-                self._matrix[row] = [self._base_color] * self._width
+        self._matrix.fill(0)
 
         return self
 
@@ -152,7 +149,7 @@ class Frame(object):
 
 
     @colorarg('color')
-    def put(self, row: int, col: int, color, blend: bool=False) -> 'Frame':
+    def put(self, row: int, col: int, color: Color) -> 'Frame':
         """
         Set the color of an individual pixel
 
@@ -162,10 +159,7 @@ class Frame(object):
 
         :return: This Frame instance
         """
-        if blend:
-            color = ColorUtils.composite(color, self.get(row, col))
-
-        self._matrix[row][col] = to_rgb(color)
+        Frame._set_color(self._matrix, (np.atleast_1d(row), np.atleast_1d(col)), tuple(color))
 
         return self
 
@@ -209,12 +203,14 @@ class Frame(object):
         self._driver.custom_frame()
 
 
+    def _as_img(self):
+        return ColorUtils.rgba2rgb(self._matrix, self._base_color.rgb)
+
+
     def _set_frame_data_single(self, frame_id: int):
         width = min(self._width, Frame.MAX_WIDTH)
-        data = self._matrix[0][:width].data.tobytes()
-
         self._driver.run_command(Frame.Command.SET_FRAME_DATA_SINGLE,
-                                 0, width, data,
+                                 0, width, self._as_img()[0][:width].tobytes(),
                                  transaction_id=0x80)
 
 
@@ -225,8 +221,10 @@ class Frame(object):
         if self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
             tid = 0x80
 
+        img = self._as_img()
+
         for row in range(0, self._height):
-            data = self._matrix[row][:width].data.tobytes()
+            data = img[row][:width].tobytes()
             remaining = self._height - row - 1
 
             self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX,
@@ -294,8 +292,8 @@ class Frame(object):
 
 
     @colorarg('color')
-    def circle(self, row: int, col: int, radius: float, color: Color,
-               fill: bool=False, blend: bool=False) -> 'Frame':
+    def circle(self, row: int, col: int, radius: float,
+               color: Color, fill: bool=False) -> 'Frame':
         """
         Draw a circle centered on the specified row and column,
         with the given radius.
@@ -304,35 +302,23 @@ class Frame(object):
         :param col: Center column of circle
         :param radius: Radius of circle
         :param color: Color to draw with
-        :param colorizer: Optional color function to apply for each pixel
         :param fill: True if the circle should be filled
-        :param blend: True if the color should be blended into the current color
 
         :return: This frame instance
         """
-        if color is None: # and colorizer is None:
-            raise ValueError('Color or colorizer must be specified.')
-
-        rr = cc = aa = None
         if fill:
             rr, cc = draw.circle(row, col, round(radius), shape=self._matrix.shape)
+            Frame._set_color(self._matrix, (rr, cc), tuple(color))
+
         else:
             rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self._matrix.shape)
-
-        draw.set_color(self._matrix, (rr, cc), color.intTuple, aa)
-
-        #for y, x, a in zip(rr.flatten(), cc.flatten(), aa.flatten()):
-        #    if colorizer is not None:
-        #        color = colorizer((y, x, a))
-        #        self.put(y, x, color, blend=blend)
-
+            Frame._set_color(self._matrix, (rr, cc), tuple(color), aa)
 
         return self
 
 
     @colorarg('color')
-    def line(self, row1: int, col1: int, row2: int, col2: int, color: Color=None,
-             colorizer=None, blend: bool=False) -> 'Frame':
+    def line(self, row1: int, col1: int, row2: int, col2: int, color: Color=None) -> 'Frame':
         """
         Draw a line between two points
 
@@ -341,23 +327,51 @@ class Frame(object):
         :param row2: End row
         :param col2: End column
         :param color: Color to draw with
-        :param colorizer: Optional color function to apply for each pixel
-        :param blend: True if the color should be blended into the current color
         """
-        if color is None and colorizer is None:
-            raise ValueError('Color or colorizer must be specified.')
+        rr, cc, aa = draw.line_aa(clamp(0, self.height, row1), clamp(0, self.width, col1),
+                                  clamp(0, self.height, row2), clamp(0, self.width, col2))
 
-
-        rr, cc = draw.line(clamp(0, self.height, row1), clamp(0, self.width, col1),
-                           clamp(0, self.height, row2), clamp(0, self.width, col2))
-
-        for y, x in zip(rr.flatten(), cc.flatten()):
-            if colorizer is not None:
-                color = colorizer((y, x))
-
-            self.put(y, x, color, blend=blend)
+        Frame._set_color(self._matrix, (rr, cc, aa), tuple(color), aa)
 
         return self
+
+
+    # a few methods pulled from skimage-dev for blending support
+
+    @staticmethod
+    def _coords_inside_image(rr, cc, shape, val=None):
+        mask = (rr >= 0) & (rr < shape[0]) & (cc >= 0) & (cc < shape[1])
+        if val is None:
+            return rr[mask], cc[mask]
+        else:
+            return rr[mask], cc[mask], val[mask]
+
+
+    @staticmethod
+    def _set_color(img, coords, color, alpha=1):
+        rr, cc = coords
+
+        if img.ndim == 2:
+            img = img[..., np.newaxis]
+
+        color = np.array(color, ndmin=1, copy=False)
+
+        if img.shape[-1] != color.shape[-1]:
+            raise ValueError('Color shape ({}) must match last '
+                             'image dimension ({}).'.format(color.shape[0],
+                                                            img.shape[-1]))
+
+        if np.isscalar(alpha):
+            alpha = np.ones_like(rr) * alpha
+
+        rr, cc, alpha = Frame._coords_inside_image(rr, cc, img.shape, val=alpha)
+
+        alpha = alpha[..., np.newaxis]
+
+        color = color * alpha
+        vals = img[rr, cc] * (1 - alpha)
+
+        img[rr, cc] = vals + color
 
 
     @asyncio.coroutine

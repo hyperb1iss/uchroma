@@ -53,9 +53,10 @@ def rgb_from_tuple(arg: tuple) -> Color:
     :return: The Color object
     """
     if len(arg) >= 3:
-        return Color.NewFromRgb(clamp(arg[0], 0, 255) / 255.0,
-                                clamp(arg[1], 0, 255) / 255.0,
-                                clamp(arg[2], 0, 255) / 255.0)
+        if all(isinstance(n, int) for n in arg):
+            return Color.NewFromRgb(*Color.IntTupleToRgb(arg))
+        elif all(isinstance(n, float) for n in arg):
+            return Color.NewFromRgb(*arg)
 
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
 
@@ -69,6 +70,7 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
     :return: Tuple of RGB ints
     """
     if len(arg) >= 3:
+
         return tuple([clamp(round(x), 0, 255) for x in arg[:3]])
 
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))

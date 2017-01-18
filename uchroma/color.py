@@ -4,7 +4,10 @@ import random
 
 from enum import Enum
 
+import numpy as np
+
 from uchroma.util import colorarg, lerp, lerp_degrees, to_rgb
+from skimage.util import dtype
 
 from grapefruit import Color
 
@@ -31,6 +34,33 @@ class ColorUtils(object):
     Various helpers and utilities for working with colors
     """
 
+
+    @staticmethod
+    def _interpolate(start, end, amount: float) -> tuple:
+        h = lerp_degrees(start[0], end[0], amount)
+        s = lerp(start[1], end[1], amount)
+        v = lerp(start[2], end[2], amount)
+        a1 = a2 = 1.0
+        if len(start) > 3:
+            a1 = start[3]
+        if len(end) > 3:
+            a2 = end[3]
+        a = lerp(a1, a2, amount)
+        return (h, s, v, a)
+
+
+    @staticmethod
+    def _hsva(color: Color) -> Color:
+        return (*color.hsv, color.alpha)
+
+
+    @staticmethod
+    @colorarg('color1', 'color2')
+    def hsv_blend(color1: Color, color2: Color, amount: float) -> Color:
+        return Color.NewFromHsv(*ColorUtils._interpolate(
+            ColorUtils._hsva(color1), ColorUtils._hsva(color2), amount))
+
+
     @staticmethod
     @colorarg('color1', 'color2')
     def hsv_gradient(color1: Color, color2: Color, steps: int) -> list:
@@ -44,21 +74,15 @@ class ColorUtils(object):
 
         :return: List of colors in the gradient
         """
-        start = color1.hsv
-        end = color2.hsv
+        start = ColorUtils._hsva(color1)
+        end = ColorUtils._hsva(color2)
 
         gradient = []
         for x in range(0, steps):
-            pos = float(x) / float(steps - 1)
-            h = lerp_degrees(start[0], end[0], pos)
-            s = lerp(start[1], end[1], pos)
-            v = lerp(start[2], end[2], pos)
-            a = lerp(color1.alpha, color2.alpha, pos)
-
-            gradient.append(Color.NewFromHsv(h, s, v, alpha=a))
+            amount = float(x) / float(steps - 1)
+            gradient.append(Color.NewFromHsv(*ColorUtils._interpolate(start, end, amount)))
 
         return gradient
-
 
 
     @staticmethod
@@ -89,6 +113,30 @@ class ColorUtils(object):
                     yield next(cycle2)
 
 
+    @staticmethod
+    @colorarg('color', 'base_color')
+    def color_scheme(color=None, base_color=None, steps: int=11):
+        """
+        Generator which produces a continuous stream of colors based on a
+        color scheme of two overlapping colors.
+
+        :param color: The "top" color
+        :param base_color: The base or background color
+        :param randomize: True if values should be chosen at random instead of sequential
+        :param steps: Number of steps used for the gradient
+        :param rgb: True if we should return RGB tuples
+
+        :return: generator
+        """
+        c0 = c1 = None
+        if base_color is not None and color is not None:
+            c0, c1 = color.AnalogousScheme(angle=30, mode='rgb')
+
+        elif base_color is not None:
+            c0, c1 = base_color.TriadicScheme(angle=160, mode='rgb')
+
+        return ColorUtils.hsv_gradient(c0, c1, steps)
+
 
     @staticmethod
     @colorarg('color', 'base_color')
@@ -106,14 +154,7 @@ class ColorUtils(object):
 
         :return: generator
         """
-        c0 = c1 = None
-        if base_color is not None and color is not None:
-            c0, c1 = color.AnalogousScheme(angle=15, mode='rgb')
-        elif base_color is not None:
-            c0, c1 = base_color.TriadicScheme(angle=160, mode='rgb')
-
-        gradient = ColorUtils.hsv_gradient(c0, c1, steps)
-
+        gradient = ColorUtils.color_scheme(color, base_color, steps)
         return ColorUtils._generator(gradient, randomize, alternate, rgb)
 
 
@@ -183,38 +224,14 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def composite_alpha(fg_alpha: float, bg_alpha: float) -> float:
-        """
-        Blend alpha
-        """
-        return 1.0 - (((1.0 - bg_alpha) * (1.0 - fg_alpha)))
+    def rgba2rgb(arr, background=(1, 1, 1)):
+        alpha = arr[..., -1]
+        channels = arr[..., :-1]
+        out = np.empty_like(channels)
 
+        for ichan in range(channels.shape[-1]):
+            out[..., ichan] = np.clip(
+                (1 - alpha) * background[ichan] + alpha * channels[..., ichan],
+                a_min=0, a_max=1)
 
-    @staticmethod
-    def composite_value(fg_color: float, fg_alpha: float, bg_color: float,
-                        bg_alpha: float, a: float) -> float:
-        """
-        Blend component
-        """
-        if a == 0:
-            return 0
-        return ((fg_color * fg_alpha) + (bg_color * bg_alpha * (1.0 - fg_alpha))) / (a)
-
-
-    @staticmethod
-    @colorarg('fg', 'bg')
-    def composite(fg: Color, bg: Color) -> Color:
-        """
-        Blends two colors, including alpha
-
-        :param fg: Foreground color
-        :param bg: Background color
-
-        :return: The blended color
-        """
-        alpha = ColorUtils.composite_alpha(fg.alpha, bg.alpha)
-
-        rgb = [ColorUtils.composite_value(fg_rgb, fg.alpha, bg_rgb, bg.alpha, alpha) \
-            for fg_rgb, bg_rgb in zip(fg.rgb, bg.rgb)]
-
-        return Color.NewFromRgb(*rgb, alpha)
+        return dtype.img_as_ubyte(out)
