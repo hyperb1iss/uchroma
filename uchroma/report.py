@@ -99,7 +99,7 @@ class RazerReport(object):
         self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 
-    def run(self, delay: float=None) -> bool:
+    def run(self, delay: float=None, timeout_cb=None) -> bool:
         """
         Run this report and retrieve the result from the hardware.
 
@@ -112,6 +112,7 @@ class RazerReport(object):
         the request and the response will be logged.
 
         :param delay: Time to delay between requests (defaults to 0.005 sec)
+        :param timeout_cb: Callback to run when a TIMEOUT is returned
 
         :return: The parsed result from the hardware
         """
@@ -136,12 +137,20 @@ class RazerReport(object):
                 resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
                 self._hexdump(resp, '<-- ')
                 if self._unpack_response(resp):
+                    if timeout_cb is not None:
+                        timeout_cb(self.status, None)
                     return True
 
                 if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
+                    self._logger.error("Command failed with status %s",
+                                       self.status.name)
                     return False
 
-                self._logger.debug("Retrying request due to status %s (%d)",
+                if timeout_cb is not None and self.status == Status.TIMEOUT:
+                    timeout_cb(self.status, self.result)
+                    return False
+
+                self._logger.warn("Retrying request due to status %s (%d)",
                                    self.status.name, retry_count)
 
                 time.sleep(0.1)

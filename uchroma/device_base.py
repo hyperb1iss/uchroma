@@ -5,7 +5,7 @@ import hidapi
 
 from wrapt import synchronized
 
-from uchroma.models import Model
+from uchroma.models import Hardware, Model, Quirks
 from uchroma.report import RazerReport
 from uchroma.util import RepeatingTimer
 from uchroma.version import __version__
@@ -41,14 +41,15 @@ class BaseUChromaDevice(object):
         self._serial_number = None
         self._firmware_version = None
 
-        self._defer_close = True
+        self._defer_close = model.hardware.has_matrix
 
         self._close_timer = RepeatingTimer(5.0, self.close, True)
+
+        self._offline = False
 
         self._input_devices = []
         if input_devices is not None:
             self._input_devices.extend(input_devices)
-
 
 
     def _close(self, force: bool=False):
@@ -80,7 +81,7 @@ class BaseUChromaDevice(object):
 
     def __del__(self):
         self._defer_close = False
-        self.close(True)
+        self._close(True)
 
 
     def _ensure_open(self):
@@ -89,7 +90,14 @@ class BaseUChromaDevice(object):
 
 
     def _get_report(self, command_class: int, command_id: int, data_size: int,
-                    *args, transaction_id: int=0xFF, remaining_packets: int=0x00) -> RazerReport:
+                    *args, transaction_id: None, remaining_packets: int=0x00) -> RazerReport:
+
+        if transaction_id is None:
+            if self.has_quirk(Quirks.TRANSACTION_CODE_3F):
+                transaction_id = 0x3F
+            else:
+                transaction_id = 0xFF
+
         report = RazerReport(self._dev, command_class, command_id, data_size,
                              transaction_id=transaction_id,
                              remaining_packets=remaining_packets)
@@ -122,6 +130,13 @@ class BaseUChromaDevice(object):
             self._close(True)
 
 
+    def _get_timeout_cb(self):
+        """
+        Getter for report timeout handler
+        """
+        return None
+
+
     @synchronized
     def run_with_result(self, command: BaseCommand, *args,
                         transaction_id: int=0xFF, delay: float=None,
@@ -152,7 +167,7 @@ class BaseUChromaDevice(object):
                                       remaining_packets=remaining_packets)
             result = None
 
-            if report.run(delay=delay):
+            if report.run(delay=delay, timeout_cb=self._get_timeout_cb()):
                 result = report.result
 
             return result
@@ -175,20 +190,19 @@ class BaseUChromaDevice(object):
         set the defer_close flag to True and close it manually when finished.
 
         :param command: The command to run
-
         :param args: The list of arguments to call the command with
         :type args: varies
-
         :param transaction_id: Transaction identified, defaults to 0xFF
+        :param timeout_cb: Callback to invoke on a timeout
 
         :return: True if the command was successful
         """
         try:
             self._ensure_open()
-            status = self._get_report(*command.value, *args, transaction_id=transaction_id,
-                                      remaining_packets=remaining_packets).run(delay=delay)
+            report = self._get_report(*command.value, *args, transaction_id=transaction_id,
+                                      remaining_packets=remaining_packets)
 
-            return status
+            return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
 
         finally:
             self._close()
@@ -263,6 +277,17 @@ class BaseUChromaDevice(object):
 
 
     @property
+    def is_offline(self) -> bool:
+        """
+        Some devices (such as wireless models) might be "offline" in that
+        the dock or other USB receiver might be plugged in, but the actual
+        device is switched off. In this case, we can't interact with it
+        but it will still enumerate.
+        """
+        return self._offline
+
+
+    @property
     def name(self) -> str:
         """
         The name of this device
@@ -271,9 +296,9 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def model(self) -> Enum:
+    def model(self) -> Hardware:
         """
-        The sub-enumeration of Model
+        The sub-enumeration of Hardware
         """
         return self._model.hardware
 
@@ -316,6 +341,13 @@ class BaseUChromaDevice(object):
         Get the uChroma version
         """
         return __version__
+
+
+    def has_quirk(self, quirk) -> bool:
+        """
+        True if the quirk is required for this device
+        """
+        return self.model.has_quirk(quirk)
 
 
     def reset(self) -> bool:

@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 
 import hidapi
@@ -8,8 +9,10 @@ from pyudev import Context, Monitor, MonitorObserver
 from uchroma.device import UChromaDevice
 from uchroma.headset import UChromaHeadset
 from uchroma.keyboard import UChromaKeyboard
-from uchroma.models import Model, RAZER_VENDOR_ID
-from uchroma.mouse import UChromaMouse
+from uchroma.models import Model, Quirks, RAZER_VENDOR_ID
+from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 class UChromaDeviceManager(object):
@@ -87,23 +90,32 @@ class UChromaDeviceManager(object):
                 if devinfo.interface_number != 0:
                     continue
 
-            pid = '%04x' % devinfo.product_id
-            key = '%04x:%s' % (devinfo.vendor_id, pid)
+            key = '%04x:%04x' % (devinfo.vendor_id, devinfo.product_id)
             if key in self._devices:
                 continue
 
-            if model.type == Model.Type.MOUSE:
-                self._devices[key] = \
-                        UChromaMouse(model, devinfo, self._get_input_devices(self._get_parent(pid)))
-            elif model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
-                self._devices[key] = \
-                        UChromaKeyboard(model, devinfo, self._get_input_devices(self._get_parent(pid)))
-            elif model.type == Model.Type.HEADSET:
-                self._devices[key] = UChromaHeadset(model, devinfo)
-            else:
-                self._devices[key] = UChromaDevice(model, devinfo)
+            self._devices[key] = self._create_device(model, devinfo)
 
             self._fire_callbacks('add', self._devices[key])
+
+
+    def _create_device(self, model, devinfo):
+        parent = self._get_parent(devinfo.product_id)
+
+        if model.type == Model.Type.MOUSE:
+            input_devs = self._get_input_devices(parent)
+            if model.has_quirk(Quirks.WIRELESS):
+                return UChromaWirelessMouse(model, devinfo, input_devs)
+            return UChromaMouse(model, devinfo, input_devs)
+
+        if model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
+            input_devs = self._get_input_devices(parent)
+            return UChromaKeyboard(model, devinfo, input_devs)
+
+        if model.type == Model.Type.HEADSET:
+            return UChromaHeadset(model, devinfo)
+
+        return UChromaDevice(model, devinfo)
 
 
     @property
@@ -122,9 +134,11 @@ class UChromaDeviceManager(object):
         return self._callbacks
 
 
-    def _get_parent(self, product_id: str):
+    def _get_parent(self, product_id: int):
+        pid = "%04x" % product_id
+
         devs = self._udev_context.list_devices(tag='uchroma', subsystem='usb',
-                                               ID_MODEL_ID=product_id)
+                                               ID_MODEL_ID=pid)
         for dev in devs:
             if dev['DEVTYPE'] == 'usb_device':
                 return dev

@@ -1,14 +1,12 @@
 import logging
-from enum import Enum
 
 import hidapi
 
-from uchroma.device_base import BaseCommand, BaseUChromaDevice
+from uchroma.device_base import BaseUChromaDevice
 from uchroma.frame import Frame
 from uchroma.fx import FX
 from uchroma.led import LED
-from uchroma.models import Model
-from uchroma.util import scale_brightness
+from uchroma.models import Hardware, Quirks
 
 
 class UChromaDevice(BaseUChromaDevice):
@@ -16,16 +14,7 @@ class UChromaDevice(BaseUChromaDevice):
     Class encapsulating all functionality available on standard Chroma devices
     """
 
-    # commands
-    class Command(BaseCommand):
-        """
-        Enumeration of standard commands not handled elsewhere
-        """
-        SET_BRIGHTNESS = (0x0e, 0x04, 0x02)
-        GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
-
-
-    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, model: Hardware, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaDevice, self).__init__(model, devinfo, input_devices)
 
         self._logger = logging.getLogger('uchroma.driver')
@@ -109,23 +98,24 @@ class UChromaDevice(BaseUChromaDevice):
         return self._frame_control
 
 
-    def _set_blade_brightness(self, level: float):
-        return self.run_command(UChromaDevice.Command.SET_BRIGHTNESS, 0x01, scale_brightness(level))
+    def _set_brightness(self, level: float):
+        if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
+            self.get_led(LED.Type.SCROLL_WHEEL).brightness = level
+
+        elif self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
+            self.get_led(LED.Type.LOGO).brightness = level
+
+        else:
+            self.get_led(LED.Type.BACKLIGHT).brightness = level
 
 
-    def _get_blade_brightness(self) -> float:
-        value = self.run_with_result(UChromaDevice.Command.GET_BRIGHTNESS)
+    def _get_brightness(self) -> float:
+        if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
+            return self.get_led(LED.Type.SCROLL_WHEEL).brightness
 
-        return scale_brightness(int(value[1]), True)
+        if self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
+            return self.get_led(LED.Type.LOGO).brightness
 
-
-    def _set_mouse_brightness(self, level: float):
-        self.get_led(LED.Type.BACKLIGHT).brightness = level
-        self.get_led(LED.Type.LOGO).brightness = level
-        self.get_led(LED.Type.SCROLL_WHEEL).brightness = level
-
-
-    def _get_mouse_brightness(self) -> float:
         return self.get_led(LED.Type.BACKLIGHT).brightness
 
 
@@ -165,12 +155,10 @@ class UChromaDevice(BaseUChromaDevice):
         """
         The current brightness level of the device lighting
         """
-        if self._model.type == Model.Type.LAPTOP:
-            return self._get_blade_brightness()
-        elif self._model.type == Model.Type.MOUSE:
-            return self._get_mouse_brightness()
-        else:
-            return self.get_led(LED.Type.BACKLIGHT).brightness
+        if self._suspended:
+            return self._last_brightness
+
+        return self._get_brightness()
 
 
     @brightness.setter
@@ -182,12 +170,8 @@ class UChromaDevice(BaseUChromaDevice):
         """
         if self._suspended:
             self._last_brightness = level
-        elif self._model.type == Model.Type.LAPTOP:
-            self._set_blade_brightness(level)
-        elif self._model.type == Model.Type.MOUSE:
-            self._set_mouse_brightness(level)
         else:
-            self.get_led(LED.Type.BACKLIGHT).brightness = level
+            self._set_brightness(level)
 
 
     def reset(self) -> bool:

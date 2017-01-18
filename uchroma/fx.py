@@ -3,6 +3,7 @@ from enum import Enum
 from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.led import LED
+from uchroma.models import Model
 from uchroma.util import colorarg
 
 from grapefruit import Color
@@ -103,8 +104,9 @@ class FX(object):
         self._driver = driver
 
 
-    def _set_effect(self, effect: Type, *args) -> bool:
-        return self._driver.run_command(FX.Command.SET_EFFECT, effect, *args)
+    def _set_effect(self, effect: Type, *args, transaction_id=None) -> bool:
+        return self._driver.run_command(FX.Command.SET_EFFECT, effect, *args,
+                                        transaction_id=transaction_id)
 
 
     def _set_effect_extended(self, effect: ExtendedType, *args) -> bool:
@@ -344,7 +346,14 @@ class FX(object):
 
         :return: True if successful
         """
-        return self._set_effect(FX.Type.CUSTOM_FRAME, 0x01)
+        varstore = 0x01
+        tid = None
+
+        # FIXME: This doesn't work.
+        if self._driver.device_type == Model.Type.MOUSE:
+            varstore = 0x00
+            tid = 0x80
+        return self._set_effect(FX.Type.CUSTOM_FRAME, varstore)
 
 
     @staticmethod

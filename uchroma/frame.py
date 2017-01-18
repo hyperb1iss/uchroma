@@ -8,6 +8,7 @@ from skimage import draw
 
 from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
+from uchroma.models import Quirks
 from uchroma.util import clamp, colorarg, to_color, to_rgb
 
 
@@ -36,7 +37,8 @@ class Frame(object):
         """
         Enumeration of raw hardware command data
         """
-        SET_FRAME_DATA = (0x03, 0x0B, None)
+        SET_FRAME_DATA_MATRIX = (0x03, 0x0B, None)
+        SET_FRAME_DATA_SINGLE = (0x03, 0x0C, None)
 
 
     def __init__(self, driver: BaseUChromaDevice, width: int, height: int,
@@ -58,10 +60,12 @@ class Frame(object):
         self._matrix = np.zeros(shape=(height, width, 3), dtype=np.uint8)
 
         self.set_base_color(base_color)
-        self.reset()
 
 
     def __del__(self):
+        if self._driver is not None:
+            self._driver.defer_close = False
+
         self.stop_animation()
 
 
@@ -147,7 +151,8 @@ class Frame(object):
         return to_color(tuple(self._matrix[row][col]))
 
 
-    def put(self, row: int, col: int, *color, blend: bool=False) -> 'Frame':
+    @colorarg('color')
+    def put(self, row: int, col: int, color, blend: bool=False) -> 'Frame':
         """
         Set the color of an individual pixel
 
@@ -157,12 +162,10 @@ class Frame(object):
 
         :return: This Frame instance
         """
-        count = min(len(color) + col, self._width - col)
-        rgb = color[:count]
         if blend:
-            rgb = [ColorUtils.composite(x, self.get(row, col)) for x in rgb]
+            color = ColorUtils.composite(color, self.get(row, col))
 
-        self._matrix[row][col:col+count] = to_rgb(rgb)
+        self._matrix[row][col] = to_rgb(color)
 
         return self
 
@@ -206,18 +209,40 @@ class Frame(object):
         self._driver.custom_frame()
 
 
-    def _set_frame_data(self, frame_id: int=None):
-        if frame_id is None:
-            frame_id = Frame.DEFAULT_FRAME_ID
-
+    def _set_frame_data_single(self, frame_id: int):
         width = min(self._width, Frame.MAX_WIDTH)
+        data = self._matrix[0][:width].data.tobytes()
+
+        self._driver.run_command(Frame.Command.SET_FRAME_DATA_SINGLE,
+                                 0, width, data,
+                                 transaction_id=0x80)
+
+
+    def _set_frame_data_matrix(self, frame_id: int):
+        width = min(self._width, Frame.MAX_WIDTH)
+
+        tid = None
+        if self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
+            tid = 0x80
 
         for row in range(0, self._height):
             data = self._matrix[row][:width].data.tobytes()
             remaining = self._height - row - 1
-            self._driver.run_command(Frame.Command.SET_FRAME_DATA, frame_id, row, 0,
-                                     width, data, transaction_id=0x80,
+
+            self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX,
+                                     frame_id, row, 0, width, data,
+                                     transaction_id=tid,
                                      remaining_packets=remaining)
+
+
+    def _set_frame_data(self, frame_id: int=None):
+        if frame_id is None:
+            frame_id = Frame.DEFAULT_FRAME_ID
+
+        if self._height == 1:
+            self._set_frame_data_single(frame_id)
+        else:
+            self._set_frame_data_matrix(frame_id)
 
 
     def update(self, frame_id: int=None):
@@ -269,8 +294,8 @@ class Frame(object):
 
 
     @colorarg('color')
-    def circle(self, row: int, col: int, radius: float, color: Color=None,
-               colorizer=None, fill: bool=False, blend: bool=False) -> 'Frame':
+    def circle(self, row: int, col: int, radius: float, color: Color,
+               fill: bool=False, blend: bool=False) -> 'Frame':
         """
         Draw a circle centered on the specified row and column,
         with the given radius.
@@ -285,20 +310,22 @@ class Frame(object):
 
         :return: This frame instance
         """
-        if color is None and colorizer is None:
+        if color is None: # and colorizer is None:
             raise ValueError('Color or colorizer must be specified.')
 
-        rr = cc = None
+        rr = cc = aa = None
         if fill:
             rr, cc = draw.circle(row, col, round(radius), shape=self._matrix.shape)
         else:
-            rr, cc = draw.circle_perimeter(row, col, round(radius), shape=self._matrix.shape)
+            rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self._matrix.shape)
 
-        for y, x in zip(rr.flatten(), cc.flatten()):
-            if colorizer is not None:
-                color = colorizer(y, x)
+        draw.set_color(self._matrix, (rr, cc), color.intTuple, aa)
 
-            self.put(y, x, color, blend=blend)
+        #for y, x, a in zip(rr.flatten(), cc.flatten(), aa.flatten()):
+        #    if colorizer is not None:
+        #        color = colorizer((y, x, a))
+        #        self.put(y, x, color, blend=blend)
+
 
         return self
 
@@ -326,7 +353,7 @@ class Frame(object):
 
         for y, x in zip(rr.flatten(), cc.flatten()):
             if colorizer is not None:
-                color = colorizer(y, x)
+                color = colorizer((y, x))
 
             self.put(y, x, color, blend=blend)
 
@@ -380,6 +407,8 @@ class Frame(object):
         else:
             self._fps = 1.0 / fps
 
+        self._driver.defer_close = True
+
         self.reset()
         self._running = True
         self._anim_task = asyncio.ensure_future(self._frame_loop())
@@ -390,3 +419,5 @@ class Frame(object):
             self._running = False
             self._anim_task.cancel()
             self.reset()
+
+            self._driver.defer_close = False

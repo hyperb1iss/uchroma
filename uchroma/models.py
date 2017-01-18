@@ -1,38 +1,45 @@
-from enum import Enum
+from collections import namedtuple
+from enum import Enum, IntEnum
 
 
 RAZER_VENDOR_ID = 0x1532
 
-
-class Hardware(Enum):
+class Quirks(IntEnum):
     """
-    Base enumeration type
+    Various "quirks" that are found across hardware models.
     """
-    def __init__(self, product_id, product_name, matrix_dims=None):
-        self._product_id = product_id
-        self._product_name = product_name
-        self._matrix_dims = matrix_dims
 
-    @property
-    def product_id(self) -> int:
-        """
-        The USB product id
-        """
-        return self._product_id
+    # Always use transaction code 0x3F
+    TRANSACTION_CODE_3F = 1
 
-    @property
-    def product_name(self) -> str:
-        """
-        The name of this product
-        """
-        return self._product_name
+    # Use "extended" commands
+    EXTENDED_FX_CMDS = 2
 
-    @property
-    def matrix_dims(self) -> bool:
-        """
-        Addressable key matrix matrix_dims. None if unsupported
-        """
-        return self._matrix_dims
+    # Control device brightness with the scroll wheel LED
+    SCROLL_WHEEL_BRIGHTNESS = 3
+
+    # Device has charge and dock controls
+    WIRELESS = 4
+
+    # Needs transaction code 0x80 for custom frame data
+    CUSTOM_FRAME_80 = 5
+
+    # Control device brightness with the logo LED
+    LOGO_LED_BRIGHTNESS = 6
+
+    # Device has individual "profile" LEDs
+    PROFILE_LEDS = 7
+
+    # Device only supports spectrum effect on the backlight LED
+    BACKLIGHT_LED_FX_ONLY = 8
+
+
+_H = namedtuple('_H',
+                ['product_id', 'product_name', 'matrix_dims', 'quirks'])
+_H.__new__.__defaults__ = (None,) * len(_H._fields)
+
+
+class Hardware(_H, Enum):
 
     @property
     def has_matrix(self) -> bool:
@@ -40,6 +47,26 @@ class Hardware(Enum):
         True if the device has an addressable key matrix
         """
         return self.matrix_dims is not None
+
+
+    def has_quirk(self, *quirks) -> bool:
+        """
+        True if quirk is required for the device
+
+        :param quirks The quirks to check (varargs)
+
+        :return: True if the quirk is required
+        """
+        if self.quirks is None:
+            return False
+
+        for quirk in quirks:
+            if isinstance(self.quirks, (list, tuple)) and quirk in self.quirks:
+                return True
+            if self.quirks == quirk:
+                return True
+
+        return False
 
 
 class Headset(Hardware):
@@ -54,49 +81,90 @@ class Keyboard(Hardware):
     """
     Keyboards
     """
-    BLACKWIDOW_ULTIMATE_2012 = (0x010D, 'BlackWidow Ultimate 2012', (6, 22))
-    ANANSI = (0x010F, 'Anansi', None)
-    BLACKWIDOW_ULTIMATE_2013 = (0x011A, 'BlackWidow Ultimate 2013', (6, 22))
-    BLACKWIDOW_ORIGINAL = (0x011B, 'BlackWidow Classic', (6, 22))
-    BLACKWIDOW_CHROMA = (0x0203, 'BlackWidow Chroma', (6, 22))
-    TARTARUS_CHROMA = (0x0208, 'Tartarus Chroma', None)
-    BLACKWIDOW_CHROMA_TE = (0x0209, 'BlackWidow Chroma Tournament Edition', (6, 22))
-    BLACKWIDOW_ULTIMATE_2016 = (0x0214, 'BlackWidow Ultimate 2016', (6, 22))
-    BLACKWIDOW_X_CHROMA = (0x0216, 'BlackWidow X Chroma', (6, 22))
-    BLACKWIDOW_X_CHROMA_TE = (0x021A, 'BlackWidow X Chroma Tournament Edition', (6, 22))
-    ORNATA_CHROMA = (0x21e, 'Ornata Chroma', (6, 22))
+    BLACKWIDOW_ULTIMATE_2012 = \
+        _H(0x010D, 'BlackWidow Ultimate 2012', (6, 22),
+           quirks=(Quirks.LOGO_LED_BRIGHTNESS))
+    ANANSI = \
+        _H(0x010F, 'Anansi',
+           quirks=(Quirks.BACKLIGHT_LED_FX_ONLY))
+    BLACKWIDOW_ULTIMATE_2013 = \
+        _H(0x011A, 'BlackWidow Ultimate 2013', (6, 22),
+           quirks=(Quirks.LOGO_LED_BRIGHTNESS))
+    BLACKWIDOW_ORIGINAL = \
+        _H(0x011B, 'BlackWidow Classic', (6, 22),
+           quirks=(Quirks.LOGO_LED_BRIGHTNESS))
+    BLACKWIDOW_CHROMA = \
+        _H(0x0203, 'BlackWidow Chroma', (6, 22))
+    TARTARUS_CHROMA = \
+        _H(0x0208, 'Tartarus Chroma',
+           quirks=(Quirks.PROFILE_LEDS))
+    BLACKWIDOW_CHROMA_TE = \
+        _H(0x0209, 'BlackWidow Chroma Tournament Edition', (6, 22))
+    BLACKWIDOW_ULTIMATE_2016 = \
+        _H(0x0214, 'BlackWidow Ultimate 2016', (6, 22))
+    BLACKWIDOW_X_CHROMA = \
+        _H(0x0216, 'BlackWidow X Chroma', (6, 22))
+    BLACKWIDOW_X_CHROMA_TE = \
+        _H(0x021A, 'BlackWidow X Chroma Tournament Edition', (6, 22))
+    ORNATA_CHROMA = \
+        _H(0x21e, 'Ornata Chroma', (6, 22),
+           quirks=(Quirks.EXTENDED_FX_CMDS))
 
 
 class Laptop(Hardware):
     """
     Laptops
     """
-    BLADE_STEALTH = (0x0205, 'Blade Stealth', (6, 22))
-    BLADE_QHD = (0x020F, 'Blade Stealth (QHD)', (6, 22))
-    BLADE_PRO_LATE_2016 = (0x0210, 'Blade Pro (Late 2016)', (6, 25))
-    BLADE_STEALTH_LATE_2016 = (0x0220, 'Blade Stealth (Late 2016)', (6, 25))
+    BLADE_STEALTH = \
+        _H(0x0205, 'Blade Stealth', (6, 22))
+    BLADE_QHD = \
+        _H(0x020F, 'Blade Stealth (QHD)', (6, 22))
+    BLADE_PRO_LATE_2016 = \
+        _H(0x0210, 'Blade Pro (Late 2016)', (6, 25))
+    BLADE_STEALTH_LATE_2016 = \
+        _H(0x0220, 'Blade Stealth (Late 2016)', (6, 25))
+
+    def has_quirk(self, *quirks) -> bool:
+        if Quirks.CUSTOM_FRAME_80 in quirks:
+            return True
+
+        return super().has_quirk(*quirks)
 
 
 class Mouse(Hardware):
     """
     Mice
     """
-    IMPERATOR = (0x002F, 'Imperator 2012', None)
-    ABYSSUS = (0x0042, 'Abyssus 2014', None)
-    DEATHADDER_CHROMA = (0x0043, 'DeathAdder Chroma', None)
-    MAMBA_WIRED = (0x0044, 'Mamba (Wired)', (1, 15))
-    MAMBA_WIRELESS = (0x0045, 'Mamba (Wireless)', (1, 15))
-    MAMBA_TE_WIRED = (0x0046, 'Mamba Tournament Edition', (1, 16))
-    OROCHI_CHROMA = (0x0048, 'Orochi (Wired)', None)
-    NAGA_HEX_V2 = (0x0050, 'Naga Hex V2', None)
-    DEATHADDER_ELITE = (0x005C, 'DeathAdder Elite', None)
+    IMPERATOR = \
+        _H(0x002F, 'Imperator 2012')
+    ABYSSUS = \
+        _H(0x0042, 'Abyssus 2014')
+    DEATHADDER_CHROMA = \
+        _H(0x0043, 'DeathAdder Chroma')
+    MAMBA_WIRED = \
+        _H(0x0044, 'Mamba (Wired)', (1, 15))
+    MAMBA_WIRELESS = \
+        _H(0x0045, 'Mamba (Wireless)', (1, 15),
+           quirks=(Quirks.WIRELESS))
+    MAMBA_TE_WIRED = \
+        _H(0x0046, 'Mamba Tournament Edition', (1, 16))
+    OROCHI_CHROMA = \
+        _H(0x0048, 'Orochi (Wired)',
+           quirks=(Quirks.SCROLL_WHEEL_BRIGHTNESS))
+    NAGA_HEX_V2 = \
+        _H(0x0050, 'Naga Hex V2',
+           quirks=(Quirks.EXTENDED_FX_CMDS, Quirks.TRANSACTION_CODE_3F))
+    DEATHADDER_ELITE = \
+        _H(0x005C, 'DeathAdder Elite',
+           quirks=(Quirks.TRANSACTION_CODE_3F))
 
 
 class MousePad(Hardware):
     """
     Mouse pads
     """
-    FIREFLY = (0x0C00, 'Firefly')
+    FIREFLY = \
+        _H(0x0C00, 'Firefly')
 
 
 class Model(object):
@@ -181,13 +249,8 @@ class Model(object):
         return Model.Type[self._hardware.__class__.__name__.upper()]
 
 
-    @property
-    def quirks(self):
+    def has_quirk(self, quirk: Quirks) -> bool:
         """
-        Quirks applicable to this device
-
-        Will be used to implement device-specific behaviors
+        Checks if quick is required for this device
         """
-        quirks = []
-
-        return quirks
+        return self.hardware.has_quirk(quirk)
