@@ -224,7 +224,12 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def rgba2rgb(arr, background=(1, 1, 1)):
+    def rgba2rgb(arr, background=None):
+        if background is None:
+            background = (0, 0, 0)
+        else:
+            background = to_rgb(background)
+
         alpha = arr[..., -1]
         channels = arr[..., :-1]
         out = np.empty_like(channels)

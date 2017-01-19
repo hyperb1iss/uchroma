@@ -53,9 +53,11 @@ def rgb_from_tuple(arg: tuple) -> Color:
     :return: The Color object
     """
     if len(arg) >= 3:
+        if arg[0] is None:
+            return Color.NewFromRgb(0, 0, 0)
         if all(isinstance(n, int) for n in arg):
             return Color.NewFromRgb(*Color.IntTupleToRgb(arg))
-        elif all(isinstance(n, float) for n in arg):
+        if all(isinstance(n, float) for n in arg):
             return Color.NewFromRgb(*arg)
 
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
@@ -91,6 +93,9 @@ def to_color(arg) -> Color:
     if isinstance(arg, str):
         return Color.NewFromHtml(arg)
     if isinstance(arg, tuple) or isinstance(arg, list):
+        if arg[0] is None:
+            return None
+
         if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
                 or isinstance(arg[0], str) or isinstance(arg[0], Color):
             return [to_color(item) for item in arg]
@@ -112,6 +117,9 @@ def to_rgb(arg) -> tuple:
     if isinstance(arg, str):
         return Color.NewFromHtml(arg).intTuple[:3]
     if isinstance(arg, tuple) or isinstance(arg, list):
+        if arg[0] is None:
+            return (0, 0, 0)
+
         if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
                 or isinstance(arg[0], str) or isinstance(arg[0], Color):
             return [to_rgb(item) for item in arg]
