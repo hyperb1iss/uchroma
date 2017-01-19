@@ -1,10 +1,8 @@
-import asyncio
 import logging
-import time
 
 import numpy as np
 from grapefruit import Color
-from skimage import draw
+from skimage import draw, filters
 
 from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
@@ -31,7 +29,6 @@ class Frame(object):
 
     MAX_WIDTH = 24
     DEFAULT_FRAME_ID = 0xFF
-    DEFAULT_FPS = 30
 
     class Command(BaseCommand):
         """
@@ -41,47 +38,23 @@ class Frame(object):
         SET_FRAME_DATA_SINGLE = (0x03, 0x0C, None)
 
 
-    def __init__(self, driver: BaseUChromaDevice, width: int, height: int,
-                 base_color=None, fps: int=None):
+    def __init__(self, driver: BaseUChromaDevice, width: int, height: int):
         self._driver = driver
         self._width = width
         self._height = height
 
-        if fps is None:
-            self._fps = 1 / Frame.DEFAULT_FPS
-        else:
-            self._fps = 1 / fps
-
+        self._bg_color = None
         self._logger = logging.getLogger('uchroma.frame')
 
-        self._anim_task = None
-        self._callback = None
-        self._running = False
         self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float32)
-
-        self.set_base_color(base_color)
-
-
-    def __del__(self):
-        if self._driver is not None:
-            self._driver.defer_close = False
-
-        self.stop_animation()
 
 
     @property
-    def callback(self):
+    def device_name(self):
         """
-        Callback to invoke when a buffer needs to be drawn.
-        The callback should be an asyncio.coroutine which we will
-        yield from.
+        Get the current device name
         """
-        return self._callback
-
-
-    @callback.setter
-    def callback(self, callback):
-        self._callback = callback
+        return self._driver.name
 
 
     @property
@@ -110,19 +83,20 @@ class Frame(object):
         return self._matrix
 
 
-    @colorarg('color')
-    def set_base_color(self, color) -> 'Frame':
+    @property
+    def background_color(self) -> Color:
+        return self._bg_color
+
+
+    @background_color.setter
+    def background_color(self, color):
         """
         Sets the background color of this Frame
 
         :param color: Desired background color
         """
-        if color is None:
-            self._base_color = Color.NewFromRgb(0, 0, 0)
-        else:
-            self._base_color = color
-
-        return self
+        self._bg_color = to_color(color)
+        self.reset()
 
 
     def clear(self) -> 'Frame':
@@ -204,7 +178,7 @@ class Frame(object):
 
 
     def _as_img(self):
-        return ColorUtils.rgba2rgb(self._matrix, self._base_color.rgb)
+        return ColorUtils.rgba2rgb(self._matrix, self._bg_color)
 
 
     def _set_frame_data_single(self, frame_id: int):
@@ -337,6 +311,7 @@ class Frame(object):
 
 
     # a few methods pulled from skimage-dev for blending support
+    # remove these when 1.9 is released
 
     @staticmethod
     def _coords_inside_image(rr, cc, shape, val=None):
@@ -372,66 +347,3 @@ class Frame(object):
         vals = img[rr, cc] * (1 - alpha)
 
         img[rr, cc] = vals + color
-
-
-    @asyncio.coroutine
-    def _frame_callback(self) -> bool:
-        if not self._callback:
-            return False
-
-        try:
-            yield from self._callback(self.matrix)
-
-        except Exception as err:
-            self._logger.exception("Exception during animation", exc_info=err)
-            return False
-
-        return True
-
-
-    @asyncio.coroutine
-    def _frame_loop(self):
-        timestamp = time.perf_counter()
-
-        while self._running:
-            yield from self._frame_callback()
-
-            if not self._running:
-                break
-
-            self.update()
-
-            next_tick = time.perf_counter() - timestamp
-            if next_tick > self._fps:
-                next_tick = next_tick % self._fps
-            else:
-                next_tick = self._fps - next_tick
-
-            yield from asyncio.sleep(next_tick)
-
-            timestamp = time.perf_counter()
-
-
-    def start_animation(self, fps: int=None):
-        if self._running:
-            return
-
-        if fps is None:
-            self._fps = 1.0 / Frame.DEFAULT_FPS
-        else:
-            self._fps = 1.0 / fps
-
-        self._driver.defer_close = True
-
-        self.reset()
-        self._running = True
-        self._anim_task = asyncio.ensure_future(self._frame_loop())
-
-
-    def stop_animation(self):
-        if self._running:
-            self._running = False
-            self._anim_task.cancel()
-            self.reset()
-
-            self._driver.defer_close = False
