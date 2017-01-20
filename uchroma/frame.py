@@ -46,7 +46,7 @@ class Frame(object):
         self._bg_color = None
         self._logger = logging.getLogger('uchroma.frame')
 
-        self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float32)
+        self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float)
 
 
     @property
@@ -133,7 +133,8 @@ class Frame(object):
 
         :return: This Frame instance
         """
-        Frame._set_color(self._matrix, (np.atleast_1d(row), np.atleast_1d(col)), tuple(color))
+        Frame._set_color(self._matrix,
+            (np.atleast_1d(row), np.atleast_1d(col)), Frame._color_to_np(color))
 
         return self
 
@@ -265,9 +266,15 @@ class Frame(object):
         return self
 
 
+    def _draw(self, rr, cc, color, alpha):
+        if rr is None or rr.ndim == 0:
+            return
+        Frame._set_color(self._matrix, (rr, cc), Frame._color_to_np(color), alpha)
+
+
     @colorarg('color')
     def circle(self, row: int, col: int, radius: float,
-               color: Color, fill: bool=False) -> 'Frame':
+               color: Color, fill: bool=False, alpha=1.0) -> 'Frame':
         """
         Draw a circle centered on the specified row and column,
         with the given radius.
@@ -282,11 +289,39 @@ class Frame(object):
         """
         if fill:
             rr, cc = draw.circle(row, col, round(radius), shape=self._matrix.shape)
-            Frame._set_color(self._matrix, (rr, cc), tuple(color))
+            self._draw(rr, cc, color, alpha)
 
         else:
             rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self._matrix.shape)
-            Frame._set_color(self._matrix, (rr, cc), tuple(color), aa)
+            self._draw(rr, cc, color, aa)
+
+        return self
+
+
+    @colorarg('color')
+    def ellipse(self, row: int, col: int, radius_r: float, radius_c: float,
+                color: Color, fill: bool=False, alpha: float=1.0) -> 'Frame':
+        """
+        Draw an ellipse centered on the specified row and column,
+        with the given radiuses.
+
+        :param row: Center row of ellipse
+        :param col: Center column of ellipse
+        :param radius_r: Radius of ellipse on y axis
+        :param radius_c: Radius of ellipse on x axis
+        :param color: Color to draw with
+        :param fill: True if the circle should be filled
+
+        :return: This frame instance
+        """
+        if fill:
+            rr, cc = draw.ellipse(row, col, round(radius_r), round(radius_c), shape=self._matrix.shape)
+            self._draw(rr, cc, color, alpha)
+
+        else:
+            rr, cc = draw.ellipse_perimeter(row, col, round(radius_r), round(radius_c), 
+                                            shape=self._matrix.shape)
+            self._draw(rr, cc, color, alpha)
 
         return self
 
@@ -304,14 +339,19 @@ class Frame(object):
         """
         rr, cc, aa = draw.line_aa(clamp(0, self.height, row1), clamp(0, self.width, col1),
                                   clamp(0, self.height, row2), clamp(0, self.width, col2))
-
-        Frame._set_color(self._matrix, (rr, cc, aa), tuple(color), aa)
+        self._draw(rr, cc, color, alpha)
 
         return self
 
 
     # a few methods pulled from skimage-dev for blending support
     # remove these when 1.9 is released
+
+    @staticmethod
+    @colorarg('color')
+    def _color_to_np(color: Color):
+        return np.array([*color.rgb, color.alpha], dtype=np.float)
+
 
     @staticmethod
     def _coords_inside_image(rr, cc, shape, val=None):
@@ -333,8 +373,8 @@ class Frame(object):
 
         if img.shape[-1] != color.shape[-1]:
             raise ValueError('Color shape ({}) must match last '
-                             'image dimension ({}).'.format(color.shape[0],
-                                                            img.shape[-1]))
+                             'image dimension ({}). color=({})'.format(color.shape[0],
+                                                            img.shape[-1], color))
 
         if np.isscalar(alpha):
             alpha = np.ones_like(rr) * alpha
@@ -344,6 +384,8 @@ class Frame(object):
         alpha = alpha[..., np.newaxis]
 
         color = color * alpha
-        vals = img[rr, cc] * (1 - alpha)
+        vals = img[rr, cc] * ((1 - alpha) / 2)
 
-        img[rr, cc] = vals + color
+        img[rr, cc] = (vals + color) * 2
+
+

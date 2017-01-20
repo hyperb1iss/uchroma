@@ -121,7 +121,7 @@ class ColorUtils(object):
         color scheme of two overlapping colors.
 
         :param color: The "top" color
-        :param base_color: The base or background color
+        :param base_color: The base or bg_color color
         :param randomize: True if values should be chosen at random instead of sequential
         :param steps: Number of steps used for the gradient
         :param rgb: True if we should return RGB tuples
@@ -130,10 +130,10 @@ class ColorUtils(object):
         """
         c0 = c1 = None
         if base_color is not None and color is not None:
-            c0, c1 = color.AnalogousScheme(angle=30, mode='rgb')
+            c0, c1 = color.AnalogousScheme(angle=15)
 
         elif base_color is not None:
-            c0, c1 = base_color.TriadicScheme(angle=160, mode='rgb')
+            c0, c1 = ColorUtils.increase_contrast(base_color).TriadicScheme(angle=150)
 
         return ColorUtils.hsv_gradient(c0, c1, steps)
 
@@ -147,7 +147,7 @@ class ColorUtils(object):
         color scheme of two overlapping colors.
 
         :param color: The "top" color
-        :param base_color: The base or background color
+        :param base_color: The base or bg_color color
         :param randomize: True if values should be chosen at random instead of sequential
         :param steps: Number of steps used for the gradient
         :param rgb: True if we should return RGB tuples
@@ -224,11 +224,22 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def rgba2rgb(arr, background=None):
-        if background is None:
-            background = (0, 0, 0)
+    @colorarg('color')
+    def increase_contrast(color: Color) -> Color:
+        hsl = list(color.hsl)
+        if hsl[2] < 0.1 or hsl[2] > 0.7:
+            hsl[2] = 1.0 - hsl[2]
+            color = Color.NewFromHsl(*hsl, color.alpha)
+        return color
+
+
+    @staticmethod
+    @colorarg('bg_color')
+    def rgba2rgb(arr, bg_color=None):
+        if bg_color is None:
+            bg_color = np.array([0.0, 0.0, 0.0, 1.0])
         else:
-            background = to_rgb(background)
+            bg_color = np.array([*bg_color.rgb, bg_color.alpha])
 
         alpha = arr[..., -1]
         channels = arr[..., :-1]
@@ -236,7 +247,7 @@ class ColorUtils(object):
 
         for ichan in range(channels.shape[-1]):
             out[..., ichan] = np.clip(
-                (1 - alpha) * background[ichan] + alpha * channels[..., ichan],
+                (1 - alpha) * bg_color[ichan] + alpha * channels[..., ichan],
                 a_min=0, a_max=1)
 
         return dtype.img_as_ubyte(out)
