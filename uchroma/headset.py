@@ -3,12 +3,15 @@ import logging
 import hidapi
 
 from grapefruit import Color
+from wrapt import synchronized
 
 from uchroma.byte_args import ByteArgs
 from uchroma.color import Splotch
-from uchroma.device_base import BaseCommand, BaseUChromaDevice
+from uchroma.device_base import BaseUChromaDevice
 from uchroma.models import Headset
-from uchroma.util import colorarg, smart_delay, set_bits, scale_brightness, test_bit, to_byte, to_color, to_rgb
+from uchroma.types import BaseCommand
+from uchroma.util import colorarg, ColorType, smart_delay, set_bits, scale_brightness, \
+    test_bit, to_byte, to_color, to_rgb
 
 
 # Output report 4, input report 5
@@ -53,6 +56,7 @@ class EffectBits(object):
         self.breathe_double = test_bit(value, 4)
         self.breathe_triple = test_bit(value, 5)
 
+
     @property
     def value(self) -> int:
         """
@@ -60,6 +64,7 @@ class EffectBits(object):
         """
         return set_bits(0, self.on, self.breathe_single, self.spectrum,
                         self.sync, self.breathe_double, self.breathe_triple)
+
 
     @property
     def color_count(self) -> int:
@@ -75,6 +80,7 @@ class EffectBits(object):
         elif self.on == 1:
             return 1
         return 0
+
 
 
 class UChromaHeadset(BaseUChromaDevice):
@@ -117,17 +123,21 @@ class UChromaHeadset(BaseUChromaDevice):
             self._length = length
             self._address = address
 
+
         @property
         def destination(self):
             return self._destination
+
 
         @property
         def length(self):
             return self._length
 
+
         @property
         def address(self):
             return self._address
+
 
 
     def __init__(self, model: Headset, devinfo: hidapi.DeviceInfo):
@@ -159,6 +169,7 @@ class UChromaHeadset(BaseUChromaDevice):
         self._logger = logging.getLogger('uchroma.headset')
 
 
+
     @staticmethod
     def _pack_request(command: BaseCommand, *args) -> bytes:
         req = ByteArgs(size=REPORT_LENGTH_OUT)
@@ -179,13 +190,13 @@ class UChromaHeadset(BaseUChromaDevice):
             self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 
-    def run_command(self, command: BaseCommand, *args, defer_close: bool=False) -> bool:
+    @synchronized
+    def run_command(self, command: BaseCommand, *args) -> bool:
         """
         Run a command against the Kraken hardware
 
         :param command: The command tuple
         :param args: Argument list (varargs)
-        :param defer_close: True if we should leave the connection open
 
         :return: True if successful
         """
@@ -199,28 +210,26 @@ class UChromaHeadset(BaseUChromaDevice):
 
         except (OSError, IOError) as err:
             self._logger.exception('Caught exception running command', exc_info=err)
-            self.close()
 
         finally:
-            if not defer_close:
-                self.close()
+            self._close()
 
         return False
 
 
-    def run_with_result(self, command: BaseCommand, *args, defer_close: bool=False) -> bytes:
+    @synchronized
+    def run_with_result(self, command: BaseCommand, *args) -> bytes:
         """
         Run a command against the Kraken hardware and fetch the result
 
         :param command: The command tuple
         :param args: Argument list (varargs)
-        :param defer_close: True if we should leave the connection open
 
         :return: Raw response bytes
         """
         try:
-            if not self.run_command(command, *args, defer_close=True):
-                self.close()
+            if not self.run_command(command, *args):
+                self._close(True)
                 return None
 
             self._last_cmd_time = smart_delay(DELAY_TIME, self._last_cmd_time, 0)
@@ -238,11 +247,9 @@ class UChromaHeadset(BaseUChromaDevice):
 
         except (OSError, IOError) as err:
             self._logger.exception('Caught exception running command', exc_info=err)
-            self.close()
 
         finally:
-            if not defer_close:
-                self.close()
+            self._close()
 
         return None
 
@@ -251,16 +258,8 @@ class UChromaHeadset(BaseUChromaDevice):
         """
         Get the serial number from the hardware directly
         """
-        serial = None
-
-        value = self.run_with_result(UChromaHeadset.Command.GET_SERIAL)
-        if value is not None:
-            try:
-                serial = value.decode()
-            except UnicodeDecodeError:
-                serial = self.device_id
-
-        return serial
+        return self._decode_serial(
+            self.run_with_result(UChromaHeadset.Command.GET_SERIAL))
 
 
     def _get_firmware_version(self) -> str:
@@ -405,8 +404,8 @@ class UChromaHeadset(BaseUChromaDevice):
         return self._set_led_mode(bits)
 
 
-    @colorarg('color')
-    def static_color(self, color=None) -> bool:
+    @colorarg
+    def static(self, color: ColorType=None) -> bool:
         """
         Sets lighting to a static color
 
@@ -424,8 +423,10 @@ class UChromaHeadset(BaseUChromaDevice):
 
         return False
 
-    @colorarg('color1', 'color2', 'color3')
-    def breathe(self, color1=None, color2=None, color3=None, splotch: Splotch=None) -> bool:
+
+    @colorarg
+    def breathe(self, color1: ColorType=None, color2: ColorType=None,
+                color3: ColorType=None, splotch: Splotch=None) -> bool:
         """
         Breathing color effect. Accepts up to three colors on v2 hardware
 

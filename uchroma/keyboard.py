@@ -1,7 +1,7 @@
 import hidapi
 
 from uchroma.device import UChromaDevice
-from uchroma.device_base import BaseCommand
+from uchroma.types import BaseCommand
 from uchroma.models import Keyboard, Model
 
 
@@ -21,6 +21,7 @@ class UChromaKeyboard(UChromaDevice):
 
     def __init__(self, model: Keyboard, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaKeyboard, self).__init__(model, devinfo, input_devices)
+
 
 
     def get_device_mode(self) -> tuple:

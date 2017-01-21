@@ -76,7 +76,10 @@ class ByteArgs(object):
             for component in arg.intTuple:
                 data += struct.pack(packing, component)
         elif isinstance(arg, Enum):
-            data += struct.pack(packing, arg.value)
+            if hasattr(arg, "opcode"):
+                data += struct.pack(packing, arg.opcode)
+            else:
+                data += struct.pack(packing, arg.value)
         elif isinstance(arg, bytes) or isinstance(arg, bytearray):
             data += arg
         else:

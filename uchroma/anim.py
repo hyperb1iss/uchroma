@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import signal
 import time
 
 from uchroma.device import UChromaDevice
@@ -11,6 +10,9 @@ DEFAULT_FPS = 30
 
 
 class Renderer(object):
+    """
+    Base class for custom effects renderers.
+    """
 
     def __init__(self, *args, **kwargs):
         super(Renderer, self).__init__(*args, **kwargs)
@@ -18,18 +20,50 @@ class Renderer(object):
 
     @asyncio.coroutine
     def draw(self, frame: Frame, timestamp: float) -> bool:
+        """
+        Coroutine called by AnimationLoop when a new frame needs
+        to be drawn. If nothing should be drawn (such as if keyboard
+        input is needed), then the implementation should yield until
+        ready.
+
+        :param frame: The current empty frame to be drawn
+        :param timestamp: The timestamp of this frame
+
+        :return: True if the frame has been drawn
+        """
         return False
 
 
     def init(self, frame: Frame, fps: int, *args, **kwargs) -> bool:
+        """
+        Invoked by AnimationLoop when the effect is activated. An
+        arbitrary set of arguments may be passed, and an implementation
+        should performa any necessary setup here.
+
+        :param frame: The frame instance being configured
+        :param fps: The requested frame rate
+        :param args: Arbitrary arguments
+
+        :return: True if the renderer was configured
+        """
         return False
 
-    
-    def finish(self):
+
+    def finish(self, frame: Frame):
+        """
+        Invoked by AnimationLoop when the effect is deactivated.
+        An implementation should perform cleanup tasks here.
+
+        :param frame: The frame instance being shut down
+        """
         pass
 
 
 class AnimationLoop(object):
+    """
+    Component which activates and manages a Renderer for displaying custom
+    effects.
+    """
 
     def __init__(self, name: str, frame: Frame, renderer: Renderer, fps: int=DEFAULT_FPS):
         self.name = name
@@ -60,6 +94,12 @@ class AnimationLoop(object):
 
     @asyncio.coroutine
     def _animate(self):
+        """
+        Main loop
+
+        Invokes the draw() method of the configured Renderer, flips the buffer,
+        and sleeps asynchronously until the next frame.
+        """
         timestamp = time.time()
         self.logger.info("AnimationLoop is starting..")
 
@@ -96,6 +136,9 @@ class AnimationLoop(object):
 
 
     def _renderer_done(self, future):
+        """
+        Invoked when the renderer exits
+        """
         self.logger.info("Renderer is exiting!")
         self._renderer.finish()
         self._renderer = None
@@ -104,12 +147,29 @@ class AnimationLoop(object):
         self._frame.reset()
 
 
-    def start(self, *args, **kwargs):
+    def start(self, *args, **kwargs) -> bool:
+        """
+        Start the AnimationLoop
+
+        Initializes the renderer, zeros the buffer, and starts the loop
+        which runs at the requested FPS. An arbitrary set of arguments
+        may be passed by the container in order to configure the effect
+        based on user preferences.
+
+        Requires an active asyncio event loop.
+
+        :param args: Arbitrary arguments passed to the Renderer
+
+        :return: True if the loop was started
+        """
         if self._running:
             return
 
-        self._renderer.init(self._frame, self._fps, *args, **kwargs)
         self._frame.reset()
+
+        if not self._renderer.init(self._frame, self._fps, *args, **kwargs):
+            self.logger.error('Renderer failed to initialize!')
+            return False
 
         self._running = True
         self._anim_task = asyncio.ensure_future(self._animate())
@@ -117,6 +177,12 @@ class AnimationLoop(object):
 
 
     def stop(self):
+        """
+        Stop this AnimationLoop
+
+        Shuts down the loop and triggers cleanup tasks. Note that
+        cleanup is asynchronous and waits for the Renderer to finish.
+        """
         if self._running:
             self._running = False
 
@@ -129,6 +195,10 @@ class AnimationLoop(object):
 
 
 class AnimationManager(object):
+
+    """
+    WIP
+    """
 
     def __init__(self, driver: UChromaDevice):
         self._driver = driver

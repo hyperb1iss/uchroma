@@ -150,8 +150,8 @@ class RazerReport(object):
                     timeout_cb(self.status, self.result)
                     return False
 
-                self._logger.warn("Retrying request due to status %s (%d)",
-                                   self.status.name, retry_count)
+                self._logger.warning("Retrying request due to status %s (%d)",
+                                     self.status.name, retry_count)
 
                 time.sleep(0.1)
 

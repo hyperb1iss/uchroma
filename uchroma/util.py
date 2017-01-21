@@ -1,48 +1,82 @@
 """
 Various helper functions that are used across the library.
 """
+import inspect
 import math
 import struct
 import time
+import typing
 
+from collections import Iterable
+from enum import Enum
 from threading import Timer
 
+import wrapt
 from decorator import decorator
 from grapefruit import Color
 from numpy import interp
 
 
-def clamp(value, min_, max_):
+# Type hint for decorated color arguments
+ColorType = typing.Union[Color, str, typing.Iterable[int], typing.Iterable[float], None]
+
+# Type hint for decorated enum arguments
+EnumType = typing.Union[Enum, str]
+
+
+def _autocast_decorator(type_hint, fix_arg_func):
     """
-    Constrain a value to the specified range
+    Decorator which will invoke fix_arg_func for any
+    arguments annotated with type_hint. The decorated
+    function will then be called with the result.
 
-    :param value: Input value
-    :param min_: Range minimum
-    :param max_: Range maximum
+    :param type_hint: A PEP484 type hint
+    :param fix_arg_func: Function to invoke
 
-    :return: The constrained value
+    :return: decorator
     """
-    return max(min_, min(value, max_))
+    @wrapt.decorator
+    def wrapper(wrapped, instance, args, kwargs):
+        sig = inspect.signature(wrapped)
+        names = list(sig.parameters.keys())
+        hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() if x[1] == type_hint]
+
+        if len(hinted_args) == 0:
+            raise ValueError("No arguments with EnumType hint found")
+
+        new_args = list(args)
+        for hinted_arg in hinted_args:
+            if hinted_arg in kwargs:
+                kwargs[hinted_arg] = fix_arg_func(kwargs[hinted_arg])
+
+            elif hinted_arg in names:
+                idx = names.index(hinted_arg)
+                if idx < len(new_args):
+                    new_args[idx] = fix_arg_func(new_args[idx])
+
+        return wrapped(*new_args, **kwargs)
+
+    return wrapper
 
 
-def scale(value, src_min, src_max, dst_min, dst_max, round_=False):
+def enumarg(enum_type: Enum):
     """
-    Scale a value from one range to another.
+    Decorator to look up enums by string value if necessary.
+    Use with the EnumType hint.
 
-    :param value: Input value
-    :param src_min: Min value of input range
-    :param src_max: Max value of input range
-    :param dst_min: Min value of output range
-    :param dst_max: Max value of output range
-    :param round_: True if the scale value should be rounded to an integer
+    Example:
 
-    :return: The scaled value
+    @enumargs(FX)
+    def frobozzle(self, fx: EnumType, speed, color1=None, color2=None)
     """
-    scaled = interp(clamp(value, src_min, src_max), [src_min, src_max], [dst_min, dst_max])
-    if round_:
-        scaled = int(round(scaled))
+    def fix_enum_arg(arg):
+        if isinstance(arg, enum_type):
+            return arg
+        if isinstance(arg, str):
+            return enum_type[arg.upper()]
+        raise TypeError("Can't convert %s (%s) to %s" % (arg, type(arg), enum_type))
 
-    return scaled
+    return _autocast_decorator(EnumType, fix_enum_arg)
 
 
 def rgb_from_tuple(arg: tuple) -> Color:
@@ -78,7 +112,7 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
 
 
-def to_color(arg) -> Color:
+def to_color(*color_args) -> Color:
     """
     Convert various color representations to grapefruit.Color
 
@@ -86,22 +120,26 @@ def to_color(arg) -> Color:
 
     :return: The color
     """
-    if arg is None:
+    colors = []
+    for arg in color_args:
+        value = None
+        if arg is not None:
+            if isinstance(arg, Color):
+                value = arg
+            elif isinstance(arg, str):
+                value = Color.NewFromHtml(arg)
+            elif isinstance(arg, Iterable):
+                value = rgb_from_tuple(arg)
+            else:
+                raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+        colors.append(value)
+
+    if len(colors) == 0:
         return None
-    if isinstance(arg, Color):
-        return arg
-    if isinstance(arg, str):
-        return Color.NewFromHtml(arg)
-    if isinstance(arg, tuple) or isinstance(arg, list):
-        if arg[0] is None:
-            return None
+    if len(colors) == 1:
+        return colors[0]
 
-        if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
-                or isinstance(arg[0], str) or isinstance(arg[0], Color):
-            return [to_color(item) for item in arg]
-        return rgb_from_tuple(arg)
-
-    raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+    return colors
 
 
 def to_rgb(arg) -> tuple:
@@ -128,39 +166,52 @@ def to_rgb(arg) -> tuple:
     raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
 
 
-def colorarg(*decls):
+"""
+Decorator to parse various color representations
+
+Invokes to_color on any arguments listed in decls. This will cause
+the listed arguments to be resolved to grapefruit.Color objects from
+the various different representations that might be in use.
+
+Example:
+
+@colorarg
+def frobizzle(self, speed, color1: ColorType=None, color2: ColorType=None)
+"""
+colorarg = _autocast_decorator(ColorType, to_color)
+
+
+def clamp(value, min_, max_):
     """
-    Decorator to parse various color representations
+    Constrain a value to the specified range
 
-    Invokes to_color on any arguments listed in decls. This will cause
-    the listed arguments to be resolved to grapefruit.Color objects from
-    the various different representations that might be in use.
+    :param value: Input value
+    :param min_: Range minimum
+    :param max_: Range maximum
 
-    Example:
-
-    @colorarg('color1', 'color2')
-    def frobizzle(self, speed, color1=None, color2=None)
-
+    :return: The constrained value
     """
-    @decorator
-    def wrapper(func, *args, **kwargs):
-        """
-        Replace arguments with appropriate Color objects
-        """
-        code = func.__code__
-        names = code.co_varnames[:code.co_argcount]
+    return max(min_, min(value, max_))
 
-        new_args = list(args)
 
-        for argname in decls:
-            pos = names.index(argname)
-            if pos < len(args):
-                new_args[pos] = to_color(args[pos])
+def scale(value, src_min, src_max, dst_min, dst_max, round_=False):
+    """
+    Scale a value from one range to another.
 
-        return func(*new_args, **kwargs)
+    :param value: Input value
+    :param src_min: Min value of input range
+    :param src_max: Max value of input range
+    :param dst_min: Min value of output range
+    :param dst_max: Max value of output range
+    :param round_: True if the scale value should be rounded to an integer
 
-    return wrapper
+    :return: The scaled value
+    """
+    scaled = interp(clamp(value, src_min, src_max), [src_min, src_max], [dst_min, dst_max])
+    if round_:
+        scaled = int(round(scaled))
 
+    return scaled
 
 
 def scale_brightness(brightness, from_hw=False):

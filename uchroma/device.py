@@ -4,7 +4,7 @@ import hidapi
 
 from uchroma.device_base import BaseUChromaDevice
 from uchroma.frame import Frame
-from uchroma.fx import FX
+from uchroma.fx import FXManager
 from uchroma.led import LED
 from uchroma.models import Hardware, Quirks
 
@@ -19,7 +19,7 @@ class UChromaDevice(BaseUChromaDevice):
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
-        self._fx = FX(self)
+        self._fx = FXManager(self)
 
         self._frame_control = None
 
@@ -28,7 +28,7 @@ class UChromaDevice(BaseUChromaDevice):
 
         # Patch in effects
         # TODO: check device capabilities
-        for fxtype in FX.Type:
+        for fxtype in self.supported_fx:
             method = fxtype.name.lower()
             if hasattr(self._fx, method):
                 setattr(self, method, getattr(self._fx, method))
@@ -46,36 +46,6 @@ class UChromaDevice(BaseUChromaDevice):
             self._leds[led_type] = LED(self, led_type)
 
         return self._leds[led_type]
-
-
-    @property
-    def width(self) -> int:
-        """
-        Gets the width of the key matrix (if applicable)
-        """
-        if not self.has_matrix:
-            return 0
-
-        return self.model.matrix_dims[1]
-
-
-    @property
-    def height(self) -> int:
-        """
-        Gets the height of the key matrix (if applicable)
-        """
-        if not self.has_matrix:
-            return 0
-
-        return self.model.matrix_dims[0]
-
-
-    @property
-    def has_matrix(self) -> bool:
-        """
-        True if the device supports matrix control
-        """
-        return self.model.has_matrix
 
 
     @property
@@ -181,7 +151,7 @@ class UChromaDevice(BaseUChromaDevice):
         :return: True if successful
         """
         if self.has_matrix:
-            self.frame_control.set_base_color(None).reset()
+            self.frame_control.background_color = None
             self.frame_control.reset()
 
         if hasattr(self, 'disable'):

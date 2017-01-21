@@ -2,12 +2,12 @@ import logging
 
 import numpy as np
 from grapefruit import Color
-from skimage import draw, filters
+from skimage import draw
 
 from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.models import Quirks
-from uchroma.util import clamp, colorarg, to_color
+from uchroma.util import clamp, colorarg, ColorType, to_color
 
 
 class Frame(object):
@@ -122,8 +122,8 @@ class Frame(object):
         return to_color(tuple(self._matrix[row][col]))
 
 
-    @colorarg('color')
-    def put(self, row: int, col: int, color: Color) -> 'Frame':
+    @colorarg
+    def put(self, row: int, col: int, *color: ColorType) -> 'Frame':
         """
         Set the color of an individual pixel
 
@@ -134,7 +134,8 @@ class Frame(object):
         :return: This Frame instance
         """
         Frame._set_color(self._matrix,
-            (np.atleast_1d(row), np.atleast_1d(col)), Frame._color_to_np(color))
+            (np.array([row,] * len(color)), np.arange(col, col + len(color))),
+             Frame._color_to_np(*color))
 
         return self
 
@@ -272,9 +273,9 @@ class Frame(object):
         Frame._set_color(self._matrix, (rr, cc), Frame._color_to_np(color), alpha)
 
 
-    @colorarg('color')
+    @colorarg
     def circle(self, row: int, col: int, radius: float,
-               color: Color, fill: bool=False, alpha=1.0) -> 'Frame':
+               color: ColorType, fill: bool=False, alpha=1.0) -> 'Frame':
         """
         Draw a circle centered on the specified row and column,
         with the given radius.
@@ -298,9 +299,9 @@ class Frame(object):
         return self
 
 
-    @colorarg('color')
+    @colorarg
     def ellipse(self, row: int, col: int, radius_r: float, radius_c: float,
-                color: Color, fill: bool=False, alpha: float=1.0) -> 'Frame':
+                color: ColorType, fill: bool=False, alpha: float=1.0) -> 'Frame':
         """
         Draw an ellipse centered on the specified row and column,
         with the given radiuses.
@@ -315,19 +316,21 @@ class Frame(object):
         :return: This frame instance
         """
         if fill:
-            rr, cc = draw.ellipse(row, col, round(radius_r), round(radius_c), shape=self._matrix.shape)
+            rr, cc = draw.ellipse(row, col, round(radius_r), round(radius_c),
+                                  shape=self._matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         else:
-            rr, cc = draw.ellipse_perimeter(row, col, round(radius_r), round(radius_c), 
+            rr, cc = draw.ellipse_perimeter(row, col, round(radius_r), round(radius_c),
                                             shape=self._matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         return self
 
 
-    @colorarg('color')
-    def line(self, row1: int, col1: int, row2: int, col2: int, color: Color=None) -> 'Frame':
+    @colorarg
+    def line(self, row1: int, col1: int, row2: int, col2: int,
+             color: ColorType=None, alpha: float=1.0) -> 'Frame':
         """
         Draw a line between two points
 
@@ -339,7 +342,7 @@ class Frame(object):
         """
         rr, cc, aa = draw.line_aa(clamp(0, self.height, row1), clamp(0, self.width, col1),
                                   clamp(0, self.height, row2), clamp(0, self.width, col2))
-        self._draw(rr, cc, color, alpha)
+        self._draw(rr, cc, color, aa)
 
         return self
 
@@ -348,9 +351,12 @@ class Frame(object):
     # remove these when 1.9 is released
 
     @staticmethod
-    @colorarg('color')
-    def _color_to_np(color: Color):
-        return np.array([*color.rgb, color.alpha], dtype=np.float)
+    def _color_to_np(*color: ColorType):
+        colors = to_color(*color)
+        if len(color) == 1:
+            colors = [colors]
+
+        return np.array([(*x.rgb, x.alpha) for x in colors], dtype=np.float)
 
 
     @staticmethod
@@ -373,8 +379,8 @@ class Frame(object):
 
         if img.shape[-1] != color.shape[-1]:
             raise ValueError('Color shape ({}) must match last '
-                             'image dimension ({}). color=({})'.format(color.shape[0],
-                                                            img.shape[-1], color))
+                             'image dimension ({}). color=({})'.format( \
+                                     color.shape[0], img.shape[-1], color))
 
         if np.isscalar(alpha):
             alpha = np.ones_like(rr) * alpha

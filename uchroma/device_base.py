@@ -7,17 +7,10 @@ from wrapt import synchronized
 
 from uchroma.models import Hardware, Model, Quirks
 from uchroma.report import RazerReport
-from uchroma.util import RepeatingTimer
+from uchroma.types import BaseCommand, FX
+from uchroma.util import enumarg, EnumType, RepeatingTimer
 from uchroma.version import __version__
 
-
-class BaseCommand(Enum):
-    """
-    Base class for Command enumerations
-
-    Tuples, in the form of:
-        (command_class, command_id, data_length)
-    """
 
 class BaseUChromaDevice(object):
     """
@@ -42,8 +35,9 @@ class BaseUChromaDevice(object):
         self._firmware_version = None
 
         self._defer_close = model.hardware.has_matrix
-
         self._close_timer = RepeatingTimer(5.0, self.close, True)
+
+        self._supported_fx = []
 
         self._offline = False
 
@@ -216,23 +210,25 @@ class BaseUChromaDevice(object):
         return self._input_devices
 
 
+    def _decode_serial(self, value: bytes) -> str:
+        if value is not None:
+            try:
+                return value.decode()
+            except UnicodeDecodeError:
+                return self.device_id
+
+        return None
+
+
     def _get_serial_number(self) -> str:
         """
         Get the serial number from the hardware directly
+
+        Laptops don't return a serial number for their devices,
+        so we return the model name.
         """
-        serial = None
-
-        if self._model.type == Model.Type.LAPTOP:
-            serial = self.name
-        else:
-            value = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
-            if value is not None:
-                try:
-                    serial = value.decode()
-                except UnicodeDecodeError:
-                    serial = self.device_id
-
-        return serial
+        value = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
+        return self._decode_serial(value)
 
 
     @property
@@ -341,6 +337,52 @@ class BaseUChromaDevice(object):
         Get the uChroma version
         """
         return __version__
+
+
+    @property
+    def width(self) -> int:
+        """
+        Gets the width of the key matrix (if applicable)
+        """
+        if not self.has_matrix:
+            return 0
+
+        return self.model.matrix_dims[1]
+
+
+    @property
+    def height(self) -> int:
+        """
+        Gets the height of the key matrix (if applicable)
+        """
+        if not self.has_matrix:
+            return 0
+
+        return self.model.matrix_dims[0]
+
+
+    @property
+    def has_matrix(self) -> bool:
+        """
+        True if the device supports matrix control
+        """
+        return self.model.has_matrix
+
+
+    @property
+    def supported_fx(self) -> tuple:
+        """
+        The color effects supported by this device
+        """
+        return self._model.supported_fx
+
+
+    @enumarg(FX)
+    def has_fx(self, fx: EnumType) -> bool:
+        """
+        True if the effect type is supported
+        """
+        return fx in self.supported_fx
 
 
     def has_quirk(self, quirk) -> bool:

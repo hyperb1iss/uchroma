@@ -1,8 +1,8 @@
 import hidapi
 
-from uchroma.device_base import BaseCommand
 from uchroma.keyboard import UChromaKeyboard
 from uchroma.models import Hardware
+from uchroma.types import BaseCommand
 from uchroma.util import scale_brightness
 
 
@@ -22,6 +22,10 @@ class UChromaLaptop(UChromaKeyboard):
 
     def __init__(self, model: Hardware, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaLaptop, self).__init__(model, devinfo, input_devices)
+
+
+    def _get_serial_number(self):
+        return self.name
 
 
     def _set_brightness(self, level: float):

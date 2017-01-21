@@ -1,89 +1,66 @@
 from enum import Enum
 
-from uchroma.color import Splotch
+from uchroma.color import ColorUtils, Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.led import LED
-from uchroma.models import Model
-from uchroma.util import colorarg
+from uchroma.models import Model, Quirks
+from uchroma.types import BaseCommand, FX, FXType
+from uchroma.util import colorarg, ColorType
 
 from grapefruit import Color
 
 
-class FX(object):
+class ExtendedFX(FXType):
+    """
+    Enumeration of "extended" effect types and command identifiers
+
+    These effects use a different command structure than the standard
+    effects. Should not normally be used as part of the API.
+
+    FIXME: This functionality is incomplete and untested
+    """
+    DISABLE = (0x00, "Disable all effects")
+    STATIC = (0x01, "Static color")
+    BREATHE = (0x02, "Breathing color effect")
+    SPECTRUM = (0x03, "Cycle thru all colors of the spectrum")
+    WAVE = (0x04, "Waves of color")
+    REACTIVE = (0x05, "Keys light up when pressed")
+    STARLIGHT = (0x07, "Keys sparkle with color")
+    CUSTOM_FRAME = (0x08, "Custom framebuffer")
+
+
+
+# Modes for the Wave effect
+# The "chase" modes add a circular spin around the trackpad (if supported)
+class Direction(Enum):
+    """
+    Enumeration of directions and arguments for some animated effects
+    which pan across the device. The "chase" variants are only available
+    on devices with an illuminated trackpad such as the Blade Pro, and
+    produce a rotating animation around the trackpad.
+    """
+    RIGHT = 1
+    LEFT = 2
+    LEFT_CHASE = 3
+    RIGHT_CHASE = 4
+
+
+# Modes for starlight and breathe effects
+class Mode(Enum):
+    """
+    Enumeration of modes and arguments for some animated effects which
+    accept a variable number of colors.
+    """
+    RANDOM = 0
+    SINGLE = 1
+    DUAL = 2
+
+
+
+class FXManager(object):
     """
     Manages device lighting effects
     """
-
-    # Effects
-    class Type(Enum):
-        """
-        Enumeration of effect types and command identifiers
-
-        Not all effects are available on all devices.
-        TODO: provide hardware-specific capabilities
-        """
-        DISABLE = 0x00
-        WAVE = 0x01
-        REACTIVE = 0x02
-        BREATHE = 0x03
-        SPECTRUM = 0x04
-        CUSTOM_FRAME = 0x05
-        STATIC_COLOR = 0x06
-        GRADIENT = 0x0A
-        SWEEP = 0x0C
-        CIRCLE = 0x0D
-        HIGHLIGHT = 0x10
-        MORPH = 0x11
-        FIRE = 0x12
-        RIPPLE_SOLID = 0x13
-        RIPPLE = 0x14
-        STARLIGHT = 0x19
-        SPECTRUM_BLADE = 0x1C
-        RAINBOW = 0xFF
-
-
-    class ExtendedType(Enum):
-        """
-        Enumeration of "extended" effect types and command identifiers
-
-        Should not normally be used as part of the API.
-
-        FIXME: This functionality is incomplete and untested
-        """
-        DISABLE = 0x00
-        STATIC_COLOR = 0x01
-        BREATHE = 0x02
-        SPECTRUM = 0x03
-        WAVE = 0x04
-        REACTIVE = 0x05
-        STARLIGHT = 0x07
-        CUSTOM_FRAME = 0x08
-
-
-    # Modes for the Wave effect
-    # The "chase" modes add a circular spin around the trackpad (if supported)
-    class Direction(Enum):
-        """
-        Enumeration of directions and arguments for some animated effects
-        which pan across the device. The "chase" variants are only available
-        on devices with an illuminated trackpad such as the Blade Pro, and
-        produce a rotating animation around the trackpad.
-        """
-        RIGHT = 1
-        LEFT = 2
-        LEFT_CHASE = 3
-        RIGHT_CHASE = 4
-
-
-    # Modes for starlight and breathe effects
-    class Mode(Enum):
-        """
-        Enumeration of modes and arguments for some animated effects which
-        accept a variable number of colors.
-        """
-        RANDOM = 0
-        SINGLE = 1
-        DUAL = 2
 
 
     class Command(BaseCommand):
@@ -104,14 +81,24 @@ class FX(object):
         self._driver = driver
 
 
-    def _set_effect(self, effect: Type, *args, transaction_id=None) -> bool:
-        return self._driver.run_command(FX.Command.SET_EFFECT, effect, *args,
+    def _set_effect_basic(self, effect: FX, *args, transaction_id=None) -> bool:
+        return self._driver.run_command(FXManager.Command.SET_EFFECT, effect, *args,
                                         transaction_id=transaction_id)
 
 
-    def _set_effect_extended(self, effect: ExtendedType, *args) -> bool:
-        return self._driver.run_command(FX.Command.SET_EFFECT_EXTENDED, 0x01,
+    def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:
+        return self._driver.run_command(FXManager.Command.SET_EFFECT_EXTENDED, 0x01,
                                         LED.Type.BACKLIGHT, effect, *args, transaction_id=0x3F)
+
+
+    def _set_effect(self, effect: FXType, *args) -> bool:
+        if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+            if effect.name in ExtendedFX.__members__:
+                return self._set_effect_extended(ExtendedFX[effect.name], *args)
+
+            return False
+
+        return self._set_effect_basic(effect, *args)
 
 
     def disable(self) -> bool:
@@ -120,11 +107,11 @@ class FX(object):
 
         :return: True if successful
         """
-        return self._set_effect(FX.Type.DISABLE)
+        return self._set_effect(FX.DISABLE)
 
 
-    @colorarg('color')
-    def static_color(self, color=None) -> bool:
+    @colorarg
+    def static(self, color: ColorType=None) -> bool:
         """
         Sets lighting to a static color
 
@@ -133,9 +120,9 @@ class FX(object):
         :return: True if successful
         """
         if color is None:
-            color = Color.NewFromHtml('white')
+            color = Color.NewFromHtml('green')
 
-        return self._set_effect(FX.Type.STATIC_COLOR, color)
+        return self._set_effect(FX.STATIC, color)
 
 
     def wave(self, direction: Direction=None) -> bool:
@@ -147,9 +134,9 @@ class FX(object):
         :return: True if successful
         """
         if direction is None:
-            direction = FX.Direction.RIGHT
+            direction = Direction.RIGHT
 
-        return self._set_effect(FX.Type.WAVE, direction)
+        return self._set_effect(FX.WAVE, direction)
 
 
     def spectrum(self) -> bool:
@@ -158,11 +145,11 @@ class FX(object):
 
         :return: True if successful
         """
-        return self._set_effect(FX.Type.SPECTRUM)
+        return self._set_effect(FX.SPECTRUM)
 
 
-    @colorarg('color')
-    def reactive(self, color=None, speed: int=None) -> bool:
+    @colorarg
+    def reactive(self, color: ColorType=None, speed: int=None) -> bool:
         """
         Lights up keys when they are pressed
 
@@ -180,12 +167,12 @@ class FX(object):
         if speed < 1 or speed > 4:
             raise ValueError('Speed for reactive effect must be between 1 and 4 (got: %d)', speed)
 
-        return self._set_effect(FX.Type.REACTIVE, speed, color)
+        return self._set_effect(FX.REACTIVE, speed, color)
 
 
-    @colorarg('color', 'base_color')
-    def sweep(self, color=None, base_color=None, direction: Direction=None,
-              speed: int=None, splotch: Splotch=None) -> bool:
+    @colorarg
+    def sweep(self, color: ColorType=None, base_color: ColorType=None,
+              direction: Direction=None, speed: int=None, splotch: Splotch=None) -> bool:
         """
         Produces colors which sweep across the device
 
@@ -198,14 +185,14 @@ class FX(object):
         :return: True if successful
         """
         if direction is None:
-            direction = FX.Direction.RIGHT
+            direction = Direction.RIGHT
 
         if splotch is None:
             if base_color is None:
                 base_color = Color.NewFromHtml('black')
 
             if color is None:
-                color = Color.NewFromHtml('skyblue')
+                color = Color.NewFromHtml('green')
 
         else:
             color = splotch.first
@@ -214,11 +201,11 @@ class FX(object):
         if speed is None:
             speed = 15
 
-        return self._set_effect(FX.Type.SWEEP, direction, speed, base_color, color)
+        return self._set_effect(FX.SWEEP, direction, speed, base_color, color)
 
 
-    @colorarg('color', 'base_color')
-    def morph(self, color=None, base_color=None,
+    @colorarg
+    def morph(self, color: ColorType=None, base_color: ColorType=None,
               speed: int=None, splotch: Splotch=None) -> bool:
         """
         A "morphing" color effect when keys are pressed
@@ -244,11 +231,11 @@ class FX(object):
         if speed is None:
             speed = 2
 
-        return self._set_effect(FX.Type.MORPH, 0x04, speed, base_color, color)
+        return self._set_effect(FX.MORPH, 0x04, speed, base_color, color)
 
 
-    @colorarg('color')
-    def fire(self, color=None, speed: int=None) -> bool:
+    @colorarg
+    def fire(self, color: ColorType=None, speed: int=None) -> bool:
         """
         Animated fire!
 
@@ -263,13 +250,44 @@ class FX(object):
         if speed is None:
             speed = 0x40
 
-        return self._set_effect(FX.Type.FIRE, 0x01, speed, color)
+        return self._set_effect(FX.FIRE, 0x01, speed, color)
 
 
-    def _set_multi_mode_effect(self, effect: Type, color1: Color=None, color2: Color=None,
-                               speed: int=None, splotch: Splotch=None) -> bool:
-        if speed is not None and (speed < 1 or speed > 4):
-            raise ValueError('Speed for effect must be between 1 and 4 (got: %d)', speed)
+    @colorarg
+    def ripple(self, color: ColorType=None, speed: int=None) -> bool:
+
+        if speed is None:
+            speed = 3
+
+        if color is None:
+            color = Color.NewFromHtml('green')
+
+        return self._set_effect(FX.RIPPLE, 0x01, speed * 10, color)
+
+
+    @colorarg
+    def ripple_solid(self, color: ColorType=None, speed: int=None) -> bool:
+
+        if speed is None:
+            speed = 3
+
+        if color is None:
+            color = Color.NewFromHtml('green')
+
+        return self._set_effect(FX.RIPPLE_SOLID, 0x01, speed * 10, color)
+
+
+
+    def _set_multi_mode_effect(self, effect: FXType, color1: Color=None, color2: Color=None,
+                               speed: int=None, splotch: Splotch=None,
+                               speed_range: tuple=None) -> bool:
+
+        if speed_range is None:
+            speed_range = (1, 4)
+
+        if speed is not None and (speed < speed_range[0] or speed > speed_range[1]):
+            raise ValueError('Speed for effect must be between %d and %d (got: %d)',
+                             *speed_range, speed)
 
         if splotch is not None:
             color1 = splotch.first
@@ -278,11 +296,11 @@ class FX(object):
         mode = None
 
         if color1 is not None and color2 is not None:
-            mode = FX.Mode.DUAL.value
+            mode = Mode.DUAL.value
         elif color1 is not None:
-            mode = FX.Mode.SINGLE.value
+            mode = Mode.SINGLE.value
         else:
-            mode = FX.Mode.RANDOM.value
+            mode = Mode.RANDOM.value
 
         args = [mode]
 
@@ -298,8 +316,8 @@ class FX(object):
         return self._set_effect(effect, *args)
 
 
-    @colorarg('color1', 'color2')
-    def starlight(self, color1=None, color2=None,
+    @colorarg
+    def starlight(self, color1: ColorType=None, color2: ColorType=None,
                   speed: int=None, splotch: Splotch=None) -> bool:
         """
         Activate the "starlight" effect. Colors sparkle across the device.
@@ -317,12 +335,12 @@ class FX(object):
         if speed is None:
             speed = 1
 
-        return self._set_multi_mode_effect(FX.Type.STARLIGHT, color1, color2,
+        return self._set_multi_mode_effect(FX.STARLIGHT, color1, color2,
                                            speed=speed, splotch=splotch)
 
 
-    @colorarg('color1', 'color2')
-    def breathe(self, color1=None, color2=None, splotch: Splotch=None) -> bool:
+    @colorarg
+    def breathe(self, color1: ColorType=None, color2: ColorType=None, splotch: Splotch=None) -> bool:
         """
         Activate the "breathe" effect. Colors pulse in and out.
 
@@ -335,7 +353,7 @@ class FX(object):
 
         :return: True if successful
         """
-        return self._set_multi_mode_effect(FX.Type.BREATHE, color1, color2, splotch=splotch)
+        return self._set_multi_mode_effect(FX.BREATHE, color1, color2, splotch=splotch)
 
 
     def custom_frame(self) -> bool:
@@ -353,7 +371,7 @@ class FX(object):
         if self._driver.device_type == Model.Type.MOUSE:
             varstore = 0x00
             tid = 0x80
-        return self._set_effect(FX.Type.CUSTOM_FRAME, varstore)
+        return self._set_effect(FX.CUSTOM_FRAME, varstore)
 
 
     @staticmethod
@@ -371,6 +389,9 @@ class FX(object):
 
         :return: True if successful
         """
+        if not self._driver.has_matrix:
+            return False
+
         if stagger is None:
             stagger = 4
 
@@ -379,9 +400,11 @@ class FX(object):
 
         frame = self._driver.frame_control
 
-        gradient = FX._hue_gradient(length, frame.width + (frame.height * stagger))
+        data = []
+        gradient = FXManager._hue_gradient(length, frame.width + (frame.height * stagger))
         for row in range(0, frame.height):
-            data = [gradient[(row * stagger) + col] for col in range(0, frame.width)]
-            frame.put(row, 0, *data)
+            data.append([gradient[(row * stagger) + col] for col in range(0, frame.width)])
+
+        frame.put_all(data)
 
         frame.flip()

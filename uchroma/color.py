@@ -6,7 +6,7 @@ from enum import Enum
 
 import numpy as np
 
-from uchroma.util import colorarg, lerp, lerp_degrees, to_rgb
+from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, to_rgb
 from skimage.util import dtype
 
 from grapefruit import Color
@@ -55,15 +55,15 @@ class ColorUtils(object):
 
 
     @staticmethod
-    @colorarg('color1', 'color2')
-    def hsv_blend(color1: Color, color2: Color, amount: float) -> Color:
+    @colorarg
+    def hsv_blend(color1: ColorType, color2: ColorType, amount: float) -> Color:
         return Color.NewFromHsv(*ColorUtils._interpolate(
             ColorUtils._hsva(color1), ColorUtils._hsva(color2), amount))
 
 
     @staticmethod
-    @colorarg('color1', 'color2')
-    def hsv_gradient(color1: Color, color2: Color, steps: int) -> list:
+    @colorarg
+    def hsv_gradient(color1: ColorType, color2: ColorType, steps: int) -> list:
         """
         Generate a gradient between two points in HSV colorspace
 
@@ -114,8 +114,8 @@ class ColorUtils(object):
 
 
     @staticmethod
-    @colorarg('color', 'base_color')
-    def color_scheme(color=None, base_color=None, steps: int=11):
+    @colorarg
+    def color_scheme(color: ColorType=None, base_color: ColorType=None, steps: int=11):
         """
         Generator which produces a continuous stream of colors based on a
         color scheme of two overlapping colors.
@@ -139,8 +139,8 @@ class ColorUtils(object):
 
 
     @staticmethod
-    @colorarg('color', 'base_color')
-    def scheme_generator(color=None, base_color=None, randomize: bool=False,
+    @colorarg
+    def scheme_generator(color: ColorType=None, base_color: ColorType=None, randomize: bool=False,
                          alternate: bool=False, steps: int=11, rgb: bool=False):
         """
         Generator which produces a continuous stream of colors based on a
@@ -224,8 +224,16 @@ class ColorUtils(object):
 
 
     @staticmethod
-    @colorarg('color')
-    def increase_contrast(color: Color) -> Color:
+    @colorarg
+    def increase_contrast(color: ColorType) -> Color:
+        """
+        Performs contrast inversion if a hue rotation would result in
+        white-on-white or black-on-black.
+
+        :param color: The color to check
+
+        :return: The new color with adjusted contrast
+        """
         hsl = list(color.hsl)
         if hsl[2] < 0.1 or hsl[2] > 0.7:
             hsl[2] = 1.0 - hsl[2]
@@ -234,8 +242,18 @@ class ColorUtils(object):
 
 
     @staticmethod
-    @colorarg('bg_color')
-    def rgba2rgb(arr, bg_color=None):
+    @colorarg
+    def rgba2rgb(arr: np.array, bg_color: ColorType=None) -> np.array:
+        """
+        Alpha-composites data in the numpy array against the given
+        background color and returns a new buffer without the
+        alpha component.
+
+        :param arr: The input array of RGBA data
+        :param bg_color: The background color
+
+        :return: Array of composited RGB data
+        """
         if bg_color is None:
             bg_color = np.array([0.0, 0.0, 0.0, 1.0])
         else:

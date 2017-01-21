@@ -1,8 +1,11 @@
 from collections import namedtuple
 from enum import Enum, IntEnum
 
+from uchroma.types import FX
+
 
 RAZER_VENDOR_ID = 0x1532
+
 
 class Quirks(IntEnum):
     """
@@ -76,8 +79,25 @@ class Headset(Hardware):
     KRAKEN = (0x0504, 'Kraken 7.1 (Rainie)')
     KRAKEN_V2 = (0x0510, 'Kraken 7.1 V2 (Kylie)')
 
+    @property
+    def supported_fx(self) -> tuple:
+        return (FX.DISABLE, FX.BREATHE, FX.SPECTRUM, FX.STATIC)
 
-class Keyboard(Hardware):
+
+class BaseKeyboard(Hardware):
+
+    @property
+    def supported_fx(self) -> tuple:
+        fx = [FX.DISABLE, FX.WAVE, FX.REACTIVE, FX.BREATHE,
+              FX.SPECTRUM, FX.STATIC, FX.STARLIGHT]
+
+        if self.has_matrix:
+            fx.extend([FX.CUSTOM_FRAME, FX.RAINBOW])
+
+        return tuple(fx)
+
+
+class Keyboard(BaseKeyboard):
     """
     Keyboards
     """
@@ -111,7 +131,8 @@ class Keyboard(Hardware):
            quirks=(Quirks.EXTENDED_FX_CMDS))
 
 
-class Laptop(Hardware):
+
+class Laptop(BaseKeyboard):
     """
     Laptops
     """
@@ -129,6 +150,14 @@ class Laptop(Hardware):
             return True
 
         return super().has_quirk(*quirks)
+
+
+    @property
+    def supported_fx(self) -> tuple:
+        fx = list(super().supported_fx)
+        fx.extend([FX.GRADIENT, FX.SWEEP, FX.CIRCLE, FX.HIGHLIGHT, FX.MORPH, FX.FIRE,
+                   FX.RIPPLE_SOLID, FX.RIPPLE, FX.SPECTRUM_BLADE])
+        return tuple(fx)
 
 
 class Mouse(Hardware):
@@ -159,12 +188,27 @@ class Mouse(Hardware):
            quirks=(Quirks.TRANSACTION_CODE_3F))
 
 
+    @property
+    def supported_fx(self):
+        fx = [FX.DISABLE, FX.WAVE, FX.REACTIVE, FX.BREATHE, FX.SPECTRUM, FX.STATIC]
+        if self.has_matrix:
+            fx.extend([FX.CUSTOM_FRAME])
+
+        return tuple(fx)
+
+
 class MousePad(Hardware):
     """
     Mouse pads
     """
     FIREFLY = \
         _H(0x0C00, 'Firefly')
+
+
+    @property
+    def supported_fx(self):
+        return (FX.DISABLE, FX.WAVE, FX.SPECTRUM, FX.STATIC)
+
 
 
 class Model(object):
@@ -247,6 +291,14 @@ class Model(object):
         The hardware category
         """
         return Model.Type[self._hardware.__class__.__name__.upper()]
+
+
+    @property
+    def supported_fx(self):
+        """
+        Supported effects
+        """
+        return self.hardware.supported_fx
 
 
     def has_quirk(self, quirk: Quirks) -> bool:
