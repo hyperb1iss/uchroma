@@ -1,4 +1,5 @@
 import logging
+import math
 
 import numpy as np
 from grapefruit import Color
@@ -47,7 +48,6 @@ class Frame(object):
         self._logger = logging.getLogger('uchroma.frame')
 
         self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float)
-
 
     @property
     def device_name(self):
@@ -133,9 +133,9 @@ class Frame(object):
 
         :return: This Frame instance
         """
-        Frame._set_color(self._matrix,
-            (np.array([row,] * len(color)), np.arange(col, col + len(color))),
-             Frame._color_to_np(*color))
+        Frame._set_color(
+            self._matrix, (np.array([row,] * len(color)), np.arange(col, col + len(color))),
+            Frame._color_to_np(*color))
 
         return self
 
@@ -316,12 +316,12 @@ class Frame(object):
         :return: This frame instance
         """
         if fill:
-            rr, cc = draw.ellipse(row, col, round(radius_r), round(radius_c),
+            rr, cc = draw.ellipse(row, col, math.floor(radius_r), math.floor(radius_c),
                                   shape=self._matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         else:
-            rr, cc = draw.ellipse_perimeter(row, col, round(radius_r), round(radius_c),
+            rr, cc = draw.ellipse_perimeter(row, col, math.floor(radius_r), math.floor(radius_c),
                                             shape=self._matrix.shape)
             self._draw(rr, cc, color, alpha)
 
@@ -387,11 +387,19 @@ class Frame(object):
 
         rr, cc, alpha = Frame._coords_inside_image(rr, cc, img.shape, val=alpha)
 
-        alpha = alpha[..., np.newaxis]
+        color = color * alpha[..., np.newaxis]
 
-        color = color * alpha
-        vals = img[rr, cc] * ((1 - alpha) / 2)
+        if np.all(img[rr, cc] == 0):
+            img[rr, cc] = color
+        else:
 
-        img[rr, cc] = (vals + color) * 2
+            src_alpha = color[..., -1][..., np.newaxis]
+            src_rgb = color[..., :-1]
 
+            dst_alpha = img[rr, cc][..., -1][..., np.newaxis] * 0.75
+            dst_rgb = img[rr, cc][..., :-1]
 
+            out_alpha = src_alpha + dst_alpha * (1 - src_alpha)
+            out_rgb = (src_rgb * src_alpha + dst_rgb *dst_alpha * (1- src_alpha)) / out_alpha
+
+            img[rr, cc] = np.clip(np.hstack([out_rgb, out_alpha]), a_min=0, a_max=1)
