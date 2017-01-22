@@ -140,7 +140,7 @@ class AnimationLoop(object):
         Invoked when the renderer exits
         """
         self.logger.info("Renderer is exiting!")
-        self._renderer.finish()
+        self._renderer.finish(self._frame)
         self._renderer = None
         self._anim_task = None
         self._error = False
