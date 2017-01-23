@@ -5,7 +5,7 @@ from .frame import Frame
 from .fx import FX
 from .headset import EffectBits
 from .led import LED
-from .models import Model
+from .models import Hardware
 from .mouse import PollingRate
 from .report import Status
 from .version import __version__

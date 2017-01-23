@@ -44,7 +44,7 @@ _H = namedtuple('_H',
 _H.__new__.__defaults__ = (None,) * len(_H._fields)
 
 
-class Hardware(_H, Enum):
+class HardwareInfo(_H, Enum):
 
     @property
     def has_matrix(self) -> bool:
@@ -74,7 +74,13 @@ class Hardware(_H, Enum):
         return False
 
 
-class Headset(Hardware):
+    @property
+    def type(cls):
+        return Hardware.Type[cls.__class__.__name__.upper()]
+
+
+
+class Headset(HardwareInfo):
     """
     Headsets
     """
@@ -86,7 +92,7 @@ class Headset(Hardware):
         return (FX.DISABLE, FX.BREATHE, FX.SPECTRUM, FX.STATIC)
 
 
-class BaseKeyboard(Hardware):
+class BaseKeyboard(HardwareInfo):
 
     @property
     def supported_fx(self) -> tuple:
@@ -163,7 +169,7 @@ class Laptop(BaseKeyboard):
         return tuple(fx)
 
 
-class Mouse(Hardware):
+class Mouse(HardwareInfo):
     """
     Mice
     """
@@ -200,7 +206,7 @@ class Mouse(Hardware):
         return tuple(fx)
 
 
-class MousePad(Hardware):
+class MousePad(HardwareInfo):
     """
     Mouse pads
     """
@@ -214,7 +220,7 @@ class MousePad(Hardware):
 
 
 
-class Model(object):
+class Hardware(object):
     """
     Device identifiers, quirks, and configuration.
 
@@ -236,84 +242,17 @@ class Model(object):
         MOUSEPAD = MousePad
 
 
-    def __init__(self, hardware: Hardware):
-        self._hardware = hardware
-
-
     @staticmethod
-    def get(product_id: int) -> 'Model':
+    def get(product_id: int) -> HardwareInfo:
         """
-        Get a Model instance by USB product ID
+        Get a HardwareInfo instance by USB product ID
 
         :param product_id: The USB product ID
-        :return: The Model
+        :return: The HardwareInfo
         """
-        for model_type in Model.Type:
-            for model in model_type.value:
-                if model.value[0] == product_id:
-                    return Model(model)
+        for hw_type in Hardware.Type:
+            for hw in hw_type.value:
+                if hw.value.product_id == product_id:
+                    return hw
 
         return None
-
-
-    @property
-    def hardware(self) -> Enum:
-        """
-        The hardware enumeration
-        """
-        return self._hardware
-
-
-    @property
-    def vendor_id(self) -> int:
-        """
-        The USB vendor ID
-        """
-        return RAZER_VENDOR_ID
-
-
-    @property
-    def product_id(self) -> int:
-        """
-        The USB product ID
-        """
-        return self.hardware.product_id
-
-
-    @property
-    def name(self) -> str:
-        """
-        The product name
-        """
-        return self.hardware.product_name
-
-
-    @property
-    def type(self):
-        """
-        The hardware category
-        """
-        return Model.Type[self._hardware.__class__.__name__.upper()]
-
-
-    @property
-    def supported_fx(self):
-        """
-        Supported effects
-        """
-        return self.hardware.supported_fx
-
-
-    @property
-    def fixup_args(self) -> dict:
-        """
-        Required fixup arguments
-        """
-        return self.hardware.fixup_args
-
-
-    def has_quirk(self, quirk: Quirks) -> bool:
-        """
-        Checks if quick is required for this device
-        """
-        return self.hardware.has_quirk(quirk)

@@ -2,7 +2,7 @@ import hidapi
 
 from uchroma.device import UChromaDevice
 from uchroma.fixups import KeyboardFixup
-from uchroma.models import Keyboard, Model
+from uchroma.models import Hardware, Keyboard
 from uchroma.types import BaseCommand
 
 
@@ -20,17 +20,17 @@ class UChromaKeyboard(UChromaDevice, KeyboardFixup):
         GET_DEVICE_MODE = (0x00, 0x84, 0x02)
 
 
-    def __init__(self, model: Keyboard, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Keyboard, devinfo: hidapi.DeviceInfo,
                  input_devices=None, *args, **kwargs):
-        super(UChromaKeyboard, self).__init__(model, devinfo, input_devices,
-                                              *args, **model.fixup_args)
+        super(UChromaKeyboard, self).__init__(hardware, devinfo, input_devices,
+                                              *args, **hardware.fixup_args)
 
 
     def get_device_mode(self) -> tuple:
         """
         Gets the current device mode
         """
-        if self.device_type == Model.Type.LAPTOP:
+        if self.device_type == Hardware.Type.LAPTOP:
             return None
 
         value = self.run_with_result(UChromaKeyboard.Command.GET_DEVICE_MODE)
@@ -44,7 +44,7 @@ class UChromaKeyboard(UChromaDevice, KeyboardFixup):
         """
         Sets the requested device mode
         """
-        if self.device_type == Model.Type.LAPTOP:
+        if self.device_type == Hardware.Type.LAPTOP:
             return None
 
         return self.run_command(UChromaKeyboard.Command.SET_DEVICE_MODE, mode, param)

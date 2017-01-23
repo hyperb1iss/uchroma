@@ -5,7 +5,7 @@ from enum import Enum
 from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.led import LED
-from uchroma.models import Model, Quirks
+from uchroma.models import Hardware, Quirks
 from uchroma.types import BaseCommand, FX, FXType
 from uchroma.util import colorarg, ColorType
 
@@ -371,7 +371,7 @@ class FXManager(object):
         tid = None
 
         # FIXME: This doesn't work.
-        if self._driver.device_type == Model.Type.MOUSE:
+        if self._driver.device_type == Hardware.Type.MOUSE:
             varstore = 0x00
             tid = 0x80
         return self._set_effect(FX.CUSTOM_FRAME, varstore)

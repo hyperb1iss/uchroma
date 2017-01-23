@@ -1,11 +1,10 @@
 import re
-from enum import Enum
 
 import hidapi
 
 from wrapt import synchronized
 
-from uchroma.models import Hardware, Model, Quirks
+from uchroma.models import Hardware, HardwareInfo, Quirks
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand, FX
 from uchroma.util import enumarg, EnumType, RepeatingTimer
@@ -26,20 +25,20 @@ class BaseUChromaDevice(object):
         GET_SERIAL = (0x00, 0x82, 0x16)
 
 
-    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None,
-                 *args, **kwargs):
+    def __init__(self, hardware: HardwareInfo, devinfo: hidapi.DeviceInfo,
+                 input_devices=None, *args, **kwargs):
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)
 
-        self._model = model
+        self._hardware = hardware
         self._devinfo = devinfo
 
         self._dev = None
         self._serial_number = None
         self._firmware_version = None
 
-        self._defer_close = model.hardware.has_matrix
+        self._defer_close = hardware.has_matrix
         self._close_timer = RepeatingTimer(5.0, self.close, True)
 
         self._supported_fx = []
@@ -293,15 +292,15 @@ class BaseUChromaDevice(object):
         """
         The name of this device
         """
-        return self._model.name
+        return self.hardware.product_name
 
 
     @property
-    def model(self) -> Hardware:
+    def hardware(self) -> HardwareInfo:
         """
-        The sub-enumeration of Hardware
+        The sub-enumeration of HardwareInfo
         """
-        return self._model.hardware
+        return self._hardware
 
 
     @property
@@ -321,11 +320,11 @@ class BaseUChromaDevice(object):
 
 
     @property
-    def device_type(self) -> Model.Type:
+    def device_type(self) -> Hardware.Type:
         """
-        The type of this device, from the Model enumeration
+        The type of this device, from the Hardware.Type enumeration
         """
-        return self._model.type
+        return self.hardware.type
 
 
     @property
@@ -352,7 +351,7 @@ class BaseUChromaDevice(object):
         if not self.has_matrix:
             return 0
 
-        return self.model.matrix_dims[1]
+        return self.hardware.matrix_dims[1]
 
 
     @property
@@ -363,7 +362,7 @@ class BaseUChromaDevice(object):
         if not self.has_matrix:
             return 0
 
-        return self.model.matrix_dims[0]
+        return self.hardware.matrix_dims[0]
 
 
     @property
@@ -371,7 +370,7 @@ class BaseUChromaDevice(object):
         """
         True if the device supports matrix control
         """
-        return self.model.has_matrix
+        return self.hardware.has_matrix
 
 
     @property
@@ -379,7 +378,7 @@ class BaseUChromaDevice(object):
         """
         The color effects supported by this device
         """
-        return self._model.supported_fx
+        return self.hardware.supported_fx
 
 
     @enumarg(FX)
@@ -394,7 +393,7 @@ class BaseUChromaDevice(object):
         """
         True if the quirk is required for this device
         """
-        return self.model.has_quirk(quirk)
+        return self.hardware.has_quirk(quirk)
 
 
     def reset(self) -> bool:

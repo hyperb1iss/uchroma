@@ -140,20 +140,20 @@ class UChromaHeadset(BaseUChromaDevice):
 
 
 
-    def __init__(self, model: Headset, devinfo: hidapi.DeviceInfo, *args, **kwargs):
-        super(UChromaHeadset, self).__init__(model, devinfo, *args, **kwargs)
+    def __init__(self, hardware: Headset, devinfo: hidapi.DeviceInfo, *args, **kwargs):
+        super(UChromaHeadset, self).__init__(hardware, devinfo, *args, **kwargs)
 
         self._last_cmd_time = None
 
         self._revision = None
-        if self.model == Headset.KRAKEN:
+        if self.hardware == Headset.KRAKEN:
             self._revision = 1
             self._cmd_get_led = UChromaHeadset.Command.RAINIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.RAINIE_SET_LED_MODE
             self._cmd_get_rgb = [UChromaHeadset.Command.RAINIE_GET_RGB]
             self._cmd_set_rgb = [UChromaHeadset.Command.RAINIE_SET_RGB]
 
-        elif self.model == Headset.KRAKEN_V2:
+        elif self.hardware == Headset.KRAKEN_V2:
             self._revision = 2
             self._cmd_get_led = UChromaHeadset.Command.KYLIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.KYLIE_SET_LED_MODE
@@ -164,7 +164,7 @@ class UChromaHeadset(BaseUChromaDevice):
                                  UChromaHeadset.Command.KYLIE_SET_RGB_2,
                                  UChromaHeadset.Command.KYLIE_SET_RGB_3]
         else:
-            raise ValueError('Incompatible model (%s)' % repr(self.model))
+            raise ValueError('Incompatible model (%s)' % repr(self.hardware))
 
         self._logger = logging.getLogger('uchroma.headset')
 

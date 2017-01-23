@@ -10,7 +10,7 @@ from uchroma.device import UChromaDevice
 from uchroma.headset import UChromaHeadset
 from uchroma.keyboard import UChromaKeyboard
 from uchroma.laptop import UChromaLaptop
-from uchroma.models import Model, Quirks, RAZER_VENDOR_ID
+from uchroma.models import Hardware, Quirks, RAZER_VENDOR_ID
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -57,7 +57,7 @@ class UChromaDeviceManager(object):
         Perform HID device discovery
 
         Iterates over all connected HID devices with RAZER_VENDOR_ID
-        and checks the product ID against the Model enumeration.
+        and checks the product ID against the HardwareInfo enumeration.
 
         Interface endpoint restrictions are currently hard-coded. In
         the future this should be done by checking the HID report
@@ -74,17 +74,17 @@ class UChromaDeviceManager(object):
         for devinfo in devinfos:
             self._logger.debug('Check device %04x interface %d (%s)',
                                devinfo.product_id, devinfo.interface_number, devinfo.product_string)
-            model = Model.get(devinfo.product_id)
-            if model is None:
+            hardware = Hardware.get(devinfo.product_id)
+            if hardware is None:
                 continue
 
-            if model.type == Model.Type.HEADSET:
+            if hardware.type == Hardware.Type.HEADSET:
                 if devinfo.interface_number != 3:
                     continue
-            elif model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
+            elif hardware.type == Hardware.Type.KEYBOARD or hardware.type == Hardware.Type.LAPTOP:
                 if devinfo.interface_number != 2:
                     continue
-            elif model.type == Model.Type.MOUSEPAD:
+            elif hardware.type == Hardware.Type.MOUSEPAD:
                 if devinfo.interface_number != 1:
                     continue
             else:
@@ -95,31 +95,31 @@ class UChromaDeviceManager(object):
             if key in self._devices:
                 continue
 
-            self._devices[key] = self._create_device(model, devinfo)
+            self._devices[key] = self._create_device(hardware, devinfo)
 
             self._fire_callbacks('add', self._devices[key])
 
 
-    def _create_device(self, model, devinfo):
+    def _create_device(self, hardware, devinfo):
         parent = self._get_parent(devinfo.product_id)
         input_devs = self._get_input_devices(parent)
 
-        if model.type == Model.Type.MOUSE:
-            if model.has_quirk(Quirks.WIRELESS):
-                return UChromaWirelessMouse(model, devinfo, input_devs)
-            return UChromaMouse(model, devinfo, input_devs)
+        if hardware.type == Hardware.Type.MOUSE:
+            if hardware.has_quirk(Quirks.WIRELESS):
+                return UChromaWirelessMouse(hardware, devinfo, input_devs)
+            return UChromaMouse(hardware, devinfo, input_devs)
 
-        if model.type == Model.Type.LAPTOP:
-            return UChromaLaptop(model, devinfo, input_devs)
+        if hardware.type == Hardware.Type.LAPTOP:
+            return UChromaLaptop(hardware, devinfo, input_devs)
 
-        if model.type == Model.Type.KEYBOARD:
+        if hardware.type == Hardware.Type.KEYBOARD:
             input_devs = self._get_input_devices(parent)
-            return UChromaKeyboard(model, devinfo, input_devs)
+            return UChromaKeyboard(hardware, devinfo, input_devs)
 
-        if model.type == Model.Type.HEADSET:
-            return UChromaHeadset(model, devinfo)
+        if hardware.type == Hardware.Type.HEADSET:
+            return UChromaHeadset(hardware, devinfo)
 
-        return UChromaDevice(model, devinfo)
+        return UChromaDevice(hardware, devinfo)
 
 
     @property
