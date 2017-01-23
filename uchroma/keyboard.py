@@ -1,11 +1,12 @@
 import hidapi
 
 from uchroma.device import UChromaDevice
-from uchroma.types import BaseCommand
+from uchroma.fixups import KeyboardFixup
 from uchroma.models import Keyboard, Model
+from uchroma.types import BaseCommand
 
 
-class UChromaKeyboard(UChromaDevice):
+class UChromaKeyboard(UChromaDevice, KeyboardFixup):
     """
     Additional functionality for Chroma Keyboards
     """
@@ -19,9 +20,10 @@ class UChromaKeyboard(UChromaDevice):
         GET_DEVICE_MODE = (0x00, 0x84, 0x02)
 
 
-    def __init__(self, model: Keyboard, devinfo: hidapi.DeviceInfo, input_devices=None):
-        super(UChromaKeyboard, self).__init__(model, devinfo, input_devices)
-
+    def __init__(self, model: Keyboard, devinfo: hidapi.DeviceInfo,
+                 input_devices=None, *args, **kwargs):
+        super(UChromaKeyboard, self).__init__(model, devinfo, input_devices,
+                                              *args, **model.fixup_args)
 
 
     def get_device_mode(self) -> tuple:

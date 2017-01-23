@@ -18,7 +18,7 @@ class Frame(object):
     Internally represented by a 2D numpy array of
     Grapefruit Color objects. Individual pixels of
     the framebuffer should be set to the desired colors
-    and will be sent to the hardware atomically when flip() is
+    and will be sent to the hardware atomically when commit() is
     called. The buffer is then (optionally) cleared with the
     base color (black/off by default) so the next frame can
     be drawn without jank or flicker (double-buffering).
@@ -48,6 +48,9 @@ class Frame(object):
         self._logger = logging.getLogger('uchroma.frame')
 
         self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float)
+
+        self._debug_opts = {}
+
 
     @property
     def device_name(self):
@@ -97,6 +100,11 @@ class Frame(object):
         """
         self._bg_color = to_color(color)
         self.reset()
+
+
+    @property
+    def debug_opts(self) -> dict:
+        return self._debug_opts
 
 
     def clear(self) -> 'Frame':
@@ -152,33 +160,6 @@ class Frame(object):
         return self
 
 
-    def prepare(self, frame_id: int=None):
-        """
-        Send the current frame to the hardware but do not
-        display it. This frees up the buffer for drawing
-        the next frame. Call commit() to display the
-        frame after calling this method.
-
-        Use flip() unless you you need custom behavior.
-        """
-        try:
-            self._matrix.setflags(write=False)
-            self._set_frame_data(frame_id)
-        finally:
-            self._matrix.setflags(write=True)
-
-        self.clear()
-
-
-    def commit(self):
-        """
-        Display the last frame sent to the hardware
-
-        Use flip() unless you need custom behavior.
-        """
-        self._driver.custom_frame()
-
-
     def _as_img(self):
         return ColorUtils.rgba2rgb(self._matrix, self._bg_color)
 
@@ -199,12 +180,22 @@ class Frame(object):
 
         img = self._as_img()
 
-        for row in range(0, self._height):
-            data = img[row][:width].tobytes()
-            remaining = self._height - row - 1
+        if hasattr(self._driver, 'align_key_matrix'):
+            img = self._driver.align_key_matrix(self, img)
 
-            self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX,
-                                     frame_id, row, 0, width, data,
+        for row in range(0, self._height):
+            rowdata = img[row]
+
+            start_col = 0
+            if hasattr(self._driver, 'get_row_offset'):
+                start_col = self._driver.get_row_offset(self, row)
+
+            rowdata = rowdata[:width]
+
+            remaining = self._height - row - 1
+            self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX, frame_id,
+                                     row, start_col, width,
+                                     rowdata.tobytes(),
                                      transaction_id=tid,
                                      remaining_packets=remaining)
 
@@ -223,17 +214,17 @@ class Frame(object):
         """
         Sends the current frame to the hardware and displays it.
 
-        Use flip() unless you need custom behavior.
+        Use commit() unless you need custom behavior.
         """
         try:
             self._matrix.setflags(write=False)
             self._set_frame_data(frame_id)
-            self.commit()
+            self._driver.custom_frame()
         finally:
             self._matrix.setflags(write=True)
 
 
-    def flip(self, clear: bool=True, frame_id: int=None) -> 'Frame':
+    def commit(self, clear: bool=True, frame_id: int=None) -> 'Frame':
         """
         Display this frame and prepare for the next frame
 
@@ -241,7 +232,7 @@ class Frame(object):
         The buffer is then cleared by default and the next frame
         can be drawn.
 
-        :param clear: True if the buffer should be cleared after flipping
+        :param clear: True if the buffer should be cleared after commit
         :param frame_id: Internal frame identifier
 
         :return: This Frame instance

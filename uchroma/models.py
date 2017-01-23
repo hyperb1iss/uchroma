@@ -1,6 +1,8 @@
 from collections import namedtuple
 from enum import Enum, IntEnum
 
+from uchroma.fixups import BLADE_PRO_KEY_ALIGNMENT_MAP
+
 from uchroma.types import FX
 
 
@@ -38,7 +40,7 @@ class Quirks(IntEnum):
 
 
 _H = namedtuple('_H',
-                ['product_id', 'product_name', 'matrix_dims', 'quirks'])
+                ['product_id', 'product_name', 'matrix_dims', 'quirks', 'fixup_args'])
 _H.__new__.__defaults__ = (None,) * len(_H._fields)
 
 
@@ -92,7 +94,7 @@ class BaseKeyboard(Hardware):
               FX.SPECTRUM, FX.STATIC, FX.STARLIGHT]
 
         if self.has_matrix:
-            fx.extend([FX.CUSTOM_FRAME, FX.RAINBOW])
+            fx.extend([FX.CUSTOM_FRAME, FX.RAINBOW, FX.ALIGNMENT])
 
         return tuple(fx)
 
@@ -141,7 +143,8 @@ class Laptop(BaseKeyboard):
     BLADE_QHD = \
         _H(0x020F, 'Blade Stealth (QHD)', (6, 22))
     BLADE_PRO_LATE_2016 = \
-        _H(0x0210, 'Blade Pro (Late 2016)', (6, 25))
+        _H(0x0210, 'Blade Pro (Late 2016)', (6, 25),
+           fixup_args={'alignment_map': BLADE_PRO_KEY_ALIGNMENT_MAP})
     BLADE_STEALTH_LATE_2016 = \
         _H(0x0220, 'Blade Stealth (Late 2016)', (6, 25))
 
@@ -299,6 +302,14 @@ class Model(object):
         Supported effects
         """
         return self.hardware.supported_fx
+
+
+    @property
+    def fixup_args(self) -> dict:
+        """
+        Required fixup arguments
+        """
+        return self.hardware.fixup_args
 
 
     def has_quirk(self, quirk: Quirks) -> bool:

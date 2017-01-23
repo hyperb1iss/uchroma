@@ -109,8 +109,8 @@ class AnimationLoop(object):
             if not self._running or self._error:
                 break
 
-            # Send the buffer we just got to the hardware
-            self._frame.prepare()
+            # display the frame
+            self._frame.commit()
 
             # calculate how long we will need to sleep, and sleep
             # until the deadline. autocorrect if necessary.
@@ -122,9 +122,6 @@ class AnimationLoop(object):
                 next_tick = self._fps - next_tick
 
             yield from asyncio.sleep(next_tick)
-
-            # display the frame
-            self._frame.commit()
 
             timestamp = time.time()
 

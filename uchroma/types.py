@@ -61,5 +61,7 @@ class FX(FXType):
     RIPPLE = (0x14, "Ripple effect when keys are pressed")
     SPECTRUM_BLADE = (0x1C, "Specturm effect with extra touchpad effects")
     STARLIGHT = (0x19, "Keys sparkle with color")
+
+    ALIGNMENT = (0xFE, "Alignment test pattern")
     RAINBOW = (0xFF, "Rainbow of hues")
 

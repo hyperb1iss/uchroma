@@ -20,8 +20,10 @@ class UChromaLaptop(UChromaKeyboard):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, model: Hardware, devinfo: hidapi.DeviceInfo, input_devices=None):
-        super(UChromaLaptop, self).__init__(model, devinfo, input_devices)
+    def __init__(self, model: Hardware, devinfo: hidapi.DeviceInfo,
+                 input_devices=None, *args, **kwargs):
+        super(UChromaLaptop, self).__init__(model, devinfo, input_devices,
+                                            *args, **kwargs)
 
 
     def _get_serial_number(self):

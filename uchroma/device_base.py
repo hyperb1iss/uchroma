@@ -26,7 +26,12 @@ class BaseUChromaDevice(object):
         GET_SERIAL = (0x00, 0x82, 0x16)
 
 
-    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, model: Enum, devinfo: hidapi.DeviceInfo, input_devices=None,
+                 *args, **kwargs):
+
+        # needed for mixins
+        super(BaseUChromaDevice, self).__init__(*args, **kwargs)
+
         self._model = model
         self._devinfo = devinfo
 

@@ -140,8 +140,8 @@ class UChromaHeadset(BaseUChromaDevice):
 
 
 
-    def __init__(self, model: Headset, devinfo: hidapi.DeviceInfo):
-        super(UChromaHeadset, self).__init__(model, devinfo)
+    def __init__(self, model: Headset, devinfo: hidapi.DeviceInfo, *args, **kwargs):
+        super(UChromaHeadset, self).__init__(model, devinfo, *args, **kwargs)
 
         self._last_cmd_time = None
 

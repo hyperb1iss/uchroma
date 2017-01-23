@@ -40,8 +40,10 @@ class UChromaMouse(UChromaDevice):
         GET_DPI_XY = (0x04, 0x85, 0x07)
 
 
-    def __init__(self, model: Mouse, devinfo: hidapi.DeviceInfo, input_devices=None):
-        super(UChromaMouse, self).__init__(model, devinfo, input_devices)
+    def __init__(self, model: Mouse, devinfo: hidapi.DeviceInfo,
+                 input_devices=None, *args, **kwargs):
+        super(UChromaMouse, self).__init__(model, devinfo, input_devices
+                                           *args, **kwargs)
 
 
     @property

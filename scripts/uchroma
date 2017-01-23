@@ -4,6 +4,9 @@ import argparse
 import logging
 import sys
 
+import click
+import numpy as np
+
 from uchroma import __version__
 from uchroma.color import Splotch
 from uchroma.device_manager import UChromaDeviceManager
@@ -36,6 +39,7 @@ class UChromaTool(object):
         self._brightness_sub = self._add_brightness_options(sub)
         self._fx_sub = self._add_fx_options(sub)
         self._led_sub = self._add_led_options(sub)
+        self._dev_sub = self._add_dev_options(sub)
 
         test = sub.add_parser('test', help='Test commands')
         test.add_argument('path', metavar='Device path', type=str,
@@ -115,6 +119,16 @@ class UChromaTool(object):
                           help='Set brightness (0-100)')
         led.set_defaults(func=self._led_parser)
         return led
+
+
+    def _add_dev_options(self, sub):
+        dev = sub.add_parser('dev', help='Developer options')
+        dev.add_argument("-d", "--device", type=str,
+                         help='HID device to use (/dev/hidrawX or USB identifier)')
+        dev.add_argument('-a', '--alignment', action='store_true',
+                         help='Interactive key alignment checker')
+        dev.set_defaults(func=self._dev_parser)
+        return dev
 
 
     def _get_driver(self, args):
@@ -220,6 +234,96 @@ class UChromaTool(object):
         sys.exit(0)
 
 
+    def _dev_parser(self, args):
+        if args.alignment:
+            self._key_alignment(args)
+            exit(0)
+
+        exit(1)
+
+
+    def _key_alignment_header(self):
+        click.clear()
+
+        print('This option is used for creating an mapping of offsets which might')
+        print('be needed on some keyboards.\n\n')
+        print('The keys will now show a repeating color pattern. The first column should')
+        print('be red. The highlighted key (in white) can be moved using the cursor controls.')
+        print('If things are working, the columns should be aligned, the pattern should be')
+        print('consistent over the entire device, and no keys should be skipped when moving')
+        print('the cursor around. Press ESC to exit.\n\n')
+
+
+    def _key_alignment_dump(self, data, position):
+        if data is None:
+            return
+
+        in_data = data.pop('in_data', None)
+        out_data = data.pop('out_data', None)
+
+        print("Row: %4d   Column: %4d  Modified: %s\n" % \
+            (position[0], position[1], np.all(in_data == out_data)))
+
+        if in_data is None or out_data is None:
+            return
+
+        maxlen = max(len(in_data), len(out_data))
+
+        print('\n%15s %5s %5s %15s\n' % ('INPUT ROW', '#', '', 'OUTPUT ROW'))
+
+        for column in range(0, maxlen):
+            in_dbg = out_dbg = pointer = ''
+            if len(in_data) > column:
+                in_dbg = in_data[column]
+            if len(out_data) > column:
+                out_dbg = out_data[column]
+
+            if column == position[1]:
+                pointer = '<--'
+
+            print('%15s %5s %5s %15s' % (in_dbg, column, pointer, out_dbg))
+
+
+    def _key_alignment(self, args):
+        def update():
+            self._key_alignment_header()
+            driver.alignment(position=position)
+            self._key_alignment_dump(driver.frame_control.debug_opts, position)
+
+        driver = self._get_driver(args)
+        driver.frame_control.debug_opts['skip_fixups'] = True
+        driver.frame_control.reset()
+        driver.frame_control.flip()
+        driver.frame_control.debug_opts.pop('skip_fixups')
+
+        position = [0, 0]
+
+        update()
+
+        while True:
+            key = click.getchar()
+
+            if key == '\x1b[A':
+                if position[0] > 0:
+                    position[0] -= 1
+            elif key == '\x1b[B':
+                if position[0] < driver.height - 1:
+                    position[0] += 1
+            elif key == '\x1b[C':
+                if position[1] < driver.width - 1:
+                    position[1] += 1
+            elif key == '\x1b[D':
+                if position[1] > 0:
+                    position[1] -= 1
+            elif key == '\x1b':
+                break
+            else:
+                continue
+
+            update()
+
+        return True
+
 
     @enumarg(FX)
     def _activate_fx(self, fx: EnumType, fx_args, driver) -> bool:
@@ -254,8 +358,8 @@ class UChromaTool(object):
                                  speed=fx_args.speed)
 
         elif fx == FX.RIPPLE_SOLID:
-             return driver.ripple_solid(color=UChromaTool._get_color(fx_args, 0),
-                                        speed=fx_args.speed)
+            return driver.ripple_solid(color=UChromaTool._get_color(fx_args, 0),
+                                       speed=fx_args.speed)
 
         elif fx == FX.SPECTRUM:
             return driver.spectrum()
@@ -279,7 +383,7 @@ class UChromaTool(object):
             return driver.wave()
 
         else:
-            print_err('Support for this effect (%s) is not implemented', fx_args.fxtype)
+            print_err('Support for this effect (%s) is not implemented' % fx_args.fxtype)
             sys.exit(1)
 
         return False

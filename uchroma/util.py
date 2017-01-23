@@ -12,7 +12,6 @@ from enum import Enum
 from threading import Timer
 
 import wrapt
-from decorator import decorator
 from grapefruit import Color
 from numpy import interp
 

@@ -1,6 +1,8 @@
+import logging
+
 from enum import Enum
 
-from uchroma.color import ColorUtils, Splotch
+from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.led import LED
 from uchroma.models import Model, Quirks
@@ -79,6 +81,7 @@ class FXManager(object):
         :param driver: The UChromaDevice to control
         """
         self._driver = driver
+        self._logger = logging.getLogger('uchroma.fxmanager')
 
 
     def _set_effect_basic(self, effect: FX, *args, transaction_id=None) -> bool:
@@ -360,7 +363,7 @@ class FXManager(object):
         """
         Activate the custom frame currently in the device memory
 
-        Called by the Frame class when flip() is called.
+        Called by the Frame class when commit() is called.
 
         :return: True if successful
         """
@@ -406,5 +409,30 @@ class FXManager(object):
             data.append([gradient[(row * stagger) + col] for col in range(0, frame.width)])
 
         frame.put_all(data)
+        frame.commit()
 
-        frame.flip()
+        return True
+
+
+    def alignment(self, position: tuple=None) -> bool:
+        first = 'red'
+        single = 'white'
+        colors = ['yellow', 'green', 'purple', 'blue']
+
+        frame = self._driver.frame_control
+
+        for row in range(0, frame.height):
+            for col in range(0, frame.width):
+                if col == 0:
+                    color = first
+                else:
+                    color = colors[int((col - 1) % len(colors))]
+                frame.put(row, col, color)
+
+        if position is not None and len(position) == 2:
+            frame.put(position[0], position[1], single)
+            frame.debug_opts['debug_position'] = tuple(position)
+
+        frame.commit()
+
+        return True
