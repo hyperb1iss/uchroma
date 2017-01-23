@@ -9,6 +9,7 @@ from pyudev import Context, Monitor, MonitorObserver
 from uchroma.device import UChromaDevice
 from uchroma.headset import UChromaHeadset
 from uchroma.keyboard import UChromaKeyboard
+from uchroma.laptop import UChromaLaptop
 from uchroma.models import Model, Quirks, RAZER_VENDOR_ID
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
 
@@ -101,14 +102,17 @@ class UChromaDeviceManager(object):
 
     def _create_device(self, model, devinfo):
         parent = self._get_parent(devinfo.product_id)
+        input_devs = self._get_input_devices(parent)
 
         if model.type == Model.Type.MOUSE:
-            input_devs = self._get_input_devices(parent)
             if model.has_quirk(Quirks.WIRELESS):
                 return UChromaWirelessMouse(model, devinfo, input_devs)
             return UChromaMouse(model, devinfo, input_devs)
 
-        if model.type == Model.Type.KEYBOARD or model.type == Model.Type.LAPTOP:
+        if model.type == Model.Type.LAPTOP:
+            return UChromaLaptop(model, devinfo, input_devs)
+
+        if model.type == Model.Type.KEYBOARD:
             input_devs = self._get_input_devices(parent)
             return UChromaKeyboard(model, devinfo, input_devs)
 
