@@ -232,6 +232,8 @@ class UChromaHeadset(BaseUChromaDevice):
                 self._close(True)
                 return None
 
+            self._ensure_open()
+
             self._last_cmd_time = smart_delay(DELAY_TIME, self._last_cmd_time, 0)
             resp = self._dev.read(REPORT_LENGTH_IN, timeout_ms=500)
             self._hexdump(resp, '<-- ')
