@@ -42,7 +42,7 @@ def _autocast_decorator(type_hint, fix_arg_func):
         hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() if x[1] == type_hint]
 
         if len(hinted_args) == 0:
-            raise ValueError("No arguments with EnumType hint found")
+            raise ValueError("No arguments with %s hint found" % type_hint)
 
         new_args = list(args)
         for hinted_arg in hinted_args:
