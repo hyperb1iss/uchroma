@@ -172,7 +172,13 @@ class Frame(object):
 
 
     def _set_frame_data_matrix(self, frame_id: int):
-        width = min(self._width, Frame.MAX_WIDTH)
+        width = self._width
+        multi = False
+
+        #perform two updates if we exceeded 24 columns
+        if width > Frame.MAX_WIDTH:
+            multi = True
+            width = int(width / 2)
 
         tid = None
         if self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
@@ -190,14 +196,26 @@ class Frame(object):
             if hasattr(self._driver, 'get_row_offset'):
                 start_col = self._driver.get_row_offset(self, row)
 
-            rowdata = rowdata[:width]
-
             remaining = self._height - row - 1
+            if multi:
+                remaining *= 2
+
+            data = rowdata[:width]
             self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX, frame_id,
-                                     row, start_col, width,
-                                     rowdata.tobytes(),
+                                     row, start_col, len(data) - 1,
+                                     data.tobytes(),
                                      transaction_id=tid,
                                      remaining_packets=remaining)
+
+            if multi:
+                data = rowdata[width:]
+                self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX, frame_id,
+                                         row, width, width + len(data) - 1,
+                                         data.tobytes(),
+                                         transaction_id=tid,
+                                         remaining_packets=remaining)
+
+
 
 
     def _set_frame_data(self, frame_id: int=None):
