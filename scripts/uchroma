@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
+import asyncio
+import curses
 import logging
+import signal
 import sys
+from pprint import pprint
 
-import click
 import numpy as np
 
 from uchroma import __version__
@@ -236,93 +239,161 @@ class UChromaTool(object):
 
     def _dev_parser(self, args):
         if args.alignment:
-            self._key_alignment(args)
+            UChromaTool.KeyAlignment.run(self._get_driver(args))
             exit(0)
 
         exit(1)
 
 
-    def _key_alignment_header(self):
-        click.clear()
+    class KeyAlignment(object):
 
-        print('This option is used for creating an mapping of offsets which might')
-        print('be needed on some keyboards.\n\n')
-        print('The keys will now show a repeating color pattern. The first column should')
-        print('be red. The highlighted key (in white) can be moved using the cursor controls.')
-        print('If things are working, the columns should be aligned, the pattern should be')
-        print('consistent over the entire device, and no keys should be skipped when moving')
-        print('the cursor around. Press ESC to exit.\n\n')
+        def __init__(self, driver):
+            self._driver = driver
+            self._position = [0, 0]
+            self._mapping = {}
+            self._stdscr = self._win_hdr = self._win_dbg = self._win_pos = None
+            self._editmode = False
 
 
-    def _key_alignment_dump(self, data, position):
-        if data is None:
-            return
-
-        in_data = data.pop('in_data', None)
-        out_data = data.pop('out_data', None)
-
-        print("Row: %4d   Column: %4d  Modified: %s\n" % \
-            (position[0], position[1], np.all(in_data == out_data)))
-
-        if in_data is None or out_data is None:
-            return
-
-        maxlen = max(len(in_data), len(out_data))
-
-        print('\n%15s %5s %5s %15s\n' % ('INPUT ROW', '#', '', 'OUTPUT ROW'))
-
-        for column in range(0, maxlen):
-            in_dbg = out_dbg = pointer = ''
-            if len(in_data) > column:
-                in_dbg = in_data[column]
-            if len(out_data) > column:
-                out_dbg = out_data[column]
-
-            if column == position[1]:
-                pointer = '<--'
-
-            print('%15s %5s %5s %15s' % (in_dbg, column, pointer, out_dbg))
+        def _exit(self, *args):
+            self._driver.remove_input_callback(self._input_callback)
+            asyncio.get_event_loop().stop()
+            print("SHUTDOWN")
 
 
-    def _key_alignment(self, args):
-        def update():
+        def __del__(self):
+            self._exit()
+
+
+        def _key_alignment_header(self):
+            self._stdscr.clear()
+
+            header = 'This option is used for creating an mapping of offsets which might'
+            header += 'be needed on some keyboards.\n\n'
+            header += 'The keys will now show a repeating color pattern. The first column should'
+            header += 'be red. The highlighted key (in white) can be moved using the cursor controls.'
+            header += 'If things are working, the columns should be aligned, the pattern should be'
+            header += 'consistent over the entire device, and no keys should be skipped when moving'
+            header += 'the cursor around. Press ESC to exit.\n\n'
+
+            self._stdscr.addstr(2, 0, header)
+            self._stdscr.refresh()
+
+
+        def _update(self, moved=False):
+            if moved:
+                self._driver.alignment(position=self._position)
+
+            data = self._driver.frame_control.debug_opts
+
+            in_data = data.pop('in_data', None)
+            out_data = data.pop('out_data', None)
+
+            key_mapping = None
+            for key, mapping in self._mapping.items():
+                if tuple(self._position) in mapping:
+                    key_mapping = '%s [%s]' % (key, repr(mapping))
+
+            self._stdscr.addstr(0, 0, "Row: %4d   Column: %4d  Modified: %s  Mapping: %s\n" % \
+                (self._position[0], self._position[1], np.all(in_data == out_data), key_mapping))
+
+
+            if moved:
+                maxlen = max(len(in_data), len(out_data))
+
+                self._stdscr.addstr(10, 0, '\n%15s %5s %5s %15s\n' % ('INPUT ROW', '#', '', 'OUTPUT ROW'))
+
+                for column in range(0, maxlen):
+                    in_dbg = out_dbg = pointer = ''
+                    if len(in_data) > column:
+                        in_dbg = in_data[column]
+                    if len(out_data) > column:
+                        out_dbg = out_data[column]
+
+                    if column == self._position[1]:
+                        pointer = '<--'
+
+                    self._stdscr.addstr(11 + column, 4, '%15s %5s %5s %15s' % (in_dbg, column, pointer, out_dbg))
+                self._stdscr.refresh()
+
+
+
+        @asyncio.coroutine
+        def _input_callback(self, ev):
+
+            if ev.keystate == 1:
+                moved = False
+
+                if ev.keycode == 'KEY_UP':
+                    if self._position[0] > 0:
+                        self._position[0] -= 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_DOWN':
+                    if self._position[0] < self._driver.height - 1:
+                        self._position[0] += 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_RIGHT':
+                    if self._position[1] < self._driver.width - 1:
+                        self._position[1] += 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_LEFT':
+                    if self._position[1] > 0:
+                        self._position[1] -= 1
+                        moved = True
+
+                else:
+                    mapping = self._mapping.get(ev.keycode, None)
+                    if mapping is None:
+                        mapping = []
+                        self._mapping[ev.keycode] = mapping
+
+                    if tuple(self._position) not in mapping:
+                        mapping.append(tuple(self._position))
+
+                self._update(moved)
+
+
+        def start(self, stdscr, *args, **kwds):
+            self._stdscr = stdscr
+            curses.mousemask(1)
+
+            self._driver.frame_control.debug_opts['skip_fixups'] = True
+            self._driver.frame_control.reset()
+            self._driver.frame_control.debug_opts.pop('skip_fixups')
+
+            for sig in signal.SIGINT, signal.SIGTERM, signal.SIGHUP:
+                asyncio.get_event_loop().add_signal_handler(sig, self._exit)
+
             self._key_alignment_header()
-            driver.alignment(position=position)
-            self._key_alignment_dump(driver.frame_control.debug_opts, position)
 
-        driver = self._get_driver(args)
-        driver.frame_control.debug_opts['skip_fixups'] = True
-        driver.frame_control.reset()
-        driver.frame_control.flip()
-        driver.frame_control.debug_opts.pop('skip_fixups')
+            self._update(True)
 
-        position = [0, 0]
+            self._driver.add_input_callback(self._input_callback)
 
-        update()
+            asyncio.get_event_loop().run_forever()
 
-        while True:
-            key = click.getchar()
+            pprint(self._mapping, indent=4)
 
-            if key == '\x1b[A':
-                if position[0] > 0:
-                    position[0] -= 1
-            elif key == '\x1b[B':
-                if position[0] < driver.height - 1:
-                    position[0] += 1
-            elif key == '\x1b[C':
-                if position[1] < driver.width - 1:
-                    position[1] += 1
-            elif key == '\x1b[D':
-                if position[1] > 0:
-                    position[1] -= 1
-            elif key == '\x1b':
-                break
-            else:
-                continue
+            return True
+#            while True:
+#                event = stdscr.getch()
+#                mouse = None
+#                if event == curses.KEY_MOUSE:
+#                    mouse = curses.getmouse()
+#                    if self._editmode:
+#                        self._editmode = False
+#                    else:
+#                        self._editmode = True
+#                stdscr.addstr(curses.LINES - 1, 0, '%s %s %s' % (mouse, self._editmode, curses.keyname(event)))
+#                stdscr.refresh()
 
-            update()
-
-        return True
+        @staticmethod
+        def run(driver):
+            util = UChromaTool.KeyAlignment(driver)
+            return curses.wrapper(util.start)
 
 
     @enumarg(FX)
