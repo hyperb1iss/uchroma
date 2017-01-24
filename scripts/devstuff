@@ -1,0 +1,390 @@
+#!/usr/bin/env python3
+
+import ast
+import asyncio
+import curses
+import getpass
+import logging
+import re
+import signal
+import sys
+import textwrap
+
+from datetime import datetime
+from pprint import pprint
+
+import numpy as np
+
+from uchroma.cmd import UChromaConsoleUtil
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+
+class UChromaDevTool(UChromaConsoleUtil):
+
+    def _add_subparsers(self, sub):
+        self._keys_sub = self._add_key_options(sub)
+        
+        
+    def _add_key_options(self, sub):
+        keys = sub.add_parser('keys', help='Keyboard bringup util')
+        keys.add_argument('-d', '--device', type=str,
+                         help='HID device to use (/dev/hidrawX or USB identifier)')
+        keys.add_argument('-f', '--file', type=str, metavar='FILE',
+                          help='Configuration file to use')
+        keys.set_defaults(func=self._key_config_tool)
+
+        return keys
+
+
+    def _key_config_tool(self, args):
+        with self.get_driver(args) as driver:
+            KeyConfigTool.run(driver, args.file)
+
+        exit(0)
+
+
+class KeyConfigTool(object):
+
+    STATUS_TAG = 'uChroma Keyboard Tool'
+
+
+    def __init__(self, driver, config_file: str=None):
+        self._driver = driver
+
+        if config_file is None:
+            self._config_file = self._get_config_filename()
+        else:
+            self._config_file = config_file
+
+        self._position = [0, 0]
+        self._mapping = {}
+        self._stdscr = None
+        self._editmode = False
+        self._loop = asyncio.get_event_loop()
+        self._task = None
+        self._shutdown = False
+
+        self._read_mappings()
+
+
+    def _exit(self):
+        self._shutdown = True
+        self._driver.remove_input_callback(self._input_callback)
+        self._task.cancel()
+        self._loop.run_until_complete(asyncio.wait(self._task))
+
+
+    def _key_alignment_header(self):
+        self._stdscr.clear()
+
+        header = 'This option is used for creating an mapping of offsets which might '
+        header += 'be needed on some keyboards.\n\n'
+        header += 'The keys will now show a repeating color pattern. The first column should '
+        header += 'be red. The highlighted key (in white) can be moved using the cursor controls. '
+        header += 'If things are working, the columns should be aligned, the pattern should be '
+        header += 'consistent over the entire device, and no keys should be skipped when moving '
+        header += 'the cursor around. Press ESC to exit.\n\n'
+        header += 'Click the mouse to enter edit mode. In edit mode, keys can be mapped to their '
+        header += 'color cell coordinates. Multiple cells can be assigned to a key, if '
+        header += 'necessary. Click the mouse to exit edit mode.\n\n'
+
+        row = 2
+        for text in textwrap.wrap(header, curses.COLS - 4):
+            self._stdscr.addstr(row, 2, text)
+            row += 1
+
+
+    def _print_matrix(self):
+        data = self._driver.frame_control.debug_opts
+
+        in_data = data.pop('in_data', None)
+        out_data = data.pop('out_data', None)
+
+        if in_data is not None and out_data is not None:
+            maxlen = max(len(in_data), len(out_data))
+
+            self._stdscr.addstr(10, 0, \
+                '\n%15s %5s %5s %15s\n' % ('INPUT ROW', '#', '', 'OUTPUT ROW'))
+
+            for column in range(0, maxlen):
+                in_dbg = out_dbg = pointer = ''
+                if len(in_data) > column:
+                    in_dbg = in_data[column]
+                if len(out_data) > column:
+                    out_dbg = out_data[column]
+
+                if column == self._position[1]:
+                    pointer = '<--'
+
+                self._stdscr.addstr(11 + column, 4, \
+                    '%15s %5s %5s %15s' % (in_dbg, column, pointer, out_dbg))
+
+
+    def _refresh(self):
+        self._stdscr.refresh()
+
+
+    def _advance_key_position(self):
+        cur_pos = self._position
+        moved = False
+
+        if self._editmode:
+            if cur_pos[1] < self._driver.width - 1:
+                cur_pos[1] += 1
+                moved = True
+            elif cur_pos[0] < self._driver.height - 1:
+                cur_pos[0] += 1
+                cur_pos[1] = 0
+                moved = True
+            else:
+                self._editmode = False
+
+            if moved:
+                self._update_active_key(cur_pos)
+
+
+    def _update_active_key(self, position=None):
+        if position is not None:
+            self._position = position
+        self._driver.alignment(position=self._position)
+
+
+    def _update(self):
+        self._print_matrix()
+
+        key_mapping = None
+        for key, mapping in self._find_mappings(self._position).items():
+            info = '%s [%s]' % (key, repr(mapping))
+            if key_mapping is None:
+                key_mapping = info
+            else:
+                key_mapping += ', %s' % info
+
+        self._update_bottombar(key_mapping)
+
+
+        status = 'Row: [ %2d ]  Col: [ %2d ]' % (self._position[0], self._position[1])
+
+        color = None
+        if self._editmode:
+            color = self.color_warn
+            status += '  (editing)'
+
+        self._update_statusbar(status, color)
+        self._refresh()
+
+
+    def _update_statusbar(self, status, color=None):
+        if color is None:
+            color = self.color_status
+
+        padding = " " * (curses.COLS - 1 - len(status) - len(KeyConfigTool.STATUS_TAG) - 2)
+        line = ' %s%s%s ' % (status, padding, KeyConfigTool.STATUS_TAG)
+
+        self._stdscr.addstr(0, 0, line, color)
+
+
+    def _update_bottombar(self, status, color=None):
+        if color is None:
+            color = self.color_status
+
+        if status is None:
+            status = ''
+
+        padding = " " * (curses.COLS - 1 - len(status) - 2)
+        line = ' %s%s ' % (status, padding)
+
+        self._stdscr.addstr(curses.LINES - 1, 0, line, color)
+
+
+    def _find_mappings(self, position):
+        mappings = {}
+        for key, mapping in self._mapping.items():
+            if tuple(position) in mapping:
+                mappings[key] = mapping
+        return mappings
+
+
+    def _clear_mappings(self, position):
+        mappings = self._find_mappings(position)
+        for key in mappings.keys():
+            self._mapping.pop(key)
+
+
+    def _get_config_filename(self):
+        name = re.sub('[\W]+', '', self._driver.name.lower().replace(' ', '_'))
+        return '%s-%s.cfg' % (self._driver.device_type.value.__name__.lower(), name)
+
+
+    def _write_mappings(self):
+        if self._config_file is None:
+            return False
+
+        with open(self._config_file, 'w') as outfile:
+            outfile.write('#\n')
+            outfile.write('#  uChroma Device Configuration\n')
+            outfile.write('#\n')
+            outfile.write('#  Model: %s (%s)\n' % \
+                (self._driver.name, self._driver.device_type.value.__name__))
+            outfile.write('#  Created by %s on %s\n' % \
+                (getpass.getuser(), datetime.now().isoformat(' ')))
+            outfile.write('#\n\n')
+
+            pprint(self._mapping, stream=outfile, indent=4)
+
+        status = 'Mappings saved to \'%s\'' % self._config_file
+        self._update_statusbar(status, self.color_action)
+        self._refresh()
+
+
+    def _read_mappings(self):
+        if self._config_file is None:
+            return False
+
+        try:
+            with open(self._config_file, 'r') as infile:
+                mappings = infile.read()
+                self._mapping = ast.literal_eval(mappings)
+
+        except FileNotFoundError:
+            pass
+
+
+    @asyncio.coroutine
+    def _input_callback(self, ev):
+        if ev.keystate == 1:
+            moved = False
+
+            if self._editmode:
+                codes = []
+                if isinstance(ev.keycode, list):
+                    codes.extend(ev.keycode)
+                else:
+                    codes.append(ev.keycode)
+
+                for code in codes:
+                    mapping = self._mapping.get(code, None)
+                    if mapping is None:
+                        mapping = []
+                        self._mapping[code] = mapping
+
+                    if tuple(self._position) not in mapping:
+                        mapping.append(tuple(self._position))
+
+                self._advance_key_position()
+
+            else:
+
+                if ev.keycode == 'KEY_UP':
+                    if self._position[0] > 0:
+                        self._position[0] -= 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_DOWN':
+                    if self._position[0] < self._driver.height - 1:
+                        self._position[0] += 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_RIGHT':
+                    if self._position[1] < self._driver.width - 1:
+                        self._position[1] += 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_LEFT':
+                    if self._position[1] > 0:
+                        self._position[1] -= 1
+                        moved = True
+
+                elif ev.keycode == 'KEY_ESC':
+                    self._exit()
+                    return
+
+                elif ev.keycode == 'KEY_C':
+                    self._clear_mappings(self._position)
+
+                elif ev.keycode == 'KEY_W':
+                    self._write_mappings()
+                    return
+
+                if moved:
+                    self._update_active_key()
+
+            self._update()
+
+
+    def _curses_input(self):
+        return self._stdscr.getch()
+
+
+    @asyncio.coroutine
+    def _read_mouse(self):
+        while not self._shutdown:
+            event = yield from self._loop.run_in_executor(None, self._curses_input)
+            if event == -1:
+                continue
+
+            mouse = None
+            if event == curses.KEY_MOUSE:
+                #mouse = curses.getmouse()
+                if self._editmode:
+                    self._editmode = False
+                else:
+                    self._editmode = True
+                self._update()
+
+
+    @property
+    def color_warn(self):
+        return curses.color_pair(2) | curses.A_BOLD
+
+    @property
+    def color_status(self):
+        return curses.color_pair(3) | curses.A_BOLD
+
+    @property
+    def color_action(self):
+        return curses.color_pair(4) | curses.A_BOLD
+
+
+    def start(self, stdscr, *args, **kwds):
+        self._stdscr = stdscr
+        curses.mousemask(1)
+        curses.use_default_colors()
+
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
+        curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_GREEN)
+
+        self._stdscr.timeout(100)
+
+        # turn off fixups and blast the entire block with zeros
+        self._driver.frame_control.debug_opts['skip_fixups'] = True
+        self._driver.frame_control.reset()
+        self._driver.frame_control.debug_opts.pop('skip_fixups')
+
+        #for sig in signal.SIGINT, signal.SIGTERM, signal.SIGHUP:
+        #    self._loop.add_signal_handler(sig, self._exit)
+
+        self._key_alignment_header()
+        self._update_active_key()
+        self._update()
+
+        self._driver.add_input_callback(self._input_callback)
+
+        self._loop.run_until_complete(self._read_mouse())
+
+        return self._mapping
+
+
+    @staticmethod
+    def run(driver, output: str):
+        util = KeyConfigTool(driver, output)
+        sigtstp = signal.getsignal(signal.SIGTSTP)
+        mapping = curses.wrapper(util.start)
+        signal.signal(signal.SIGTSTP, sigtstp)
+
+
+if __name__ == '__main__':
+    UChromaDevTool().run()

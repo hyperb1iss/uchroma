@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
 
-import argparse
-import asyncio
-import curses
 import logging
-import signal
 import sys
-from pprint import pprint
-
-import numpy as np
 
 from uchroma import __version__
+from uchroma.cmd import UChromaConsoleUtil
 from uchroma.color import Splotch
-from uchroma.device_manager import UChromaDeviceManager
 from uchroma.led import LED
 from uchroma.types import FX
 from uchroma.util import enumarg, EnumType
@@ -21,45 +14,18 @@ from uchroma.util import enumarg, EnumType
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
-def print_err(*args):
-    sys.stderr.write(' '.join(map(str, args)) + '\n')
+class UChromaTool(UChromaConsoleUtil):
 
 
-class UChromaTool(object):
-
-    def __init__(self):
-        parser = argparse.ArgumentParser(
-            description='Color control for Razer Chroma peripherals')
-
-        parser.add_argument("-v", "--version", action='version', version='uChroma-%s' % __version__)
-        parser.add_argument("--debug", action='store_true', help='Enable debug output')
-
-        sub = parser.add_subparsers(title='Subcommands')
-
-        list_devs = sub.add_parser('list', help='List devices')
-        list_devs.set_defaults(func=self._list_devices)
-
+    def _add_subparsers(self, sub):
         self._brightness_sub = self._add_brightness_options(sub)
         self._fx_sub = self._add_fx_options(sub)
         self._led_sub = self._add_led_options(sub)
-        self._dev_sub = self._add_dev_options(sub)
 
         test = sub.add_parser('test', help='Test commands')
         test.add_argument('path', metavar='Device path', type=str,
                           help='Test if path is a uChroma device (udev)')
         test.set_defaults(func=self._test_device)
-
-        self._args = parser.parse_args()
-
-        if self._args.debug:
-            logging.getLogger().setLevel(logging.DEBUG)
-
-        if not hasattr(self._args, 'func'):
-            parser.print_help()
-            sys.exit(1)
-
-        self._parser = parser
-        self._dm = UChromaDeviceManager()
 
 
     def _add_fx_options(self, sub):
@@ -124,47 +90,6 @@ class UChromaTool(object):
         return led
 
 
-    def _add_dev_options(self, sub):
-        dev = sub.add_parser('dev', help='Developer options')
-        dev.add_argument("-d", "--device", type=str,
-                         help='HID device to use (/dev/hidrawX or USB identifier)')
-        dev.add_argument('-a', '--alignment', action='store_true',
-                         help='Interactive key alignment checker')
-        dev.set_defaults(func=self._dev_parser)
-        return dev
-
-
-    def _get_driver(self, args):
-        driver = None
-
-        if args.device is not None:
-            if args.device not in self._dm.devices:
-                sys.exit(1)
-
-            driver = self._dm.devices[args.device]
-
-        elif len(self._dm.devices) == 1:
-            driver = self._dm.devices[list(self._dm.devices.keys())[0]]
-        else:
-            print_err("Multiple devices found, select one with --device")
-            sys.exit(1)
-
-        driver.defer_close = False
-
-        return driver
-
-
-    def run(self):
-        self._args.func(self._args)
-
-
-    def _list_devices(self, args):
-        for key in self._dm.devices:
-            d = self._dm.devices[key]
-            print('[%s]: %s (%s / %s)' % (key, d.name, d.serial_number, d.firmware_version))
-        sys.exit(0)
-
-
     @staticmethod
     def _get_splotch(args):
         if args.splotch is None:
@@ -205,7 +130,7 @@ class UChromaTool(object):
 
     def _list_fx(self, driver):
         if driver.supported_fx is None:
-            print_err('No supported effects found.')
+            self.print_err('No supported effects found.')
             sys.exit(1)
 
         print('\nSupported effects:\n')
@@ -214,186 +139,26 @@ class UChromaTool(object):
 
 
     def _fx_parser(self, args):
-        driver = self._get_driver(args)
-
-        if args.list or args.fxtype == 'list':
-            self._list_fx(driver)
-            sys.exit(0)
-
-        if args.fxtype is None:
-            self._fx_sub.print_help()
-            self._list_fx(driver)
-            sys.exit(1)
-
-        if driver.has_fx(args.fxtype):
-            if self._activate_fx(args.fxtype, args, driver):
+        with self.get_driver(args) as driver:
+            if args.list or args.fxtype == 'list':
+                self._list_fx(driver)
                 sys.exit(0)
 
-            print_err('Failed to activate effect')
-            sys.exit(1)
+            if args.fxtype is None:
+                self._fx_sub.print_help()
+                self._list_fx(driver)
+                sys.exit(1)
 
-        print_err('Unsupported effect: %s\n' % args.fxtype)
-        self._list_fx(driver)
-        sys.exit(0)
+            if driver.has_fx(args.fxtype):
+                if self._activate_fx(args.fxtype, args, driver):
+                    sys.exit(0)
 
+                self.print_err('Failed to activate effect')
+                sys.exit(1)
 
-    def _dev_parser(self, args):
-        if args.alignment:
-            UChromaTool.KeyAlignment.run(self._get_driver(args))
-            exit(0)
-
-        exit(1)
-
-
-    class KeyAlignment(object):
-
-        def __init__(self, driver):
-            self._driver = driver
-            self._position = [0, 0]
-            self._mapping = {}
-            self._stdscr = self._win_hdr = self._win_dbg = self._win_pos = None
-            self._editmode = False
-
-
-        def _exit(self, *args):
-            self._driver.remove_input_callback(self._input_callback)
-            asyncio.get_event_loop().stop()
-            print("SHUTDOWN")
-
-
-        def __del__(self):
-            self._exit()
-
-
-        def _key_alignment_header(self):
-            self._stdscr.clear()
-
-            header = 'This option is used for creating an mapping of offsets which might'
-            header += 'be needed on some keyboards.\n\n'
-            header += 'The keys will now show a repeating color pattern. The first column should'
-            header += 'be red. The highlighted key (in white) can be moved using the cursor controls.'
-            header += 'If things are working, the columns should be aligned, the pattern should be'
-            header += 'consistent over the entire device, and no keys should be skipped when moving'
-            header += 'the cursor around. Press ESC to exit.\n\n'
-
-            self._stdscr.addstr(2, 0, header)
-            self._stdscr.refresh()
-
-
-        def _update(self, moved=False):
-            if moved:
-                self._driver.alignment(position=self._position)
-
-            data = self._driver.frame_control.debug_opts
-
-            in_data = data.pop('in_data', None)
-            out_data = data.pop('out_data', None)
-
-            key_mapping = None
-            for key, mapping in self._mapping.items():
-                if tuple(self._position) in mapping:
-                    key_mapping = '%s [%s]' % (key, repr(mapping))
-
-            self._stdscr.addstr(0, 0, "Row: %4d   Column: %4d  Modified: %s  Mapping: %s\n" % \
-                (self._position[0], self._position[1], np.all(in_data == out_data), key_mapping))
-
-
-            if moved:
-                maxlen = max(len(in_data), len(out_data))
-
-                self._stdscr.addstr(10, 0, '\n%15s %5s %5s %15s\n' % ('INPUT ROW', '#', '', 'OUTPUT ROW'))
-
-                for column in range(0, maxlen):
-                    in_dbg = out_dbg = pointer = ''
-                    if len(in_data) > column:
-                        in_dbg = in_data[column]
-                    if len(out_data) > column:
-                        out_dbg = out_data[column]
-
-                    if column == self._position[1]:
-                        pointer = '<--'
-
-                    self._stdscr.addstr(11 + column, 4, '%15s %5s %5s %15s' % (in_dbg, column, pointer, out_dbg))
-                self._stdscr.refresh()
-
-
-
-        @asyncio.coroutine
-        def _input_callback(self, ev):
-
-            if ev.keystate == 1:
-                moved = False
-
-                if ev.keycode == 'KEY_UP':
-                    if self._position[0] > 0:
-                        self._position[0] -= 1
-                        moved = True
-
-                elif ev.keycode == 'KEY_DOWN':
-                    if self._position[0] < self._driver.height - 1:
-                        self._position[0] += 1
-                        moved = True
-
-                elif ev.keycode == 'KEY_RIGHT':
-                    if self._position[1] < self._driver.width - 1:
-                        self._position[1] += 1
-                        moved = True
-
-                elif ev.keycode == 'KEY_LEFT':
-                    if self._position[1] > 0:
-                        self._position[1] -= 1
-                        moved = True
-
-                else:
-                    mapping = self._mapping.get(ev.keycode, None)
-                    if mapping is None:
-                        mapping = []
-                        self._mapping[ev.keycode] = mapping
-
-                    if tuple(self._position) not in mapping:
-                        mapping.append(tuple(self._position))
-
-                self._update(moved)
-
-
-        def start(self, stdscr, *args, **kwds):
-            self._stdscr = stdscr
-            curses.mousemask(1)
-
-            self._driver.frame_control.debug_opts['skip_fixups'] = True
-            self._driver.frame_control.reset()
-            self._driver.frame_control.debug_opts.pop('skip_fixups')
-
-            for sig in signal.SIGINT, signal.SIGTERM, signal.SIGHUP:
-                asyncio.get_event_loop().add_signal_handler(sig, self._exit)
-
-            self._key_alignment_header()
-
-            self._update(True)
-
-            self._driver.add_input_callback(self._input_callback)
-
-            asyncio.get_event_loop().run_forever()
-
-            pprint(self._mapping, indent=4)
-
-            return True
-#            while True:
-#                event = stdscr.getch()
-#                mouse = None
-#                if event == curses.KEY_MOUSE:
-#                    mouse = curses.getmouse()
-#                    if self._editmode:
-#                        self._editmode = False
-#                    else:
-#                        self._editmode = True
-#                stdscr.addstr(curses.LINES - 1, 0, '%s %s %s' % (mouse, self._editmode, curses.keyname(event)))
-#                stdscr.refresh()
-
-        @staticmethod
-        def run(driver):
-            util = UChromaTool.KeyAlignment(driver)
-            return curses.wrapper(util.start)
+            self.print_err('Unsupported effect: %s\n' % args.fxtype)
+            self._list_fx(driver)
+            sys.exit(0)
 
 
     @enumarg(FX)
@@ -454,65 +219,61 @@ class UChromaTool(object):
             return driver.wave()
 
         else:
-            print_err('Support for this effect (%s) is not implemented' % fx_args.fxtype)
+            self.print_err('Support for this effect (%s) is not implemented' % fx_args.fxtype)
             sys.exit(1)
 
         return False
 
 
     def _led_parser(self, args):
-        driver = self._get_driver(args)
+        with self.get_driver(args) as driver:
 
-        led = driver.get_led(LED.Type[args.led_type.upper()])
-        if led is None:
-            sys.exit(1)
+            led = driver.get_led(LED.Type[args.led_type.upper()])
+            if led is None:
+                sys.exit(1)
 
-        if args.info:
-            led_type = None
-            if led.led_type is not None:
-                led_type = led.led_type.name
+            if args.info:
+                led_type = None
+                if led.led_type is not None:
+                    led_type = led.led_type.name
 
-            mode = None
-            if led.mode is not None:
-                mode = led.mode.name
+                mode = None
+                if led.mode is not None:
+                    mode = led.mode.name
 
-            print('type=%s,state=%s,color=%s,mode=%s,brightness=%f' \
-                  % (led_type, led.state, repr(led.color), mode, led.brightness))
+                print('type=%s,state=%s,color=%s,mode=%s,brightness=%f' \
+                      % (led_type, led.state, repr(led.color), mode, led.brightness))
 
-        else:
-            if args.state is not None:
-                led.state = args.state
+            else:
+                if args.state is not None:
+                    led.state = args.state
 
-            if args.mode is not None:
-                led.mode = LED.Mode[args.mode.upper()]
+                if args.mode is not None:
+                    led.mode = LED.Mode[args.mode.upper()]
 
-            if args.color is not None:
-                led.color = args.color.lower()
+                if args.color is not None:
+                    led.color = args.color.lower()
 
-            if args.brightness is not None:
-                if args.brightness < 0 or args.brightness > 100:
-                    print_err("Brightness value must be between 0 and 100")
-                    exit(1)
+                if args.brightness is not None:
+                    if args.brightness < 0 or args.brightness > 100:
+                        self.print_err("Brightness value must be between 0 and 100")
+                        exit(1)
 
-                led.brightness = args.brightness
+                    led.brightness = args.brightness
 
 
     def _brightness_parser(self, args):
-        driver = self._get_driver(args)
+        with self.get_driver(args) as driver:
+            if args.level is None:
+                print('%f' % driver.brightness)
 
-        if args.level is None:
-            print('%f' % driver.brightness)
+            else:
+                if args.level < 0 or args.level > 100:
+                    self.print_err('Brightness must be between 0 and 100')
+                    sys.exit(1)
 
-        else:
-            if args.level < 0 or args.level > 100:
-                print_err('Brightness must be between 0 and 100')
-                sys.exit(1)
-
-            driver.brightness = args.level
+                driver.brightness = args.level
 
 
-tool = UChromaTool()
-try:
-    tool.run()
-finally:
-    pass
+if __name__ == '__main__':
+    UChromaTool().run()
