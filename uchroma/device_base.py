@@ -80,12 +80,9 @@ class BaseUChromaDevice(object):
 
     @property
     def input_devices(self):
+        if self._input_manager is None:
+            return None
         return self._input_manager.input_devices
-
-
-    def __del__(self):
-        self._defer_close = False
-        self._close(True)
 
 
     def _ensure_open(self):
@@ -409,3 +406,18 @@ class BaseUChromaDevice(object):
         Reset effects and other configuration to defaults
         """
         return True
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, ex_type, ex_value, traceback):
+        self._defer_close = False
+        self._close(True)
+        if self._input_manager is not None:
+            self._input_manager.shutdown()
+
+
+    def __del__(self):
+        self.__exit__(None, None, None)

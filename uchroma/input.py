@@ -23,7 +23,7 @@ class InputManager(object):
 
     @asyncio.coroutine
     def _evdev_callback(self, device):
-        while True:
+        while self._opened:
             try:
                 events = yield from device.async_read()
                 for event in events:
@@ -45,22 +45,22 @@ class InputManager(object):
         for input_device in self._input_devices:
             event_device = evdev.InputDevice(input_device)
             self._event_devices.append(event_device)
-            self._task = asyncio.ensure_future(self._evdev_callback(event_device))
 
-        self._opened = True
+            self._opened = True
+            self._task = asyncio.ensure_future(
+                self._evdev_callback(event_device))
 
 
     def _close_input_devices(self):
         if not self._opened:
             return
 
+        self._opened = False
+
         for event_device in self._event_devices:
             event_device.close()
 
         self._event_devices.clear()
-        self._task.cancel()
-
-        self._opened = False
 
 
     @synchronized
