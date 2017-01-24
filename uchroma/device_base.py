@@ -4,6 +4,7 @@ import hidapi
 
 from wrapt import synchronized
 
+from uchroma.input import InputManager
 from uchroma.models import Hardware, HardwareInfo, Quirks
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand, FX
@@ -45,9 +46,9 @@ class BaseUChromaDevice(object):
 
         self._offline = False
 
-        self._input_devices = []
+        self._input_manager = None
         if input_devices is not None:
-            self._input_devices.extend(input_devices)
+            self._input_manager = InputManager(self, input_devices)
 
 
     def _close(self, force: bool=False):
@@ -75,6 +76,11 @@ class BaseUChromaDevice(object):
         the defer_close flag.
         """
         self._close(force)
+
+
+    @property
+    def input_devices(self):
+        return self._input_manager.input_devices
 
 
     def __del__(self):
@@ -206,12 +212,14 @@ class BaseUChromaDevice(object):
             self._close()
 
 
-    @property
-    def input_devices(self):
-        """
-        List of associated input device path
-        """
-        return self._input_devices
+    def add_input_callback(self, callback):
+        if self._input_manager is not None:
+            self._input_manager.add_callback(callback)
+
+
+    def remove_input_callback(self, callback):
+        if self._input_manager is not None:
+            self._input_manager.remove_callback(callback)
 
 
     def _decode_serial(self, value: bytes) -> str:
