@@ -52,7 +52,7 @@ class InputManager(object):
 
 
     def _close_input_devices(self):
-        if not self._opened:
+        if not hasattr(self, '_opened') or not self._opened:
             return
 
         self._opened = False

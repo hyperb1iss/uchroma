@@ -5,7 +5,7 @@ import hidapi
 from wrapt import synchronized
 
 from uchroma.input import InputManager
-from uchroma.models import Hardware, HardwareInfo, Quirks
+from uchroma.hardware import Hardware, Quirks
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand, FX
 from uchroma.util import enumarg, EnumType, RepeatingTimer
@@ -26,14 +26,14 @@ class BaseUChromaDevice(object):
         GET_SERIAL = (0x00, 0x82, 0x16)
 
 
-    def __init__(self, hardware: HardwareInfo, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
                  input_devices=None, *args, **kwargs):
-
-        # needed for mixins
-        super(BaseUChromaDevice, self).__init__(*args, **kwargs)
 
         self._hardware = hardware
         self._devinfo = devinfo
+
+        # needed for mixins
+        super(BaseUChromaDevice, self).__init__(*args, **kwargs)
 
         self._dev = None
         self._serial_number = None
@@ -58,7 +58,7 @@ class BaseUChromaDevice(object):
                 return
             self._close_timer.cancel()
 
-        if self._dev is not None:
+        if hasattr(self, '_dev') and self._dev is not None:
             try:
                 self._dev.close()
             except Exception:
@@ -297,13 +297,13 @@ class BaseUChromaDevice(object):
         """
         The name of this device
         """
-        return self.hardware.product_name
+        return self.hardware.name
 
 
     @property
-    def hardware(self) -> HardwareInfo:
+    def hardware(self) -> Hardware:
         """
-        The sub-enumeration of HardwareInfo
+        The sub-enumeration of Hardware
         """
         return self._hardware
 
@@ -356,7 +356,7 @@ class BaseUChromaDevice(object):
         if not self.has_matrix:
             return 0
 
-        return self.hardware.matrix_dims[1]
+        return self.hardware.dimensions.x
 
 
     @property
@@ -367,7 +367,7 @@ class BaseUChromaDevice(object):
         if not self.has_matrix:
             return 0
 
-        return self.hardware.matrix_dims[0]
+        return self.hardware.dimensions.y
 
 
     @property
@@ -415,7 +415,7 @@ class BaseUChromaDevice(object):
     def __exit__(self, ex_type, ex_value, traceback):
         self._defer_close = False
         self._close(True)
-        if self._input_manager is not None:
+        if hasattr(self, '_input_manager') and self._input_manager is not None:
             self._input_manager.shutdown()
 
 

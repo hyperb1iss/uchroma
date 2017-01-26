@@ -1,0 +1,60 @@
+#
+#  uChroma device configuration
+#
+#  Type: MOUSE
+#  Created by shade on 2017-01-26 02:57:36.517763
+#
+!device-config
+manufacturer: Razer
+type: MOUSE
+vendor_id: 0x1532
+supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC]
+children:
+- !device-config
+  name: Imperator 2012
+  product_id: 0x002f
+
+- !device-config
+  name: Abyssus 2014
+  product_id: 0x0042
+
+- !device-config
+  name: DeathAdder Chroma
+  product_id: 0x0043
+
+- !device-config
+  supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, CUSTOM_FRAME]
+  children:
+
+  - !device-config
+    name: Mamba (Wired)
+    product_id: 0x0044
+    dimensions: [1, 15]
+
+  - !device-config
+    name: Mamba (Wireless)
+    product_id: 0x0045
+    dimensions: [1, 15]
+    quirks: WIRELESS
+
+  - !device-config
+    name: Mamba Tournament Edition
+    product_id: 0x0046
+    dimensions: [1, 16]
+
+- !device-config
+  name: Orochi (Wired)
+  product_id: 0x0048
+  quirks: SCROLL_WHEEL_BRIGHTNESS
+
+- !device-config
+  name: Naga Hex V2
+  product_id: 0x0050
+  quirks:
+  - EXTENDED_FX_CMDS
+  - TRANSACTION_CODE_3F
+
+- !device-config
+  name: DeathAdder Elite
+  product_id: 0x005c
+  quirks: TRANSACTION_CODE_3F

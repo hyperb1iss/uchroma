@@ -1,0 +1,79 @@
+#
+#  uChroma device configuration
+#
+#  Type: KEYBOARD
+#  Created by shade on 2017-01-26 02:57:36.502311
+#
+!device-config
+manufacturer: Razer
+type: KEYBOARD
+vendor_id: 0x1532
+children:
+- !device-config
+  supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, STARLIGHT]
+  children:
+
+  - !device-config
+    name: Anansi
+    product_id: 0x010f
+    quirks: BACKLIGHT_LED_FX_ONLY
+
+  - !device-config
+    name: Tartarus Chroma
+    product_id: 0x0208
+    quirks: PROFILE_LEDS
+
+
+- !device-config
+  supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, STARLIGHT, CUSTOM_FRAME,
+    RAINBOW, ALIGNMENT]
+  children:
+
+  - !device-config
+    name: BlackWidow Ultimate 2012
+    product_id: 0x010d
+    dimensions: [6, 22]
+    quirks: LOGO_LED_BRIGHTNESS
+
+  - !device-config
+    name: BlackWidow Ultimate 2013
+    product_id: 0x011a
+    dimensions: [6, 22]
+    quirks: LOGO_LED_BRIGHTNESS
+
+  - !device-config
+    name: BlackWidow Classic
+    product_id: 0x011b
+    dimensions: [6, 22]
+    quirks: LOGO_LED_BRIGHTNESS
+
+  - !device-config
+    name: BlackWidow Chroma
+    product_id: 0x0203
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow Chroma Tournament Edition
+    product_id: 0x0209
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow Ultimate 2016
+    product_id: 0x0214
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow X Chroma
+    product_id: 0x0216
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow X Chroma Tournament Edition
+    product_id: 0x021a
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Ornata Chroma
+    product_id: 0x021e
+    dimensions: [6, 22]
+    quirks: EXTENDED_FX_CMDS

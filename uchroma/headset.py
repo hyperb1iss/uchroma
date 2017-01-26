@@ -8,7 +8,7 @@ from wrapt import synchronized
 from uchroma.byte_args import ByteArgs
 from uchroma.color import Splotch
 from uchroma.device_base import BaseUChromaDevice
-from uchroma.models import Headset
+from uchroma.hardware import Hardware
 from uchroma.types import BaseCommand
 from uchroma.util import colorarg, ColorType, smart_delay, set_bits, scale_brightness, \
     test_bit, to_byte, to_color, to_rgb
@@ -140,21 +140,18 @@ class UChromaHeadset(BaseUChromaDevice):
 
 
 
-    def __init__(self, hardware: Headset, devinfo: hidapi.DeviceInfo, *args, **kwargs):
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, *args, **kwargs):
         super(UChromaHeadset, self).__init__(hardware, devinfo, *args, **kwargs)
 
         self._last_cmd_time = None
 
-        self._revision = None
-        if self.hardware == Headset.KRAKEN:
-            self._revision = 1
+        if self.hardware.revision == 1:
             self._cmd_get_led = UChromaHeadset.Command.RAINIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.RAINIE_SET_LED_MODE
             self._cmd_get_rgb = [UChromaHeadset.Command.RAINIE_GET_RGB]
             self._cmd_set_rgb = [UChromaHeadset.Command.RAINIE_SET_RGB]
 
-        elif self.hardware == Headset.KRAKEN_V2:
-            self._revision = 2
+        elif self.hardware.revision == 2:
             self._cmd_get_led = UChromaHeadset.Command.KYLIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.KYLIE_SET_LED_MODE
             self._cmd_get_rgb = [UChromaHeadset.Command.KYLIE_GET_RGB_1,

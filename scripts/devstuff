@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=no-member
 
 import ast
 import asyncio
@@ -13,9 +14,8 @@ import textwrap
 from datetime import datetime
 from pprint import pprint
 
-import numpy as np
-
 from uchroma.cmd import UChromaConsoleUtil
+from uchroma.hardware import Hardware, KeyMapping, Point
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -24,12 +24,12 @@ class UChromaDevTool(UChromaConsoleUtil):
 
     def _add_subparsers(self, sub):
         self._keys_sub = self._add_key_options(sub)
-        
-        
+
+
     def _add_key_options(self, sub):
         keys = sub.add_parser('keys', help='Keyboard bringup util')
         keys.add_argument('-d', '--device', type=str,
-                         help='HID device to use (/dev/hidrawX or USB identifier)')
+                          help='HID device to use (/dev/hidrawX or USB identifier)')
         keys.add_argument('-f', '--file', type=str, metavar='FILE',
                           help='Configuration file to use')
         keys.set_defaults(func=self._key_config_tool)
@@ -57,15 +57,21 @@ class KeyConfigTool(object):
         else:
             self._config_file = config_file
 
-        self._position = [0, 0]
-        self._mapping = {}
+        self._position = Point(y=0, x=0)
+        self._hardware = driver.hardware
+        self._load_hardware()
+
+        self._mapping = KeyMapping()
+        if driver.hardware.key_mapping is not None:
+            self._mapping = driver.hardware.key_mapping
+
         self._stdscr = None
         self._editmode = False
         self._loop = asyncio.get_event_loop()
         self._task = None
         self._shutdown = False
 
-        self._read_mappings()
+        self._load_hardware()
 
 
     def _exit(self):
@@ -114,7 +120,7 @@ class KeyConfigTool(object):
                 if len(out_data) > column:
                     out_dbg = out_data[column]
 
-                if column == self._position[1]:
+                if column == self._position.x:
                     pointer = '<--'
 
                 self._stdscr.addstr(11 + column, 4, \
@@ -130,12 +136,11 @@ class KeyConfigTool(object):
         moved = False
 
         if self._editmode:
-            if cur_pos[1] < self._driver.width - 1:
-                cur_pos[1] += 1
+            if cur_pos.x < self._driver.width - 1:
+                cur_pos = Point(y=cur_pos.y, x=cur_pos.x + 1)
                 moved = True
-            elif cur_pos[0] < self._driver.height - 1:
-                cur_pos[0] += 1
-                cur_pos[1] = 0
+            elif cur_pos.y < self._driver.height - 1:
+                cur_pos = Point(y=cur_pos.y + 1, x=0)
                 moved = True
             else:
                 self._editmode = False
@@ -164,7 +169,7 @@ class KeyConfigTool(object):
         self._update_bottombar(key_mapping)
 
 
-        status = 'Row: [ %2d ]  Col: [ %2d ]' % (self._position[0], self._position[1])
+        status = 'Row: [ %2d ]  Col: [ %2d ]' % (self._position.y, self._position.x)
 
         color = None
         if self._editmode:
@@ -213,39 +218,28 @@ class KeyConfigTool(object):
 
 
     def _get_config_filename(self):
-        name = re.sub('[\W]+', '', self._driver.name.lower().replace(' ', '_'))
-        return '%s-%s.cfg' % (self._driver.device_type.value.__name__.lower(), name)
+        name = re.sub(r'[\W]+', '', self._driver.name.lower().replace(' ', '_'))
+        return '%s-%s.yaml' % (self._driver.device_type.value.lower(), name)
 
 
     def _write_mappings(self):
         if self._config_file is None:
             return False
 
-        with open(self._config_file, 'w') as outfile:
-            outfile.write('#\n')
-            outfile.write('#  uChroma Device Configuration\n')
-            outfile.write('#\n')
-            outfile.write('#  Model: %s (%s)\n' % \
-                (self._driver.name, self._driver.device_type.value.__name__))
-            outfile.write('#  Created by %s on %s\n' % \
-                (getpass.getuser(), datetime.now().isoformat(' ')))
-            outfile.write('#\n\n')
-
-            pprint(self._mapping, stream=outfile, indent=4)
+        hardware = self._driver._hardware._replace(key_mapping=self._mapping)
+        hardware.save_yaml(self._config_file)
 
         status = 'Mappings saved to \'%s\'' % self._config_file
         self._update_statusbar(status, self.color_action)
         self._refresh()
 
 
-    def _read_mappings(self):
+    def _load_hardware(self):
         if self._config_file is None:
             return False
 
         try:
-            with open(self._config_file, 'r') as infile:
-                mappings = infile.read()
-                self._mapping = ast.literal_eval(mappings)
+            self._hardware = Hardware.load_yaml(self._config_file)
 
         except FileNotFoundError:
             pass
@@ -267,33 +261,34 @@ class KeyConfigTool(object):
                     mapping = self._mapping.get(code, None)
                     if mapping is None:
                         mapping = []
-                        self._mapping[code] = mapping
 
-                    if tuple(self._position) not in mapping:
-                        mapping.append(tuple(self._position))
+                    if self._position not in mapping:
+                        self._mapping[code] = [*mapping, self._position]
 
                 self._advance_key_position()
 
             else:
 
+                pos = self._position
+
                 if ev.keycode == 'KEY_UP':
-                    if self._position[0] > 0:
-                        self._position[0] -= 1
+                    if pos.y > 0:
+                        self._position = Point(y=pos.y - 1, x=pos.x)
                         moved = True
 
                 elif ev.keycode == 'KEY_DOWN':
-                    if self._position[0] < self._driver.height - 1:
-                        self._position[0] += 1
+                    if pos.y < self._driver.height - 1:
+                        self._position = Point(y=pos.y + 1, x=pos.x)
                         moved = True
 
                 elif ev.keycode == 'KEY_RIGHT':
-                    if self._position[1] < self._driver.width - 1:
-                        self._position[1] += 1
+                    if pos.x < self._driver.width - 1:
+                        self._position = Point(y=pos.y, x=pos.x + 1)
                         moved = True
 
                 elif ev.keycode == 'KEY_LEFT':
-                    if self._position[1] > 0:
-                        self._position[1] -= 1
+                    if pos.x > 0:
+                        self._position = Point(y=pos.y, x=pos.x - 1)
                         moved = True
 
                 elif ev.keycode == 'KEY_ESC':

@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name, too-many-arguments
 import logging
 import math
 
@@ -7,7 +8,7 @@ from skimage import draw
 
 from uchroma.color import ColorUtils
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
-from uchroma.models import Quirks
+from uchroma.hardware import Quirks
 from uchroma.util import clamp, colorarg, ColorType, to_color
 
 

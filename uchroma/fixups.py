@@ -1,19 +1,23 @@
+# pylint: disable=invalid-name
+
 """
 Fixups are mixins which adjust input/output data in some form.
 """
 import numpy as np
 from numpy import array
 
+from uchroma.hardware import Hardware
+
 
 class KeyboardFixup(object):
     """
     Fixup which adjusts key coordinates in order to achieve a linear matrix.
     """
-    def __init__(self, alignment_map: dict=None, row_offsets: tuple=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(KeyboardFixup, self).__init__(*args, **kwargs)
 
-        self._alignment_map = alignment_map
-        self._row_offsets = row_offsets
+        self._alignment_map = self._hardware.key_fixup_mapping
+        self._row_offsets = self._hardware.key_row_offsets
 
 
     @staticmethod
@@ -91,19 +95,19 @@ class KeyboardFixup(object):
 
         if self._alignment_map is not None and not skip_fixups:
 
-            inserts = self._alignment_map.get('insert', None)
+            inserts = self._alignment_map.insert
             if inserts is not None:
                 for insert in inserts:
                     rr, cc = insert
                     matrix[rr] = KeyboardFixup._insert(matrix[rr], cc)
 
-            deletes = self._alignment_map.get('delete', None)
+            deletes = self._alignment_map.delete
             if deletes is not None:
                 for delete in deletes:
                     rr, cc = delete
                     matrix[rr] = KeyboardFixup._delete(matrix[rr], cc)
 
-            copies = self._alignment_map.get('copy', None)
+            copies = self._alignment_map.copy
             if copies is not None:
                 for copy in copies:
                     src, dst = copy

@@ -1,0 +1,21 @@
+#
+#  uChroma device configuration
+#
+#  Type: HEADSET
+#  Created by shade on 2017-01-26 02:57:36.500142
+#
+!device-config
+manufacturer: Razer
+type: HEADSET
+vendor_id: 0x1532
+supported_fx: [DISABLE, BREATHE, SPECTRUM, STATIC]
+children:
+- !device-config
+  name: Kraken 7.1 (Rainie)
+  revision: 1
+  product_id: 0x0504
+
+- !device-config
+  name: Kraken 7.1 V2 (Kylie)
+  revision: 2
+  product_id: 0x0510

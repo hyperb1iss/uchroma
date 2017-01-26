@@ -7,8 +7,8 @@ from grapefruit import Color
 
 from uchroma.device import UChromaDevice
 from uchroma.device_base import BaseCommand
+from uchroma.hardware import Hardware
 from uchroma.led import LED
-from uchroma.models import Mouse
 from uchroma.report import Status
 from uchroma.util import clamp, scale, scale_brightness, to_color
 
@@ -40,7 +40,7 @@ class UChromaMouse(UChromaDevice):
         GET_DPI_XY = (0x04, 0x85, 0x07)
 
 
-    def __init__(self, hardware: Mouse, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
                  input_devices=None, *args, **kwargs):
         super(UChromaMouse, self).__init__(hardware, devinfo, input_devices
                                            *args, **kwargs)
@@ -134,7 +134,7 @@ class UChromaWirelessMouse(UChromaMouse):
         GET_CHARGING_STATUS = (0x07, 0x84, 0x02)
 
 
-    def __init__(self, hardware: Mouse, devinfo: hidapi.DeviceInfo, input_devices=None):
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, input_devices=None):
         super(UChromaWirelessMouse, self).__init__(hardware, devinfo, input_devices)
 
 

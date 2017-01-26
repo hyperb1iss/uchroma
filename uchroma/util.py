@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name, pointless-string-statement
 """
 Various helper functions that are used across the library.
 """

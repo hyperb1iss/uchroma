@@ -7,10 +7,10 @@ import hidapi
 from pyudev import Context, Monitor, MonitorObserver
 
 from uchroma.device import UChromaDevice
+from uchroma.hardware import Hardware, Quirks, RAZER_VENDOR_ID
 from uchroma.headset import UChromaHeadset
 from uchroma.keyboard import UChromaKeyboard
 from uchroma.laptop import UChromaLaptop
-from uchroma.models import Hardware, Quirks, RAZER_VENDOR_ID
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -57,7 +57,7 @@ class UChromaDeviceManager(object):
         Perform HID device discovery
 
         Iterates over all connected HID devices with RAZER_VENDOR_ID
-        and checks the product ID against the HardwareInfo enumeration.
+        and checks the product ID against the Hardware descriptor.
 
         Interface endpoint restrictions are currently hard-coded. In
         the future this should be done by checking the HID report
@@ -74,7 +74,7 @@ class UChromaDeviceManager(object):
         for devinfo in devinfos:
             self._logger.debug('Check device %04x interface %d (%s)',
                                devinfo.product_id, devinfo.interface_number, devinfo.product_string)
-            hardware = Hardware.get(devinfo.product_id)
+            hardware = Hardware.get_device(devinfo.product_id)
             if hardware is None:
                 continue
 

@@ -1,0 +1,15 @@
+#
+#  uChroma device configuration
+#
+#  Type: MOUSEPAD
+#  Created by shade on 2017-01-26 02:57:36.523186
+#
+!device-config
+manufacturer: Razer
+type: MOUSEPAD
+vendor_id: 0x1532
+supported_fx: [DISABLE, WAVE, SPECTRUM, STATIC]
+children:
+- !device-config
+  name: Firefly
+  product_id: 0x0c00

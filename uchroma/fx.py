@@ -4,8 +4,8 @@ from enum import Enum
 
 from uchroma.color import Splotch
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
+from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LED
-from uchroma.models import Hardware, Quirks
 from uchroma.types import BaseCommand, FX, FXType
 from uchroma.util import colorarg, ColorType
 

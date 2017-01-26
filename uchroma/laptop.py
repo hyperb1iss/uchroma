@@ -1,7 +1,7 @@
 import hidapi
 
 from uchroma.keyboard import UChromaKeyboard
-from uchroma.models import HardwareInfo
+from uchroma.hardware import Hardware
 from uchroma.types import BaseCommand
 from uchroma.util import scale_brightness
 
@@ -20,7 +20,7 @@ class UChromaLaptop(UChromaKeyboard):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, hardware: HardwareInfo, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
                  input_devices=None, *args, **kwargs):
         super(UChromaLaptop, self).__init__(hardware, devinfo, input_devices,
                                             *args, **kwargs)
