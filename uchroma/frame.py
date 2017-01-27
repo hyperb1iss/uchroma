@@ -1,6 +1,7 @@
 # pylint: disable=invalid-name, too-many-arguments
 import logging
 import math
+import warnings
 
 import numpy as np
 from grapefruit import Color
@@ -162,7 +163,9 @@ class Frame(object):
 
 
     def _as_img(self):
-        return ColorUtils.rgba2rgb(self._matrix, self._bg_color)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            return ColorUtils.rgba2rgb(self._matrix, self._bg_color)
 
 
     def _set_frame_data_single(self, frame_id: int):
