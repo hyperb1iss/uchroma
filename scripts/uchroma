@@ -19,6 +19,7 @@ class UChromaTool(UChromaConsoleUtil):
 
     def _add_subparsers(self, sub):
         self._brightness_sub = self._add_brightness_options(sub)
+        self._anim_sub = self._add_anim_options(sub)
         self._fx_sub = self._add_fx_options(sub)
         self._led_sub = self._add_led_options(sub)
 
@@ -88,6 +89,18 @@ class UChromaTool(UChromaConsoleUtil):
                           help='Set brightness (0-100)')
         led.set_defaults(func=self._led_parser)
         return led
+
+
+    def _add_anim_options(self, sub):
+        anim = sub.add_parser('anim', help='Animation control')
+        anim.add_argument("-d", "--device", type=str,
+                          help='HID device to use (/dev/hidrawX or USB identifier)')
+        anim.add_argument('-n', '--name', type=str, action='append',
+                          help='Animation to add (class)')
+        anim.add_argument('-m', '--module', type=str,
+                          help='Module to search for animation')
+        anim.set_defaults(func=self._anim_parser)
+        return anim
 
 
     @staticmethod
@@ -257,7 +270,7 @@ class UChromaTool(UChromaConsoleUtil):
                 if args.brightness is not None:
                     if args.brightness < 0 or args.brightness > 100:
                         self.print_err("Brightness value must be between 0 and 100")
-                        exit(1)
+                        sys.exit(1)
 
                     led.brightness = args.brightness
 
@@ -273,6 +286,35 @@ class UChromaTool(UChromaConsoleUtil):
                     sys.exit(1)
 
                 driver.brightness = args.level
+
+
+    def _anim_parser(self, args):
+        with self.get_driver(args) as driver:
+            mgr = driver.animation_manager
+            if mgr is None:
+                print_err('This device does not support animations.')
+                sys.exit(1)
+
+            module = 'uchroma.fxlib'
+            if args.module is not None:
+                module = args.module
+
+            if args.name is None or len(args.name) == 0:
+                self.print_err("Animation name is required")
+                sys.exit(1)
+
+            for name in args.name:
+                cookie = mgr.add_renderer(name, module)
+                if cookie is None:
+                    self.print_err("Failed to create renderer")
+                    sys.exit(1)
+
+                print('Created layer: %s' % cookie)
+
+            if not mgr.start(standalone=True):
+                self.print_err("Failed to start animation")
+                sys.exit(1)
+
 
 
 if __name__ == '__main__':

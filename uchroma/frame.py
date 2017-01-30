@@ -8,8 +8,8 @@ from grapefruit import Color
 from skimage import draw
 
 from uchroma.color import ColorUtils
-from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.hardware import Quirks
+from uchroma.types import BaseCommand
 from uchroma.util import clamp, colorarg, ColorType, to_color
 
 
@@ -41,7 +41,7 @@ class Frame(object):
         SET_FRAME_DATA_SINGLE = (0x03, 0x0C, None)
 
 
-    def __init__(self, driver: BaseUChromaDevice, width: int, height: int):
+    def __init__(self, driver, width: int, height: int):
         self._driver = driver
         self._width = width
         self._height = height

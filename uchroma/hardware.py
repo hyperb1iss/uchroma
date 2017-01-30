@@ -44,20 +44,26 @@ class Quirks(IntEnum):
 
 
 # Marker types for YAML output
+_Point = NamedTuple('_Point', [('y', int), ('x', int)])
+
+class Point(_Point, object):
+    def __repr__(self):
+        return '(%s, %s)' % (self.y, self.x)
+
+
 class FlowSequence(tuple):
     pass
 
-class _PointList(object):
+
+class PointList(FlowSequence):
     def __new__(cls, args):
         if isinstance(args, list):
             if isinstance(args[0], int) and len(args) == 2:
                 return Point(y=args[0], x=args[1])
             elif isinstance(args[0], list):
-                return _PointList([PointList(arg) for arg in args])
-        return tuple(args)
+                return cls([cls(arg) for arg in args])
+        return super(PointList, cls).__new__(cls, args)
 
-class PointList(FlowSequence, _PointList):
-    pass
 
 class KeyMapping(OrderedDict):
     def __setitem__(self, key, value):
@@ -74,8 +80,6 @@ _KeyFixupMapping.__new__.__defaults__ = (None,) * len(_KeyFixupMapping._fields)
 class KeyFixupMapping(_KeyFixupMapping):
     def _asdict(self):
         return BlockMapping([x for x in zip(self._fields, self) if x[1] is not None])
-
-Point = NamedTuple('Point', [('y', int), ('x', int)])
 
 Zone = NamedTuple('Zone', [('name', str), ('coord', Point), ('width', int), ('height', int)])
 

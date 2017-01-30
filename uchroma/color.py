@@ -29,6 +29,12 @@ class Splotch(Enum):
         self.first = Color.NewFromHtml(first)
         self.second = Color.NewFromHtml(second)
 
+    @classmethod
+    def get(cls, name):
+        if name is None or name.upper() not in cls.__members__:
+            return None
+        return cls[name.upper()]
+
 
 class ColorUtils(object):
     """

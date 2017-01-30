@@ -4,6 +4,7 @@ import hidapi
 
 from wrapt import synchronized
 
+from uchroma.anim import AnimationManager
 from uchroma.input import InputManager
 from uchroma.hardware import Hardware, Quirks
 from uchroma.report import RazerReport
@@ -50,6 +51,10 @@ class BaseUChromaDevice(object):
         if input_devices is not None:
             self._input_manager = InputManager(self, input_devices)
 
+        self._animation_manager = None
+        if self.has_matrix:
+            self._animation_manager = AnimationManager(self)
+
 
     def _close(self, force: bool=False):
         if self._defer_close:
@@ -76,6 +81,16 @@ class BaseUChromaDevice(object):
         the defer_close flag.
         """
         self._close(force)
+
+
+    @property
+    def animation_manager(self):
+        return self._animation_manager
+
+
+    @property
+    def input_manager(self):
+        return self._input_manager
 
 
     @property
@@ -399,6 +414,11 @@ class BaseUChromaDevice(object):
         True if the quirk is required for this device
         """
         return self.hardware.has_quirk(quirk)
+
+
+    @property
+    def key_mapping(self):
+        return self.hardware.key_mapping
 
 
     def reset(self) -> bool:

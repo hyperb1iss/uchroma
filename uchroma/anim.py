@@ -1,8 +1,10 @@
+# pylint: disable=unused-argument, no-member, no-self-use
 import asyncio
+import importlib
 import logging
+import sys
 import time
 
-from uchroma.device import UChromaDevice
 from uchroma.frame import Frame
 
 
@@ -34,7 +36,7 @@ class Renderer(object):
         return False
 
 
-    def init(self, frame: Frame, fps: int, *args, **kwargs) -> bool:
+    def init(self, frame: Frame, *args, **kwargs) -> bool:
         """
         Invoked by AnimationLoop when the effect is activated. An
         arbitrary set of arguments may be passed, and an implementation
@@ -65,29 +67,38 @@ class AnimationLoop(object):
     effects.
     """
 
-    def __init__(self, name: str, frame: Frame, renderer: Renderer, fps: int=DEFAULT_FPS):
-        self.name = name
+    def __init__(self, frame: Frame, fps: int=DEFAULT_FPS, *renderers: Renderer):
         self.daemon = True
 
         self._frame = frame
-        self._renderer = renderer
+        self._renderers = renderers
         self._fps = 1 / fps
 
         self._running = False
         self._anim_task = None
         self._error = False
 
-        self.logger = logging.getLogger('uchroma.%s' % name)
+        self.logger = logging.getLogger('uchroma.animloop')
 
 
     @asyncio.coroutine
     def _draw(self, timestamp):
-        try:
-            yield from self._renderer.draw(self._frame, timestamp)
+        bad_renderers = []
+        for renderer in self._renderers:
+            try:
+                yield from renderer.draw(self._frame, timestamp)
 
-        except Exception as err:
-            self.logger.exception("Exception during animation", exc_info=err)
-            return False
+            except Exception as err:
+                self.logger.exception("Exception during animation, removing renderer", exc_info=err)
+                bad_renderers.append(renderer)
+
+        for bad_renderer in bad_renderers:
+            bad_renderer.finish()
+            self._renderers.remove(bad_renderer)
+
+        draw_time = time.time() - timestamp
+        self.logger.debug('Draw time: %f remaining: %f' % \
+            (draw_time, self._fps - draw_time))
 
         return True
 
@@ -137,14 +148,16 @@ class AnimationLoop(object):
         Invoked when the renderer exits
         """
         self.logger.info("Renderer is exiting!")
-        self._renderer.finish(self._frame)
-        self._renderer = None
+        for renderer in self._renderers:
+            renderer.finish(self._frame)
+
+        self._renderers.clear()
         self._anim_task = None
         self._error = False
         self._frame.reset()
 
 
-    def start(self, *args, **kwargs) -> bool:
+    def start(self) -> bool:
         """
         Start the AnimationLoop
 
@@ -160,17 +173,20 @@ class AnimationLoop(object):
         :return: True if the loop was started
         """
         if self._running:
-            return
+            self.logger.error("Animation loop already running")
+            return False
+
+        if len(self._renderers) == 0:
+            self.logger.error("No renderers were configured")
+            return False
 
         self._frame.reset()
-
-        if not self._renderer.init(self._frame, self._fps, *args, **kwargs):
-            self.logger.error('Renderer failed to initialize!')
-            return False
 
         self._running = True
         self._anim_task = asyncio.ensure_future(self._animate())
         self._anim_task.add_done_callback(self._renderer_done)
+
+        return True
 
 
     def stop(self):
@@ -197,32 +213,85 @@ class AnimationManager(object):
     WIP
     """
 
-    def __init__(self, driver: UChromaDevice):
+    def __init__(self, driver):
         self._driver = driver
-        self._loops = {}
+        self._renderers = {}
+        self._loop = None
+        self._standalone = False
+
+        self._logger = logging.getLogger('uchroma.animmgr')
 
 
-    def submit(self, renderer: Renderer) -> str:
-        task_name = 'anim-%s-%f' % (self._driver.serial_number, time.time())
+    def _get_renderer(self, renderer, module):
+        try:
+            if isinstance(renderer, str):
+                if module is None:
+                    module = sys.modules[__name__]
+                elif isinstance(module, str):
+                    module = importlib.import_module(module)
+                else:
+                    self._logger.error('Invalid module: %s', module)
+                    return None
+                try:
+                    renderer = getattr(module, renderer)
+                except AttributeError as err:
+                    self._logger.exception('Invalid renderer name: %s',
+                                           renderer, exc_info=err)
+                    return None
+            if isinstance(renderer, type):
+                renderer = renderer(self._driver)
 
-        loop = AnimationLoop(task_name, self._driver.frame_control, renderer)
-        self._loops[task_name] = loop
-        loop.start()
+            return renderer
+        except ImportError as err:
+            self._logger.exception('Invalid renderer: %s (module=%s)',
+                                   renderer, module, exc_info=err)
+            return None
 
-        return task_name
+        return renderer
 
 
-    def end(self, key: str) -> bool:
-        loop = self._loops.pop(key, None)
+    def add_renderer(self, renderer, module=None, *args, **kwargs) -> str:
+        renderer = self._get_renderer(renderer, module)
+        if renderer is None:
+            self._logger.error('Renderer failed to load')
+            return None
 
-        if loop is None:
+        if not renderer.init(self._driver.frame_control, *args, **kwargs):
+            self._logger.error('Renderer failed to initialize')
+            return None
+
+        cookie = 'anim-%s-%s' % (self._driver.serial_number, renderer.__class__.__name__)
+        self._renderers[cookie] = renderer
+
+        return cookie
+
+
+    def start(self, fps: int=DEFAULT_FPS, standalone: bool=False) -> bool:
+        if self._renderers is None or len(self._renderers) == 0:
+            self._logger.error('No renderers were configured')
             return False
 
-        loop.stop()
+        self._loop = AnimationLoop(self._driver.frame_control, fps,
+                                   *self._renderers.values())
 
-        return True
+        self._standalone = standalone
 
-    def shutdown(self):
-        for key in list(self._loops.keys())[:]:
-            self.end(key)
+        if self._loop.start():
+            if standalone:
+                asyncio.get_event_loop().run_forever()
+            return True
 
+        return False
+
+
+    def stop(self) -> bool:
+        if self._loop is None:
+            return False
+
+        self._renderers.clear()
+        if self._loop.stop():
+            if self._standalone:
+                asyncio.get_event_loop().stop()
+            return True
+
+        return False
