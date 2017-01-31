@@ -151,7 +151,6 @@ class AnimationLoop(object):
         for renderer in self._renderers:
             renderer.finish(self._frame)
 
-        self._renderers.clear()
         self._anim_task = None
         self._error = False
         self._frame.reset()
@@ -189,6 +188,7 @@ class AnimationLoop(object):
         return True
 
 
+    @asyncio.coroutine
     def stop(self):
         """
         Stop this AnimationLoop
@@ -200,7 +200,7 @@ class AnimationLoop(object):
             self._running = False
 
             if self._anim_task is not None:
-                self._anim_task.cancel()
+                yield from self._anim_task.cancel()
 
 
     def __del__(self):
@@ -218,6 +218,7 @@ class AnimationManager(object):
         self._renderers = {}
         self._loop = None
         self._standalone = False
+        self._running = False
 
         self._logger = logging.getLogger('uchroma.animmgr')
 
@@ -277,27 +278,36 @@ class AnimationManager(object):
         self._standalone = standalone
 
         if self._loop.start():
+            self._running = True
             if standalone:
-                asyncio.get_event_loop().run_forever()
+                try:
+                    asyncio.get_event_loop().run_forever()
+                except KeyboardInterrupt:
+                    self._logger.info("Shutting down event loop")
+                finally:
+                    return self.stop()
             return True
 
         return False
 
 
     def stop(self) -> bool:
-        if self._loop is None:
+        if not self._running:
             return False
 
         self._renderers.clear()
-        if self._loop.stop():
-            if self._standalone:
-                asyncio.get_event_loop().stop()
-            self._loop = None
-            return True
+        self._running = False
 
-        return False
+        result = yield from self._loop.stop()
+
+        return result
 
 
     @property
     def is_running(self) -> bool:
-        return self._loop is not None
+        return self._running
+
+
+    def __del__(self):
+        if self.is_running:
+            self.stop()
