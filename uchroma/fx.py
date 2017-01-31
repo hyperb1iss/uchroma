@@ -90,7 +90,7 @@ class FXManager(object):
                 *FXManager.Command.SET_EFFECT.value, transaction_id=transaction_id)
 
         self._report.args.clear()
-        self._report.args.put_all([effect, *args])
+        self._report.args.put_all([effect.opcode, *args])
 
         return self._driver.run_report(self._report)
 

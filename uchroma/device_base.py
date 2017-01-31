@@ -173,7 +173,6 @@ class BaseUChromaDevice(object):
         return None
 
 
-    @synchronized
     def run_with_result(self, command: BaseCommand, *args,
                         transaction_id: int=0xFF, delay: float=None,
                         remaining_packets: int=0x00) -> bytes:
@@ -197,19 +196,14 @@ class BaseUChromaDevice(object):
 
         :return: The result report from the hardware
         """
-        try:
-            self._ensure_open()
-            report = self.get_report(*command.value, *args, transaction_id=transaction_id,
-                                     remaining_packets=remaining_packets)
-            result = None
+        report = self.get_report(*command.value, *args, transaction_id=transaction_id,
+                                 remaining_packets=remaining_packets)
+        result = None
 
-            if report.run(delay=delay, timeout_cb=self._get_timeout_cb()):
-                result = report.result
+        if self.run_report(report, delay=delay):
+            result = report.result
 
-            return result
-
-        finally:
-            self._close()
+        return result
 
 
     @synchronized

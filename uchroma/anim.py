@@ -71,7 +71,7 @@ class AnimationLoop(object):
         self.daemon = True
 
         self._frame = frame
-        self._renderers = renderers
+        self._renderers = list(renderers)
         self._fps = 1 / fps
 
         self._running = False
@@ -93,7 +93,7 @@ class AnimationLoop(object):
                 bad_renderers.append(renderer)
 
         for bad_renderer in bad_renderers:
-            bad_renderer.finish()
+            bad_renderer.finish(self._frame)
             self._renderers.remove(bad_renderer)
 
         draw_time = time.time() - timestamp
@@ -204,7 +204,7 @@ class AnimationLoop(object):
 
 
     def __del__(self):
-        self.stop()
+        yield from self.stop()
 
 
 class AnimationManager(object):

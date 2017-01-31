@@ -372,9 +372,6 @@ class Frame(object):
 
     @staticmethod
     def _color_to_np(*colors: ColorType):
-        if len(colors) == 1:
-            colors = [colors]
-
         return np.array([tuple(x) for x in colors], dtype=np.float)
 
 

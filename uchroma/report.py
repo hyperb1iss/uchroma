@@ -60,7 +60,7 @@ class RazerReport(object):
     DATA_BUF_SIZE = 80
 
     # Time to sleep between requests, needed to avoid BUSY replies
-    CMD_DELAY_TIME = 0.005
+    CMD_DELAY_TIME = 0.007
 
     def __init__(self, driver, command_class, command_id, data_size,
                  status=0x00, transaction_id=0xFF, remaining_packets=0x00,
@@ -219,13 +219,9 @@ class RazerReport(object):
                          self._remaining_packets, self._protocol_type, self.args.size,
                          self._command_class, self._command_id)
 
-        data_buf = self.args.data
-        if len(data_buf) > 0:
-            self._buf[7:len(data_buf) + 7] = data_buf
+        self._buf[7:87] = self.args.data
 
-        assert len(self._buf) == RazerReport.BUF_SIZE, \
-                'Packed struct should be %d bytes, got %d' % (RazerReport.BUF_SIZE, len(self._buf))
-        struct.pack_into('B', self._buf, 87, fast_crc(self._buf.tobytes()))
+        self._buf[87] = fast_crc(self._buf.tobytes())
 
         return self._buf.tobytes()
 
