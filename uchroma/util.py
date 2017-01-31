@@ -24,6 +24,8 @@ ColorType = typing.Union[Color, str, typing.Iterable[int], typing.Iterable[float
 EnumType = typing.Union[Enum, str]
 
 
+AUTOCAST_CACHE = {}
+
 def _autocast_decorator(type_hint, fix_arg_func):
     """
     Decorator which will invoke fix_arg_func for any
@@ -37,9 +39,14 @@ def _autocast_decorator(type_hint, fix_arg_func):
     """
     @wrapt.decorator
     def wrapper(wrapped, instance, args, kwargs):
-        sig = inspect.signature(wrapped)
-        names = list(sig.parameters.keys())
-        hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() if x[1] == type_hint]
+        hinted_args = names = None
+        if wrapped in AUTOCAST_CACHE:
+            hinted_args, names = AUTOCAST_CACHE[wrapped]
+        else:
+            sig = inspect.signature(wrapped)
+            names = list(sig.parameters.keys())
+            hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() if x[1] == type_hint]
+            AUTOCAST_CACHE[wrapped] = hinted_args, names
 
         if len(hinted_args) == 0:
             raise ValueError("No arguments with %s hint found" % type_hint)

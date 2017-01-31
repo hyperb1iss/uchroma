@@ -1,10 +1,14 @@
+# pylint: disable=import-error, no-name-in-module, invalid-name
 import logging
 import struct
 import time
 
 from enum import Enum
 
+import numpy as np
+
 from uchroma.byte_args import ByteArgs
+from uchroma.crc import fast_crc
 from uchroma.util import smart_delay
 
 
@@ -56,15 +60,15 @@ class RazerReport(object):
     DATA_BUF_SIZE = 80
 
     # Time to sleep between requests, needed to avoid BUSY replies
-    CMD_DELAY_TIME = 0.007
+    CMD_DELAY_TIME = 0.005
 
-    def __init__(self, hid, command_class, command_id, data_size,
+    def __init__(self, driver, command_class, command_id, data_size,
                  status=0x00, transaction_id=0xFF, remaining_packets=0x00,
                  protocol_type=0x00, data=None, crc=None, reserved=None):
 
         self._logger = logging.getLogger('uchroma.report')
 
-        self._hid = hid
+        self._driver = driver
 
         self._status = status
         self._transaction_id = transaction_id
@@ -75,9 +79,10 @@ class RazerReport(object):
         self._command_id = command_id
 
         self._result = None
-        self._last_cmd_time = None
 
-        self._data = ByteArgs(data=data, size=data_size)
+        self._data = ByteArgs(RazerReport.DATA_BUF_SIZE, data=data, size=data_size)
+
+        self._buf = np.zeros(shape=(RazerReport.BUF_SIZE,), dtype=np.uint8)
 
         if reserved is None:
             self._reserved = 0
@@ -91,12 +96,21 @@ class RazerReport(object):
 
 
     def _ensure_open(self):
-        if self._hid is None:
+        if self._driver.hid is None:
             raise ValueError('No valid HID device!')
 
 
     def _hexdump(self, data, tag=""):
-        self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
+
+
+    def clear(self):
+        self._buf.fill(0)
+        self._data.clear()
+        self._status = 0x00
+        self._remaining_packets = 0x00
+        self._result = None
 
 
     def run(self, delay: float=None, timeout_cb=None) -> bool:
@@ -126,15 +140,15 @@ class RazerReport(object):
                 self._ensure_open()
                 req = self._pack_request()
                 self._hexdump(req, '--> ')
-                self._last_cmd_time = smart_delay(delay, self._last_cmd_time,
-                                                  self._remaining_packets)
-                self._hid.send_feature_report(req, self.REQ_REPORT_ID)
+                self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
+                                                         self._remaining_packets)
+                self._driver.hid.send_feature_report(req, self.REQ_REPORT_ID)
                 if self._remaining_packets > 0:
                     return True
 
-                self._last_cmd_time = smart_delay(delay, self._last_cmd_time,
-                                                  self._remaining_packets)
-                resp = self._hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+                self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
+                                                         self._remaining_packets)
+                resp = self._driver.hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE + 1)
                 self._hexdump(resp, '<-- ')
                 if self._unpack_response(resp):
                     if timeout_cb is not None:
@@ -166,7 +180,7 @@ class RazerReport(object):
 
 
     @property
-    def args(self) -> bytes:
+    def args(self) -> ByteArgs:
         """
         The byte array containing the raw report data to be sent to
         the hardware when run() is called.
@@ -190,47 +204,35 @@ class RazerReport(object):
         return bytes(self._result)
 
 
-    @staticmethod
-    def _calculate_crc(buf: bytearray) -> int:
-        """
-        Calculated the CRC byte for the given buffer
+    @property
+    def remaining_packets(self) -> int:
+        return self._remaining_packets
 
-        The CRC is calculated by iteratively XORing all bytes.
-        It is verified by the hardware and we verify it when parsing
-        result reports.
 
-        :param buf: The 90-byte array of the report
-        :type buf: bytearray
-
-        :return: The calculated crc
-        :rtype: int
-        """
-        crc = 0
-        for byte in buf[1:87]:
-            crc ^= int(byte)
-        return crc
+    @remaining_packets.setter
+    def remaining_packets(self, num):
+        self._remaining_packets = num
 
 
     def _pack_request(self) -> bytes:
-        buf = bytearray(self.BUF_SIZE)
-
-        struct.pack_into(self.REQ_HEADER, buf, 0, self._transaction_id, self._remaining_packets,
-                         self._protocol_type, self.args.size, self._command_class, self._command_id)
+        struct.pack_into(RazerReport.REQ_HEADER, self._buf, 0, self._transaction_id,
+                         self._remaining_packets, self._protocol_type, self.args.size,
+                         self._command_class, self._command_id)
 
         data_buf = self.args.data
         if len(data_buf) > 0:
-            buf[7:len(data_buf) + 7] = data_buf
+            self._buf[7:len(data_buf) + 7] = data_buf
 
-        assert len(buf) == self.BUF_SIZE, \
-                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
-        struct.pack_into('B', buf, 87, RazerReport._calculate_crc(buf))
+        assert len(self._buf) == RazerReport.BUF_SIZE, \
+                'Packed struct should be %d bytes, got %d' % (RazerReport.BUF_SIZE, len(self._buf))
+        struct.pack_into('B', self._buf, 87, fast_crc(self._buf.tobytes()))
 
-        return bytes(buf)
+        return self._buf.tobytes()
 
 
     def _unpack_response(self, buf: bytes) -> bool:
-        assert len(buf) == self.BUF_SIZE, \
-                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
+        assert len(buf) == self.BUF_SIZE + 1, \
+                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE + 1, len(buf))
 
         header = struct.unpack(self.RSP_HEADER, buf[:8])
         status = header[0]
@@ -241,11 +243,11 @@ class RazerReport(object):
         command_class = header[5]
         command_id = header[6]
 
-        data = bytearray(buf[8:8 + data_size])
+        data = np.frombuffer(buf[8:8 + data_size], dtype=np.uint8)
         crc = buf[88]
         reserved = buf[89]
 
-        crc_check = RazerReport._calculate_crc(buf[1:88])
+        crc_check = fast_crc(buf[1:88])
 
         assert crc == crc_check, 'Checksum of data should be %d, got %d' % (crc, crc_check)
         assert transaction_id == self._transaction_id, 'Transaction id does not match (%d vs %d)' \
@@ -260,8 +262,9 @@ class RazerReport(object):
         if self._status == Status.OK:
             return True
 
-        self._logger.error("Got error %s for command %02x,%02x (raw response: %s)",
-                           self._status.name, self._command_class, self._command_id, repr(data))
+        self._logger.error("Got error %s for command %02x,%02x",
+                           self._status.name, self._command_class, self._command_id)
+        self._hexdump(data, "raw response: ")
 
         return False
 

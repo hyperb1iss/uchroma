@@ -1,6 +1,7 @@
 import struct
 from enum import Enum
 
+import numpy as np
 from grapefruit import Color
 
 
@@ -9,13 +10,14 @@ class ByteArgs(object):
     Helper class for assembling byte arrays from
     argument lists of varying types
     """
-    def __init__(self, size=0, data=None):
+    def __init__(self, max_size, size=0, data=None):
         self._size = size
+        self._data_ptr = 0
 
         if data is None:
-            self._data = bytearray()
+            self._data = np.zeros(shape=(max_size,), dtype=np.uint8)
         else:
-            self._data = data
+            self._data = np.frombuffer(data, dtype=np.uint8)
 
 
     @property
@@ -23,10 +25,7 @@ class ByteArgs(object):
         """
         The byte array assembled from supplied arguments
         """
-        if self._size is None or len(self._data) == self._size:
-            return self._data
-        else:
-            return self._data + (b'\x00' * (self._size - len(self._data)))
+        return self._data
 
 
     @property
@@ -54,7 +53,8 @@ class ByteArgs(object):
         :return: The empty ByteArgs
         :rtype: ByteArgs
         """
-        self._data.clear()
+        self._data.fill(0)
+        self._data_ptr = 0
         return self
 
 
@@ -71,24 +71,41 @@ class ByteArgs(object):
         :return: This ByteArgs instance
         :rtype: ByteArgs
         """
-        data = bytearray()
+        data = None
         if isinstance(arg, Color):
             for component in arg.intTuple:
-                data += struct.pack(packing, component)
+                data = struct.pack(packing, component)
         elif isinstance(arg, Enum):
             if hasattr(arg, "opcode"):
-                data += struct.pack(packing, arg.opcode)
+                data = arg.opcode
             else:
-                data += struct.pack(packing, arg.value)
+                data = arg.value
+        elif isinstance(arg, np.ndarray):
+            data = arg.flatten()
         elif isinstance(arg, bytes) or isinstance(arg, bytearray):
-            data += arg
+            data = arg
         else:
-            data += struct.pack(packing, arg)
+            data = struct.pack(packing, arg)
 
-        if len(data) > 0:
-            self._ensure_space(len(data))
-            self._data += data
+        if isinstance(data, int):
+            self._ensure_space(1)
+            self._data[self._data_ptr] = data
+            self._data_ptr += 1
+        else:
+            datalen = len(data)
+            if datalen > 0:
+                self._ensure_space(datalen)
+                if not isinstance(data, np.ndarray):
+                    data = np.frombuffer(data, dtype=np.uint8)
+                self._data[self._data_ptr:self._data_ptr+datalen] = data
+                self._data_ptr += datalen
 
+        return self
+
+
+    def put_all(self, args, packing='=B'):
+        for arg in args:
+            self.put(arg, packing=packing)
         return self
 
 

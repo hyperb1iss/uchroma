@@ -3,6 +3,7 @@ import re
 
 from pydoc import locate
 
+from Cython.Build import cythonize
 from setuptools import setup
 from setuptools.command.install import install
 
@@ -53,6 +54,7 @@ setup(name='uchroma',
       platform='Linux',
       license='LGPL',
       packages=['uchroma', 'uchroma.fxlib'],
+      ext_modules = cythonize('uchroma/*.pyx'),
       scripts=['scripts/uchroma'],
       install_requires=['evdev', 'grapefruit', 'hidapi', 'numpy', 'pyudev',
                         'ruamel.yaml','scikit-image', 'wrapt'],

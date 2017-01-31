@@ -169,7 +169,7 @@ class UChromaHeadset(BaseUChromaDevice):
 
     @staticmethod
     def _pack_request(command: BaseCommand, *args) -> bytes:
-        req = ByteArgs(size=REPORT_LENGTH_OUT)
+        req = ByteArgs(REPORT_LENGTH_OUT)
         req.put(command.destination)
         req.put(command.length)
         req.put(command.address, packing='>H')

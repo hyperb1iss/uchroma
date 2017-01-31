@@ -51,6 +51,8 @@ class Frame(object):
 
         self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float)
 
+        self._report = None
+
         self._debug_opts = {}
 
 
@@ -175,6 +177,22 @@ class Frame(object):
                                  transaction_id=0x80)
 
 
+    def _get_frame_data_report(self, remaining_packets: int, *args):
+        if self._report is None:
+            tid = 0xFF
+            if self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
+                tid = 0x80
+
+            self._report = self._driver.get_report( \
+                *Frame.Command.SET_FRAME_DATA_MATRIX.value, transaction_id=tid)
+
+        self._report.clear()
+        self._report.args.put_all(args)
+
+        self._report.remaining_packets = remaining_packets
+        return self._report
+
+
     def _set_frame_data_matrix(self, frame_id: int):
         width = self._width
         multi = False
@@ -183,10 +201,6 @@ class Frame(object):
         if width > Frame.MAX_WIDTH:
             multi = True
             width = int(width / 2)
-
-        tid = None
-        if self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
-            tid = 0x80
 
         img = self._as_img()
 
@@ -202,23 +216,16 @@ class Frame(object):
 
             remaining = self._height - row - 1
             if multi:
-                remaining *= 2
+                remaining = (remaining * 2) + 1
 
             data = rowdata[:width]
-            self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX, frame_id,
-                                     row, start_col, len(data) - 1,
-                                     data.tobytes(),
-                                     transaction_id=tid,
-                                     remaining_packets=remaining)
+            self._driver.run_report(self._get_frame_data_report(remaining, \
+                frame_id, row, start_col, len(data) - 1, data))
 
             if multi:
                 data = rowdata[width:]
-                self._driver.run_command(Frame.Command.SET_FRAME_DATA_MATRIX, frame_id,
-                                         row, width, width + len(data) - 1,
-                                         data.tobytes(),
-                                         transaction_id=tid,
-                                         remaining_packets=remaining)
-
+                self._driver.run_report(self._get_frame_data_report(remaining - 1, \
+                    frame_id, row, width, width + len(data) - 1, data))
 
 
 
@@ -364,12 +371,11 @@ class Frame(object):
     # remove these when 1.9 is released
 
     @staticmethod
-    def _color_to_np(*color: ColorType):
-        colors = to_color(*color)
-        if len(color) == 1:
+    def _color_to_np(*colors: ColorType):
+        if len(colors) == 1:
             colors = [colors]
 
-        return np.array([(*x.rgb, x.alpha) for x in colors], dtype=np.float)
+        return np.array([tuple(x) for x in colors], dtype=np.float)
 
 
     @staticmethod

@@ -72,7 +72,6 @@ class FXManager(object):
         FIXME: Provide a way to determine the current effect
         """
         SET_EFFECT = (0x03, 0x0A, None)
-        SET_CUSTOM_FRAME_DATA = (0x03, 0x0B, None)
         SET_EFFECT_EXTENDED = (0x0F, 0x02, None)
 
 
@@ -82,11 +81,18 @@ class FXManager(object):
         """
         self._driver = driver
         self._logger = logging.getLogger('uchroma.fxmanager')
+        self._report = None
 
 
-    def _set_effect_basic(self, effect: FX, *args, transaction_id=None) -> bool:
-        return self._driver.run_command(FXManager.Command.SET_EFFECT, effect, *args,
-                                        transaction_id=transaction_id)
+    def _set_effect_basic(self, effect: FX, *args, transaction_id: int=None) -> bool:
+        if self._report is None:
+            self._report = self._driver.get_report( \
+                *FXManager.Command.SET_EFFECT.value, transaction_id=transaction_id)
+
+        self._report.args.clear()
+        self._report.args.put_all([effect, *args])
+
+        return self._driver.run_report(self._report)
 
 
     def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:

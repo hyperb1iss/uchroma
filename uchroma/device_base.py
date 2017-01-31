@@ -47,6 +47,8 @@ class BaseUChromaDevice(object):
 
         self._offline = False
 
+        self._last_cmd_time = None
+
         self._input_manager = None
         if input_devices is not None:
             self._input_manager = InputManager(self, input_devices)
@@ -59,6 +61,9 @@ class BaseUChromaDevice(object):
     def _close(self, force: bool=False):
         if self._defer_close:
             if not force:
+                if self.animation_manager is not None and self.animation_manager.is_running:
+                    return
+
                 self._close_timer.start()
                 return
             self._close_timer.cancel()
@@ -100,13 +105,28 @@ class BaseUChromaDevice(object):
         return self._input_manager.input_devices
 
 
+    @property
+    def hid(self):
+        return self._dev
+
+
+    @property
+    def last_cmd_time(self):
+        return self._last_cmd_time
+
+
+    @last_cmd_time.setter
+    def last_cmd_time(self, last_cmd_time):
+        self._last_cmd_time = last_cmd_time
+
+
     def _ensure_open(self):
         if self._dev is None:
             self._dev = hidapi.Device(self._devinfo)
 
 
-    def _get_report(self, command_class: int, command_id: int, data_size: int,
-                    *args, transaction_id: None, remaining_packets: int=0x00) -> RazerReport:
+    def get_report(self, command_class: int, command_id: int, data_size: int,
+                   *args, transaction_id: None, remaining_packets: int=0x00) -> RazerReport:
 
         if transaction_id is None:
             if self.has_quirk(Quirks.TRANSACTION_CODE_3F):
@@ -114,7 +134,7 @@ class BaseUChromaDevice(object):
             else:
                 transaction_id = 0xFF
 
-        report = RazerReport(self._dev, command_class, command_id, data_size,
+        report = RazerReport(self, command_class, command_id, data_size,
                              transaction_id=transaction_id,
                              remaining_packets=remaining_packets)
 
@@ -179,8 +199,8 @@ class BaseUChromaDevice(object):
         """
         try:
             self._ensure_open()
-            report = self._get_report(*command.value, *args, transaction_id=transaction_id,
-                                      remaining_packets=remaining_packets)
+            report = self.get_report(*command.value, *args, transaction_id=transaction_id,
+                                     remaining_packets=remaining_packets)
             result = None
 
             if report.run(delay=delay, timeout_cb=self._get_timeout_cb()):
@@ -193,6 +213,14 @@ class BaseUChromaDevice(object):
 
 
     @synchronized
+    def run_report(self, report: RazerReport, delay: float=None) -> bool:
+        try:
+            self._ensure_open()
+            return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
+        finally:
+            self._close()
+
+
     def run_command(self, command: BaseCommand, *args, transaction_id: int=0xFF,
                     delay: float=None, remaining_packets: int=0x00) -> bool:
         """
@@ -213,15 +241,11 @@ class BaseUChromaDevice(object):
 
         :return: True if the command was successful
         """
-        try:
-            self._ensure_open()
-            report = self._get_report(*command.value, *args, transaction_id=transaction_id,
-                                      remaining_packets=remaining_packets)
+        report = self.get_report(*command.value, *args, transaction_id=transaction_id,
+                                 remaining_packets=remaining_packets)
 
-            return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
+        return self.run_report(report, delay=delay)
 
-        finally:
-            self._close()
 
 
     def add_input_callback(self, callback):

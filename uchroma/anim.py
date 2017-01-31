@@ -8,7 +8,7 @@ import time
 from uchroma.frame import Frame
 
 
-DEFAULT_FPS = 30
+DEFAULT_FPS = 15
 
 
 class Renderer(object):
@@ -292,6 +292,12 @@ class AnimationManager(object):
         if self._loop.stop():
             if self._standalone:
                 asyncio.get_event_loop().stop()
+            self._loop = None
             return True
 
         return False
+
+
+    @property
+    def is_running(self) -> bool:
+        return self._loop is not None
