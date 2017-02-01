@@ -17,11 +17,13 @@ class Status(Enum):
     """
     Enumeration of status codes returned by the hardware
     """
+    UNKNOWN = 0x00
     BUSY = 0x01
     OK = 0x02
     FAIL = 0x03
     TIMEOUT = 0x04
     UNSUPPORTED = 0x05
+    BAD_CRC = 0xFE
     OSERROR = 0xFF
 
 class RazerReport(object):
@@ -140,15 +142,16 @@ class RazerReport(object):
                 self._ensure_open()
                 req = self._pack_request()
                 self._hexdump(req, '--> ')
-                self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
-                                                         self._remaining_packets)
+                if self._remaining_packets == 0:
+                    self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
+                                                             self._remaining_packets)
                 self._driver.hid.send_feature_report(req, self.REQ_REPORT_ID)
                 if self._remaining_packets > 0:
                     return True
 
                 self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
                                                          self._remaining_packets)
-                resp = self._driver.hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE + 1)
+                resp = self._driver.hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
                 self._hexdump(resp, '<-- ')
                 if self._unpack_response(resp):
                     if timeout_cb is not None:
@@ -227,8 +230,8 @@ class RazerReport(object):
 
 
     def _unpack_response(self, buf: bytes) -> bool:
-        assert len(buf) == self.BUF_SIZE + 1, \
-                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE + 1, len(buf))
+        assert len(buf) == self.BUF_SIZE, \
+                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
 
         header = struct.unpack(self.RSP_HEADER, buf[:8])
         status = header[0]
@@ -245,17 +248,21 @@ class RazerReport(object):
 
         crc_check = fast_crc(buf[1:88])
 
-        assert crc == crc_check, 'Checksum of data should be %d, got %d' % (crc, crc_check)
-        assert transaction_id == self._transaction_id, 'Transaction id does not match (%d vs %d)' \
-                % (transaction_id, self._transaction_id)
-        assert command_class == self._command_class, 'Command class does not match'
-        assert command_id == self._command_id, 'Command id does not match'
-        assert protocol_type == self._protocol_type, 'Protocol type does not match'
-
         self._status = Status(status)
         self._result = data
 
         if self._status == Status.OK:
+            if crc != crc_check:
+                self._logger.error('Checksum of data should be %d, got %d' % (crc_check, crc))
+                self._status = Status.BAD_CRC
+                return False
+
+            assert transaction_id == self._transaction_id, 'Transaction id does not match (%d vs %d)' \
+                    % (transaction_id, self._transaction_id)
+            assert command_class == self._command_class, 'Command class does not match'
+            assert command_id == self._command_id, 'Command id does not match'
+            assert protocol_type == self._protocol_type, 'Protocol type does not match'
+
             return True
 
         self._logger.error("Got error %s for command %02x,%02x",

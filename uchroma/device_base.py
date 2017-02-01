@@ -122,7 +122,7 @@ class BaseUChromaDevice(object):
 
     def _ensure_open(self):
         if self._dev is None:
-            self._dev = hidapi.Device(self._devinfo)
+            self._dev = hidapi.Device(self._devinfo, blocking=False)
 
 
     def get_report(self, command_class: int, command_id: int, data_size: int,
