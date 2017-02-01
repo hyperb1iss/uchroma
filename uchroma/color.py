@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, no-member
 import itertools
 import math
 import random
@@ -7,6 +7,7 @@ from enum import Enum
 
 import numpy as np
 
+from uchroma.blending import blend, BlendOp
 from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, to_rgb
 from skimage.util import dtype
 
@@ -249,8 +250,24 @@ class ColorUtils(object):
 
 
     @staticmethod
+    def flatten_layers(arr: np.ndarray, blendfunc: None, weight: float=1.0) -> np.ndarray:
+        assert arr.ndim == 4
+        if arr.shape[0] == 1:
+            return arr[0]
+
+        if blendfunc is None:
+            blendfunc = BlendOp.screen
+
+        out = arr[0]
+        for layer in range(1, arr.shape[0]):
+            out = blend(out, arr[layer], blendfunc, weight)
+
+        return out
+
+
+    @staticmethod
     @colorarg
-    def rgba2rgb(arr: np.array, bg_color: ColorType=None) -> np.array:
+    def rgba2rgb(arr: np.ndarray, bg_color: ColorType=None) -> np.ndarray:
         """
         Alpha-composites data in the numpy array against the given
         background color and returns a new buffer without the
@@ -264,7 +281,7 @@ class ColorUtils(object):
         if bg_color is None:
             bg_color = np.array([0.0, 0.0, 0.0, 1.0])
         else:
-            bg_color = np.array([*bg_color.rgb, bg_color.alpha])
+            bg_color = np.array(tuple(bg_color), dtype=np.float)
 
         alpha = arr[..., -1]
         channels = arr[..., :-1]

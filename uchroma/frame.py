@@ -7,6 +7,7 @@ import numpy as np
 from grapefruit import Color
 from skimage import draw
 
+from uchroma.blending import BlendOp
 from uchroma.color import ColorUtils
 from uchroma.hardware import Quirks
 from uchroma.types import BaseCommand
@@ -49,15 +50,51 @@ class Frame(object):
         self._bg_color = None
         self._logger = logging.getLogger('uchroma.frame')
 
-        self._matrix = np.zeros(shape=(height, width, 4), dtype=np.float)
+        self._matrix = None
+
+        self.set_layer_count(1)
+        self._active_layer = 0
+        self._blend_mode = None
 
         self._report = None
 
         self._debug_opts = {}
 
 
+    def set_layer_count(self, layer_count: int):
+        self._matrix = np.zeros(shape=(layer_count, self._height, self._width, 4), dtype=np.float)
+        self._active_layer = 0
+
+
     @property
-    def device_name(self):
+    def layer_count(self) -> int:
+        return self._matrix.shape[0]
+
+
+    def set_active_layer(self, active_layer: int):
+        if active_layer >= 0 and active_layer < self.layer_count:
+            self._active_layer = active_layer
+
+
+    @property
+    def active_layer(self) -> int:
+        return self._active_layer
+
+
+    @property
+    def blend_mode(self) -> str:
+        return self._blend_mode
+
+
+    @blend_mode.setter
+    def blend_mode(self, mode):
+        if isinstance(mode, str):
+            if mode in BlendOp.get_modes():
+                self._blend_mode = getattr(BlendOp, mode)
+
+
+    @property
+    def device_name(self) -> str:
         """
         Get the current device name
         """
@@ -65,7 +102,7 @@ class Frame(object):
 
 
     @property
-    def width(self):
+    def width(self) -> int:
         """
         The width of this Frame in pixels
         """
@@ -73,7 +110,7 @@ class Frame(object):
 
 
     @property
-    def height(self):
+    def height(self) -> int:
         """
         The height of this Frame in pixels
         """
@@ -81,13 +118,18 @@ class Frame(object):
 
 
     @property
-    def matrix(self):
+    def matrix(self) -> np.ndarray:
         """
         The numpy array backing this Frame
 
         Can be used to perform numpy operations if required.
         """
-        return self._matrix
+        return self._matrix[self._active_layer]
+
+
+    def get_layer(self, layer: int) -> np.ndarray:
+        if layer >= 0 and layer < self.layer_count:
+            return self._matrix[layer]
 
 
     @property
@@ -111,14 +153,18 @@ class Frame(object):
         return self._debug_opts
 
 
-    def clear(self) -> 'Frame':
+    def clear(self, layer: int=None) -> 'Frame':
         """
         Clears this frame with the background color
 
         Defaults to black if no background color is set.
         """
-        self._matrix.fill(0)
-
+        if layer is None:
+            self.matrix.fill(0)
+        elif layer >= 0 and layer < self.layer_count:
+            self._matrix[layer].fill(0)
+        elif layer == -1:
+            self._matrix.fill(0)
         return self
 
 
@@ -131,7 +177,7 @@ class Frame(object):
 
         :return: Color of the pixel
         """
-        return to_color(tuple(self._matrix[row][col]))
+        return to_color(tuple(self.matrix[row][col]))
 
 
     @colorarg
@@ -146,7 +192,7 @@ class Frame(object):
         :return: This Frame instance
         """
         Frame._set_color(
-            self._matrix, (np.array([row,] * len(color)), np.arange(col, col + len(color))),
+            self.matrix, (np.array([row,] * len(color)), np.arange(col, col + len(color))),
             Frame._color_to_np(*color))
 
         return self
@@ -164,10 +210,12 @@ class Frame(object):
         return self
 
 
-    def _as_img(self):
+    def _as_img(self, weight: float=1.0):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            return ColorUtils.rgba2rgb(self._matrix, self._bg_color)
+            return ColorUtils.rgba2rgb( \
+                ColorUtils.flatten_layers(self._matrix, blendfunc=self._blend_mode,
+                                          weight=weight), self._bg_color)
 
 
     def _set_frame_data_single(self, frame_id: int):
@@ -269,7 +317,7 @@ class Frame(object):
         self.update(frame_id)
 
         if clear:
-            self.clear()
+            self.clear(layer=-1)
 
         return self
 
@@ -281,7 +329,7 @@ class Frame(object):
 
         :return: This frame instance
         """
-        self.clear()
+        self.clear(layer=-1)
         self.update(frame_id)
 
         return self
@@ -290,7 +338,7 @@ class Frame(object):
     def _draw(self, rr, cc, color, alpha):
         if rr is None or rr.ndim == 0:
             return
-        Frame._set_color(self._matrix, (rr, cc), Frame._color_to_np(color), alpha)
+        Frame._set_color(self.matrix, (rr, cc), Frame._color_to_np(color), alpha)
 
 
     @colorarg
@@ -309,11 +357,11 @@ class Frame(object):
         :return: This frame instance
         """
         if fill:
-            rr, cc = draw.circle(row, col, round(radius), shape=self._matrix.shape)
+            rr, cc = draw.circle(row, col, round(radius), shape=self.matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         else:
-            rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self._matrix.shape)
+            rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self.matrix.shape)
             self._draw(rr, cc, color, aa)
 
         return self
@@ -337,12 +385,12 @@ class Frame(object):
         """
         if fill:
             rr, cc = draw.ellipse(row, col, math.floor(radius_r), math.floor(radius_c),
-                                  shape=self._matrix.shape)
+                                  shape=self.matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         else:
             rr, cc = draw.ellipse_perimeter(row, col, math.floor(radius_r), math.floor(radius_c),
-                                            shape=self._matrix.shape)
+                                            shape=self.matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         return self
@@ -367,13 +415,13 @@ class Frame(object):
         return self
 
 
-    # a few methods pulled from skimage-dev for blending support
-    # remove these when 1.9 is released
-
     @staticmethod
     def _color_to_np(*colors: ColorType):
         return np.array([tuple(x) for x in colors], dtype=np.float)
 
+
+    # a few methods pulled from skimage-dev for blending support
+    # remove these when 1.9 is released
 
     @staticmethod
     def _coords_inside_image(rr, cc, shape, val=None):

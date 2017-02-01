@@ -4,6 +4,7 @@ import logging
 import sys
 
 from uchroma import __version__
+from uchroma.blending import BlendOp
 from uchroma.cmd import UChromaConsoleUtil
 from uchroma.color import Splotch
 from uchroma.led import LED
@@ -99,6 +100,9 @@ class UChromaTool(UChromaConsoleUtil):
                           help='Animation to add (class)')
         anim.add_argument('-m', '--module', type=str,
                           help='Module to search for animation')
+        anim.add_argument('-b', '--blend', type=str,
+                          choices=BlendOp.get_modes(),
+                          help='Blending mode (multiple layers only)')
         anim.set_defaults(func=self._anim_parser)
         return anim
 
@@ -311,7 +315,7 @@ class UChromaTool(UChromaConsoleUtil):
 
                 print('Created layer: %s' % cookie)
 
-            if not mgr.start(standalone=True):
+            if not mgr.start(standalone=True, blend_mode=args.blend):
                 self.print_err("Failed to start animation")
                 sys.exit(1)
 

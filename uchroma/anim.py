@@ -83,22 +83,27 @@ class AnimationLoop(object):
 
     @asyncio.coroutine
     def _draw(self, timestamp):
-        bad_renderers = []
-        for renderer in self._renderers:
+        bad_layers = []
+        for layer in range(0, len(self._renderers)):
             try:
-                yield from renderer.draw(self._frame, timestamp)
+                self._frame.set_active_layer(layer)
+                yield from self._renderers[layer].draw(self._frame, timestamp)
+                if self.logger.isEnabledFor(logging.DEBUG):
+                    self.logger.debug('LAYER %d: %s', layer, self._frame.matrix)
 
             except Exception as err:
                 self.logger.exception("Exception during animation, removing renderer", exc_info=err)
-                bad_renderers.append(renderer)
+                bad_layers.append(layer)
 
-        for bad_renderer in bad_renderers:
-            bad_renderer.finish(self._frame)
-            self._renderers.remove(bad_renderer)
+        for bad_layer in sorted(bad_layers, reverse=True):
+            bad = self._renderers.pop(bad_layer)
+            bad.finish(self._frame)
+            self._frame.set_layer_count(len(self._renderers))
+
+        self._frame.set_active_layer(0)
 
         draw_time = time.time() - timestamp
-        self.logger.debug('Draw time: %f remaining: %f' % \
-            (draw_time, self._fps - draw_time))
+        self.logger.debug('Draw time: %f remaining: %f', draw_time, self._fps - draw_time)
 
         return True
 
@@ -264,10 +269,12 @@ class AnimationManager(object):
         cookie = 'anim-%s-%s' % (self._driver.serial_number, renderer.__class__.__name__)
         self._renderers[cookie] = renderer
 
+        self._driver.frame_control.set_layer_count(len(self._renderers))
+
         return cookie
 
 
-    def start(self, fps: int=DEFAULT_FPS, standalone: bool=False) -> bool:
+    def start(self, fps: int=DEFAULT_FPS, standalone: bool=False, blend_mode: str=None) -> bool:
         if self._renderers is None or len(self._renderers) == 0:
             self._logger.error('No renderers were configured')
             return False
@@ -276,6 +283,7 @@ class AnimationManager(object):
                                    *self._renderers.values())
 
         self._standalone = standalone
+        self._driver.frame_control.blend_mode = blend_mode
 
         if self._loop.start():
             self._running = True
@@ -299,6 +307,8 @@ class AnimationManager(object):
         self._running = False
 
         result = yield from self._loop.stop()
+
+        self._driver.frame_control.set_layer_count(1)
 
         return result
 
