@@ -10,12 +10,11 @@ class ByteArgs(object):
     Helper class for assembling byte arrays from
     argument lists of varying types
     """
-    def __init__(self, max_size, size=0, data=None):
-        self._size = size
+    def __init__(self, size, data=None):
         self._data_ptr = 0
 
         if data is None:
-            self._data = np.zeros(shape=(max_size,), dtype=np.uint8)
+            self._data = np.zeros(shape=(size,), dtype=np.uint8)
         else:
             self._data = np.frombuffer(data, dtype=np.uint8)
 
@@ -33,17 +32,13 @@ class ByteArgs(object):
         """
         Size of the byte array
         """
-        if self._size is None:
-            return len(self._data)
-        return self._size
+        return len(self._data)
 
 
     def _ensure_space(self, size):
-        if self._size is None:
-            return
-        assert (len(self._data) + size) <= self._size, \
+        assert len(self._data) > size + self._data_ptr, \
                 ('Additional argument (len=%d) would exceed size limit %d (cur=%d)'
-                 % (size, self._size, len(self._data)))
+                 % (size, len(self._data), self._data_ptr))
 
 
     def clear(self):
@@ -58,7 +53,7 @@ class ByteArgs(object):
         return self
 
 
-    def put(self, arg, packing='=B'):
+    def put(self, arg, packing=None):
         """
         Add an argument to this array
 
@@ -72,9 +67,10 @@ class ByteArgs(object):
         :rtype: ByteArgs
         """
         data = None
-        if isinstance(arg, Color):
-            for component in arg.intTuple:
-                data = struct.pack(packing, component)
+        if packing is not None:
+            data = struct.pack(packing, arg)
+        elif isinstance(arg, Color):
+            data = struct.pack("=BBB", *arg.intTuple)
         elif isinstance(arg, Enum):
             if hasattr(arg, "opcode"):
                 data = arg.opcode
@@ -85,7 +81,7 @@ class ByteArgs(object):
         elif isinstance(arg, bytes) or isinstance(arg, bytearray):
             data = arg
         else:
-            data = struct.pack(packing, arg)
+            data = struct.pack("=B", arg)
 
         if isinstance(data, int):
             self._ensure_space(1)
@@ -103,7 +99,7 @@ class ByteArgs(object):
         return self
 
 
-    def put_all(self, args, packing='=B'):
+    def put_all(self, args, packing=None):
         for arg in args:
             self.put(arg, packing=packing)
         return self

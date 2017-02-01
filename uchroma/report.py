@@ -82,7 +82,7 @@ class RazerReport(object):
 
         self._result = None
 
-        self._data = ByteArgs(RazerReport.DATA_BUF_SIZE, data=data, size=data_size)
+        self._data = ByteArgs(RazerReport.DATA_BUF_SIZE, data=data)
 
         self._buf = np.zeros(shape=(RazerReport.BUF_SIZE,), dtype=np.uint8)
 
