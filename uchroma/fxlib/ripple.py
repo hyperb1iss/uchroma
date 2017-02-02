@@ -28,7 +28,7 @@ class Ripple(Renderer):
 
         self._ripple_width = DEFAULT_WIDTH
         self._set_speed(DEFAULT_SPEED)
-
+        self.fps = 30
 
     def _set_speed(self, speed=DEFAULT_SPEED):
         self.key_expire_time = speed * EXPIRE_TIME_FACTOR

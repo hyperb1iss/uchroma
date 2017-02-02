@@ -194,8 +194,12 @@ class Renderer(object):
                 # get a buffer, blocking if necessary
                 layer = yield from self._avail_q.get()
 
-                # draw the layer
-                status = yield from self.draw(layer, asyncio.get_event_loop().time())
+                try:
+                    # draw the layer
+                    status = yield from self.draw(layer, asyncio.get_event_loop().time())
+                except Exception as err:
+                    self.logger.exception("Exception in renderer, exiting now!", exc_info=err)
+                    break
 
                 if not self._running:
                     break
@@ -207,6 +211,8 @@ class Renderer(object):
 
             # FIXME: Use "async with" on Python 3.6+
             yield from self._tick.tick()
+
+        self._stop()
 
 
     def _stop(self):
@@ -298,7 +304,7 @@ class AnimationLoop(object):
 
                 # return the last buffer
                 if self._active_bufs[r_idx] is not None:
-                    renderer._free_buffer(self._active_bufs[r_idx])
+                    renderer._free_layer(self._active_bufs[r_idx])
 
                 # put it on the composition list
                 self._active_bufs[r_idx] = buf
@@ -464,7 +470,8 @@ class AnimationLoop(object):
         if self._anim_task is not None and not self._anim_task.done():
             self._anim_task.cancel()
 
-        yield from asyncio.sleep(0.5)
+        yield from asyncio.wait([*self._tasks, *self._waiters, self._anim_task],
+                                return_when=asyncio.ALL_COMPLETED)
 
         self.logger.info("AnimationLoop stopped")
 

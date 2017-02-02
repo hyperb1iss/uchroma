@@ -1,5 +1,6 @@
 # pylint: disable=invalid-name, too-many-arguments, no-member
 import logging
+import time
 import warnings
 
 import numpy as np
@@ -176,10 +177,12 @@ class Frame(object):
                 frame_id, row, start_col, len(data) - 1, data))
 
             if multi:
+                time.sleep(0.001)
                 data = rowdata[width:]
                 self._driver.run_report(self._get_frame_data_report(remaining - 1, \
                     frame_id, row, width, width + len(data) - 1, data))
 
+            time.sleep(0.001)
 
 
     def _set_frame_data(self, img, frame_id: int=None):
