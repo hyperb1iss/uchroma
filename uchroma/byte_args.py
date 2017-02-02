@@ -84,13 +84,18 @@ class ByteArgs(object):
             data = struct.pack("=B", arg)
 
         if isinstance(data, int):
+            if self._data_ptr + 1 > len(self._data):
+                raise ValueError('No space left in argument list')
+
             self._ensure_space(1)
             self._data[self._data_ptr] = data
             self._data_ptr += 1
         else:
             datalen = len(data)
             if datalen > 0:
-                self._ensure_space(datalen)
+                if self._data_ptr + datalen > len(self._data):
+                    raise ValueError('No space left in argument list')
+
                 if not isinstance(data, np.ndarray):
                     data = np.frombuffer(data, dtype=np.uint8)
                 self._data[self._data_ptr:self._data_ptr+datalen] = data

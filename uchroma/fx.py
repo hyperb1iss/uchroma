@@ -409,13 +409,15 @@ class FXManager(object):
 
         frame = self._driver.frame_control
 
-        data = []
-        gradient = FXManager._hue_gradient(length, frame.width + (frame.height * stagger))
-        for row in range(0, frame.height):
-            data.append([gradient[(row * stagger) + col] for col in range(0, frame.width)])
+        layer = frame.create_layer()
 
-        frame.put_all(data)
-        frame.commit()
+        data = []
+        gradient = FXManager._hue_gradient(length, layer.width + (layer.height * stagger))
+        for row in range(0, layer.height):
+            data.append([gradient[(row * stagger) + col] for col in range(0, layer.width)])
+
+        layer.put_all(data)
+        frame.commit([layer])
 
         return True
 
@@ -426,19 +428,20 @@ class FXManager(object):
         colors = ['yellow', 'green', 'purple', 'blue']
 
         frame = self._driver.frame_control
+        layer = frame.create_layer()
 
-        for row in range(0, frame.height):
-            for col in range(0, frame.width):
+        for row in range(0, layer.height):
+            for col in range(0, layer.width):
                 if col == 0:
                     color = first
                 else:
                     color = colors[int((col - 1) % len(colors))]
-                frame.put(row, col, color)
+                layer.put(row, col, color)
 
         if position is not None and len(position) == 2:
-            frame.put(position[0], position[1], single)
+            layer.put(position[0], position[1], single)
             frame.debug_opts['debug_position'] = tuple(position)
 
-        frame.commit()
+        frame.commit([layer])
 
         return True

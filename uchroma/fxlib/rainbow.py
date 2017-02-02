@@ -5,16 +5,20 @@ from grapefruit import Color
 from uchroma.anim import Renderer
 
 
-DEFAULT_SPEED = 20
+DEFAULT_SPEED = 8
 
 
 class Rainbow(Renderer):
 
     def __init__(self, *args, **kwargs):
+        super(Rainbow, self).__init__(*args, **kwargs)
+
         self._stagger = None
         self._gradient = None
         self._offset = 0
         self._speed = DEFAULT_SPEED
+
+        self.fps = 5
 
 
     @staticmethod
@@ -27,20 +31,20 @@ class Rainbow(Renderer):
         self._offset = 0
         self._stagger = stagger
 
-        length = speed
         self._gradient = Rainbow._hue_gradient(0, speed * frame.width + (frame.height * stagger))
         return True
 
 
     @asyncio.coroutine
-    def draw(self, frame, timestamp):
+    def draw(self, layer, timestamp):
         data = []
-        for row in range(0, frame.height):
+        for row in range(0, layer.height):
             data.append( \
-                [self._gradient[(self._offset + (row * self._stagger) + col) % len(self._gradient)] \
-                for col in range(0, frame.width)])
+                [self._gradient[ \
+                (self._offset + (row * self._stagger) + col) % len(self._gradient)] \
+                for col in range(0, layer.width)])
 
-        frame.put_all(data)
+        layer.put_all(data)
         self._offset = (self._offset + 1) % len(self._gradient)
 
         return True

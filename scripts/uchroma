@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 
+import asyncio
+import functools
 import logging
+import signal
 import sys
+import time
 
 from uchroma import __version__
 from uchroma.blending import BlendOp
@@ -293,6 +297,10 @@ class UChromaTool(UChromaConsoleUtil):
 
 
     def _anim_parser(self, args):
+        def shutdown_asyncio(loop):
+            loop.stop()
+
+
         with self.get_driver(args) as driver:
             mgr = driver.animation_manager
             if mgr is None:
@@ -315,9 +323,21 @@ class UChromaTool(UChromaConsoleUtil):
 
                 print('Created layer: %s' % cookie)
 
-            if not mgr.start(standalone=True, blend_mode=args.blend):
+            if not mgr.start(blend_mode=args.blend):
                 self.print_err("Failed to start animation")
                 sys.exit(1)
+
+            loop = asyncio.get_event_loop()
+
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, functools.partial(shutdown_asyncio, loop))
+
+            try:
+                loop.run_forever()
+            finally:
+                loop.run_until_complete(mgr.stop())
+
+            loop.close()
 
 
 

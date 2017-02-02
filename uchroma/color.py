@@ -250,22 +250,6 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def flatten_layers(arr: np.ndarray, blendfunc: None, weight: float=1.0) -> np.ndarray:
-        assert arr.ndim == 4
-        if arr.shape[0] == 1:
-            return arr[0]
-
-        if blendfunc is None:
-            blendfunc = BlendOp.screen
-
-        out = arr[0]
-        for layer in range(1, arr.shape[0]):
-            out = blend(out, arr[layer], blendfunc, weight)
-
-        return out
-
-
-    @staticmethod
     @colorarg
     def rgba2rgb(arr: np.ndarray, bg_color: ColorType=None) -> np.ndarray:
         """
@@ -275,6 +259,7 @@ class ColorUtils(object):
 
         :param arr: The input array of RGBA data
         :param bg_color: The background color
+        :param out_buf: Optional buffer to render into
 
         :return: Array of composited RGB data
         """
@@ -285,11 +270,12 @@ class ColorUtils(object):
 
         alpha = arr[..., -1]
         channels = arr[..., :-1]
-        out = np.empty_like(channels)
+
+        out_buf = np.empty_like(channels)
 
         for ichan in range(channels.shape[-1]):
-            out[..., ichan] = np.clip(
+            out_buf[..., ichan] = np.clip(
                 (1 - alpha) * bg_color[ichan] + alpha * channels[..., ichan],
                 a_min=0, a_max=1)
 
-        return dtype.img_as_ubyte(out)
+        return dtype.img_as_ubyte(out_buf)

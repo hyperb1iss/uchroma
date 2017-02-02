@@ -2,6 +2,7 @@
 """
 Various helper functions that are used across the library.
 """
+import asyncio
 import inspect
 import math
 import struct
@@ -270,7 +271,7 @@ def smart_delay(delay: float, last_cmd: float, remain: int=0) -> float:
 
     :return: timestamp to feed to next invocation
     """
-    now = time.perf_counter()
+    now = time.monotonic()
 
     if remain == 0 and last_cmd is not None and delay > 0.0:
 
@@ -385,3 +386,62 @@ class RepeatingTimer(object):
 
     def set_defaults(self):
         self._running = False
+
+
+class Ticker(object):
+    """
+    Framerate synchronizer
+
+    Provides a context manager for code which needs to execute
+    on an interval. The tick starts when the context is entered
+    and sleeps for the remainder of the interval on exit. If
+    the interval was missed, sync to the next interval.
+
+    Since Python 3.4 doesn't support asynchronous context
+    managers, it's required to call "yield from tick.tick()"
+    after exiting the context manually. On Python 3.6+,
+    code can simply be called using "async with".
+    """
+    def __init__(self, interval: float):
+        self._interval = interval
+        self._tick_start = 0.0
+        self._next_tick = 0.0
+
+    def __enter__(self):
+        self._tick_start = time.monotonic()
+        return self
+
+
+    def __exit__(self, *args):
+        next_tick = time.monotonic() - self._tick_start
+
+        if next_tick > self._interval:
+            next_tick = next_tick % self._interval
+        else:
+            self._next_tick = self._interval - next_tick
+
+
+    @asyncio.coroutine
+    def tick(self):
+        yield from asyncio.sleep(self._next_tick)
+
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self.__enter__()
+
+
+    @asyncio.coroutine
+    def __aexit__(self, *args):
+        self.__exit__(self, *args)
+        yield from self.tick()
+
+
+    @property
+    def interval(self):
+        return self._interval
+
+
+    @interval.setter
+    def interval(self, value: float):
+        self._interval = value

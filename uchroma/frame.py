@@ -1,17 +1,14 @@
-# pylint: disable=invalid-name, too-many-arguments
+# pylint: disable=invalid-name, too-many-arguments, no-member
 import logging
-import math
 import warnings
 
 import numpy as np
-from grapefruit import Color
-from skimage import draw
 
-from uchroma.blending import BlendOp
+from uchroma.blending import blend
 from uchroma.color import ColorUtils
 from uchroma.hardware import Quirks
+from uchroma.layer import Layer
 from uchroma.types import BaseCommand
-from uchroma.util import clamp, colorarg, ColorType, to_color
 
 
 class Frame(object):
@@ -47,50 +44,23 @@ class Frame(object):
         self._width = width
         self._height = height
 
-        self._bg_color = None
         self._logger = logging.getLogger('uchroma.frame')
-
-        self._matrix = None
-
-        self.set_layer_count(1)
-        self._active_layer = 0
-        self._blend_mode = None
 
         self._report = None
 
         self._debug_opts = {}
 
 
-    def set_layer_count(self, layer_count: int):
-        self._matrix = np.zeros(shape=(layer_count, self._height, self._width, 4), dtype=np.float)
-        self._active_layer = 0
-
-
-    @property
-    def layer_count(self) -> int:
-        return self._matrix.shape[0]
-
-
-    def set_active_layer(self, active_layer: int):
-        if active_layer >= 0 and active_layer < self.layer_count:
-            self._active_layer = active_layer
-
-
-    @property
-    def active_layer(self) -> int:
-        return self._active_layer
-
-
-    @property
-    def blend_mode(self) -> str:
-        return self._blend_mode
-
-
-    @blend_mode.setter
-    def blend_mode(self, mode):
-        if isinstance(mode, str):
-            if mode in BlendOp.get_modes():
-                self._blend_mode = getattr(BlendOp, mode)
+    def create_layer(self) -> Layer:
+        """
+        Create a new layer which can be used for
+        creating custom effects and animations.
+        Multiple layers can be composited together for
+        advanced effects or stacked animations. Currently
+        only layers which match the physical size of the
+        lighting matrix are supported.
+        """
+        return Layer(self._width, self._height)
 
 
     @property
@@ -118,110 +88,47 @@ class Frame(object):
 
 
     @property
-    def matrix(self) -> np.ndarray:
-        """
-        The numpy array backing this Frame
-
-        Can be used to perform numpy operations if required.
-        """
-        return self._matrix[self._active_layer]
-
-
-    def get_layer(self, layer: int) -> np.ndarray:
-        if layer >= 0 and layer < self.layer_count:
-            return self._matrix[layer]
-
-
-    @property
-    def background_color(self) -> Color:
-        return self._bg_color
-
-
-    @background_color.setter
-    def background_color(self, color):
-        """
-        Sets the background color of this Frame
-
-        :param color: Desired background color
-        """
-        self._bg_color = to_color(color)
-        self.reset()
-
-
-    @property
     def debug_opts(self) -> dict:
+        """
+        Dict of arbitrary values for internal use. This is
+        currently only used by the device bringup tool.
+        """
         return self._debug_opts
 
 
-    def clear(self, layer: int=None) -> 'Frame':
+    @staticmethod
+    def compose(layers: list) -> np.ndarray:
         """
-        Clears this frame with the background color
+        Render a list of Layers into an RGB image
 
-        Defaults to black if no background color is set.
+        The layer matrices are populated with RGBA tuples and must
+        be blended according to z-order (using the blend mode specified
+        by each layer) then alpha-composited into a single RGB image
+        before sending to the hardware. If the background color is
+        set on a layer, it is only honored if it is the base layer.
         """
-        if layer is None:
-            self.matrix.fill(0)
-        elif layer >= 0 and layer < self.layer_count:
-            self._matrix[layer].fill(0)
-        elif layer == -1:
-            self._matrix.fill(0)
-        return self
+        if len(layers) == 0:
+            return None
 
-
-    def get(self, row: int, col: int) -> Color:
-        """
-        Get the color of an individual pixel
-
-        :param row: Y coordinate of the pixel
-        :param col: X coordinate of the pixel
-
-        :return: Color of the pixel
-        """
-        return to_color(tuple(self.matrix[row][col]))
-
-
-    @colorarg
-    def put(self, row: int, col: int, *color: ColorType) -> 'Frame':
-        """
-        Set the color of an individual pixel
-
-        :param row: Y-coordinate of the pixel
-        :param col: X-coordinate of the pixel
-        :param colors: Color of the pixel (may also be a list)
-
-        :return: This Frame instance
-        """
-        Frame._set_color(
-            self.matrix, (np.array([row,] * len(color)), np.arange(col, col + len(color))),
-            Frame._color_to_np(*color))
-
-        return self
-
-
-    def put_all(self, data: list) -> 'Frame':
-        """
-        Set the color of all pixels
-
-        :param data: List of lists (row * col) of colors
-        """
-        for row in range(0, len(data)):
-            self.put(row, 0, *data[row])
-
-        return self
-
-
-    def _as_img(self, weight: float=1.0):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            return ColorUtils.rgba2rgb( \
-                ColorUtils.flatten_layers(self._matrix, blendfunc=self._blend_mode,
-                                          weight=weight), self._bg_color)
+            out = layers[0].matrix
+
+            # blend all the layers by z-order
+            if len(layers) > 1:
+                for l_idx in range(1, len(layers)):
+                    layer = layers[l_idx]
+                    if layer is None or layer.matrix.ndim < 3:
+                        continue
+                    out = blend(out, layer.matrix, layer.blend_mode, layer.opacity)
+
+            return ColorUtils.rgba2rgb(out, bg_color=layers[0].background_color)
 
 
-    def _set_frame_data_single(self, frame_id: int):
+    def _set_frame_data_single(self, img, frame_id: int):
         width = min(self._width, Frame.MAX_WIDTH)
         self._driver.run_command(Frame.Command.SET_FRAME_DATA_SINGLE,
-                                 0, width, self._as_img()[0][:width].tobytes(),
+                                 0, width, img[0][:width].tobytes(),
                                  transaction_id=0x80)
 
 
@@ -241,7 +148,7 @@ class Frame(object):
         return self._report
 
 
-    def _set_frame_data_matrix(self, frame_id: int):
+    def _set_frame_data_matrix(self, img, frame_id: int):
         width = self._width
         multi = False
 
@@ -249,8 +156,6 @@ class Frame(object):
         if width > Frame.MAX_WIDTH:
             multi = True
             width = int(width / 2)
-
-        img = self._as_img()
 
         if hasattr(self._driver, 'align_key_matrix'):
             img = self._driver.align_key_matrix(self, img)
@@ -277,31 +182,17 @@ class Frame(object):
 
 
 
-    def _set_frame_data(self, frame_id: int=None):
+    def _set_frame_data(self, img, frame_id: int=None):
         if frame_id is None:
             frame_id = Frame.DEFAULT_FRAME_ID
 
         if self._height == 1:
-            self._set_frame_data_single(frame_id)
+            self._set_frame_data_single(img, frame_id)
         else:
-            self._set_frame_data_matrix(frame_id)
+            self._set_frame_data_matrix(img, frame_id)
 
 
-    def update(self, frame_id: int=None):
-        """
-        Sends the current frame to the hardware and displays it.
-
-        Use commit() unless you need custom behavior.
-        """
-        try:
-            self._matrix.setflags(write=False)
-            self._set_frame_data(frame_id)
-            self._driver.custom_frame()
-        finally:
-            self._matrix.setflags(write=True)
-
-
-    def commit(self, clear: bool=True, frame_id: int=None) -> 'Frame':
+    def commit(self, layers, frame_id: int=None) -> 'Frame':
         """
         Display this frame and prepare for the next frame
 
@@ -314,10 +205,9 @@ class Frame(object):
 
         :return: This Frame instance
         """
-        self.update(frame_id)
-
-        if clear:
-            self.clear(layer=-1)
+        img = Frame.compose(layers)
+        self._set_frame_data(img, frame_id)
+        self._driver.custom_frame()
 
         return self
 
@@ -329,141 +219,6 @@ class Frame(object):
 
         :return: This frame instance
         """
-        self.clear(layer=-1)
-        self.update(frame_id)
+        self.commit([self.create_layer()])
 
         return self
-
-
-    def _draw(self, rr, cc, color, alpha):
-        if rr is None or rr.ndim == 0:
-            return
-        Frame._set_color(self.matrix, (rr, cc), Frame._color_to_np(color), alpha)
-
-
-    @colorarg
-    def circle(self, row: int, col: int, radius: float,
-               color: ColorType, fill: bool=False, alpha=1.0) -> 'Frame':
-        """
-        Draw a circle centered on the specified row and column,
-        with the given radius.
-
-        :param row: Center row of circle
-        :param col: Center column of circle
-        :param radius: Radius of circle
-        :param color: Color to draw with
-        :param fill: True if the circle should be filled
-
-        :return: This frame instance
-        """
-        if fill:
-            rr, cc = draw.circle(row, col, round(radius), shape=self.matrix.shape)
-            self._draw(rr, cc, color, alpha)
-
-        else:
-            rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self.matrix.shape)
-            self._draw(rr, cc, color, aa)
-
-        return self
-
-
-    @colorarg
-    def ellipse(self, row: int, col: int, radius_r: float, radius_c: float,
-                color: ColorType, fill: bool=False, alpha: float=1.0) -> 'Frame':
-        """
-        Draw an ellipse centered on the specified row and column,
-        with the given radiuses.
-
-        :param row: Center row of ellipse
-        :param col: Center column of ellipse
-        :param radius_r: Radius of ellipse on y axis
-        :param radius_c: Radius of ellipse on x axis
-        :param color: Color to draw with
-        :param fill: True if the circle should be filled
-
-        :return: This frame instance
-        """
-        if fill:
-            rr, cc = draw.ellipse(row, col, math.floor(radius_r), math.floor(radius_c),
-                                  shape=self.matrix.shape)
-            self._draw(rr, cc, color, alpha)
-
-        else:
-            rr, cc = draw.ellipse_perimeter(row, col, math.floor(radius_r), math.floor(radius_c),
-                                            shape=self.matrix.shape)
-            self._draw(rr, cc, color, alpha)
-
-        return self
-
-
-    @colorarg
-    def line(self, row1: int, col1: int, row2: int, col2: int,
-             color: ColorType=None, alpha: float=1.0) -> 'Frame':
-        """
-        Draw a line between two points
-
-        :param row1: Start row
-        :param col1: Start column
-        :param row2: End row
-        :param col2: End column
-        :param color: Color to draw with
-        """
-        rr, cc, aa = draw.line_aa(clamp(0, self.height, row1), clamp(0, self.width, col1),
-                                  clamp(0, self.height, row2), clamp(0, self.width, col2))
-        self._draw(rr, cc, color, aa)
-
-        return self
-
-
-    @staticmethod
-    def _color_to_np(*colors: ColorType):
-        return np.array([tuple(x) for x in colors], dtype=np.float)
-
-
-    # a few methods pulled from skimage-dev for blending support
-    # remove these when 1.9 is released
-
-    @staticmethod
-    def _coords_inside_image(rr, cc, shape, val=None):
-        mask = (rr >= 0) & (rr < shape[0]) & (cc >= 0) & (cc < shape[1])
-        if val is None:
-            return rr[mask], cc[mask]
-        else:
-            return rr[mask], cc[mask], val[mask]
-
-
-    @staticmethod
-    def _set_color(img, coords, color, alpha=1):
-        rr, cc = coords
-
-        if img.ndim == 2:
-            img = img[..., np.newaxis]
-
-        color = np.array(color, ndmin=1, copy=False)
-
-        if img.shape[-1] != color.shape[-1]:
-            raise ValueError('Color shape ({}) must match last '
-                             'image dimension ({}). color=({})'.format( \
-                                     color.shape[0], img.shape[-1], color))
-
-        if np.isscalar(alpha):
-            alpha = np.ones_like(rr) * alpha
-
-        rr, cc, alpha = Frame._coords_inside_image(rr, cc, img.shape, val=alpha)
-
-        color = color * alpha[..., np.newaxis]
-
-        if np.all(img[rr, cc] == 0):
-            img[rr, cc] = color
-        else:
-
-            src_alpha = color[..., -1][..., np.newaxis]
-            src_rgb = color[..., :-1]
-
-            dst_alpha = img[rr, cc][..., -1][..., np.newaxis] * 0.75
-            dst_rgb = img[rr, cc][..., :-1]
-
-            out_alpha = src_alpha + dst_alpha * (1 - src_alpha)
-            out_rgb = (src_rgb * src_alpha + dst_rgb *dst_alpha * (1- src_alpha)) / out_alpha
-
-            img[rr, cc] = np.clip(np.hstack([out_rgb, out_alpha]), a_min=0, a_max=1)

@@ -1,12 +1,10 @@
 # pylint: disable=invalid-name
 import asyncio
-import logging
 import math
 import operator
 
 from uchroma.anim import Renderer
 from uchroma.color import ColorUtils, Splotch
-from uchroma.input import InputQueue
 from uchroma.util import clamp
 
 
@@ -16,43 +14,37 @@ DEFAULT_WIDTH = 3
 EXPIRE_TIME_FACTOR = 0.15
 
 COLOR_KEY = 'ripple_color'
+SCHEME_KEY = 'color_scheme'
 
-class Ripple(InputQueue, Renderer):
 
-    def __init__(self, driver, *args, **kwargs):
+class Ripple(Renderer):
 
-        super(Ripple, self).__init__(
-            driver=driver, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
 
-        self._logger = logging.getLogger('uchroma.ripple')
+        super(Ripple, self).__init__(*args, **kwargs)
+
         self._generator = None
         self._max_distance = None
 
         self._ripple_width = DEFAULT_WIDTH
         self._set_speed(DEFAULT_SPEED)
 
-        self._interactive = asyncio.Event()
-
-
-    @asyncio.coroutine
-    def _interaction(self, event):
-        self._interactive.set()
-
 
     def _set_speed(self, speed=DEFAULT_SPEED):
-        self.expire_time = speed * EXPIRE_TIME_FACTOR
+        self.key_expire_time = speed * EXPIRE_TIME_FACTOR
 
 
     def _set_ripple_width(self, width):
         self._ripple_width = width
 
 
-    def _process_event(self, event):
+    def _process_events(self, events):
         if self._generator is None:
             return None
 
-        event.data[COLOR_KEY] = next(self._generator)
-        return event
+        for event in events:
+            if COLOR_KEY not in event.data:
+                event.data[COLOR_KEY] = next(self._generator)
 
 
     @staticmethod
@@ -66,17 +58,20 @@ class Ripple(InputQueue, Renderer):
         return 0.5 * (n**5 + 2)
 
 
-    def _draw_circles(self, frame, radius, event):
+    def _draw_circles(self, layer, radius, event):
         width = self._ripple_width
         if COLOR_KEY not in event.data:
             return
 
-        color = event.data[COLOR_KEY]
-
-        if width > 1:
-            colors = ColorUtils.color_scheme(color=color, base_color=color, steps=width)
+        if SCHEME_KEY in event.data:
+            colors = event.data[SCHEME_KEY]
         else:
-            colors = [color]
+            color = event.data[COLOR_KEY]
+            if width > 1:
+                colors = ColorUtils.color_scheme(color=color, base_color=color, steps=width)
+            else:
+                colors = [color]
+            event.data[SCHEME_KEY] = colors
 
         for circle_num in range(width - 1, -1, -1):
             if radius - circle_num < 0:
@@ -87,36 +82,41 @@ class Ripple(InputQueue, Renderer):
             cc = (*colors[circle_num].rgb, colors[circle_num].alpha * a)
 
             for coord in event.coords:
-                frame.ellipse(coord.y, coord.x, rad / 1.33, rad, color=cc)
+                layer.ellipse(coord.y, coord.x, rad / 1.33, rad, color=cc)
 
 
     @asyncio.coroutine
-    def draw(self, frame, timestamp):
+    def draw(self, layer, timestamp):
         """
-        Draw the next frame
+        Draw the next layer
         """
 
         # Yield until the queue becomes active
-        yield from self._interactive.wait()
+        events = yield from self.get_input_events()
 
-        if self.queue_len > 0:
+        if len(events) > 0:
+            self._process_events(events)
+
             # paint circles in descending timestamp order (oldest first)
-            events = sorted(self.queue, key=operator.itemgetter(0), reverse=True)
+            events = sorted(events, key=operator.itemgetter(0), reverse=True)
 
             for event in events:
                 distance = 1.0 - event.percent_complete
                 if distance < 1.0:
                     radius = self._max_distance * distance
 
-                    self._draw_circles(frame, radius, event)
+                    self._draw_circles(layer, radius, event)
 
-        else:
-            # Queue is empty, enable the barrier
-            self._interactive.clear()
+            return True
+
+        return False
 
 
     def init(self, frame, color=None, bg_color=None, preset_name=None,
              speed=DEFAULT_SPEED, ripple_width=DEFAULT_WIDTH, *args, **kwargs) -> bool:
+
+        if not self.has_key_input:
+            return False
 
         self._max_distance = math.hypot(frame.width, frame.height)
         self._ripple_width = ripple_width
@@ -142,11 +142,4 @@ class Ripple(InputQueue, Renderer):
 
         frame.background_color = bg_color
 
-        self.attach()
-
         return True
-
-
-    def finish(self, frame):
-        self.detach()
-
