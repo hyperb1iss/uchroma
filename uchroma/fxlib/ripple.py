@@ -63,6 +63,10 @@ class Ripple(Renderer):
         if COLOR_KEY not in event.data:
             return
 
+        if event.coords is None or len(event.coords) == 0:
+            self.logger.error('No coordinates available: %s', event)
+            return
+
         if SCHEME_KEY in event.data:
             colors = event.data[SCHEME_KEY]
         else:
