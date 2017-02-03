@@ -42,7 +42,15 @@ class UChromaConsoleUtil(object):
     def _list_devices(self, args):
         for key in self._dm.devices:
             d = self._dm.devices[key]
-            print('[%s]: %s (%s / %s)' % (key, d.name, d.serial_number, d.firmware_version))
+            serial_number = firmware_version = "Unknown"
+            try:
+                serial_number = d.serial_number
+                firmware_version = d.firmware_version
+            except IOError as err:
+                if self._args.debug:
+                    print_err("Error opening device: %s" % err)
+
+            print('[%s]: %s (%s / %s)' % (key, d.name, serial_number, firmware_version))
         sys.exit(0)
 
 
