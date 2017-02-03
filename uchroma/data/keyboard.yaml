@@ -22,7 +22,7 @@ children:
     name: Tartarus Chroma
     product_id: 0x0208
     quirks: PROFILE_LEDS
-
+    supported_fx: [DISABLE, BREATHE, SPECTRUM, STATIC]
 
 - !device-config
   supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, STARLIGHT, CUSTOM_FRAME,
