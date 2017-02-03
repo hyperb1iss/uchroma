@@ -1,4 +1,4 @@
-# pylint: disable=no-member, invalid-name
+# pylint: disable=no-member, invalid-name, unexpected-keyword-arg, no-value-for-parameter
 import asyncio
 import functools
 import logging
@@ -56,16 +56,23 @@ class InputManager(object):
             return
 
         for input_device in self._input_devices:
-            event_device = evdev.InputDevice(input_device)
-            self._event_devices.append(event_device)
+            try:
+                event_device = evdev.InputDevice(input_device)
+                self._event_devices.append(event_device)
 
-            task = asyncio.ensure_future(self._evdev_callback(event_device))
-            task.add_done_callback(functools.partial(self._evdev_close, event_device))
-            self._tasks.append(task)
+                task = asyncio.ensure_future(self._evdev_callback(event_device))
+                task.add_done_callback(functools.partial(self._evdev_close, event_device))
+                self._tasks.append(task)
 
-            self._logger.info('Opened event device %s', event_device)
+                self._logger.info('Opened event device %s', event_device)
 
-        self._opened = True
+            except Exception as err:
+                self.logger.exception("Failed to open device: %s", input_device, exc_info=err)
+
+        if len(self._event_devices) > 0:
+            self._opened = True
+
+        return False
 
 
     def _close_input_devices(self):
@@ -102,6 +109,27 @@ class InputManager(object):
         self._event_callbacks.clear()
 
 
+    def grab(self, excl: bool):
+        """
+        Get exclusive access to the device
+
+        WARNING: Calling this on your primary input device might
+        cause you a bad day (or at least a reboot)! Use with devices
+        (like keypads) where we don't want other apps to see actual
+        scancodes.
+
+        :param excl: True to gain exclusive access, False to release
+        """
+        if not self._opened:
+            return
+
+        for event_device in self._event_devices:
+            if excl:
+                event_device.grab()
+            else:
+                event_device.ungrab()
+
+
     @property
     def input_devices(self):
         return self._input_devices
@@ -135,16 +163,23 @@ class KeyInputEvent(_KeyInputEvent, object):
 
 class InputQueue(object):
 
+    KEY_UP = 1
+    KEY_DOWN = 2
+    KEY_HOLD = 4
+
     def __init__(self, driver, expire_time=None):
 
         self._logger = logging.getLogger('uchroma.inputqueue')
         self._input_manager = driver.input_manager
         self._key_mapping = driver.hardware.key_mapping
-        self._expire_time = expire_time
+        self._expire_time = 0
+        if expire_time is not None:
+            self._expire_time = expire_time
         self._attached = False
 
         self._q = asyncio.Queue()
         self._events = []
+        self._keystates = InputQueue.KEY_DOWN
 
 
     def attach(self):
@@ -192,6 +227,24 @@ class InputQueue(object):
         return self._events[:]
 
 
+    @property
+    def keystates(self) -> int:
+        """
+        The keystates to report as a bitmask
+        """
+        return self._keystates
+
+
+    @keystates.setter
+    def keystates(self, mask: int):
+        """
+        Set the keystates to report.
+
+        By default, only KEY_DOWN is reported.
+        """
+        self._keystates = mask
+
+
     def get_events_nowait(self):
         return self._events[:]
 
@@ -203,8 +256,15 @@ class InputQueue(object):
         """
         self._expire()
 
-        if ev.keystate != ev.key_down:
+        if ev.keystate == ev.key_up and not self._keystates & InputQueue.KEY_UP:
             return
+
+        if ev.keystate == ev.key_down and not self.keystates & InputQueue.KEY_DOWN:
+            return
+
+        if ev.keystate == ev.key_hold and not self.keystates & InputQueue.KEY_HOLD:
+            return
+
 
         coords = None
         if self._key_mapping is not None:
