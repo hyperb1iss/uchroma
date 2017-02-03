@@ -40,9 +40,9 @@ class UChromaMouse(UChromaDevice):
         GET_DPI_XY = (0x04, 0x85, 0x07)
 
 
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
                  input_devices=None, *args, **kwargs):
-        super(UChromaMouse, self).__init__(hardware, devinfo, input_devices
+        super(UChromaMouse, self).__init__(hardware, devinfo, devindex, input_devices
                                            *args, **kwargs)
 
 
@@ -134,8 +134,9 @@ class UChromaWirelessMouse(UChromaMouse):
         GET_CHARGING_STATUS = (0x07, 0x84, 0x02)
 
 
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, input_devices=None):
-        super(UChromaWirelessMouse, self).__init__(hardware, devinfo, input_devices)
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
+                 devindex: int, input_devices=None):
+        super(UChromaWirelessMouse, self).__init__(hardware, devinfo, devindex, input_devices)
 
 
     @property

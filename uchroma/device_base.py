@@ -27,11 +27,12 @@ class BaseUChromaDevice(object):
         GET_SERIAL = (0x00, 0x82, 0x16)
 
 
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, index: int,
                  input_devices=None, *args, **kwargs):
 
         self._hardware = hardware
         self._devinfo = devinfo
+        self._devindex = index
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)
@@ -331,6 +332,11 @@ class BaseUChromaDevice(object):
         The name of this device
         """
         return self.hardware.name
+
+
+    @property
+    def device_index(self) -> int:
+        return self._devindex
 
 
     @property

@@ -2,6 +2,8 @@ import logging
 import sys
 import time
 
+from collections import OrderedDict
+
 import hidapi
 
 from pyudev import Context, Monitor, MonitorObserver
@@ -32,7 +34,7 @@ class UChromaDeviceManager(object):
     def __init__(self, *callbacks):
         self._logger = logging.getLogger('uchroma.devicemanager')
 
-        self._devices = {}
+        self._devices = OrderedDict()
         self._monitor = False
         self._udev_context = Context()
         self._udev_observer = None
@@ -71,6 +73,8 @@ class UChromaDeviceManager(object):
         the scope of this API).
         """
         devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
+        index = 0
+
         for devinfo in devinfos:
             self._logger.debug('Check device %04x interface %d (%s)',
                                devinfo.product_id, devinfo.interface_number, devinfo.product_string)
@@ -91,35 +95,36 @@ class UChromaDeviceManager(object):
                 if devinfo.interface_number != 0:
                     continue
 
-            key = '%04x:%04x' % (devinfo.vendor_id, devinfo.product_id)
+            key = '%04x:%04x.%02d' % (devinfo.vendor_id, devinfo.product_id, index)
             if key in self._devices:
                 continue
 
-            self._devices[key] = self._create_device(hardware, devinfo)
-
+            self._devices[key] = self._create_device(hardware, devinfo, index)
             self._fire_callbacks('add', self._devices[key])
 
+            index += 1
 
-    def _create_device(self, hardware, devinfo):
+
+    def _create_device(self, hardware, devinfo, index):
         parent = self._get_parent(devinfo.product_id)
         input_devs = self._get_input_devices(parent)
 
         if hardware.type == Hardware.Type.MOUSE:
             if hardware.has_quirk(Quirks.WIRELESS):
-                return UChromaWirelessMouse(hardware, devinfo, input_devs)
+                return UChromaWirelessMouse(hardware, devinfo, index, input_devs)
             return UChromaMouse(hardware, devinfo, input_devs)
 
         if hardware.type == Hardware.Type.LAPTOP:
-            return UChromaLaptop(hardware, devinfo, input_devs)
+            return UChromaLaptop(hardware, devinfo, index, input_devs)
 
         if hardware.type == Hardware.Type.KEYBOARD:
             input_devs = self._get_input_devices(parent)
-            return UChromaKeyboard(hardware, devinfo, input_devs)
+            return UChromaKeyboard(hardware, devinfo, index, input_devs)
 
         if hardware.type == Hardware.Type.HEADSET:
-            return UChromaHeadset(hardware, devinfo)
+            return UChromaHeadset(hardware, devinfo, index)
 
-        return UChromaDevice(hardware, devinfo)
+        return UChromaDevice(hardware, devinfo, index)
 
 
     @property

@@ -3,6 +3,7 @@ Various helper functions that are used across the library.
 """
 import argparse
 import logging
+import re
 import sys
 
 from uchroma.device_manager import UChromaDeviceManager
@@ -77,10 +78,19 @@ class UChromaConsoleUtil(object):
         driver = None
 
         if args.device is not None:
-            if args.device not in self._dm.devices:
+            key = args.device
+
+            if not re.match(r'\w{4}:\w{4}.\d{2}', key):
+                index = int(args.device)
+                key = list(self._dm.devices.keys())[index]
+                if key is None:
+                    self.print_err("Invalid device: %s" % args.device)
+                    sys.exit(1)
+
+            if key not in self._dm.devices:
                 sys.exit(1)
 
-            driver = self._dm.devices[args.device]
+            driver = self._dm.devices[key]
 
         elif len(self._dm.devices) == 1:
             driver = self._dm.devices[list(self._dm.devices.keys())[0]]

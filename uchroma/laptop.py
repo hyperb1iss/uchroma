@@ -20,9 +20,9 @@ class UChromaLaptop(UChromaKeyboard):
         GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
 
 
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
                  input_devices=None, *args, **kwargs):
-        super(UChromaLaptop, self).__init__(hardware, devinfo, input_devices,
+        super(UChromaLaptop, self).__init__(hardware, devinfo, devindex, input_devices,
                                             *args, **kwargs)
 
 

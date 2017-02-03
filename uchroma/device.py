@@ -14,9 +14,9 @@ class UChromaDevice(BaseUChromaDevice):
     Class encapsulating all functionality available on standard Chroma devices
     """
 
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
+    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
                  input_devices=None, *args, **kwargs):
-        super(UChromaDevice, self).__init__(hardware, devinfo, input_devices,
+        super(UChromaDevice, self).__init__(hardware, devinfo, devindex, input_devices,
                                             *args, **kwargs)
 
         self._logger = logging.getLogger('uchroma.driver')
