@@ -72,6 +72,8 @@ class KeyMapping(OrderedDict):
 class BlockMapping(OrderedDict):
     pass
 
+class MacroKeys(BlockMapping):
+    pass
 
 _KeyFixupMapping = NamedTuple('_KeyFixupMapping', [('copy', PointList),
                                                    ('delete', PointList),
@@ -103,7 +105,7 @@ BaseHardware = Configuration.create("Hardware", [ \
     ('key_fixup_mapping', KeyFixupMapping),
     ('key_row_offsets', tuple),
     ('supported_leds', tuple),
-    ('has_macro_keys', bool),
+    ('macro_keys', MacroKeys),
     ('is_wireless', bool),
     ('revision', int),
     ('assets', dict),
@@ -120,6 +122,7 @@ class Hardware(BaseHardware):
     class Type(Enum):
         HEADSET = 'Headset'
         KEYBOARD = 'Keyboard'
+        KEYPAD = 'Keypad'
         LAPTOP = 'Laptop'
         MOUSE = 'Mouse'
         MOUSEPAD = 'Mousepad'

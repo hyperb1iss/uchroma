@@ -12,6 +12,7 @@ from uchroma.device import UChromaDevice
 from uchroma.hardware import Hardware, Quirks, RAZER_VENDOR_ID
 from uchroma.headset import UChromaHeadset
 from uchroma.keyboard import UChromaKeyboard
+from uchroma.keypad import UChromaKeypad
 from uchroma.laptop import UChromaLaptop
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
 
@@ -85,7 +86,7 @@ class UChromaDeviceManager(object):
             if hardware.type == Hardware.Type.HEADSET:
                 if devinfo.interface_number != 3:
                     continue
-            elif hardware.type == Hardware.Type.KEYBOARD or hardware.type == Hardware.Type.LAPTOP:
+            elif hardware.type in (Hardware.Type.KEYBOARD, Hardware.Type.KEYPAD, Hardware.Type.LAPTOP):
                 if devinfo.interface_number != 2:
                     continue
             elif hardware.type == Hardware.Type.MOUSEPAD:
@@ -120,6 +121,10 @@ class UChromaDeviceManager(object):
         if hardware.type == Hardware.Type.KEYBOARD:
             input_devs = self._get_input_devices(parent)
             return UChromaKeyboard(hardware, devinfo, index, input_devs)
+
+        if hardware.type == Hardware.Type.KEYPAD:
+            input_devs = self._get_input_devices(parent)
+            return UChromaKeypad(hardware, devinfo, index, input_devs)
 
         if hardware.type == Hardware.Type.HEADSET:
             return UChromaHeadset(hardware, devinfo, index)

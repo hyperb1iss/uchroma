@@ -1,0 +1,25 @@
+#
+#  uChroma device configuration
+#
+#  Type: KEYPAD
+#  Created by shade on 2017-02-02
+#
+!device-config
+manufacturer: Razer
+type: KEYPAD
+vendor_id: 0x1532
+children:
+- !device-config
+  supported_fx: [DISABLE, BREATHE, SPECTRUM, STATIC]
+  children:
+
+  - !device-config
+    name: Tartarus Chroma
+    product_id: 0x0208
+    quirks: PROFILE_LEDS
+    macro_keys:
+      numeric: [15, 16, 17, 18, 19,   # keys 1-5
+                58, 30, 31, 32, 33,   # keys 6-10
+                42, 44, 45, 46, 47]   # keys 11-15
+      button_1: 56                    # top button
+      button_2: 57                    # thumb key
