@@ -4,6 +4,8 @@ Common types and enumerations which are used by everything.
 
 from enum import Enum
 
+from uchroma.util import MagicalEnum
+
 
 class BaseCommand(Enum):
     """
@@ -38,7 +40,7 @@ class FXType(Enum):
 
 
 
-class FX(FXType):
+class FX(MagicalEnum, FXType):
     """
     All known lighting effects.
 

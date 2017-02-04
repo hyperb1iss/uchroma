@@ -13,7 +13,6 @@ from uchroma.cmd import UChromaConsoleUtil
 from uchroma.color import Splotch
 from uchroma.led import LED
 from uchroma.types import FX
-from uchroma.util import enumarg, EnumType
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -182,8 +181,8 @@ class UChromaTool(UChromaConsoleUtil):
             sys.exit(0)
 
 
-    @enumarg(FX)
-    def _activate_fx(self, fx: EnumType, fx_args, driver) -> bool:
+    @FX.enumarg()
+    def _activate_fx(self, fx: FX, fx_args, driver) -> bool:
 
         if fx == FX.BREATHE:
             return driver.breathe(color1=UChromaTool._get_color(fx_args, 0),

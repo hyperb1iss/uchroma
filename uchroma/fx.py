@@ -7,7 +7,7 @@ from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LED
 from uchroma.types import BaseCommand, FX, FXType
-from uchroma.util import colorarg, ColorType
+from uchroma.util import colorarg, ColorType, MagicalEnum
 
 from grapefruit import Color
 
@@ -34,7 +34,7 @@ class ExtendedFX(FXType):
 
 # Modes for the Wave effect
 # The "chase" modes add a circular spin around the trackpad (if supported)
-class Direction(Enum):
+class Direction(MagicalEnum, Enum):
     """
     Enumeration of directions and arguments for some animated effects
     which pan across the device. The "chase" variants are only available
@@ -134,6 +134,7 @@ class FXManager(object):
         return self._set_effect(FX.STATIC, color)
 
 
+    @Direction.enumarg()
     def wave(self, direction: Direction=None) -> bool:
         """
         Activates the "wave" effect
@@ -180,6 +181,8 @@ class FXManager(object):
 
 
     @colorarg
+    @Splotch.enumarg()
+    @Direction.enumarg()
     def sweep(self, color: ColorType=None, base_color: ColorType=None,
               direction: Direction=None, speed: int=None, splotch: Splotch=None) -> bool:
         """
@@ -214,6 +217,7 @@ class FXManager(object):
 
 
     @colorarg
+    @Splotch.enumarg()
     def morph(self, color: ColorType=None, base_color: ColorType=None,
               speed: int=None, splotch: Splotch=None) -> bool:
         """
@@ -326,6 +330,7 @@ class FXManager(object):
 
 
     @colorarg
+    @Splotch.enumarg()
     def starlight(self, color1: ColorType=None, color2: ColorType=None,
                   speed: int=None, splotch: Splotch=None) -> bool:
         """
@@ -349,6 +354,7 @@ class FXManager(object):
 
 
     @colorarg
+    @Splotch.enumarg()
     def breathe(self, color1: ColorType=None, color2: ColorType=None, splotch: Splotch=None) -> bool:
         """
         Activate the "breathe" effect. Colors pulse in and out.

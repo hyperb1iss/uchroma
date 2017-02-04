@@ -8,13 +8,13 @@ from enum import Enum
 import numpy as np
 
 from uchroma.blending import blend, BlendOp
-from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, to_rgb
+from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, MagicalEnum, to_rgb
 from skimage.util import dtype
 
 from grapefruit import Color
 
 
-class Splotch(Enum):
+class Splotch(MagicalEnum, Enum):
     """
     Predefined color pairs
     """

@@ -5,6 +5,7 @@ import logging
 import sys
 import time
 
+from abc import abstractmethod
 from collections import OrderedDict
 from concurrent import futures
 
@@ -68,6 +69,7 @@ class Renderer(object):
         pass
 
 
+    @abstractmethod
     @asyncio.coroutine
     def draw(self, layer: Layer, timestamp: float) -> bool:
         """

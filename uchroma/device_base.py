@@ -9,7 +9,7 @@ from uchroma.input import InputManager
 from uchroma.hardware import Hardware, Quirks
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand, FX
-from uchroma.util import enumarg, EnumType, RepeatingTimer
+from uchroma.util import RepeatingTimer
 from uchroma.version import __version__
 
 
@@ -425,8 +425,8 @@ class BaseUChromaDevice(object):
         return self.hardware.supported_fx
 
 
-    @enumarg(FX)
-    def has_fx(self, fx: EnumType) -> bool:
+    @FX.enumarg()
+    def has_fx(self, fx: FX) -> bool:
         """
         True if the effect type is supported
         """

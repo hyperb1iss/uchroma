@@ -41,13 +41,17 @@ def _autocast_decorator(type_hint, fix_arg_func):
     @wrapt.decorator
     def wrapper(wrapped, instance, args, kwargs):
         hinted_args = names = None
-        if wrapped in AUTOCAST_CACHE:
-            hinted_args, names = AUTOCAST_CACHE[wrapped]
+        cache_key = '%s-%s-%s' % (wrapped.__class__.__name__,
+                                  wrapped.__name__, str(type_hint))
+
+        if cache_key in AUTOCAST_CACHE:
+            hinted_args, names = AUTOCAST_CACHE[cache_key]
         else:
             sig = inspect.signature(wrapped)
             names = list(sig.parameters.keys())
-            hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() if x[1] == type_hint]
-            AUTOCAST_CACHE[wrapped] = hinted_args, names
+            hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() \
+                    if x[1] == type_hint or x[1] == typing.Union[type_hint, None]]
+            AUTOCAST_CACHE[cache_key] = hinted_args, names
 
         if len(hinted_args) == 0:
             raise ValueError("No arguments with %s hint found" % type_hint)
@@ -67,24 +71,42 @@ def _autocast_decorator(type_hint, fix_arg_func):
     return wrapper
 
 
-def enumarg(enum_type: Enum):
+class MagicalEnum(object):
     """
-    Decorator to look up enums by string value if necessary.
-    Use with the EnumType hint.
+    Mixin which adds "magical" capabilities to Enums
 
-    Example:
-
-    @enumargs(FX)
-    def frobozzle(self, fx: EnumType, speed, color1=None, color2=None)
+    Right now this is just a type conversion decorator.
     """
-    def fix_enum_arg(arg):
-        if isinstance(arg, enum_type):
-            return arg
-        if isinstance(arg, str):
-            return enum_type[arg.upper()]
-        raise TypeError("Can't convert %s (%s) to %s" % (arg, type(arg), enum_type))
 
-    return _autocast_decorator(EnumType, fix_enum_arg)
+    @classmethod
+    def enumarg(cls):
+        """
+        Decorator to look up enums by string value if necessary.
+        If placed on a method and it is called with a string
+        instead of an enum instance, the string will be uppercased
+        and the corresponding value from the enum will be passed
+        into the method instead of the string.
+
+        Useful for situations where an external client like a D-Bus
+        API would be calling the method.
+
+        Example:
+
+        @FX.enumarg()
+        def frobozzle(self, fx: FX, speed, color1=None, color2=None)
+        """
+        def fix_enum_arg(arg):
+            if arg is None:
+                return None
+            if isinstance(arg, cls):
+                return arg
+            if isinstance(arg, str):
+                if arg.upper() not in cls.__members__:
+                    return None
+                return cls[arg.upper()]
+            raise TypeError("Can't convert %s (%s) to %s" % (arg, type(arg), cls))
+
+        return _autocast_decorator(cls, fix_enum_arg)
 
 
 def rgb_from_tuple(arg: tuple) -> Color:
@@ -135,7 +157,8 @@ def to_color(*color_args) -> Color:
             if isinstance(arg, Color):
                 value = arg
             elif isinstance(arg, str):
-                value = Color.NewFromHtml(arg)
+                if arg != '':
+                    value = Color.NewFromHtml(arg)
             elif isinstance(arg, Iterable):
                 value = rgb_from_tuple(arg)
             else:
