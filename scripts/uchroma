@@ -99,6 +99,8 @@ class UChromaTool(UChromaConsoleUtil):
         anim = sub.add_parser('anim', help='Animation control')
         anim.add_argument("-d", "--device", type=str,
                           help='HID device to use (/dev/hidrawX or USB identifier)')
+        anim.add_argument('--list', action='store_true',
+                          help='List available renderers')
         anim.add_argument('-n', '--name', type=str, action='append',
                           help='Animation to add (class)')
         anim.add_argument('-m', '--module', type=str,
@@ -295,6 +297,19 @@ class UChromaTool(UChromaConsoleUtil):
                 driver.brightness = args.level
 
 
+    def _list_anims(self, mgr):
+        avail = mgr.available_renderers
+
+        if avail is None or len(avail) == 0:
+            self.print_err('No renderers found.')
+            sys.exit(1)
+
+        print('\nAvailable renderers:\n')
+
+        for k, v in mgr.available_renderers.items():
+            print('%20s: %s' % (k, v))
+
+
     def _anim_parser(self, args):
         def shutdown_asyncio(loop):
             loop.stop()
@@ -306,16 +321,16 @@ class UChromaTool(UChromaConsoleUtil):
                 print_err('This device does not support animations.')
                 sys.exit(1)
 
-            module = 'uchroma.fxlib'
-            if args.module is not None:
-                module = args.module
+            if args.list:
+                self._list_anims(mgr)
+                sys.exit(0)
 
             if args.name is None or len(args.name) == 0:
                 self.print_err("Animation name is required")
                 sys.exit(1)
 
             for name in args.name:
-                cookie = mgr.add_renderer(name, module)
+                cookie = mgr.add_renderer(name)
                 if cookie is None:
                     self.print_err("Failed to create renderer")
                     sys.exit(1)

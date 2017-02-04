@@ -5,7 +5,7 @@ import operator
 
 from uchroma.anim import Renderer
 from uchroma.color import ColorUtils, Splotch
-from uchroma.util import clamp
+from uchroma.util import clamp, colorarg, ColorType
 
 
 DEFAULT_SPEED = 5
@@ -116,8 +116,11 @@ class Ripple(Renderer):
         return False
 
 
-    def init(self, frame, color=None, bg_color=None, preset_name=None,
-             speed=DEFAULT_SPEED, ripple_width=DEFAULT_WIDTH, *args, **kwargs) -> bool:
+    @colorarg
+    @Splotch.enumarg()
+    def init(self, frame, color: ColorType=None, bg_color: ColorType=None,
+             preset_name: Splotch=None, speed: int=DEFAULT_SPEED,
+             ripple_width: int=DEFAULT_WIDTH, **kwargs) -> bool:
 
         if not self.has_key_input:
             return False

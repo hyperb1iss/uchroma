@@ -1,20 +1,20 @@
-# pylint: disable=unused-argument, no-member, no-self-use, protected-access, not-an-iterable
+# pylint: disable=unused-argument, no-member, no-self-use, protected-access, not-an-iterable, invalid-name
 import asyncio
 import importlib
 import logging
-import sys
-import time
+import types
 
 from abc import abstractmethod
 from collections import OrderedDict
 from concurrent import futures
+from typing import NamedTuple
 
 import numpy as np
 
 from uchroma.input import InputQueue
 from uchroma.frame import Frame
 from uchroma.layer import Layer
-from uchroma.util import Ticker
+from uchroma.util import examine, Ticker
 
 
 MAX_FPS = 30
@@ -45,7 +45,7 @@ class Renderer(object):
         super(Renderer, self).__init__(*args, **kwargs)
 
 
-    def init(self, frame: Frame, *args, **kwargs) -> bool:
+    def init(self, frame: Frame, **kwargs) -> bool:
         """
         Invoked by AnimationLoop when the effect is activated. An
         arbitrary set of arguments may be passed, and an implementation
@@ -478,6 +478,12 @@ class AnimationLoop(object):
         self.logger.info("AnimationLoop stopped")
 
 
+RendererMeta = NamedTuple('RendererMetadata', [('module', types.ModuleType),
+                                               ('clazz', type),
+                                               ('name', str),
+                                               ('description', str),
+                                               ('args', OrderedDict)])
+
 class AnimationManager(object):
     """
     Configures and manages animations of one or more renderers
@@ -489,52 +495,49 @@ class AnimationManager(object):
         self._loop = None
         self._running = False
 
-        self._fxlib = 'uchroma.fxlib'
-
         self._logger = logging.getLogger('uchroma.animmgr')
 
+        # TODO: Get a proper plugin system going
+        self._metadata = OrderedDict()
+        self._fxlib = importlib.import_module('uchroma.fxlib')
+        self._discover_renderers()
 
-    def _get_renderer(self, renderer, module: None) -> Renderer:
+
+    def _discover_renderers(self):
+        for item in self._fxlib.__dir__():
+            obj = getattr(self._fxlib, item)
+            if isinstance(obj, type) and issubclass(obj, Renderer):
+                meta = RendererMeta(self._fxlib, obj, obj.__name__, None,
+                                    examine(getattr(obj, 'init')))
+                self._metadata[obj.__name__.lower()] = meta
+
+
+    def _get_renderer(self, name) -> Renderer:
         """
-        Instantiate a renderer by name
+        Instantiate a renderer
 
-        :param renderer: Class of the renderer (string or type object)
-        :param module: Module where the renderer lives, defaults to uchroma.fxlib
+        :param name: Name of the discovered renderer
 
         :return: The renderer object
         """
-        try:
-            if isinstance(renderer, str):
-                if module is None:
-                    module = self._fxlib
-                if isinstance(module, str):
-                    module = importlib.import_module(module)
-                else:
-                    self._logger.error('Invalid module: %s', module)
-                    return None
-                try:
-                    renderer = getattr(module, renderer)
-                except AttributeError as err:
-                    self._logger.exception('Invalid renderer name: %s',
-                                           renderer, exc_info=err)
-                    return None
-
-            if isinstance(renderer, type):
-                zorder = len(self._renderers)
-                name = 'anim-%s-%s.%d' % (self._driver.serial_number, renderer.__name__, zorder)
-                renderer = renderer(self._driver, name, zorder)
-
-            return renderer
-
-        except ImportError as err:
-            self._logger.exception('Invalid renderer: %s (module=%s)',
-                                   renderer, module, exc_info=err)
+        if name.lower() not in self._metadata:
+            self._logger.error("Unknown renderer: %s", name)
             return None
 
-        return renderer
+        meta = self._metadata[name.lower()]
+
+        try:
+            zorder = len(self._renderers)
+            name = 'anim-%s-%s.%d' % (self._driver.serial_number, meta.name, zorder)
+            return meta.clazz(self._driver, name, zorder)
+
+        except ImportError as err:
+            self._logger.exception('Invalid renderer: %s', name, exc_info=err)
+
+        return None
 
 
-    def add_renderer(self, renderer, module=None, *args, **kwargs) -> str:
+    def add_renderer(self, name, **kwargs) -> str:
         """
         Adds a renderer which will produce a layer of this animation.
         Any number of renderers may be added and the output will be
@@ -553,12 +556,12 @@ class AnimationManager(object):
 
         :return: A cookie which can be used to reconfigure the renderer (TODO)
         """
-        renderer = self._get_renderer(renderer, module)
+        renderer = self._get_renderer(name)
         if renderer is None:
             self._logger.error('Renderer %s failed to load', renderer)
             return None
 
-        if not renderer.init(self._driver.frame_control, *args, **kwargs):
+        if not renderer.init(self._driver.frame_control, **kwargs):
             self._logger.error('Renderer %s failed to initialize', renderer.name)
             return None
 
@@ -613,6 +616,14 @@ class AnimationManager(object):
         True if an animation is currently running
         """
         return self._running
+
+
+    @property
+    def available_renderers(self) -> OrderedDict:
+        """
+        The map of discovered renderers
+        """
+        return self._metadata
 
 
     def __del__(self):

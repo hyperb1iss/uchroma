@@ -28,7 +28,7 @@ class Plasma(Renderer):
         return [Color.NewFromHsl((start + (step * x)) % 360, 1, 0.5) for x in range(0, length)]
 
 
-    def init(self, frame, *args, **kwargs):
+    def init(self, frame, **kwargs):
         self._gradient = Plasma._hue_gradient(0, 360)
         self._start_time = time.time()
 

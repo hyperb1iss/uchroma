@@ -27,7 +27,7 @@ class Rainbow(Renderer):
         return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
 
 
-    def init(self, frame, stagger: int=4, speed: int=DEFAULT_SPEED, *args, **kwargs):
+    def init(self, frame, stagger: int=4, speed: int=DEFAULT_SPEED, **kwargs):
         self._offset = 0
         self._stagger = stagger
 

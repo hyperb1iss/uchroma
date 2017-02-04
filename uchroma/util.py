@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name, pointless-string-statement
+# pylint: disable=invalid-name, pointless-string-statement, no-member, unsubscriptable-object
 """
 Various helper functions that are used across the library.
 """
@@ -9,8 +9,7 @@ import struct
 import time
 import typing
 
-from collections import Iterable
-from enum import Enum
+from collections import Iterable, OrderedDict
 from threading import Timer
 
 import wrapt
@@ -20,9 +19,6 @@ from numpy import interp
 
 # Type hint for decorated color arguments
 ColorType = typing.Union[Color, str, typing.Iterable[int], typing.Iterable[float], None]
-
-# Type hint for decorated enum arguments
-EnumType = typing.Union[Enum, str]
 
 
 AUTOCAST_CACHE = {}
@@ -367,6 +363,20 @@ def lerp_degrees(start: float, end: float, amount: float) -> float:
     delta = math.atan2(math.sin(end_r - start_r), math.cos(end_r - start_r))
     return (math.degrees(start_r + delta * amount) + 360.0) % 360.0
 
+
+def examine(func) -> OrderedDict:
+    """
+    Get a sanitized dict of function arguments
+    """
+    args = OrderedDict()
+    sig = inspect.signature(func)
+    types = typing.get_type_hints(func)
+
+    for k, v in sig.parameters.items():
+        if k not in ('self', 'frame', 'args' 'kwargs') and k in types:
+            args[k] = types[k]
+
+    return args
 
 
 class RepeatingTimer(object):
