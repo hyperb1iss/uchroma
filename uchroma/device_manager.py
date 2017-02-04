@@ -1,6 +1,5 @@
+import asyncio
 import logging
-import sys
-import time
 
 from collections import OrderedDict
 
@@ -8,15 +7,13 @@ import hidapi
 
 from pyudev import Context, Monitor, MonitorObserver
 
-from uchroma.device import UChromaDevice
+from uchroma.device_base import BaseUChromaDevice
 from uchroma.hardware import Hardware, Quirks, RAZER_VENDOR_ID
 from uchroma.headset import UChromaHeadset
 from uchroma.keyboard import UChromaKeyboard
 from uchroma.keypad import UChromaKeypad
 from uchroma.laptop import UChromaLaptop
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 class UChromaDeviceManager(object):
@@ -44,15 +41,18 @@ class UChromaDeviceManager(object):
         if callbacks is not None:
             self._callbacks.extend(callbacks)
 
+        self._loop = asyncio.get_event_loop()
+
         self.discover()
 
 
-    def _fire_callbacks(self, action: str, device: UChromaDevice):
+    @asyncio.coroutine
+    def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
         # delay for udev setup
-        time.sleep(0.2)
+        yield from asyncio.sleep(0.2)
 
         for callback in self._callbacks:
-            callback(action, device)
+            yield from callback(action, device)
 
 
     def discover(self):
@@ -77,8 +77,10 @@ class UChromaDeviceManager(object):
         index = 0
 
         for devinfo in devinfos:
-            self._logger.debug('Check device %04x interface %d (%s)',
-                               devinfo.product_id, devinfo.interface_number, devinfo.product_string)
+            parent = self._get_parent(devinfo.product_id)
+            if self._key_for_path(parent.sys_path) is not None:
+                continue
+
             hardware = Hardware.get_device(devinfo.product_id)
             if hardware is None:
                 continue
@@ -86,7 +88,9 @@ class UChromaDeviceManager(object):
             if hardware.type == Hardware.Type.HEADSET:
                 if devinfo.interface_number != 3:
                     continue
-            elif hardware.type in (Hardware.Type.KEYBOARD, Hardware.Type.KEYPAD, Hardware.Type.LAPTOP):
+            elif hardware.type in (Hardware.Type.KEYBOARD,
+                                   Hardware.Type.KEYPAD,
+                                   Hardware.Type.LAPTOP):
                 if devinfo.interface_number != 2:
                     continue
             elif hardware.type == Hardware.Type.MOUSEPAD:
@@ -96,40 +100,61 @@ class UChromaDeviceManager(object):
                 if devinfo.interface_number != 0:
                     continue
 
-            key = '%04x:%04x.%02d' % (devinfo.vendor_id, devinfo.product_id, index)
-            if key in self._devices:
+            device = self._create_device(parent, hardware, devinfo)
+            if device is not None:
+                self._devices[device.key] = device
+
+                if self._monitor and self._callbacks is not None and len(self._callbacks) > 0:
+                    asyncio.ensure_future(self._fire_callbacks('add', device), loop=self._loop)
+
+
+    def _next_index(self):
+        if len(self._devices) == 0:
+            return 0
+
+        indexes = [device.device_index for device in self._devices.values()]
+        indexes.sort()
+        for idx in range(0, len(indexes)):
+            if idx + 1 == len(indexes):
+                return indexes[idx] + 1
+            elif indexes[idx] + 1 == indexes[idx + 1]:
                 continue
-
-            self._devices[key] = self._create_device(hardware, devinfo, index)
-            self._fire_callbacks('add', self._devices[key])
-
-            index += 1
+            return indexes[idx] + 1
+        raise ValueError('should not be here')
 
 
-    def _create_device(self, hardware, devinfo, index):
-        parent = self._get_parent(devinfo.product_id)
+    def _create_device(self, parent, hardware, devinfo):
         input_devs = self._get_input_devices(parent)
+        sys_path = parent.sys_path
+        index = self._next_index()
 
         if hardware.type == Hardware.Type.MOUSE:
             if hardware.has_quirk(Quirks.WIRELESS):
-                return UChromaWirelessMouse(hardware, devinfo, index, input_devs)
-            return UChromaMouse(hardware, devinfo, input_devs)
+                return UChromaWirelessMouse(hardware, devinfo, index, sys_path, input_devs)
+            return UChromaMouse(hardware, devinfo, sys_path, input_devs)
 
         if hardware.type == Hardware.Type.LAPTOP:
-            return UChromaLaptop(hardware, devinfo, index, input_devs)
+            return UChromaLaptop(hardware, devinfo, index, sys_path, input_devs)
 
         if hardware.type == Hardware.Type.KEYBOARD:
             input_devs = self._get_input_devices(parent)
-            return UChromaKeyboard(hardware, devinfo, index, input_devs)
+            return UChromaKeyboard(hardware, devinfo, index, sys_path, input_devs)
 
         if hardware.type == Hardware.Type.KEYPAD:
             input_devs = self._get_input_devices(parent)
-            return UChromaKeypad(hardware, devinfo, index, input_devs)
+            return UChromaKeypad(hardware, devinfo, index, sys_path, input_devs)
 
         if hardware.type == Hardware.Type.HEADSET:
-            return UChromaHeadset(hardware, devinfo, index)
+            return UChromaHeadset(hardware, devinfo, index, sys_path)
 
-        return UChromaDevice(hardware, devinfo, index)
+        return UChromaDevice(hardware, devinfo, index, sys_path)
+
+
+    def _key_for_path(self, path):
+        for key, device in self._devices.items():
+            if device.sys_path == path:
+                return key
+        return None
 
 
     @property
@@ -143,7 +168,7 @@ class UChromaDeviceManager(object):
     @property
     def callbacks(self):
         """
-        List of callbacks invoked when device changes are detected
+        List of coroutines invoked when device changes are detected
         """
         return self._callbacks
 
@@ -174,17 +199,30 @@ class UChromaDeviceManager(object):
 
 
     def _udev_event(self, device):
-        self._logger.debug('Device event [%s]: %s', device.action, device.device_path)
+        self._logger.debug('Device event [%s]: %s', device.action, device)
 
         if device.action == 'remove':
-            key = '%s:%s' % (device['ID_VENDOR_ID'], device['ID_MODEL_ID'])
-            removed = self._devices.pop(key, None)
-            if removed is not None:
-                removed.close()
-                self._fire_callbacks('remove', removed)
+            key = self._key_for_path(device.sys_path)
+            if key is not None:
+                removed = self._devices.pop(key, None)
+                if removed is not None:
+                    removed.close()
+                    if self._callbacks is not None and len(self._callbacks) > 0:
+                        asyncio.ensure_future( \
+                            self._fire_callbacks('remove', removed), loop=self._loop)
 
         else:
-            self.discover()
+            if self._key_for_path(device.sys_path) is None:
+                self.discover()
+
+
+    def close_devices(self):
+        """
+        Close all open devices and perform cleanup
+        """
+        for key, device in self.devices.items():
+            device.close()
+        self._devices.clear()
 
 
     def monitor_start(self):
@@ -205,6 +243,10 @@ class UChromaDeviceManager(object):
                                               name='uchroma-monitor')
         self._udev_observer.start()
         self._monitor = True
+
+        if self._callbacks is not None and len(self._callbacks) > 0:
+            for device in self.devices.values():
+                asyncio.ensure_future(self._fire_callbacks('add', device), loop=self._loop)
 
         self._logger.debug('Udev monitor started')
 

@@ -28,11 +28,12 @@ class BaseUChromaDevice(object):
 
 
     def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, index: int,
-                 input_devices=None, *args, **kwargs):
+                 sys_path: str, input_devices=None, *args, **kwargs):
 
         self._hardware = hardware
         self._devinfo = devinfo
         self._devindex = index
+        self._sys_path = sys_path
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)
@@ -258,7 +259,7 @@ class BaseUChromaDevice(object):
             try:
                 return value.decode()
             except UnicodeDecodeError:
-                return self.device_id
+                return self.key
 
         return None
 
@@ -336,7 +337,23 @@ class BaseUChromaDevice(object):
 
     @property
     def device_index(self) -> int:
+        """
+        The internal index of this device in the device manager
+        """
         return self._devindex
+
+
+    @property
+    def sys_path(self) -> str:
+        """
+        The sysfs path of this device
+        """
+        return self._sys_path
+
+
+    @property
+    def key(self) -> str:
+        return '%04x:%04x.%02d' % (self.vendor_id, self.product_id, self.device_index)
 
 
     @property
@@ -369,14 +386,6 @@ class BaseUChromaDevice(object):
         The type of this device, from the Hardware.Type enumeration
         """
         return self.hardware.type
-
-
-    @property
-    def device_id(self) -> str:
-        """
-        A unique identifier for this device
-        """
-        return '%04x:%04x' % (self.vendor_id, self.product_id)
 
 
     @property
@@ -450,6 +459,12 @@ class BaseUChromaDevice(object):
         Reset effects and other configuration to defaults
         """
         return True
+
+
+    def __repr__(self):
+        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d" % \
+            (self.__class__.__name__, self.name, self.device_type.value,
+             self.product_id, self.device_index)
 
 
     def __enter__(self):

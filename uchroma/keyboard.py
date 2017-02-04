@@ -21,8 +21,9 @@ class UChromaKeyboard(UChromaDevice, KeyboardFixup):
 
 
     def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
-                 input_devices=None, *args, **kwargs):
-        super(UChromaKeyboard, self).__init__(hardware, devinfo, devindex, input_devices,
+                 sys_path: str, input_devices=None, *args, **kwargs):
+        super(UChromaKeyboard, self).__init__(hardware, devinfo, devindex,
+                                              sys_path, input_devices,
                                               *args, **kwargs)
 
 
