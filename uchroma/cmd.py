@@ -3,10 +3,9 @@ Various helper functions that are used across the library.
 """
 import argparse
 import logging
-import re
 import sys
 
-from uchroma.device_manager import UChromaDeviceManager
+from uchroma.client import UChromaClient
 from uchroma.version import __version__
 
 
@@ -37,21 +36,21 @@ class UChromaConsoleUtil(object):
             sys.exit(1)
 
         self._parser = parser
-        self._dm = UChromaDeviceManager()
+        self._client = UChromaClient()
 
 
     def _list_devices(self, args):
-        for key in self._dm.devices:
-            d = self._dm.devices[key]
+        for dev_path in self._client.get_device_paths():
+            dev = self._client.get_device(dev_path)
             serial_number = firmware_version = "Unknown"
             try:
-                serial_number = d.serial_number
-                firmware_version = d.firmware_version
+                serial_number = dev.SerialNumber
+                firmware_version = dev.FirmwareVersion
             except IOError as err:
                 if self._args.debug:
-                    print_err("Error opening device: %s" % err)
+                    self.print_err("Error opening device: %s" % err)
 
-            print('[%s]: %s (%s / %s)' % (key, d.name, serial_number, firmware_version))
+            print('[%s]: %s (%s / %s)' % (dev.Key, dev.Name, serial_number, firmware_version))
         sys.exit(0)
 
 
@@ -78,29 +77,39 @@ class UChromaConsoleUtil(object):
         driver = None
 
         if args.device is not None:
-            key = args.device
-
-            if not re.match(r'\w{4}:\w{4}.\d{2}', key):
-                index = int(args.device)
-                key = list(self._dm.devices.keys())[index]
-                if key is None:
-                    self.print_err("Invalid device: %s" % args.device)
-                    sys.exit(1)
-
-            if key not in self._dm.devices:
+            driver = self._client.get_device(args.device)
+            if driver is None:
+                self.print_err("Invalid device: %s" % args.device)
                 sys.exit(1)
 
-            driver = self._dm.devices[key]
-
-        elif len(self._dm.devices) == 1:
-            driver = self._dm.devices[list(self._dm.devices.keys())[0]]
         else:
-            self.print_err("Multiple devices found, select one with --device")
-            sys.exit(1)
-
-        driver.defer_close = False
+            dev_paths = self._client.get_device_paths()
+            if len(dev_paths) == 1:
+                driver = self._client.get_device(dev_paths[0])
+            else:
+                self.print_err("Multiple devices found, select one with --device")
+                sys.exit(1)
 
         return driver
+
+
+    def set_property(self, target, name, value):
+        if not hasattr(target, name):
+            raise ValueError("Invalid property: %s" % name)
+        cls_obj = getattr(target.__class__, name)
+        if hasattr(cls_obj, '_type'):
+            typespec = cls_obj._type
+            if typespec == 's':
+                value = str(value)
+            elif typespec == 'd':
+                value = float(value)
+            elif typespec == 'u' or typespec == 'i':
+                value = int(value)
+            elif typespec == 'b':
+                value = bool(value)
+            else:
+                raise TypeError("Unable to handle type %s" % typespec)
+        setattr(target, name, value)
 
 
     def run(self):

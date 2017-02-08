@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import asyncio
+import functools
+import logging
+import signal
+import sys
+
+import gbulb
+
+from uchroma.dbus import DeviceManagerAPI
+from uchroma.device_base import BaseUChromaDevice
+from uchroma.device_manager import UChromaDeviceManager
+
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+
+class UChromaServer(object):
+
+    def __init__(self):
+        self._logger = logging.getLogger('uchroma.server')
+        self._dbus = None
+
+        gbulb.install()
+
+
+
+    @asyncio.coroutine
+    def _dm_callback(self, action: str, device: BaseUChromaDevice):
+        self._logger.info('%s: %s', action, device)
+
+
+    def _shutdown_callback(self, loop):
+        self._logger.info("Shutting down")
+        loop.stop()
+
+
+    def run(self):
+        dm = UChromaDeviceManager()
+        dm.callbacks.append(self._dm_callback)
+
+        self._dbus = DeviceManagerAPI(dm)
+
+        loop = asyncio.get_event_loop()
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, functools.partial(self._shutdown_callback, loop))
+
+        try:
+            dm.monitor_start()
+            self._dbus.run()
+
+            loop.run_forever()
+
+        except KeyboardInterrupt:
+            pass
+
+        finally:
+            dm.monitor_stop()
+            dm.close_devices()
+
+            done, pending = loop.run_until_complete(asyncio.gather(*list(asyncio.Task.all_tasks())))
+            for task in done:
+                done.result()
+
+            loop.close()
+
+
+if __name__ == '__main__':
+    UChromaServer().run()
+

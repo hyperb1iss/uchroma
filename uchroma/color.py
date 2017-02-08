@@ -2,22 +2,41 @@
 import itertools
 import math
 import random
+import sys
 
 from enum import Enum
 
 import numpy as np
 
-from uchroma.blending import blend, BlendOp
-from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, MagicalEnum, to_rgb
-from skimage.util import dtype
-
 from grapefruit import Color
+from hsluv import hsluv_to_rgb, rgb_to_hsluv
+from skimage.util import dtype
+from traitlets import List, TraitType, Undefined, UseEnum
+
+from uchroma.blending import blend, BlendOp
+from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, MagicalEnum, to_color, to_rgb
 
 
-class Splotch(MagicalEnum, Enum):
+class ColorScheme(Enum):
+    Emma = ('#320d6d', '#ffbfb7', '#ffd447', '#700353', '#4c1c00')
+    Best = ('#247ba0', '#70c1b3', '#b2dbbf', '#f3ffbd', '#ff1654')
+    Variety = ('#db5461', '#ffd9ce', '#593c8f', '#8ef9f3', '#171738')
+    Redd = ('#d7263d', '#f46036', '#2e294e', '#1b998b', '#c5d86d')
+    Bluticas = ('#006ba6', '#0496ff', '#ffbc42', '#d81159', '#8f2d56')
+    Newer = ('#0d0630', '#18314f', '#384e77', '#8bbeb2', '#e6f9af')
+    Bright = ('#ffbe0b', '#fb5607', '#ff006e', '#8338ec', '#3a86ff')
+    Qap = ('#004777', '#a30000', '#ff7700', '#efd28d', '#00afb5')
+    Rainbow = ('red', 'yellow', 'lime', 'aqua', 'blue', 'magenta')
+
+    def gradient(self, length: int=360) -> list:
+        return ColorUtils.gradient(length, *self.value)
+
+
+class ColorPair(MagicalEnum, Enum):
     """
     Predefined color pairs
     """
+
     EARTH = ('green', '#8b4513')
     AIR = ('white', 'skyblue')
     FIRE = ('red', 'orange')
@@ -42,9 +61,8 @@ class ColorUtils(object):
     Various helpers and utilities for working with colors
     """
 
-
     @staticmethod
-    def _interpolate(start, end, amount: float) -> tuple:
+    def _circular_interp(start, end, amount: float) -> tuple:
         h = lerp_degrees(start[0], end[0], amount)
         s = lerp(start[1], end[1], amount)
         v = lerp(start[2], end[2], amount)
@@ -59,14 +77,7 @@ class ColorUtils(object):
 
     @staticmethod
     def _hsva(color: Color) -> Color:
-        return (*color.hsv, color.alpha)
-
-
-    @staticmethod
-    @colorarg
-    def hsv_blend(color1: ColorType, color2: ColorType, amount: float) -> Color:
-        return Color.NewFromHsv(*ColorUtils._interpolate(
-            ColorUtils._hsva(color1), ColorUtils._hsva(color2), amount))
+        return (*rgb_to_hsluv(color.rgb), color.alpha)
 
 
     @staticmethod
@@ -88,7 +99,37 @@ class ColorUtils(object):
         gradient = []
         for x in range(0, steps):
             amount = float(x) / float(steps - 1)
-            gradient.append(Color.NewFromHsv(*ColorUtils._interpolate(start, end, amount)))
+            i = ColorUtils._circular_interp(start, end, amount)
+            gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]])))
+
+        return gradient
+
+
+    @staticmethod
+    def gradient(length: int, *colors) -> list:
+        """
+        Generate a looped gradient from multiple evenly-spaced colors
+
+        Uses the new HSLUV colorspace
+        :param length: Total number of entries in the final gradient
+        :param colors: Color stops, varargs
+
+        :return: List of colors in the gradient
+        """
+
+        luv_colors = [rgb_to_hsluv(to_color(x).rgb) for x in colors]
+        luv_colors.append(luv_colors[0])
+
+        steps = max(len(luv_colors), math.floor(length / (len(luv_colors))))
+        gradient = []
+        for color_idx in range(0, len(luv_colors) - 1):
+            start = luv_colors[color_idx]
+            end = luv_colors[(color_idx + 1)]
+
+            for interp in range(0, steps):
+                amount = float(interp) / float(steps)
+                i = ColorUtils._circular_interp(start, end, amount)
+                gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]])))
 
         return gradient
 
@@ -143,7 +184,7 @@ class ColorUtils(object):
         elif base_color is not None:
             c0, c1 = ColorUtils.increase_contrast(base_color).TriadicScheme(angle=150)
 
-        return ColorUtils.hsv_gradient(c0, c1, steps)
+        return ColorUtils.gradient(steps, c0, c1)
 
 
     @staticmethod

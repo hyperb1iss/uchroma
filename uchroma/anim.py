@@ -7,14 +7,16 @@ import types
 from abc import abstractmethod
 from collections import OrderedDict
 from concurrent import futures
-from typing import NamedTuple
+from typing import List, NamedTuple
 
+from traitlets import Bool, Dict, HasTraits, Float, Instance, List, observe, Unicode
 import numpy as np
 
 from uchroma.input import InputQueue
 from uchroma.frame import Frame
 from uchroma.layer import Layer
-from uchroma.util import examine, Ticker
+from uchroma.traits import ColorTrait, WriteOnceInt
+from uchroma.util import Ticker
 
 
 MAX_FPS = 30
@@ -22,37 +24,65 @@ DEFAULT_FPS = 15
 NUM_BUFFERS = 2
 
 
-class Renderer(object):
+
+_RendererMeta = NamedTuple('_RendererMeta', [('display_name', str), ('description', str),
+                                             ('author', str), ('version', str)])
+
+class RendererMeta(_RendererMeta, Instance):
+
+    read_only = True
+    allow_none = False
+
+    def __init__(self, display_name, description, author, version, *args, **kwargs):
+        super(RendererMeta, self).__init__(klass=_RendererMeta, \
+            args=(display_name, description, author, version), *args, **kwargs)
+
+
+class Renderer(HasTraits):
     """
     Base class for custom effects renderers.
     """
 
-    def __init__(self, driver, name: str, zorder: int=0, *args, **kwargs):
+    # traits
+    meta = RendererMeta('_unknown_', 'Unimplemented', 'Unknown', '0')
+
+    fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS)
+    blend_mode = Unicode()
+    opacity = Float(min=0.0, max=1.0, default_value=1.0)
+    background_color = ColorTrait()
+
+    height = WriteOnceInt()
+    width = WriteOnceInt()
+    zorder = WriteOnceInt()
+
+    def __init__(self, driver, zorder: int=0, *args, **kwargs):
         self._avail_q = asyncio.Queue(maxsize=NUM_BUFFERS)
         self._active_q = asyncio.Queue(maxsize=NUM_BUFFERS)
 
         self._running = False
-        self._name = name
-        self._zorder = zorder
+
+        self.zorder = zorder
+        self.width = driver.width
+        self.height = driver.height
+
         self._tick = Ticker(1 / DEFAULT_FPS)
 
         self._input_queue = None
-        if driver.input_manager is not None:
+        if hasattr(driver, 'input_manager') and driver.input_manager is not None:
             self._input_queue = InputQueue(driver)
 
-        self._logger = logging.getLogger("uchroma.%s" % (name))
-
+        self._logger = logging.getLogger('uchroma.%s.%d' % (self.__class__.__name__, zorder))
+        self._logger.info('call super')
         super(Renderer, self).__init__(*args, **kwargs)
 
 
-    def init(self, frame: Frame, **kwargs) -> bool:
+    def init(self, frame: Frame) -> bool:
         """
-        Invoked by AnimationLoop when the effect is activated. An
-        arbitrary set of arguments may be passed, and an implementation
-        should performa any necessary setup here.
+        Invoked by AnimationLoop when the effect is activated. At this
+        point, the traits will have been set. An implementation
+        should perform any final setup here.
 
         :param frame: The frame instance being configured
-        :param args: Arbitrary arguments
 
         :return: True if the renderer was configured
         """
@@ -84,22 +114,6 @@ class Renderer(object):
         :return: True if the frame has been drawn
         """
         return False
-
-
-    @property
-    def name(self) -> str:
-        """
-        The identifier of this renderer
-        """
-        return self._name
-
-
-    @property
-    def zorder(self) -> int:
-        """
-        The z-order of this layer, if stacked
-        """
-        return self._zorder
 
 
     @property
@@ -147,17 +161,9 @@ class Renderer(object):
         return events
 
 
-    @property
-    def fps(self) -> float:
-        return 1 / self._tick.interval
-
-
-    @fps.setter
-    def fps(self, value: float):
-        if value > MAX_FPS:
-            raise ValueError("Maximum FPS is %d" % MAX_FPS)
-
-        self._tick.interval = 1 / value
+    @observe('fps')
+    def _fps_changed(self, change):
+        self._tick.interval = 1 / self.fps
 
 
     @property
@@ -217,6 +223,15 @@ class Renderer(object):
         self._stop()
 
 
+    def _flush(self):
+        if self._running:
+            return
+        for qlen in range(0, self._avail_q.qsize()):
+            self._avail_q.get_nowait()
+        for qlen in range(0, self._active_q.qsize()):
+            self._active_q.get_nowait()
+
+
     def _stop(self):
         if not self._running:
             return
@@ -224,6 +239,9 @@ class Renderer(object):
         self.logger.info("Stopping renderer")
 
         self._running = False
+
+        self._flush()
+
         if self.has_key_input:
             self._input_queue.detach()
 
@@ -249,6 +267,7 @@ class AnimationLoop(object):
     def __init__(self, frame: Frame, *renderers: Renderer, default_blend_mode: str=None):
         self._frame = frame
         self._renderers = list(renderers)
+
         self._default_blend_mode = default_blend_mode
 
         self._running = False
@@ -410,6 +429,8 @@ class AnimationLoop(object):
 
         # load up the renderers with layers to draw on
         for r_idx in range(0, len(self._renderers)):
+            self._renderers[r_idx]._flush()
+
             for buf in range(0, NUM_BUFFERS):
                 layer = self._frame.create_layer()
                 layer.blend_mode = self._default_blend_mode
@@ -447,7 +468,7 @@ class AnimationLoop(object):
 
 
     @asyncio.coroutine
-    def stop(self):
+    def _stop(self):
         """
         Stop this AnimationLoop
 
@@ -478,41 +499,63 @@ class AnimationLoop(object):
         self.logger.info("AnimationLoop stopped")
 
 
-RendererMeta = NamedTuple('RendererMetadata', [('module', types.ModuleType),
-                                               ('clazz', type),
-                                               ('name', str),
-                                               ('description', str),
-                                               ('args', OrderedDict)])
+    def stop(self):
+        if not self._running:
+            return False
 
-class AnimationManager(object):
+        asyncio.ensure_future(self._stop())
+
+        return True
+
+
+RendererInfo = NamedTuple('RendererInfo', [('module', types.ModuleType),
+                                           ('clazz', type),
+                                           ('key', str),
+                                           ('meta', RendererMeta)])
+
+class AnimationManager(HasTraits):
     """
     Configures and manages animations of one or more renderers
     """
 
+    renderers = List()
+    renderer_info = Dict()
+    running = Bool(False)
+
     def __init__(self, driver):
+        super(AnimationManager, self).__init__()
+
         self._driver = driver
-        self._renderers = OrderedDict()
+
         self._loop = None
-        self._running = False
 
         self._logger = logging.getLogger('uchroma.animmgr')
 
-        # TODO: Get a proper plugin system going
-        self._metadata = OrderedDict()
-        self._fxlib = importlib.import_module('uchroma.fxlib')
-        self._discover_renderers()
+        with self.hold_trait_notifications():
+            # TODO: Get a proper plugin system going
+            self.renderer_info = OrderedDict()
+
+            self._fxlib = importlib.import_module('uchroma.fxlib')
+            self._discover_renderers()
+
+            self.renderers = []
 
 
     def _discover_renderers(self):
         for item in self._fxlib.__dir__():
             obj = getattr(self._fxlib, item)
             if isinstance(obj, type) and issubclass(obj, Renderer):
-                meta = RendererMeta(self._fxlib, obj, obj.__name__, None,
-                                    examine(getattr(obj, 'init')))
-                self._metadata[obj.__name__.lower()] = meta
+                if obj.meta.display_name == '_unknown_':
+                    self._logger.error("Renderer %s did not set metadata, skipping",
+                                       obj.__name__)
+                    continue
+
+                key = '%s.%s' % (obj.__module__, obj.__name__)
+                info = RendererInfo(obj.__module__, obj, key, obj.meta)
+                self.renderer_info[key] = info
 
 
-    def _get_renderer(self, name) -> Renderer:
+    def _get_renderer(self, name, **traits) -> Renderer:
         """
         Instantiate a renderer
 
@@ -520,16 +563,15 @@ class AnimationManager(object):
 
         :return: The renderer object
         """
-        if name.lower() not in self._metadata:
+        if name not in self.renderer_info:
             self._logger.error("Unknown renderer: %s", name)
             return None
 
-        meta = self._metadata[name.lower()]
+        info = self.renderer_info[name]
 
         try:
-            zorder = len(self._renderers)
-            name = 'anim-%s-%s.%d' % (self._driver.serial_number, meta.name, zorder)
-            return meta.clazz(self._driver, name, zorder)
+            zorder = len(self.renderers)
+            return info.clazz(self._driver, zorder, **traits)
 
         except ImportError as err:
             self._logger.exception('Invalid renderer: %s', name, exc_info=err)
@@ -537,7 +579,7 @@ class AnimationManager(object):
         return None
 
 
-    def add_renderer(self, name, **kwargs) -> str:
+    def add_renderer(self, name, **traits) -> int:
         """
         Adds a renderer which will produce a layer of this animation.
         Any number of renderers may be added and the output will be
@@ -550,24 +592,22 @@ class AnimationManager(object):
 
         The loop must not be running when this is called.
 
-        :param renderer: Class of the renderer (string or type object)
-        :param module: Module where the renderer lives
-        :param *: Renderer-specific configuration arguments
+        :param renderer: Key name of a discovered renderer
 
-        :return: A cookie which can be used to reconfigure the renderer (TODO)
+        :return: Z-position of the new renderer or -1 on error
         """
-        renderer = self._get_renderer(name)
+        renderer = self._get_renderer(name, **traits)
         if renderer is None:
             self._logger.error('Renderer %s failed to load', renderer)
-            return None
+            return -1
 
-        if not renderer.init(self._driver.frame_control, **kwargs):
+        if not renderer.init(self._driver.frame_control):
             self._logger.error('Renderer %s failed to initialize', renderer.name)
-            return None
+            return -1
 
-        self._renderers[renderer.name] = renderer
+        self.renderers = [*self.renderers, renderer]
 
-        return renderer.name
+        return renderer.zorder
 
 
     def start(self, blend_mode: str=None) -> bool:
@@ -578,54 +618,48 @@ class AnimationManager(object):
 
         :return: True if the animation was started successfully
         """
-        if self._renderers is None or len(self._renderers) == 0:
+        if self.running:
+            return False
+
+        if self.renderers is None or len(self.renderers) == 0:
             self._logger.error('No renderers were configured')
             return False
 
         self._loop = AnimationLoop(self._driver.frame_control,
-                                   *self._renderers.values(),
+                                   *self.renderers,
                                    default_blend_mode=blend_mode)
 
         if self._loop.start():
-            self._running = True
+            self.running = True
             return True
 
         return False
 
 
-    @asyncio.coroutine
     def stop(self) -> bool:
         """
         Stop the currently running animation
 
         Cleans up the renderers and stops the animation loop.
         """
-        if not self._running:
+        if not self.running:
             return False
 
-        result = yield from self._loop.stop()
-        self._renderers.clear()
-        self._running = False
+        if self._loop.stop():
+            self.running = False
+            return True
 
-        return result
-
-
-    @property
-    def is_running(self) -> bool:
-        """
-        True if an animation is currently running
-        """
-        return self._running
+        return False
 
 
-    @property
-    def available_renderers(self) -> OrderedDict:
-        """
-        The map of discovered renderers
-        """
-        return self._metadata
+    def clear_renderers(self) -> bool:
+        if self.running:
+            return False
+
+        self.renderers = []
+        return True
 
 
     def __del__(self):
-        if self.is_running:
+        if self.running:
             self.stop()

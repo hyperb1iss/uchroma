@@ -3,9 +3,12 @@ import asyncio
 import math
 import operator
 
-from uchroma.anim import Renderer
-from uchroma.color import ColorUtils, Splotch
-from uchroma.util import clamp, colorarg, ColorType
+from traitlets import Int, observe
+
+from uchroma.anim import Renderer, RendererMeta
+from uchroma.color import ColorUtils
+from uchroma.traits import ColorTrait
+from uchroma.util import clamp
 
 
 DEFAULT_SPEED = 5
@@ -19,6 +22,16 @@ SCHEME_KEY = 'color_scheme'
 
 class Ripple(Renderer):
 
+    # meta
+    meta = RendererMeta('Ripples', 'Ripples of color when keys are pressed',
+                        'Steve Kondik', '1.0')
+
+    # configurable traits
+    ripple_width = Int(default_value=DEFAULT_WIDTH, min=1, max=5)
+    speed = Int(default_value=DEFAULT_SPEED, min=1, max=9)
+    color = ColorTrait()
+    base_color = ColorTrait()
+
     def __init__(self, *args, **kwargs):
 
         super(Ripple, self).__init__(*args, **kwargs)
@@ -26,16 +39,14 @@ class Ripple(Renderer):
         self._generator = None
         self._max_distance = None
 
-        self._ripple_width = DEFAULT_WIDTH
-        self._set_speed(DEFAULT_SPEED)
+        self.key_expire_time = DEFAULT_SPEED * EXPIRE_TIME_FACTOR
+
         self.fps = 30
 
-    def _set_speed(self, speed=DEFAULT_SPEED):
-        self.key_expire_time = speed * EXPIRE_TIME_FACTOR
 
-
-    def _set_ripple_width(self, width):
-        self._ripple_width = width
+    @observe('speed')
+    def _set_speed(self, change):
+        self.key_expire_time = change.new * EXPIRE_TIME_FACTOR
 
 
     def _process_events(self, events):
@@ -59,7 +70,7 @@ class Ripple(Renderer):
 
 
     def _draw_circles(self, layer, radius, event):
-        width = self._ripple_width
+        width = self.ripple_width
         if COLOR_KEY not in event.data:
             return
 
@@ -116,37 +127,22 @@ class Ripple(Renderer):
         return False
 
 
-    @colorarg
-    @Splotch.enumarg()
-    def init(self, frame, color: ColorType=None, bg_color: ColorType=None,
-             preset_name: Splotch=None, speed: int=DEFAULT_SPEED,
-             ripple_width: int=DEFAULT_WIDTH, **kwargs) -> bool:
+    @observe('color', 'base_color')
+    def _update_colors(self, change=None):
+        if self.color is None and self.base_color is None:
+            self._generator = ColorUtils.rainbow_generator()
+        else:
+            self._generator = ColorUtils.scheme_generator(
+                color=self.color, base_color=self.base_color)
+
+
+    def init(self, frame) -> bool:
 
         if not self.has_key_input:
             return False
 
         self._max_distance = math.hypot(frame.width, frame.height)
-        self._ripple_width = ripple_width
-        self._set_speed(speed)
 
-        if preset_name is not None:
-            splotch = Splotch.get(preset_name)
-            if splotch is not None:
-                bg_color = splotch.first()
-                color = splotch.second()
-
-        if bg_color is None or bg_color[0] is None:
-            bg_color = None
-
-        if color is None or color[0] is None:
-            color = None
-
-        if color is None and bg_color is None:
-            self._generator = ColorUtils.rainbow_generator()
-        else:
-            self._generator = ColorUtils.scheme_generator(
-                color=color, base_color=bg_color)
-
-        frame.background_color = bg_color
+        self._update_colors()
 
         return True

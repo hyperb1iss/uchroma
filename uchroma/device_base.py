@@ -63,7 +63,7 @@ class BaseUChromaDevice(object):
     def _close(self, force: bool=False):
         if self._defer_close:
             if not force:
-                if self.animation_manager is not None and self.animation_manager.is_running:
+                if self.animation_manager is not None and self.animation_manager.running:
                     return
 
                 self._close_timer.start()
@@ -381,6 +381,14 @@ class BaseUChromaDevice(object):
 
 
     @property
+    def manufacturer(self) -> str:
+        """
+        The manufacturer of this device
+        """
+        return self._hardware.manufacturer
+
+
+    @property
     def device_type(self) -> Hardware.Type:
         """
         The type of this device, from the Hardware.Type enumeration
@@ -462,7 +470,7 @@ class BaseUChromaDevice(object):
 
 
     def __repr__(self):
-        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d" % \
+        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d)" % \
             (self.__class__.__name__, self.name, self.device_type.value,
              self.product_id, self.device_index)
 

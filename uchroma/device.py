@@ -92,6 +92,11 @@ class UChromaDevice(BaseUChromaDevice):
         return self.get_led(LED.Type.BACKLIGHT).brightness
 
 
+    @property
+    def suspended(self):
+        return self._suspended
+
+
     def suspend(self):
         """
         Suspend the device

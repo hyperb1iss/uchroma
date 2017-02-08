@@ -2,7 +2,7 @@ import logging
 
 from enum import Enum
 
-from uchroma.color import Splotch
+from uchroma.color import ColorPair
 from uchroma.device_base import BaseCommand, BaseUChromaDevice
 from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LED
@@ -110,6 +110,11 @@ class FXManager(object):
         return self._set_effect_basic(effect, *args)
 
 
+    @property
+    def supported_fx(self):
+        return self._driver.hardware.supported_fx
+
+
     def disable(self) -> bool:
         """
         Disables all running effects
@@ -181,10 +186,10 @@ class FXManager(object):
 
 
     @colorarg
-    @Splotch.enumarg()
+    @ColorPair.enumarg()
     @Direction.enumarg()
     def sweep(self, color: ColorType=None, base_color: ColorType=None,
-              direction: Direction=None, speed: int=None, splotch: Splotch=None) -> bool:
+              direction: Direction=None, speed: int=None, preset: ColorPair=None) -> bool:
         """
         Produces colors which sweep across the device
 
@@ -192,14 +197,14 @@ class FXManager(object):
         :param base_color: The base color for the effect (defaults to black)
         :param direction: The direction for the sweep
         :param speed: Speed of the sweep
-        :param splotch: Predefined color pair to use. Invalid with color/base_color.
+        :param preset: Predefined color pair to use. Invalid with color/base_color.
 
         :return: True if successful
         """
         if direction is None:
             direction = Direction.RIGHT
 
-        if splotch is None:
+        if preset is None:
             if base_color is None:
                 base_color = Color.NewFromHtml('black')
 
@@ -207,8 +212,8 @@ class FXManager(object):
                 color = Color.NewFromHtml('green')
 
         else:
-            color = splotch.first
-            base_color = splotch.second
+            color = preset.first
+            base_color = preset.second
 
         if speed is None:
             speed = 15
@@ -217,20 +222,20 @@ class FXManager(object):
 
 
     @colorarg
-    @Splotch.enumarg()
+    @ColorPair.enumarg()
     def morph(self, color: ColorType=None, base_color: ColorType=None,
-              speed: int=None, splotch: Splotch=None) -> bool:
+              speed: int=None, preset: ColorPair=None) -> bool:
         """
         A "morphing" color effect when keys are pressed
 
         :param color: The color when keys are pressed (defaults to magenta)
         :param base_color: The base color for the effect (defaults to blue)
         :param speed: Speed of the sweep
-        :param splotch: Predefined color pair to use. Invalid with color/base_color.
+        :param preset: Predefined color pair to use. Invalid with color/base_color.
 
         :return: True if successful
         """
-        if splotch is None:
+        if preset is None:
             if base_color is None:
                 base_color = Color.NewFromHtml('blue')
 
@@ -238,8 +243,8 @@ class FXManager(object):
                 color = Color.NewFromHtml('magenta')
 
         else:
-            color = splotch.first
-            base_color = splotch.second
+            color = preset.first
+            base_color = preset.second
 
         if speed is None:
             speed = 2
@@ -292,7 +297,7 @@ class FXManager(object):
 
 
     def _set_multi_mode_effect(self, effect: FXType, color1: Color=None, color2: Color=None,
-                               speed: int=None, splotch: Splotch=None,
+                               speed: int=None, preset: ColorPair=None,
                                speed_range: tuple=None) -> bool:
 
         if speed_range is None:
@@ -302,9 +307,9 @@ class FXManager(object):
             raise ValueError('Speed for effect must be between %d and %d (got: %d)',
                              *speed_range, speed)
 
-        if splotch is not None:
-            color1 = splotch.first
-            color2 = splotch.second
+        if preset is not None:
+            color1 = preset.first
+            color2 = preset.second
 
         mode = None
 
@@ -330,9 +335,9 @@ class FXManager(object):
 
 
     @colorarg
-    @Splotch.enumarg()
+    @ColorPair.enumarg()
     def starlight(self, color1: ColorType=None, color2: ColorType=None,
-                  speed: int=None, splotch: Splotch=None) -> bool:
+                  speed: int=None, preset: ColorPair=None) -> bool:
         """
         Activate the "starlight" effect. Colors sparkle across the device.
 
@@ -342,7 +347,7 @@ class FXManager(object):
         :param color1: First color
         :param color2: Second color
         :param speed: Speed of the effect
-        :param splotch: Predefined color pair, invalid when color1/color2 is supplied
+        :param preset: Predefined color pair, invalid when color1/color2 is supplied
 
         :return: True if successful
         """
@@ -350,12 +355,12 @@ class FXManager(object):
             speed = 1
 
         return self._set_multi_mode_effect(FX.STARLIGHT, color1, color2,
-                                           speed=speed, splotch=splotch)
+                                           speed=speed, preset=preset)
 
 
     @colorarg
-    @Splotch.enumarg()
-    def breathe(self, color1: ColorType=None, color2: ColorType=None, splotch: Splotch=None) -> bool:
+    @ColorPair.enumarg()
+    def breathe(self, color1: ColorType=None, color2: ColorType=None, preset: ColorPair=None) -> bool:
         """
         Activate the "breathe" effect. Colors pulse in and out.
 
@@ -364,11 +369,11 @@ class FXManager(object):
 
         :param color1: First color
         :param color2: Second color
-        :param splotch: Predefined color pair, invalid when color1/color2 is supplied
+        :param preset: Predefined color pair, invalid when color1/color2 is supplied
 
         :return: True if successful
         """
-        return self._set_multi_mode_effect(FX.BREATHE, color1, color2, splotch=splotch)
+        return self._set_multi_mode_effect(FX.BREATHE, color1, color2, preset=preset)
 
 
     def custom_frame(self) -> bool:

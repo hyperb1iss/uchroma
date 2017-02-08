@@ -1,0 +1,7 @@
+[Unit]
+Description=UChroma Device Management Service
+
+[Service]
+Type=dbus
+BusName=org.chemlab.UChroma
+ExecStart=/usr/bin/uchromad

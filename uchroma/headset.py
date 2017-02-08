@@ -6,7 +6,7 @@ from grapefruit import Color
 from wrapt import synchronized
 
 from uchroma.byte_args import ByteArgs
-from uchroma.color import Splotch
+from uchroma.color import ColorPair
 from uchroma.device_base import BaseUChromaDevice
 from uchroma.hardware import Hardware
 from uchroma.types import BaseCommand
@@ -427,20 +427,20 @@ class UChromaHeadset(BaseUChromaDevice):
 
     @colorarg
     def breathe(self, color1: ColorType=None, color2: ColorType=None,
-                color3: ColorType=None, splotch: Splotch=None) -> bool:
+                color3: ColorType=None, preset: ColorPair=None) -> bool:
         """
         Breathing color effect. Accepts up to three colors on v2 hardware
 
         :param color1: Primary color
         :param color2: Secondary color
         :param color3: Tertiary color
-        :param splotch: Predefinied color pair
+        :param preset: Predefinied color pair
 
         :return True if successful:
         """
-        if splotch is not None:
-            color1 = splotch.first
-            color2 = splotch.second
+        if preset is not None:
+            color1 = preset.first
+            color2 = preset.second
 
         args = []
 

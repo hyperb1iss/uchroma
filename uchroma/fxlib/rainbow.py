@@ -1,8 +1,9 @@
 import asyncio
 
+from traitlets import Int, observe
 from grapefruit import Color
 
-from uchroma.anim import Renderer
+from uchroma.anim import Renderer, RendererMeta
 
 
 DEFAULT_SPEED = 8
@@ -10,13 +11,19 @@ DEFAULT_SPEED = 8
 
 class Rainbow(Renderer):
 
+    # meta
+    meta = RendererMeta('Color Wash', 'Simple flowing colors', 'Steve Kondik', '1.0')
+
+    # configurable traits
+    speed = Int(default_value=DEFAULT_SPEED, min=0, max=20)
+    stagger = Int(default_value=4, min=0, max=100)
+
+
     def __init__(self, *args, **kwargs):
         super(Rainbow, self).__init__(*args, **kwargs)
 
-        self._stagger = None
         self._gradient = None
         self._offset = 0
-        self._speed = DEFAULT_SPEED
 
         self.fps = 5
 
@@ -27,11 +34,15 @@ class Rainbow(Renderer):
         return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
 
 
-    def init(self, frame, stagger: int=4, speed: int=DEFAULT_SPEED, **kwargs):
+    @observe('speed', 'stagger')
+    def _create_gradient(self, change=None):
         self._offset = 0
-        self._stagger = stagger
+        self._gradient = Rainbow._hue_gradient( \
+            0, self.speed * self.width + (self.height * self.stagger))
 
-        self._gradient = Rainbow._hue_gradient(0, speed * frame.width + (frame.height * stagger))
+
+    def init(self, frame):
+        self._create_gradient()
         return True
 
 
@@ -41,7 +52,7 @@ class Rainbow(Renderer):
         for row in range(0, layer.height):
             data.append( \
                 [self._gradient[ \
-                (self._offset + (row * self._stagger) + col) % len(self._gradient)] \
+                (self._offset + (row * self.stagger) + col) % len(self._gradient)] \
                 for col in range(0, layer.width)])
 
         layer.put_all(data)

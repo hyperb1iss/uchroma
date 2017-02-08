@@ -12,6 +12,10 @@ from uchroma.crc import fast_crc
 from uchroma.util import smart_delay
 
 
+# log level for protocol trace
+TRACE = 5
+
+
 # response codes
 class Status(Enum):
     """
@@ -103,7 +107,7 @@ class RazerReport(object):
 
 
     def _hexdump(self, data, tag=""):
-        if self._logger.isEnabledFor(logging.DEBUG):
+        if self._logger.isEnabledFor(TRACE):
             self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 

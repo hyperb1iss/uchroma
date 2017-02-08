@@ -24,6 +24,8 @@ class InputManager(object):
         self._logger = logging.getLogger('uchroma-input-%s' % driver.name)
 
         self._opened = False
+        self._closing = False
+
         self._tasks = []
 
 
@@ -32,12 +34,17 @@ class InputManager(object):
         while self._opened:
             try:
                 events = yield from device.async_read()
+                if not self._opened:
+                    return
+
                 for event in events:
                     if event.type == evdev.ecodes.EV_KEY:
                         ev = evdev.categorize(event)
 
                         for callback in self._event_callbacks:
                             yield from callback(ev)
+                            if not self._opened:
+                                return
 
             except (OSError, IOError, asyncio.futures.InvalidStateError) as err:
                 if not isinstance(err, asyncio.futures.InvalidStateError):

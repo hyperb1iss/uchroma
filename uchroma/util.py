@@ -5,9 +5,11 @@ Various helper functions that are used across the library.
 import asyncio
 import inspect
 import math
+import re
 import struct
 import time
 import typing
+import weakref
 
 from collections import Iterable, OrderedDict
 from threading import Timer
@@ -19,6 +21,7 @@ from numpy import interp
 
 # Type hint for decorated color arguments
 ColorType = typing.Union[Color, str, typing.Iterable[int], typing.Iterable[float], None]
+ColorList = typing.List[ColorType]
 
 
 AUTOCAST_CACHE = {}
@@ -67,6 +70,21 @@ def _autocast_decorator(type_hint, fix_arg_func):
     return wrapper
 
 
+def snake_to_camel(name: str) -> str:
+    """
+    Returns a CamelCaseName from a snake_case_name
+    """
+    return re.sub(r'(?:^|_)([a-z])', lambda x: x.group(1).upper(), name)
+
+
+def camel_to_snake(name: str) -> str:
+    """
+    Returns a snake_case_name from a CamelCaseName
+    """
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
 class MagicalEnum(object):
     """
     Mixin which adds "magical" capabilities to Enums
@@ -103,6 +121,24 @@ class MagicalEnum(object):
             raise TypeError("Can't convert %s (%s) to %s" % (arg, type(arg), cls))
 
         return _autocast_decorator(cls, fix_enum_arg)
+
+
+def max_keylen(d: dict) -> int:
+    """
+    Get the length of the longest key in a dict
+    """
+    return max(map(len, d))
+
+
+class ArgsDict(OrderedDict):
+    def __init__(self, *args, **kwargs):
+        super(ArgsDict, self).__init__(*args, **kwargs)
+        empty_keys = []
+        for k, v in self.items():
+            if v is None:
+                empty_keys.append(k)
+        for empty_key in empty_keys:
+            self.pop(empty_key)
 
 
 def rgb_from_tuple(arg: tuple) -> Color:
@@ -364,19 +400,50 @@ def lerp_degrees(start: float, end: float, amount: float) -> float:
     return (math.degrees(start_r + delta * amount) + 360.0) % 360.0
 
 
-def examine(func) -> OrderedDict:
-    """
-    Get a sanitized dict of function arguments
-    """
-    args = OrderedDict()
-    sig = inspect.signature(func)
-    types = typing.get_type_hints(func)
 
-    for k, v in sig.parameters.items():
-        if k not in ('self', 'frame', 'args' 'kwargs') and k in types:
-            args[k] = types[k]
+_CHANGER_METHODS = set("__setitem__ __setslice__ __delitem__ update append extend add insert pop popitem remove setdefault __iadd__".split())
 
-    return args
+
+def _observable_factory(cls):
+    def observers(self):
+        if not hasattr(self, '__observers'):
+            setattr(self, '__observers', weakref.WeakSet())
+        return getattr(self, '__observers')
+
+    def add_observer(self, observer):
+        self.observers().add(observer)
+
+    def remove_observer(self, observer):
+        self.observers().remove(observer)
+
+    def notify_observers(self):
+        for observer in self.observers():
+            observer(self)
+
+    def observable(func, callback):
+        def wrapper(self, *args, **kw):
+            value = func(self, *args, **kw)
+            print('wrapper args=%s value=%s' % (args, value))
+            callback(self)
+            return value
+        wrapper.__name__ = func.__name__
+        return wrapper
+
+    new_dict = cls.__dict__.copy()
+    for name, method in new_dict.items():
+        if name in _CHANGER_METHODS:
+            new_dict[name] = observable(method, notify_observers)
+
+    new_dict['observers'] = observers
+    new_dict['add_observer'] = add_observer
+    new_dict['remove_observer'] = remove_observer
+
+    return type('Observable%s' % cls.__name__.title(), (cls,), new_dict)
+
+
+ObservableDict = _observable_factory(dict)
+ObservableList = _observable_factory(list)
+ObservableOrderedDict = _observable_factory(OrderedDict)
 
 
 class RepeatingTimer(object):

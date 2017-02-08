@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
-import asyncio
-import functools
 import logging
-import signal
 import sys
-import time
+
+from collections import OrderedDict
 
 from uchroma import __version__
 from uchroma.blending import BlendOp
 from uchroma.cmd import UChromaConsoleUtil
-from uchroma.color import Splotch
+from uchroma.color import ColorPair
+from uchroma.dbus_utils import VariantDict
 from uchroma.led import LED
 from uchroma.types import FX
+from uchroma.util import ArgsDict, max_keylen
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -26,11 +26,15 @@ class UChromaTool(UChromaConsoleUtil):
         self._anim_sub = self._add_anim_options(sub)
         self._fx_sub = self._add_fx_options(sub)
         self._led_sub = self._add_led_options(sub)
+        self._dump_sub = self._add_dump_options(sub)
 
-        test = sub.add_parser('test', help='Test commands')
-        test.add_argument('path', metavar='Device path', type=str,
-                          help='Test if path is a uChroma device (udev)')
-        test.set_defaults(func=self._test_device)
+
+    def _add_dump_options(self, sub):
+        dump = sub.add_parser('dump', help='Dump device info')
+        dump.add_argument("-d", "--device", type=str,
+                          help='HID device to use (/dev/hidrawX or USB identifier)')
+        dump.set_defaults(func=self._dump_parser)
+        return dump
 
 
     def _add_fx_options(self, sub):
@@ -46,8 +50,8 @@ class UChromaTool(UChromaConsoleUtil):
         custom_group.add_argument('-s', '--speed', type=int, help='Effect speed')
 
         color = custom_group.add_mutually_exclusive_group()
-        color.add_argument('-x', '--splotch', type=str,
-                           choices=[x.name.lower() for x in Splotch],
+        color.add_argument('-x', '--preset', type=str,
+                           choices=[x.name.lower() for x in ColorPair],
                            help='Predefined color pairs')
         color.add_argument('-c', '--color', type=str, action='append',
                            help='Color name or hexcode')
@@ -101,22 +105,28 @@ class UChromaTool(UChromaConsoleUtil):
                           help='HID device to use (/dev/hidrawX or USB identifier)')
         anim.add_argument('--list', action='store_true',
                           help='List available renderers')
-        anim.add_argument('-n', '--name', type=str, action='append',
-                          help='Animation to add (class)')
-        anim.add_argument('-m', '--module', type=str,
-                          help='Module to search for animation')
+        anim.add_argument('-a', '--add', type=str, action='append',
+                          help='Adds a new animation layer')
+        anim.add_argument('-s', '--start', action='store_true',
+                          help='Starts animation with the configured layers')
+        anim.add_argument('-q', '--stop', action='store_true',
+                          help='Stops the currently running animation')
+        anim.add_argument('-c', '--clear', action='store_true',
+                          help='Clear the current animation settings')
+        anim.add_argument('-m', '--modify', type=str, action='append',
+                          help='Modify an existing animation layer')
         anim.add_argument('-b', '--blend', type=str,
                           choices=BlendOp.get_modes(),
-                          help='Blending mode (multiple layers only)')
+                          help='Default blending mode (multiple layers only)')
         anim.set_defaults(func=self._anim_parser)
         return anim
 
 
     @staticmethod
-    def _get_splotch(args):
-        if args.splotch is None:
+    def _get_preset(args):
+        if args.preset is None:
             return None
-        return Splotch[args.splotch.upper()]
+        return ColorPair[args.preset.upper()].name.lower()
 
 
     @staticmethod
@@ -130,115 +140,111 @@ class UChromaTool(UChromaConsoleUtil):
         return args.color[num]
 
 
-    def _test_device(self, args):
-        if args.path.startswith('/dev/hidraw'):
-            if args.path not in self._dm.devices:
-                sys.exit(1)
-        elif args.path.startswith('/dev/bus/usb'):
-            found = False
-            ids = args.path.split('/')
-            match = '%04x:%04x:' % (int(ids[-2]), int(ids[-1]))
-            for key in self._dm.devices:
-                if key.startswith(match):
-                    found = True
-                    break
-
-            if not found:
-                sys.exit(1)
-
-            print('UCHROMA_DEVICE=1')
-            sys.exit(0)
-
-
     def _list_fx(self, driver):
-        if driver.supported_fx is None:
+        sfx = driver.SupportedFX
+        if sfx is None or len(sfx) == 0:
             self.print_err('No supported effects found.')
             sys.exit(1)
 
         print('\nSupported effects:\n')
-        for fx in sorted(driver.supported_fx):
-            print('%20s     %s' % (fx.name.lower(), fx.description))
+        for name, description in sorted(sfx.items()):
+            print('[ %*s]: %s' % (max_keylen(sfx), name, description))
 
 
     def _fx_parser(self, args):
-        with self.get_driver(args) as driver:
-            if args.list or args.fxtype == 'list':
-                self._list_fx(driver)
-                sys.exit(0)
-
-            if args.fxtype is None:
-                self._fx_sub.print_help()
-                self._list_fx(driver)
-                sys.exit(1)
-
-            if driver.has_fx(args.fxtype):
-                if self._activate_fx(args.fxtype, args, driver):
-                    sys.exit(0)
-
-                self.print_err('Failed to activate effect')
-                sys.exit(1)
-
-            self.print_err('Unsupported effect: %s\n' % args.fxtype)
+        driver = self.get_driver(args)
+        if args.list or args.fxtype == 'list':
             self._list_fx(driver)
             sys.exit(0)
+
+        if args.fxtype is None:
+            self._fx_sub.print_help()
+            self._list_fx(driver)
+            sys.exit(1)
+
+        if driver.HasFX(args.fxtype):
+            if self._activate_fx(args.fxtype, args, driver):
+                sys.exit(0)
+
+            self.print_err('Failed to activate effect')
+            sys.exit(1)
+
+        self.print_err('Unsupported effect: %s\n' % args.fxtype)
+        self._list_fx(driver)
+        sys.exit(0)
 
 
     @FX.enumarg()
     def _activate_fx(self, fx: FX, fx_args, driver) -> bool:
+        def activate(fx, **kwargs):
+            argsdict = ArgsDict(**kwargs)
+            print('fx: %s args: %s' % (fx.name.lower(), argsdict))
+
+            return driver.SetFX(fx.name.lower(), argsdict)
 
         if fx == FX.BREATHE:
-            return driver.breathe(color1=UChromaTool._get_color(fx_args, 0),
-                                  color2=UChromaTool._get_color(fx_args, 1),
-                                  splotch=UChromaTool._get_splotch(fx_args))
+            return activate(FX.BREATHE,
+                            color1=UChromaTool._get_color(fx_args, 0),
+                            color2=UChromaTool._get_color(fx_args, 1),
+                            preset=UChromaTool._get_preset(fx_args))
 
         elif fx == FX.DISABLE:
-            return driver.disable()
+            return activate(FX.DISABLE)
 
         elif fx == FX.FIRE:
-            return driver.fire(color=UChromaTool._get_color(fx_args, 0),
-                               speed=fx_args.speed)
+            return activate(FX.FIRE,
+                            color=UChromaTool._get_color(fx_args, 0),
+                            speed=fx_args.speed)
 
         elif fx == FX.MORPH:
-            return driver.morph(base_color=UChromaTool._get_color(fx_args, 0),
-                                color=UChromaTool._get_color(fx_args, 1),
-                                splotch=UChromaTool._get_splotch(fx_args),
-                                speed=fx_args.speed)
+            return activate(FX.MORPH,
+                            base_color=UChromaTool._get_color(fx_args, 0),
+                            color=UChromaTool._get_color(fx_args, 1),
+                            preset=UChromaTool._get_preset(fx_args),
+                            speed=fx_args.speed)
 
         elif fx == FX.RAINBOW:
-            return driver.rainbow(length=fx_args.size)
+            return activate(FX.RAINBOW,
+                            length=fx_args.size)
 
         elif fx == FX.REACTIVE:
-            return driver.reactive(color=UChromaTool._get_color(fx_args, 0),
-                                   speed=fx_args.speed)
+            return activate(FX.REACTIVE,
+                            color=UChromaTool._get_color(fx_args, 0),
+                            speed=fx_args.speed)
 
         elif fx == FX.RIPPLE:
-            return driver.ripple(color=UChromaTool._get_color(fx_args, 0),
-                                 speed=fx_args.speed)
+            return activate(FX.RIPPLE,
+                            color=UChromaTool._get_color(fx_args, 0),
+                            speed=fx_args.speed)
 
         elif fx == FX.RIPPLE_SOLID:
-            return driver.ripple_solid(color=UChromaTool._get_color(fx_args, 0),
-                                       speed=fx_args.speed)
+            return activate(FX.RIPPLE_SOLID,
+                            color=UChromaTool._get_color(fx_args, 0),
+                            speed=fx_args.speed)
 
         elif fx == FX.SPECTRUM:
-            return driver.spectrum()
+            return activate(FX.SPECTRUM)
 
         elif fx == FX.STARLIGHT:
-            return driver.starlight(color1=UChromaTool._get_color(fx_args, 0),
-                                    color2=UChromaTool._get_color(fx_args, 1),
-                                    splotch=UChromaTool._get_splotch(fx_args),
-                                    speed=fx_args.speed)
+            return activate(FX.STARLIGHT,
+                            color1=UChromaTool._get_color(fx_args, 0),
+                            color2=UChromaTool._get_color(fx_args, 1),
+                            preset=UChromaTool._get_preset(fx_args),
+                            speed=fx_args.speed)
 
         elif fx == FX.STATIC:
-            return driver.static(color=UChromaTool._get_color(fx_args, 0))
+            return activate(FX.STATIC,
+                            color=UChromaTool._get_color(fx_args, 0))
 
         elif fx == FX.SWEEP:
-            return driver.sweep(base_color=UChromaTool._get_color(fx_args, 0),
-                                color=UChromaTool._get_color(fx_args, 1),
-                                splotch=UChromaTool._get_splotch(fx_args),
-                                speed=fx_args.speed)
+            return activate(FX.SWEEP,
+                            base_color=UChromaTool._get_color(fx_args, 0),
+                            color=UChromaTool._get_color(fx_args, 1),
+                            preset=UChromaTool._get_preset(fx_args),
+                            speed=fx_args.speed)
 
         elif fx == FX.WAVE:
-            return driver.wave()
+            return activate(FX.WAVE)
 
         else:
             self.print_err('Support for this effect (%s) is not implemented' % fx_args.fxtype)
@@ -284,21 +290,37 @@ class UChromaTool(UChromaConsoleUtil):
                     led.brightness = args.brightness
 
 
+
+    def _dump_parser(self, args):
+        driver = self.get_driver(args)
+        result = driver.GetAll('org.chemlab.UChroma.Device')
+
+        props = sorted(OrderedDict(result).items())
+        print('\nDevice properties:\n')
+        for k, v in props:
+            print('[ %*s]: %s' % (max_keylen(result), k, v))
+        sys.exit(0)
+
+
     def _brightness_parser(self, args):
-        with self.get_driver(args) as driver:
-            if args.level is None:
-                print('%f' % driver.brightness)
+        driver = self.get_driver(args)
+        if not hasattr(driver, 'Brightness'):
+            self.print_err('This device does not support brightness control.')
+            sys.exit(1)
 
-            else:
-                if args.level < 0 or args.level > 100:
-                    self.print_err('Brightness must be between 0 and 100')
-                    sys.exit(1)
+        if args.level is None:
+            print('%f' % driver.Brightness)
 
-                driver.brightness = args.level
+        else:
+            if args.level < 0 or args.level > 100:
+                self.print_err('Brightness must be between 0 and 100')
+                sys.exit(1)
+
+            driver.Brightness = args.level
 
 
-    def _list_anims(self, mgr):
-        avail = mgr.available_renderers
+    def _list_anims(self, driver):
+        avail = driver.AvailableRenderers
 
         if avail is None or len(avail) == 0:
             self.print_err('No renderers found.')
@@ -306,52 +328,73 @@ class UChromaTool(UChromaConsoleUtil):
 
         print('\nAvailable renderers:\n')
 
-        for k, v in mgr.available_renderers.items():
-            print('%20s: %s' % (k, v))
+        for k, v in avail.items():
+            print('[ %*s]: %s' % (max_keylen(avail), k, v))
+
+
+    def _get_anim_args(self, argspec, variant=False):
+        # format is "anim.class.name:key=value,key=value,key=value"
+        tokens = argspec.split(':')
+        argsdict = OrderedDict()
+        layer = tokens[0]
+
+        if len(tokens) == 2:
+            pairs = tokens[1].split(',')
+            for pair in pairs:
+                kv = pair.split('=')
+                if len(kv) == 2:
+                    argsdict[kv[0]] = kv[1]
+
+        if variant:
+            argsdict = VariantDict(argsdict)
+
+        return layer, argsdict
 
 
     def _anim_parser(self, args):
-        def shutdown_asyncio(loop):
-            loop.stop()
+        driver = self.get_driver(args)
+        if not driver.HasMatrix:
+            self.print_err('This device does not support animations.')
+            sys.exit(1)
 
+        if args.list:
+            self._list_anims(driver)
+            sys.exit(0)
 
-        with self.get_driver(args) as driver:
-            mgr = driver.animation_manager
-            if mgr is None:
-                print_err('This device does not support animations.')
+        if args.clear:
+            if not driver.ClearRenderers():
+                self.print_err("Failed to clear animation layers")
                 sys.exit(1)
 
-            if args.list:
-                self._list_anims(mgr)
-                sys.exit(0)
-
-            if args.name is None or len(args.name) == 0:
-                self.print_err("Animation name is required")
-                sys.exit(1)
-
-            for name in args.name:
-                cookie = mgr.add_renderer(name)
-                if cookie is None:
+        if args.add is not None and len(args.add) > 0:
+            for add in args.add:
+                layer, argsdict = self._get_anim_args(add, variant=True)
+                obj = driver.AddRenderer(layer, argsdict)
+                if obj is None:
                     self.print_err("Failed to create renderer")
                     sys.exit(1)
 
-                print('Created layer: %s' % cookie)
+                print('Created layer: %s' % obj)
 
-            if not mgr.start(blend_mode=args.blend):
+        if args.modify is not None and len(args.modify) > 0:
+            for modify in args.modify:
+                layer, argsdict = self._get_anim_args(modify)
+                layer_obj = self._client.get_layer(driver, int(layer))
+                for k, v in argsdict.items():
+                    self.set_property(layer_obj, k, v)
+                sys.exit(0)
+
+        if args.start:
+            if not driver.StartAnimation():
                 self.print_err("Failed to start animation")
                 sys.exit(1)
 
-            loop = asyncio.get_event_loop()
+        elif args.stop:
+            if not driver.StopAnimation():
+                self.print_err("Failed to stop animation")
+                sys.exit(1)
 
-            for sig in (signal.SIGINT, signal.SIGTERM):
-                loop.add_signal_handler(sig, functools.partial(shutdown_asyncio, loop))
-
-            try:
-                loop.run_forever()
-            finally:
-                loop.run_until_complete(mgr.stop())
-
-            loop.close()
+        sys.exit(0)
 
 
 
