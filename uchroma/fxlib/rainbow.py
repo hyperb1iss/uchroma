@@ -3,7 +3,7 @@ import asyncio
 from traitlets import Int, observe
 from grapefruit import Color
 
-from uchroma.anim import Renderer, RendererMeta
+from uchroma.renderer import Renderer, RendererMeta
 
 
 DEFAULT_SPEED = 8

@@ -8,8 +8,8 @@ from math import cos, pi, sin, sqrt
 from traitlets import observe, Int
 from grapefruit import Color
 
-from uchroma.anim import Renderer, RendererMeta
 from uchroma.color import ColorScheme, ColorUtils
+from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorPresetTrait, ColorSchemeTrait
 
 

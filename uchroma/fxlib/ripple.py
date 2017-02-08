@@ -5,8 +5,8 @@ import operator
 
 from traitlets import Int, observe
 
-from uchroma.anim import Renderer, RendererMeta
 from uchroma.color import ColorUtils
+from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorTrait
 from uchroma.util import clamp
 

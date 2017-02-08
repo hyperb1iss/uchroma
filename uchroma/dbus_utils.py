@@ -4,7 +4,7 @@ from typing import NamedTuple
 from traitlets import HasTraits, Int, Float, Unicode, Bool
 from gi.repository.GLib import Variant
 
-from uchroma.anim import RendererMeta
+from uchroma.renderer import RendererMeta
 from uchroma.traits import ColorTrait, ColorSchemeTrait, ColorPresetTrait
 from uchroma.util import ArgsDict, snake_to_camel
 
