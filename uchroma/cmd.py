@@ -1,3 +1,4 @@
+# pylint: disable=protected-access,redefined-variable-type
 """
 Various helper functions that are used across the library.
 """
@@ -70,7 +71,7 @@ class UChromaConsoleUtil(object):
 
 
     def print_err(self, *args):
-        sys.stderr.write(' '.join(map(str, args)) + '\n')
+        print(' '.join([str(x) for x in args]) + '\n', file=sys.stderr)
 
 
     def get_driver(self, args):

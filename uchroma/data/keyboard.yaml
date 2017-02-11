@@ -10,7 +10,7 @@ type: KEYBOARD
 vendor_id: 0x1532
 children:
 - !device-config
-  supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, STARLIGHT]
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight]
   children:
 
   - !device-config
@@ -19,8 +19,8 @@ children:
     quirks: BACKLIGHT_LED_FX_ONLY
 
 - !device-config
-  supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, STARLIGHT, CUSTOM_FRAME,
-    RAINBOW, ALIGNMENT]
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight, custom_frame,
+    rainbow, alignment]
   children:
 
   - !device-config

@@ -1,20 +1,22 @@
+# pylint: disable=invalid-name
 from collections import OrderedDict
 from typing import NamedTuple
 
-from traitlets import HasTraits, Int, Float, Unicode, Bool
 from gi.repository.GLib import Variant
+from traitlets import HasTraits, Int, Float, Unicode, Bool
+
+import numpy as np
 
 from uchroma.renderer import RendererMeta
 from uchroma.traits import ColorTrait, ColorSchemeTrait, ColorPresetTrait
-from uchroma.util import ArgsDict, snake_to_camel
+from uchroma.util import snake_to_camel
 
 
 ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str)])
 
 
-def variant(obj):
+def _dbus_primitive(obj):
     sig = None
-
     if isinstance(obj, bool):
         sig = 'b'
     elif isinstance(obj, str):
@@ -23,8 +25,38 @@ def variant(obj):
         sig = 'i'
     elif isinstance(obj, float):
         sig = 'd'
-    else:
-        raise TypeError('Unable to create variant for %s (%s)' % (obj, type(obj)))
+    return sig
+
+
+def variant(obj):
+    sig = _dbus_primitive(obj)
+    if sig is None:
+        if isinstance(obj, np.ndarray):
+            dtype = obj.dtype.kind
+            if dtype == 'f':
+                dtype = 'd'
+
+            sig = 'a' * obj.ndim + dtype
+            obj = obj.tolist()
+
+        elif isinstance(obj, tuple) or isinstance(obj, list):
+            sig = 'a'
+            if isinstance(obj[0], tuple) or isinstance(obj[0], list):
+                sig += 'a'
+                etype = _dbus_primitive(obj[0][0])
+            else:
+                etype = _dbus_primitive(obj[0])
+
+            if etype is None:
+                raise TypeError("Unable to create container variant for %s / %s (%s / %s)" % \
+                    (obj, obj[0], type(obj), type(obj[0])))
+            sig += etype
+
+        elif isinstance(obj, dict):
+            sig = 'a{sv}'
+
+        else:
+            raise TypeError('Unable to create variant for %s (%s)' % (obj, type(obj)))
 
     return Variant(sig, obj)
 
@@ -65,6 +97,7 @@ class DescriptorBuilder(object):
         self._ro_props = OrderedDict()
         self._rw_props = OrderedDict()
         self._methods = []
+        self._signals = []
 
         if isinstance(obj, HasTraits):
             self._parse_traits()
@@ -82,9 +115,19 @@ class DescriptorBuilder(object):
         opts = {}
         opts['name'] = method
         if argspecs is not None and len(argspecs) > 0:
-            opts['args'] = argspecs            
+            opts['args'] = argspecs
 
         self._methods.append(opts)
+        return self
+
+
+    def add_signal(self, signal, *argspecs):
+        opts = {}
+        opts['name'] = signal
+        if argspecs is not None and len(argspecs) > 0:
+            opts['args'] = argspecs
+
+        self._signals.append(opts)
         return self
 
 
@@ -103,9 +146,9 @@ class DescriptorBuilder(object):
             elif isinstance(trait, Bool):
                 sig = 'b'
             elif isinstance(trait, ColorTrait):
-                sig = '(dddd)'
+                sig = 's'
             elif isinstance(trait, ColorSchemeTrait):
-                sig = 'a(dddd)'
+                sig = 's'
             elif isinstance(trait, ColorPresetTrait):
                 sig = 's'
             elif isinstance(trait, RendererMeta):
@@ -127,10 +170,12 @@ class DescriptorBuilder(object):
         val = "<node>\n  <interface name='%s'>\n" % self._interface_name
 
         for name, sig in self._ro_props.items():
-            val += "    <property name='%s' type='%s' access='read' />\n" % (snake_to_camel(name), sig)
+            val += "    <property name='%s' type='%s' access='read' />\n" % \
+                (snake_to_camel(name), sig)
 
         for name, sig in self._rw_props.items():
-            val += "    <property name='%s' type='%s' access='readwrite'>\n" % (snake_to_camel(name), sig)
+            val += "    <property name='%s' type='%s' access='readwrite'>\n" % \
+                (snake_to_camel(name), sig)
             val += "      <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />\n"
             val += "    </property>\n"
 
@@ -141,11 +186,23 @@ class DescriptorBuilder(object):
             else:
                 val += "    <method name='%s'>\n" % name
                 for argspec in method['args']:
-                  val += "      <arg direction='%s' type='%s' name='%s' />\n" % \
+                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % \
                         (argspec.direction, argspec.type, argspec.name)
                 val += "    </method>\n"
 
+        for signal in self._signals:
+            name = snake_to_camel(signal['name'])
+            if not 'args' in signal:
+                val += "    <signal name='%s' />\n" % name
+            else:
+                val += "    <signal name='%s'>\n" % name
+                for argspec in signal['args']:
+                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % \
+                        (argspec.direction, argspec.type, argspec.name)
+                val += "    </signal>\n"
 
-        val += "    </interface>\n</node>"
 
+        val += "  </interface>\n</node>"
+
+        print(val)
         return val

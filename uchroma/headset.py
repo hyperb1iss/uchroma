@@ -1,16 +1,17 @@
+# pylint: disable=protected-access
 import logging
 
 import hidapi
 
-from grapefruit import Color
 from wrapt import synchronized
 
 from uchroma.byte_args import ByteArgs
-from uchroma.color import ColorPair
 from uchroma.device_base import BaseUChromaDevice
+from uchroma.fx import BaseFX, FXManager, FXModule
 from uchroma.hardware import Hardware
+from uchroma.traits import ColorSchemeTrait, ColorTrait
 from uchroma.types import BaseCommand
-from uchroma.util import colorarg, ColorType, smart_delay, set_bits, scale_brightness, \
+from uchroma.util import smart_delay, set_bits, scale_brightness, \
     test_bit, to_byte, to_color, to_rgb
 
 
@@ -80,6 +81,88 @@ class EffectBits(object):
         elif self.on == 1:
             return 1
         return 0
+
+
+class KrakenFX(FXModule):
+
+    def __init__(self, *args, **kwargs):
+        super(KrakenFX, self).__init__(*args, **kwargs)
+
+
+    class DisableFX(BaseFX):
+        def apply(self) -> bool:
+            """
+            Disable all effects
+
+            :return: True if successful
+            """
+            bits = EffectBits()
+            bits.spectrum = True
+            return self._driver._set_led_mode(bits)
+
+
+    class SpectrumFX(BaseFX):
+        def apply(self) -> bool:
+            """
+            Cycle thru all colors of the spectrum
+
+            :return: True if successful
+            """
+            bits = EffectBits()
+            bits.on = bits.spectrum = True
+            return self._driver._set_led_mode(bits)
+
+
+    class StaticFX(BaseFX):
+        color = ColorTrait(default_value='green')
+
+        def apply(self) -> bool:
+            """
+            Sets lighting to a static color
+
+            :param color: The color to apply
+
+            :return: True if successful
+            """
+            bits = EffectBits()
+            bits.on = True
+            if self._driver._set_rgb(self.color):
+                return self._driver._set_led_mode(bits)
+
+            return False
+
+
+    class BreatheFX(BaseFX):
+        colors = ColorSchemeTrait(minlen=1, maxlen=3, default_value=('red', 'green', 'blue'))
+
+        def apply(self) -> bool:
+            """
+            Breathing color effect. Accepts up to three colors on v2 hardware
+
+            :param color1: Primary color
+            :param color2: Secondary color
+            :param color3: Tertiary color
+            :param preset: Predefinied color pair
+
+            :return True if successful:
+            """
+            args = []
+            args.append(self.colors)
+
+            bits = EffectBits()
+            bits.on = True
+            bits.sync = True
+            if len(self.colors) == 3:
+                bits.breathe_triple = True
+            elif len(self.colors) == 2:
+                bits.breathe_double = True
+            elif len(self.colors) == 1:
+                bits.breathe_single = True
+
+            if self._driver._set_rgb(*args):
+                return self._driver._set_led_mode(bits)
+
+            return False
 
 
 
@@ -167,6 +250,7 @@ class UChromaHeadset(BaseUChromaDevice):
 
         self._logger = logging.getLogger('uchroma.headset')
 
+        self._fx_manager = FXManager(self, KrakenFX(self))
 
 
     @staticmethod
@@ -383,89 +467,4 @@ class UChromaHeadset(BaseUChromaDevice):
         return self.run_command(self._cmd_set_rgb[bits.color_count -1], data)
 
 
-    def disable(self) -> bool:
-        """
-        Disable all effects
 
-        :return: True if successful
-        """
-        bits = EffectBits()
-        bits.spectrum = True
-        return self._set_led_mode(bits)
-
-
-    def spectrum(self) -> bool:
-        """
-        Cycle thru all colors of the spectrum
-
-        :return: True if successful
-        """
-        bits = EffectBits()
-        bits.on = bits.spectrum = True
-        return self._set_led_mode(bits)
-
-
-    @colorarg
-    def static(self, color: ColorType=None) -> bool:
-        """
-        Sets lighting to a static color
-
-        :param color: The color to apply
-
-        :return: True if successful
-        """
-        if color is None:
-            color = Color.NewFromHtml('green')
-
-        bits = EffectBits()
-        bits.on = True
-        if self._set_rgb(color):
-            return self._set_led_mode(bits)
-
-        return False
-
-
-    @colorarg
-    def breathe(self, color1: ColorType=None, color2: ColorType=None,
-                color3: ColorType=None, preset: ColorPair=None) -> bool:
-        """
-        Breathing color effect. Accepts up to three colors on v2 hardware
-
-        :param color1: Primary color
-        :param color2: Secondary color
-        :param color3: Tertiary color
-        :param preset: Predefinied color pair
-
-        :return True if successful:
-        """
-        if preset is not None:
-            color1 = preset.first
-            color2 = preset.second
-
-        args = []
-
-        color_count = 0
-        if color1 is not None:
-            args.append(color1)
-            color_count += 1
-        if color2 is not None:
-            args.append(color2)
-            color_count += 1
-        if color3 is not None:
-            args.append(color3)
-            color_count += 1
-
-        bits = EffectBits()
-        bits.on = True
-        bits.sync = True
-        if color_count == 3:
-            bits.breathe_triple = True
-        elif color_count == 2:
-            bits.breathe_double = True
-        elif color_count == 1:
-            bits.breathe_single = True
-
-        if self._set_rgb(*args):
-            return self._set_led_mode(bits)
-
-        return False

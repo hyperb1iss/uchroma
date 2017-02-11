@@ -2,7 +2,6 @@
 import itertools
 import math
 import random
-import sys
 
 from enum import Enum
 
@@ -11,9 +10,7 @@ import numpy as np
 from grapefruit import Color
 from hsluv import hsluv_to_rgb, rgb_to_hsluv
 from skimage.util import dtype
-from traitlets import List, TraitType, Undefined, UseEnum
 
-from uchroma.blending import blend, BlendOp
 from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, MagicalEnum, to_color, to_rgb
 
 
@@ -73,6 +70,12 @@ class ColorUtils(object):
             a2 = end[3]
         a = lerp(a1, a2, amount)
         return (h, s, v, a)
+
+
+    @staticmethod
+    def hue_gradient(start, length):
+        step = 360 / length
+        return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
 
 
     @staticmethod

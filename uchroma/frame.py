@@ -195,6 +195,10 @@ class Frame(object):
             self._set_frame_data_matrix(img, frame_id)
 
 
+    def _set_custom_frame(self):
+        self._driver.fx_manager.activate('custom_frame')
+
+
     def commit(self, layers, frame_id: int=None) -> 'Frame':
         """
         Display this frame and prepare for the next frame
@@ -210,7 +214,7 @@ class Frame(object):
         """
         img = Frame.compose(layers)
         self._set_frame_data(img, frame_id)
-        self._driver.custom_frame()
+        self._set_custom_frame()
 
         return self
 

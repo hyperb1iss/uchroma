@@ -7,6 +7,7 @@ from uchroma.frame import Frame
 from uchroma.fx import FXManager
 from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LED
+from uchroma.standard_fx import StandardFX
 
 
 class UChromaDevice(BaseUChromaDevice):
@@ -22,19 +23,12 @@ class UChromaDevice(BaseUChromaDevice):
 
         self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
-        self._fx = FXManager(self)
+        self._fx_manager = FXManager(self, StandardFX(self))
 
         self._frame_control = None
 
         self._last_brightness = None
         self._suspended = False
-
-        # Patch in effects
-        # TODO: check device capabilities
-        for fxtype in self.supported_fx:
-            method = fxtype.name.lower()
-            if hasattr(self._fx, method):
-                setattr(self, method, getattr(self._fx, method))
 
 
     def get_led(self, led_type: LED.Type) -> LED:
@@ -162,5 +156,5 @@ class UChromaDevice(BaseUChromaDevice):
             self.frame_control.background_color = None
             self.frame_control.reset()
 
-        if hasattr(self, 'disable'):
-            self._fx.disable()
+        if hasattr(self, 'fx_manager'):
+            self.fx_manager.disable()

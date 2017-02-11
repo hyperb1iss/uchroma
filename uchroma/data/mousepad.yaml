@@ -8,7 +8,7 @@
 manufacturer: Razer
 type: MOUSEPAD
 vendor_id: 0x1532
-supported_fx: [DISABLE, WAVE, SPECTRUM, STATIC]
+supported_fx: [disable, wave, spectrum, static]
 children:
 - !device-config
   name: Firefly

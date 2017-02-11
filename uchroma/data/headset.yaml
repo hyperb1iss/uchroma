@@ -8,7 +8,7 @@
 manufacturer: Razer
 type: HEADSET
 vendor_id: 0x1532
-supported_fx: [DISABLE, BREATHE, SPECTRUM, STATIC]
+supported_fx: [disable, breathe, spectrum, static]
 children:
 - !device-config
   name: Kraken 7.1 (Rainie)

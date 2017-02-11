@@ -2,11 +2,9 @@
 import asyncio
 import time
 
-from enum import Enum
 from math import cos, pi, sin, sqrt
 
 from traitlets import observe, Int
-from grapefruit import Color
 
 from uchroma.color import ColorScheme, ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
@@ -49,7 +47,6 @@ class Plasma(Renderer):
 
     def init(self, frame):
         self._start_time = time.time()
-    #    self.color_scheme = list(self.preset.value)
         return True
 
 
@@ -69,6 +66,6 @@ class Plasma(Renderer):
                 val += sin(sqrt(20 * (cx * cx + cy * cy) + 1) + duration)
 
                 pos = len(self._gradient) * ((1 + sin(pi * val)) / 2)
-                layer.matrix[row][col] = tuple(self._gradient[int(pos)])
+                layer.matrix[row][col] = tuple(self._gradient[int(pos) - 1])
 
         return True

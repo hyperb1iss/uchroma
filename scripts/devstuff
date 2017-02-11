@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 # pylint: disable=no-member
 
-import ast
 import asyncio
 import curses
-import getpass
 import logging
 import re
 import signal
 import sys
 import textwrap
 
-from datetime import datetime
-from pprint import pprint
+import gbulb
 
 from uchroma.cmd import UChromaConsoleUtil
+from uchroma.dbus_utils import VariantDict
 from uchroma.hardware import Hardware, KeyMapping, Point
+from uchroma.input import KeyInputEvent
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -38,8 +37,12 @@ class UChromaDevTool(UChromaConsoleUtil):
 
 
     def _key_config_tool(self, args):
-        with self.get_driver(args) as driver:
-            KeyConfigTool.run(driver, args.file)
+        driver = self.get_driver(args)
+        if not hasattr(driver, 'InputEvent'):
+            self.print_err('Please run uchromad with UCHROMA_DEV=1 set.')
+            exit(1)
+
+        KeyConfigTool.run(driver, args.file)
 
         exit(0)
 
@@ -57,26 +60,28 @@ class KeyConfigTool(object):
         else:
             self._config_file = config_file
 
-        self._position = Point(y=0, x=0)
-        self._hardware = driver.hardware
+        self._position = Point(0, 0)
+        self._hardware = Hardware.get_device(driver.ProductId)
         self._load_hardware()
 
         self._mapping = KeyMapping()
-        if driver.hardware.key_mapping is not None:
-            self._mapping = driver.hardware.key_mapping
+        if self._hardware.key_mapping is not None:
+            self._mapping = self._hardware.key_mapping
 
         self._stdscr = None
         self._editmode = False
+        self._signal = None
+
+        gbulb.install()
         self._loop = asyncio.get_event_loop()
         self._task = None
         self._shutdown = False
 
-        self._load_hardware()
-
 
     def _exit(self):
         self._shutdown = True
-        self._driver.remove_input_callback(self._input_callback)
+        self._driver.InputSignalEnabled = False
+        self._signal.disconnect()
         self._task.cancel()
         self._loop.run_until_complete(asyncio.wait(self._task))
 
@@ -102,7 +107,7 @@ class KeyConfigTool(object):
 
 
     def _print_matrix(self):
-        data = self._driver.frame_control.debug_opts
+        data = self._driver.FrameDebugOpts
 
         in_data = data.pop('in_data', None)
         out_data = data.pop('out_data', None)
@@ -136,11 +141,11 @@ class KeyConfigTool(object):
         moved = False
 
         if self._editmode:
-            if cur_pos.x < self._driver.width - 1:
-                cur_pos = Point(y=cur_pos.y, x=cur_pos.x + 1)
+            if cur_pos.x < self._driver.Width - 1:
+                cur_pos = Point(cur_pos.y, cur_pos.x + 1)
                 moved = True
-            elif cur_pos.y < self._driver.height - 1:
-                cur_pos = Point(y=cur_pos.y + 1, x=0)
+            elif cur_pos.y < self._driver.Height - 1:
+                cur_pos = Point(cur_pos.y + 1, 0)
                 moved = True
             else:
                 self._editmode = False
@@ -152,7 +157,8 @@ class KeyConfigTool(object):
     def _update_active_key(self, position=None):
         if position is not None:
             self._position = position
-        self._driver.alignment(position=self._position)
+        self._driver.SetFX('alignment', VariantDict( \
+            {'cur_row': self._position[0], 'cur_col': self._position[1]}))
 
 
     def _update(self):
@@ -218,15 +224,15 @@ class KeyConfigTool(object):
 
 
     def _get_config_filename(self):
-        name = re.sub(r'[\W]+', '', self._driver.name.lower().replace(' ', '_'))
-        return '%s-%s.yaml' % (self._driver.device_type.value.lower(), name)
+        name = re.sub(r'[\W]+', '', self._driver.Name.lower().replace(' ', '_'))
+        return '%s-%s.yaml' % (self._driver.DeviceType.lower(), name)
 
 
     def _write_mappings(self):
         if self._config_file is None:
             return False
 
-        hardware = self._driver._hardware._replace(key_mapping=self._mapping)
+        hardware = self._hardware._replace(key_mapping=self._mapping)
         hardware.save_yaml(self._config_file)
 
         status = 'Mappings saved to \'%s\'' % self._config_file
@@ -245,8 +251,8 @@ class KeyConfigTool(object):
             pass
 
 
-    @asyncio.coroutine
     def _input_callback(self, ev):
+        ev = KeyInputEvent(**ev)
         if ev.keystate == 1:
             moved = False
 
@@ -273,22 +279,22 @@ class KeyConfigTool(object):
 
                 if ev.keycode == 'KEY_UP':
                     if pos.y > 0:
-                        self._position = Point(y=pos.y - 1, x=pos.x)
+                        self._position = Point(pos.y - 1, pos.x)
                         moved = True
 
                 elif ev.keycode == 'KEY_DOWN':
-                    if pos.y < self._driver.height - 1:
-                        self._position = Point(y=pos.y + 1, x=pos.x)
+                    if pos.y < self._driver.Height - 1:
+                        self._position = Point(pos.y + 1, pos.x)
                         moved = True
 
                 elif ev.keycode == 'KEY_RIGHT':
-                    if pos.x < self._driver.width - 1:
-                        self._position = Point(y=pos.y, x=pos.x + 1)
+                    if pos.x < self._driver.Width - 1:
+                        self._position = Point(pos.y, pos.x + 1)
                         moved = True
 
                 elif ev.keycode == 'KEY_LEFT':
                     if pos.x > 0:
-                        self._position = Point(y=pos.y, x=pos.x - 1)
+                        self._position = Point(pos.y, pos.x - 1)
                         moved = True
 
                 elif ev.keycode == 'KEY_ESC':
@@ -354,10 +360,7 @@ class KeyConfigTool(object):
 
         self._stdscr.timeout(100)
 
-        # turn off fixups and blast the entire block with zeros
-        self._driver.frame_control.debug_opts['skip_fixups'] = True
-        self._driver.frame_control.reset()
-        self._driver.frame_control.debug_opts.pop('skip_fixups')
+        self._driver.Reset()
 
         #for sig in signal.SIGINT, signal.SIGTERM, signal.SIGHUP:
         #    self._loop.add_signal_handler(sig, self._exit)
@@ -366,7 +369,8 @@ class KeyConfigTool(object):
         self._update_active_key()
         self._update()
 
-        self._driver.add_input_callback(self._input_callback)
+        self._driver.InputSignalEnabled = True
+        self._signal = self._driver.InputEvent.connect(self._input_callback)
 
         self._loop.run_until_complete(self._read_mouse())
 

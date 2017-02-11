@@ -190,7 +190,11 @@ class Configuration(object):
                                                       issubclass(field_type, dict)):
                             odict[field] = field_type(**val)
                         elif isinstance(val, Iterable) and issubclass(field_type, Iterable):
-                            odict[field] = field_type(*val)
+                            if hasattr(field_type, '_fields'):
+                                # namedtuple
+                                odict[field] = field_type(*val)
+                            else:
+                                odict[field] = field_type(val)
                         elif isinstance(val, str) and issubclass(field_type, Enum):
                             odict[field] = field_type[val.upper()]
                         else:

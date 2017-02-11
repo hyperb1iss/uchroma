@@ -8,7 +8,7 @@
 manufacturer: Razer
 type: MOUSE
 vendor_id: 0x1532
-supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC]
+supported_fx: [disable, wave, reactive, breathe, spectrum, static]
 children:
 - !device-config
   name: Imperator 2012
@@ -23,7 +23,7 @@ children:
   product_id: 0x0043
 
 - !device-config
-  supported_fx: [DISABLE, WAVE, REACTIVE, BREATHE, SPECTRUM, STATIC, CUSTOM_FRAME]
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame]
   children:
 
   - !device-config

@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 import re
 
 import pydbus
@@ -26,7 +27,7 @@ class UChromaClient(object):
         if isinstance(identifier, str):
             if identifier.startswith(BASE_PATH):
                 return self._bus.get(SERVICE, identifier)
-        
+
             if re.match(r'\w{4}:\w{4}.\d{2}', identifier):
                 use_key = True
             elif re.match(r'\d+', identifier):
@@ -53,7 +54,8 @@ class UChromaClient(object):
 
 
 if __name__ == '__main__':
-    client = UChromaClient()
-    for dev_path in client.get_device_paths():
-        dev = client.get_device(dev_path)
-        print('[%s]: %s (%s / %s)' % (dev.Key, dev.Name, dev.SerialNumber, dev.FirmwareVersion))
+    uclient = UChromaClient()
+    for u_dev_path in uclient.get_device_paths():
+        u_dev = uclient.get_device(u_dev_path)
+        print('[%s]: %s (%s / %s)' % \
+            (u_dev.Key, u_dev.Name, u_dev.SerialNumber, u_dev.FirmwareVersion))

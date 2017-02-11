@@ -1,4 +1,4 @@
-# pylint: disable=import-error, no-name-in-module, invalid-name
+# pylint: disable=import-error, no-name-in-module, invalid-name, redefined-variable-type
 import logging
 import struct
 import time
@@ -257,12 +257,13 @@ class RazerReport(object):
 
         if self._status == Status.OK:
             if crc != crc_check:
-                self._logger.error('Checksum of data should be %d, got %d' % (crc_check, crc))
+                self._logger.error('Checksum of data should be %d, got %d', crc_check, crc)
                 self._status = Status.BAD_CRC
                 return False
 
-            assert transaction_id == self._transaction_id, 'Transaction id does not match (%d vs %d)' \
-                    % (transaction_id, self._transaction_id)
+            assert transaction_id == self._transaction_id, \
+                'Transaction id does not match (%d vs %d)' % \
+                (transaction_id, self._transaction_id)
             assert command_class == self._command_class, 'Command class does not match'
             assert command_id == self._command_id, 'Command id does not match'
             assert protocol_type == self._protocol_type, 'Protocol type does not match'

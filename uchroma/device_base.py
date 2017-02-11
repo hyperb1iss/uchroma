@@ -8,7 +8,7 @@ from uchroma.anim import AnimationManager
 from uchroma.input import InputManager
 from uchroma.hardware import Hardware, Quirks
 from uchroma.report import RazerReport
-from uchroma.types import BaseCommand, FX
+from uchroma.types import BaseCommand
 from uchroma.util import RepeatingTimer
 from uchroma.version import __version__
 
@@ -45,8 +45,6 @@ class BaseUChromaDevice(object):
         self._defer_close = hardware.has_matrix
         self._close_timer = RepeatingTimer(5.0, self.close, True)
 
-        self._supported_fx = []
-
         self._offline = False
 
         self._last_cmd_time = None
@@ -58,6 +56,8 @@ class BaseUChromaDevice(object):
         self._animation_manager = None
         if self.has_matrix:
             self._animation_manager = AnimationManager(self)
+
+        self._fx_manager = None
 
 
     def _close(self, force: bool=False):
@@ -79,6 +79,12 @@ class BaseUChromaDevice(object):
             self._dev = None
 
 
+    def has_fx(self, fx_type) -> bool:
+        if self.fx_manager is None:
+            return False
+        return fx_type in self.fx_manager.available_fx
+
+
     @synchronized
     def close(self, force: bool=False):
         """
@@ -93,6 +99,11 @@ class BaseUChromaDevice(object):
     @property
     def animation_manager(self):
         return self._animation_manager
+
+
+    @property
+    def fx_manager(self):
+        return self._fx_manager
 
 
     @property
@@ -432,22 +443,6 @@ class BaseUChromaDevice(object):
         True if the device supports matrix control
         """
         return self.hardware.has_matrix
-
-
-    @property
-    def supported_fx(self) -> tuple:
-        """
-        The color effects supported by this device
-        """
-        return self.hardware.supported_fx
-
-
-    @FX.enumarg()
-    def has_fx(self, fx: FX) -> bool:
-        """
-        True if the effect type is supported
-        """
-        return fx in self.supported_fx
 
 
     def has_quirk(self, quirk) -> bool:

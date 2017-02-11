@@ -12,6 +12,8 @@ from uchroma.hardware import PointList
 from uchroma.util import clamp
 
 
+TRACE = 5
+
 class InputManager(object):
 
     def __init__(self, driver, input_devices: list):
@@ -282,7 +284,7 @@ class InputQueue(object):
                               keycode=ev.keycode, scancode=ev.scancode,
                               keystate=ev.keystate, coords=coords, data={})
 
-        if self._logger.isEnabledFor(logging.DEBUG):
+        if self._logger.isEnabledFor(TRACE):
             self._logger.debug('Input event: %s', event)
 
         if self._expire_time is not None:

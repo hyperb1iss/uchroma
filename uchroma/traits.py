@@ -1,7 +1,9 @@
+# pylint: disable=protected-access
 import sys
 
+from enum import Enum
+
 from traitlets import Int, List, TraitType, Undefined, UseEnum
-from grapefruit import Color
 
 from uchroma.util import camel_to_snake, to_color
 
@@ -64,6 +66,19 @@ class WriteOnceInt(WriteOnceMixin, Int):
     pass
 
 
+class UseEnumCaseless(UseEnum):
+    def select_by_name(self, value, default=Undefined):
+        if value.startswith(self.name_prefix):
+            # -- SUPPORT SCOPED-NAMES, like: "Color.red" => "red"
+            value = value.replace(self.name_prefix, "", 1)
+
+        keys = [x.lower() for x in self.enum_class.__members__.keys()]
+        idx = keys.index(value.lower())
+        if idx < 0:
+            return Undefined
+        return self.enum_class[list(self.enum_class.__members__.keys())[idx]]
+
+
 def trait_user_args(trait) -> dict:
     """
     Get a dict that describes how to interact with this trait
@@ -80,10 +95,17 @@ def trait_user_args(trait) -> dict:
     if hasattr(trait, 'write_once'):
         write_once = trait.write_once
 
-    desc['read_only'] = trait.read_only or trait.write_once
+    desc['read_only'] = trait.read_only or write_once
     desc['info'] = trait.info_text
     desc['help'] = trait.help
     desc['allow_none'] = trait.allow_none
+
+    value = trait.default_value
+    if isinstance(value, Enum):
+        value = value.name
+    if value is not Undefined:
+        desc['value'] = value
+
     if hasattr(trait, 'min'):
         desc['min'] = trait.min
     if hasattr(trait, 'max'):
@@ -92,7 +114,18 @@ def trait_user_args(trait) -> dict:
         desc['minlen'] = trait.minlen
     if hasattr(trait, 'maxlen'):
         desc['maxlen'] = trait.maxlen
+    return desc
 
+
+def get_all_user_args(obj) -> dict:
+    desc = {}
+    if isinstance(obj, type):
+        traits = obj.class_traits()
+    else:
+        traits = obj.traits()
+
+    for name, trait in traits.items():
+        desc[name] = trait_user_args(trait)
     return desc
 
 
@@ -102,12 +135,9 @@ class TraitsPropertiesMixin(object):
 
 
     def get_user_args(self) -> dict:
-        desc = {}
-        for name, trait in self._delegate.traits().items():
-            desc[name] = trait_user_args(trait)
-        return desc
+        return get_all_user_args(self._delegate)
 
-            
+
     def __getattribute__(self, name):
         # Intercept everything and delegate to the device class by converting
         # names between the D-Bus conventions to Python conventions.

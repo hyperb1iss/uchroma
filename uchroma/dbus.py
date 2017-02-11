@@ -10,6 +10,7 @@ rather than interacting with the hardware directly.
 """
 
 import asyncio
+import os
 
 from collections import OrderedDict
 from enum import Enum
@@ -17,9 +18,9 @@ from enum import Enum
 from pydbus import SessionBus
 from pydbus.generic import signal
 
-from uchroma.dbus_utils import DescriptorBuilder, VariantDict
+from uchroma.dbus_utils import ArgSpec, DescriptorBuilder, VariantDict
+from uchroma.input import InputQueue
 from uchroma.traits import TraitsPropertiesMixin
-from uchroma.types import FX
 from uchroma.util import camel_to_snake, snake_to_camel
 
 
@@ -30,10 +31,18 @@ def dict_clean(obj):
     return obj
 
 
+def dev_mode_enabled():
+    return os.environ.get('UCHROMA_DEV') is not None
+
+
 class DeviceAPI(object):
     """
     D-Bus API for device properties and common hardware features.
     """
+
+    if dev_mode_enabled():
+        InputEvent = signal()
+
 
     _PROPERTIES = {'bus_path': 'o',
                    'device_index': 'u',
@@ -50,6 +59,7 @@ class DeviceAPI(object):
                    'revision': 'u',
                    'serial_number': 's',
                    'supported_leds': 'as',
+                   'key_mapping': 'a{saau}',
                    'sys_path': 's',
                    'vendor_id': 'u',
                    'width': 'i',
@@ -59,6 +69,9 @@ class DeviceAPI(object):
     def __init__(self, driver):
         self._driver = driver
         self.__class__.dbus = self._get_descriptor()
+        self._signal_input = False
+        self._input_task = None
+        self._input_queue = None
 
 
     def __getattribute__(self, name):
@@ -83,6 +96,49 @@ class DeviceAPI(object):
         return '/org/chemlab/UChroma/%s/%04x_%04x_%02d' % \
             (driver.device_type.value, driver.vendor_id,
              driver.product_id, driver.device_index)
+
+
+    @asyncio.coroutine
+    def _dev_mode_input(self):
+        while self._signal_input:
+            event = yield from self._input_queue.get_events()
+            if event is not None:
+                self.InputEvent(VariantDict(event._asdict()))
+
+
+    @property
+    def InputSignalEnabled(self) -> bool:
+        """
+        Enabling input signalling will fire D-Bus signals when keyboard
+        input is received. This is used by the tooling and bringup
+        utilities. Developer mode must be enabled in order for this
+        to be available on the bus due to potential security issues.
+        """
+        return self._signal_input
+
+
+    @InputSignalEnabled.setter
+    def InputSignalEnabled(self, state):
+        if dev_mode_enabled():
+            if state == self._signal_input:
+                return
+
+            if state:
+                if self._input_queue is None:
+                    self._input_queue = InputQueue(self._driver)
+                self._input_queue.attach()
+                self._input_task = asyncio.ensure_future(self._dev_mode_input())
+            else:
+                self._input_queue.detach()
+                self._input_task.cancel()
+                self._input_queue = None
+
+            self._signal_input = state
+
+
+    @property
+    def FrameDebugOpts(self) -> dict:
+        return VariantDict(self._driver.frame_control.debug_opts)
 
 
     @property
@@ -145,6 +201,10 @@ class DeviceAPI(object):
             self.PropertiesChanged('org.chemlab.UChroma.Device', {'Suspended': self.Suspended}, [])
 
 
+    def Reset(self):
+        self._driver.reset()
+
+
     def _get_descriptor(self):
         builder = DescriptorBuilder(self, 'org.chemlab.UChroma.Device')
         for name, sig in DeviceAPI._PROPERTIES.items():
@@ -157,6 +217,14 @@ class DeviceAPI(object):
         if hasattr(self._driver, 'suspend') and hasattr(self._driver, 'resume'):
             builder.add_property('suspended', 'b', True)
 
+        builder.add_method('reset')
+
+        # tooling support, requires dev mode enabled
+        if dev_mode_enabled() and self._driver.input_manager is not None:
+            builder.add_property('frame_debug_opts', 'a{sv}', False)
+            builder.add_property('input_signal_enabled', 'b', True)
+            builder.add_signal('input_event', ArgSpec('out', 'event', 'a{sv}'))
+
         return builder.build()
 
 
@@ -167,7 +235,7 @@ class FXManagerAPI(object):
           <interface name='org.chemlab.UChroma.FXManager'>
             <method name='GetCurrentFX'>
               <arg direction='out' type='s' name='name' />
-              <arg direction='out' type='a{ss}' name='args' />
+              <arg direction='out' type='a{sv}' name='args' />
             </method>
 
             <method name='HasFX'>
@@ -177,36 +245,39 @@ class FXManagerAPI(object):
 
             <method name='SetFX'>
               <arg direction='in' type='s' name='name' />
-              <arg direction='in' type='a{ss}' name='args' />
+              <arg direction='in' type='a{sv}' name='args' />
               <arg direction='out' type='b' name='status' />
-            </method>
-
-            <method name='GetFXList'>
-              <arg direction='out' type='a{ss}' name='fx' />
             </method>
 
             <signal name='FXChanged'>
               <arg direction='out' type='s' name='name' />
             </signal>
 
-            <property name='SupportedFX' type='a{ss}' access='read' />
+            <property name='AvailableFX' type='a{sa{sa{sv}}}' access='read' />
           </interface>
         </node>
     """
 
     def __init__(self, driver):
         self._driver = driver
-        self._current_fx = FX.DISABLE
+        self._current_fx = None
         self._current_fx_args = OrderedDict()
 
 
     @property
-    def SupportedFX(self):
-        sfx = OrderedDict()
-        for fx in self._driver.supported_fx:
-            sfx[fx.name.lower()] = fx.description
+    def AvailableFX(self):
+        avail = {}
+        user_args = self._driver.fx_manager.user_args
 
-        return sfx
+        for fx in self._driver.fx_manager.available_fx:
+            args = user_args[fx]
+            argsdict = {}
+            for k, v in args.items():
+                argsdict[snake_to_camel(k)] = VariantDict(v)
+
+            avail[snake_to_camel(fx)] = argsdict
+
+        return avail
 
 
     def HasFX(self, name: str) -> bool:
@@ -217,6 +288,9 @@ class FXManagerAPI(object):
         """
         Get the currently active FX and arguments
         """
+        if self._current_fx is None:
+            return ('disable', {})
+
         return (self._current_fx.name.lower(), self._current_fx_args)
 
 
@@ -224,30 +298,16 @@ class FXManagerAPI(object):
         """
         Set the desired FX, with options as a dict.
         """
-        name = name.lower()
-
         if not self._driver.has_fx(name):
             return False
 
-        if hasattr(self._driver, name):
-            fx = getattr(self._driver, name)
-            if fx(**args):
-                self._current_fx = name
-                self._current_fx_args = args
-                self.FXChanged(name)
-                return True
+        if self._driver.fx_manager.activate(name, **args):
+            self._current_fx = name
+            self._current_fx_args = args
+            self.FXChanged(name)
+            return True
 
         return False
-
-
-    def GetFXList(self):
-        """
-        Get the list of all available FX
-        """
-        fx = OrderedDict()
-        for sfx in self._driver.supported_fx:
-            fx[sfx.name.lower()] = sfx.description
-        return fx
 
 
     FXChanged = signal()
@@ -429,7 +489,7 @@ class DeviceManagerAPI(object):
         self._devs[path] = []
         self._devs[path].append(self._bus.register_object(path, devapi, None))
 
-        if device.supported_fx is not None and len(device.supported_fx) > 0:
+        if device.fx_manager is not None:
             self._devs[path].append(self._bus.register_object( \
                 path, FXManagerAPI(device), None))
 

@@ -55,19 +55,28 @@ class FlowSequence(tuple):
     pass
 
 
+class FXList(list):
+
+    def __init__(self, *args, **kwargs):
+        super(FXList, self).__init__(*args, **kwargs)
+
+        for x in range(0, len(self)):
+            self[x] = self[x].lower()
+
+
 class PointList(FlowSequence):
     def __new__(cls, args):
         if isinstance(args, list):
             if isinstance(args[0], int) and len(args) == 2:
-                return Point(y=args[0], x=args[1])
+                return Point(args[0], args[1])
             elif isinstance(args[0], list):
                 return cls([cls(arg) for arg in args])
         return super(PointList, cls).__new__(cls, args)
 
 
 class KeyMapping(OrderedDict):
-    def __setitem__(self, key, value):
-        super().__setitem__(key, PointList(value))
+    def __setitem__(self, key, value, **kwargs):
+        super().__setitem__(key, PointList(value), **kwargs)
 
 class BlockMapping(OrderedDict):
     pass
@@ -98,7 +107,7 @@ BaseHardware = Configuration.create("Hardware", [ \
     ('vendor_id', HexQuad),
     ('product_id', HexQuad),
     ('dimensions', Point),
-    ('supported_fx', 'FX'),
+    ('supported_fx', FXList),
     ('quirks', Quirks),
     ('zones', Zone),
     ('key_mapping', KeyMapping),

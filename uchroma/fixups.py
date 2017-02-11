@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, no-member
 
 """
 Fixups are mixins which adjust input/output data in some form.

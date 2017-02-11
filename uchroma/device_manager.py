@@ -7,6 +7,7 @@ import hidapi
 
 from pyudev import Context, Monitor, MonitorObserver
 
+from uchroma.device import UChromaDevice
 from uchroma.device_base import BaseUChromaDevice
 from uchroma.hardware import Hardware, Quirks, RAZER_VENDOR_ID
 from uchroma.headset import UChromaHeadset
@@ -74,7 +75,6 @@ class UChromaDeviceManager(object):
         the scope of this API).
         """
         devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
-        index = 0
 
         for devinfo in devinfos:
             parent = self._get_parent(devinfo.product_id)
@@ -220,7 +220,7 @@ class UChromaDeviceManager(object):
         """
         Close all open devices and perform cleanup
         """
-        for key, device in self.devices.items():
+        for device in self.devices.values():
             device.close()
         self._devices.clear()
 

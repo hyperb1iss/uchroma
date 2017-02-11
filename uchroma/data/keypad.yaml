@@ -10,7 +10,7 @@ type: KEYPAD
 vendor_id: 0x1532
 children:
 - !device-config
-  supported_fx: [DISABLE, BREATHE, SPECTRUM, STATIC]
+  supported_fx: [disable, breathe, spectrum, static]
   children:
 
   - !device-config
