@@ -73,8 +73,6 @@ class Direction(MagicalEnum, Enum):
     """
     RIGHT = 1
     LEFT = 2
-    LEFT_CHASE = 3
-    RIGHT_CHASE = 4
 
 
 # Modes for starlight and breathe effects
@@ -196,6 +194,7 @@ class StandardFX(FXModule):
     class WaveFX(BaseFX):
         description = Unicode('Waves of color')
         direction = UseEnumCaseless(enum_class=Direction, default_value=Direction.RIGHT)
+        trackpad_effect = Bool(default_value=False)
 
         def apply(self) -> bool:
             """
@@ -205,7 +204,15 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return self._fxmod.set_effect(FX.WAVE, self.direction)
+            direction = self.direction.value
+
+            if self.trackpad_effect:
+                if self.direction == Direction.LEFT:
+                    direction = 0x03
+                elif self.direction == Direction.RIGHT:
+                    direction = 0x04
+
+            return self._fxmod.set_effect(FX.WAVE, direction)
 
 
     class SpectrumFX(BaseFX):
