@@ -6,7 +6,6 @@ from abc import abstractmethod
 
 from traitlets import Bool, HasTraits, Unicode
 
-from uchroma.traits import get_all_user_args
 from uchroma.util import camel_to_snake
 
 
@@ -49,7 +48,7 @@ class FXModule(object):
     def _load_traits(self) -> dict:
         args = {}
         for k, v in self._available_fx.items():
-            args[k] = get_all_user_args(v)
+            args[k] = v.class_traits()
         return args
 
 

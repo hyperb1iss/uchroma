@@ -1,9 +1,10 @@
 # pylint: disable=protected-access
+import importlib
 import sys
 
 from enum import Enum
 
-from traitlets import Int, List, TraitType, Undefined, UseEnum
+from traitlets import CaselessStrEnum, Int, List, TraitType, Undefined, UseEnum
 
 from uchroma.util import camel_to_snake, to_color
 
@@ -79,16 +80,18 @@ class UseEnumCaseless(UseEnum):
         return self.enum_class[list(self.enum_class.__members__.keys())[idx]]
 
 
-def trait_user_args(trait) -> dict:
+def trait_as_dict(trait) -> dict:
     """
-    Get a dict that describes how to interact with this trait
+    Convert a trait to a dict for sending over D-Bus or the like
     """
     desc = {}
     desc['name'] = trait.name
 
-    trait_type = trait.__class__.__name__.lower()
-    if trait_type == 'unicode':
-        trait_type = 'string'
+    trait_type = trait.__class__.__name__
+    if isinstance(trait, UseEnum):
+        trait_type = CaselessStrEnum.__name__
+        desc['values'] = list(trait.enum_class.__members__.keys())
+
     desc['type'] = trait_type
 
     write_once = False
@@ -104,7 +107,7 @@ def trait_user_args(trait) -> dict:
     if isinstance(value, Enum):
         value = value.name
     if value is not Undefined:
-        desc['value'] = value
+        desc['default_value'] = value
 
     if hasattr(trait, 'min'):
         desc['min'] = trait.min
@@ -117,16 +120,33 @@ def trait_user_args(trait) -> dict:
     return desc
 
 
-def get_all_user_args(obj) -> dict:
-    desc = {}
-    if isinstance(obj, type):
-        traits = obj.class_traits()
-    else:
-        traits = obj.traits()
+TRAITLETS = importlib.import_module('traitlets')
+LOCAL_TRAITS = importlib.import_module('uchroma.traits')
 
-    for name, trait in traits.items():
-        desc[name] = trait_user_args(trait)
-    return desc
+def dict_as_trait(obj):
+    """
+    Create a trait from a dict (trait_as_dict).
+    """
+    trait_type = obj.pop('type')
+    cls = None
+    if hasattr(LOCAL_TRAITS, trait_type):
+        cls = getattr(LOCAL_TRAITS, trait_type)
+    elif hasattr(TRAITLETS, trait_type):
+        cls = getattr(TRAITLETS, trait_type)
+    if cls is None:
+        raise ValueError("Unknown trait: %s [%s]" % (trait_type, obj))
+
+    if cls == CaselessStrEnum:
+        return cls(obj.pop('values'), **obj)
+
+    return cls(**obj)
+
+
+def dict_as_class_traits(obj):
+    traits = {}
+    for k, v in obj.items():
+        traits[k] = dict_as_trait(v)
+    return traits
 
 
 class TraitsPropertiesMixin(object):
@@ -135,7 +155,7 @@ class TraitsPropertiesMixin(object):
 
 
     def get_user_args(self) -> dict:
-        return get_all_user_args(self._delegate)
+        return (self._delegate)
 
 
     def __getattribute__(self, name):

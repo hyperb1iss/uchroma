@@ -11,6 +11,7 @@ from uchroma.cmd import UChromaConsoleUtil
 from uchroma.color import ColorPair
 from uchroma.dbus_utils import VariantDict
 from uchroma.led import LED
+from uchroma.traits import dict_as_class_traits
 from uchroma.util import ArgsDict, max_keylen
 
 
@@ -146,8 +147,16 @@ class UChromaTool(UChromaConsoleUtil):
             sys.exit(1)
 
         print('\nSupported effects:\n')
-        for name, description in sorted(sfx.items()):
-            print('[ %*s]: %s' % (max_keylen(sfx), name, description))
+        for name, t_dict in sorted(sfx.items()):
+            traits = dict_as_class_traits(t_dict)
+            if 'hidden' in traits:
+                if traits['hidden'].default_value:
+                    continue
+            desc = "No description available"
+            if 'description' in traits:
+                desc = traits['description'].default_value
+
+            print('[ %*s]: %s' % (max_keylen(sfx), name, desc))
 
 
     def _fx_parser(self, args):
@@ -176,8 +185,6 @@ class UChromaTool(UChromaConsoleUtil):
     def _activate_fx(self, driver, fx, **kwargs) -> bool:
         if driver.HasFX(fx):
             argsdict = ArgsDict(**kwargs)
-            print('fx: %s args: %s' % (fx.lower(), argsdict))
-
             return driver.SetFX(fx.lower(), argsdict)
 
         else:

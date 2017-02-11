@@ -20,15 +20,8 @@ from pydbus.generic import signal
 
 from uchroma.dbus_utils import ArgSpec, DescriptorBuilder, VariantDict
 from uchroma.input import InputQueue
-from uchroma.traits import TraitsPropertiesMixin
+from uchroma.traits import TraitsPropertiesMixin, trait_as_dict
 from uchroma.util import camel_to_snake, snake_to_camel
-
-
-def dict_clean(obj):
-    for k, v in obj.items():
-        if v is None:
-            obj[k] = ''
-    return obj
 
 
 def dev_mode_enabled():
@@ -273,9 +266,9 @@ class FXManagerAPI(object):
             args = user_args[fx]
             argsdict = {}
             for k, v in args.items():
-                argsdict[snake_to_camel(k)] = VariantDict(v)
+                argsdict[k] = VariantDict(trait_as_dict(v))
 
-            avail[snake_to_camel(fx)] = argsdict
+            avail[fx] = argsdict
 
         return avail
 
@@ -329,9 +322,9 @@ class LayerAPI(TraitsPropertiesMixin, object):
 
     def GetUserArgs(self):
         argsdict = {}
-        user_args = self.get_user_args()
-        for k, v in user_args.items():
-            argsdict[snake_to_camel(k)] = VariantDict(v)
+        traits = self._delegate.traits()
+        for k, v in traits.items():
+            argsdict[snake_to_camel(k)] = VariantDict(trait_as_dict(v))
         return argsdict
 
 
