@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import re
 import sys
 
 from collections import OrderedDict
@@ -140,13 +141,47 @@ class UChromaTool(UChromaConsoleUtil):
         return args.color[num]
 
 
+    def _show_traits(self, traits, indent=0):
+        s_traits = sorted(OrderedDict(traits).items())
+
+        for name, trait in s_traits:
+            if name == 'description' or name =='hidden':
+                continue
+
+            trait_type = re.sub(r'Trait$', '', trait.__class__.__name__).lower()
+            desc = 'No description available'
+
+            if trait_type == 'caselessstrenum':
+                trait_type = 'choice'
+                desc = 'one of: %s' % ', '.join([x.lower() for x in sorted(trait.values)])
+            elif hasattr(trait, 'info_text'):
+                desc = trait.info_text
+
+
+            constraints = []
+            if hasattr(trait, 'min'):
+                constraints.append('min value: %s' % trait.min)
+            if hasattr(trait, 'max'):
+                constraints.append('max value: %s' % trait.max)
+            if hasattr(trait, 'minlen'):
+                constraints.append('min length: %s' % trait.minlen)
+            if hasattr(trait, 'maxlen'):
+                constraints.append('max length: %s' % trait.maxlen)
+
+            print('%*s: "%s" (%s): %s' % (indent, '', name, trait_type, desc))
+            if len(constraints) > 0:
+                print('%*s: - %s' % (indent, '', ', '.join(constraints)))
+
+
     def _list_fx(self, driver):
         sfx = driver.AvailableFX
         if sfx is None or len(sfx) == 0:
             self.print_err('No supported effects found.')
             sys.exit(1)
 
-        print('\nSupported effects:\n')
+        print('\nBuilt-in effects and arguments:\n')
+        keylen = max_keylen(sfx)
+
         for name, t_dict in sorted(sfx.items()):
             traits = dict_as_class_traits(t_dict)
             if 'hidden' in traits:
@@ -156,8 +191,9 @@ class UChromaTool(UChromaConsoleUtil):
             if 'description' in traits:
                 desc = traits['description'].default_value
 
-            print('[ %*s]: %s' % (max_keylen(sfx), name, desc))
-
+            print('[ %*s]: %s' % (keylen, name, desc))
+            self._show_traits(traits, indent=keylen + 3)
+            print('\n')
 
     def _fx_parser(self, args):
         driver = self.get_driver(args)

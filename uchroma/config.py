@@ -259,7 +259,7 @@ class Configuration(object):
         return yaml.round_trip_dump(self)
 
 
-    def save_yaml(self, filename: str=None):
+    def save_yaml(self, filename: str=None, header: bool=False):
         """
         Serialize the hierarchy to a file.
 
@@ -270,17 +270,18 @@ class Configuration(object):
 
         with tempfile.NamedTemporaryFile('w', dir=os.path.dirname(filename),
                                          delete=False) as temp:
-            temp.write('#\n')
-            temp.write('#  uChroma device configuration\n')
-            temp.write('#\n')
-            if self.name is not None:
-                temp.write('#  Model: %s (%s)\n' % \
-                    (self.name, self.type.value))
-            elif self.type is not None:
-                temp.write('#  Type: %s\n' % self.type)
-            temp.write('#  Created by %s on %s\n' % \
-                (getpass.getuser(), datetime.now().isoformat(' ')))
-            temp.write('#\n')
+            if header:
+                temp.write('#\n')
+                temp.write('#  uChroma device configuration\n')
+                temp.write('#\n')
+                if self.name is not None:
+                    temp.write('#  Model: %s (%s)\n' % \
+                        (self.name, self.type.value))
+                elif self.type is not None:
+                    temp.write('#  Type: %s\n' % self.type)
+                temp.write('#  Created by %s on %s\n' % \
+                    (getpass.getuser(), datetime.now().isoformat(' ')))
+                temp.write('#\n')
             yaml.round_trip_dump(self, stream=temp)
             tempname = temp.name
         os.rename(tempname, filename)

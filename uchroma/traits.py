@@ -16,7 +16,7 @@ class ColorTrait(TraitType):
     """
 
     default_value = None
-    info_text = "Color"
+    info_text = "A color in HTML string format (#8080ff, 'red', etc)"
 
     def __init__(self, default_value=Undefined, allow_none=True, **kwargs):
         super(ColorTrait, self).__init__(default_value=default_value,
@@ -36,8 +36,9 @@ class ColorSchemeTrait(List):
     """
     A list of ColorTraits which comprise a scheme
     """
+    info_text = 'A list of colors to use, in HTML string format'
 
-    def __init__(self, default_value=Undefined, minlen=0, maxlen=sys.maxsize, **kwargs):
+    def __init__(self, default_value=(), minlen=0, maxlen=sys.maxsize, **kwargs):
         super(ColorSchemeTrait, self).__init__(trait=ColorTrait,
                                                default_value=default_value,
                                                minlen=minlen, maxlen=maxlen, **kwargs)
@@ -48,6 +49,7 @@ class ColorPresetTrait(UseEnum):
     A trait which represents a group of color schemes defined
     as a Python Enum.
     """
+    info_text = 'A predefined color scheme'
 
     def __init__(self, enum_class, default_value=None, **kwargs):
         super(ColorPresetTrait, self).__init__(enum_class, default_value=default_value, **kwargs)

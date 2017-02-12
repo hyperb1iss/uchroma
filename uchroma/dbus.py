@@ -284,7 +284,7 @@ class FXManagerAPI(object):
         if self._current_fx is None:
             return ('disable', {})
 
-        return (self._current_fx.name.lower(), self._current_fx_args)
+        return (self._current_fx.lower(), self._current_fx_args)
 
 
     def SetFX(self, name: str, args: dict) -> bool:
@@ -504,6 +504,7 @@ class DeviceManagerAPI(object):
     def _dm_callback(self, action, device):
 
         if action == 'add':
+            device.reset()
             self._publish_device(device)
 
         elif action == 'remove':

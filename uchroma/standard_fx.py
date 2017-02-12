@@ -8,7 +8,7 @@ from uchroma.color import ColorUtils
 from uchroma.fx import BaseFX, FXModule
 from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LED
-from uchroma.traits import ColorTrait, UseEnumCaseless
+from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
 from uchroma.types import BaseCommand
 from uchroma.util import MagicalEnum
 
@@ -88,8 +88,7 @@ class Mode(Enum):
 
 class MultiModeFX(BaseFX):
 
-    color1 = ColorTrait()
-    color2 = ColorTrait()
+    colors = ColorSchemeTrait(minlen=0, maxlen=2)
     speed = Int(default_value=1, min=1, max=4)
 
 
@@ -99,23 +98,14 @@ class MultiModeFX(BaseFX):
 
 
     def _apply(self, effect) -> bool:
-        if self.color1 is not None and self.color2 is not None:
-            mode = Mode.DUAL.value
-        elif self.color1 is not None:
-            mode = Mode.SINGLE.value
-        else:
-            mode = Mode.RANDOM.value
-
+        mode = Mode(len(self.colors))
         args = [mode]
 
         if self.speed is not None:
             args.append(self.speed)
 
-        if self.color1 is not None:
-            args.append(self.color1)
-
-        if self.color2 is not None:
-            args.append(self.color2)
+        for color in self.colors:
+            args.append(color)
 
         return self._fxmod.set_effect(effect, *args)
 
@@ -217,6 +207,7 @@ class StandardFX(FXModule):
 
     class SpectrumFX(BaseFX):
         description = Unicode('Cycle thru all colors of the spectrum')
+
         def apply(self) -> bool:
             """
             Slowly cycles lighting thru all colors of the spectrum
@@ -324,6 +315,7 @@ class StandardFX(FXModule):
 
     class StarlightFX(MultiModeFX):
         description = Unicode('Keys sparkle with color')
+
         def apply(self) -> bool:
             """
             Activate the "starlight" effect. Colors sparkle across the device.
@@ -343,6 +335,7 @@ class StandardFX(FXModule):
 
     class BreatheFX(MultiModeFX):
         description = Unicode('Colors pulse in and out')
+
         def apply(self) -> bool:
             """
             Activate the "breathe" effect. Colors pulse in and out.
