@@ -1,55 +1,123 @@
-# pylint: disable=no-member, protected-access
-import getpass
 import os
 import sys
 import tempfile
 
-from collections import Iterable, OrderedDict
-from typing import NamedTuple
+from collections import Iterable, OrderedDict, Sequence
 
-from datetime import datetime
 from enum import Enum
 
 import ruamel.yaml as yaml
 
 
-class Configuration(object):
+class Configuration(Sequence, object):
     """
     Configuration hierarchy
 
-    This is a hierarchical hack to namedtuple. When a null attribute
-    is queried, ask for the parent recursively.
+    This is a hierarchical object with attribute access. When a
+    null attribute is queried, ask for the parent recursively.
+    Supports key search, conversion to dict, change observation,
+    and may be mutable or immutable. May be serialized to and
+    from YAML. Attributes are forcibly coerced to the desired
+    types when set.
 
-    Also supports recursive serialization to/from YAML and type coercion.
+    The format of the YAML output may be customized by adding
+    parsers and representers, see the users of this class for
+    examples.
 
-    Call "create" to generate an instance.
+    Call "create" to generate a derived type.
     """
+    __slots__ = ()
 
-    __yaml_cache = {}
-    _children = None
 
     @classmethod
-    def create(cls, name, fields):
+    def create(cls, name: str, fields: list, yaml_name: str=None, mutable: bool=False):
         """
-        Create a new Configuration class type.
-        """
-        mixin_name = "_%sMixin" % name
-        mixin = NamedTuple(mixin_name, fields)
-        mixin.__new__.__defaults__ = (None,) * len(mixin._fields)
+        Derive a new Configuration class type.
 
-        derived = cls.__class__(name, (cls, mixin, object), {})
+        :param name: Name of the new type
+        :param fields: List of fields and types
+        :param yaml_name: Tag name for YAML serialization
+        :param mutable: True if the object can be modified
+
+        :return: The derived Configuration class
+        """
+        field_names = [n for n, t in fields]
+
+        derived = cls.__class__(name, (cls, object), \
+            {'__slots__': (*field_names, 'parent', '_children'),
+             '_mutable': mutable,
+             '_traverse': True,
+             '_yaml_cache': {},
+             '_observers': set(),
+             '_field_types': dict(fields)})
+
+        derived._field_types['parent'] = derived
+
+        if yaml_name is None:
+            yaml_name = u'!%s' % derived.__name__.lower()
+
+        def represent_config(dumper, data):
+            """
+            Dumps the object with a custom tag in sparse format
+            """
+            return dumper.represent_mapping(yaml_name, data.sparsedict(deep=False))
+
+        yaml.RoundTripLoader.add_constructor(yaml_name, yaml.RoundTripLoader.construct_yaml_map)
+        yaml.RoundTripDumper.add_multi_representer(derived, represent_config)
 
         return derived
 
 
     def __init__(self, parent=None, *args, **kwargs):
+        slots = self.__slots__
+        for k in slots:
+            super().__setattr__(k, kwargs.get(k))
+
+        if 'parent' not in slots:
+            raise TypeError('Call create() to create a derived Configuration')
+
+        super().__setattr__('parent', parent)
         if isinstance(parent, self.__class__) and hasattr(parent, '_add_child'):
             parent._add_child(self)
 
 
     def __del__(self):
-        if self.parent is not None:
+        if hasattr(self, 'parent') and self.parent is not None:
             self.parent._remove_child(self)
+
+
+    def __str__(self):
+        clsname = self.__class__.__name__
+        values = ', '.join('%s=%r' % (k, getattr(self, k)) \
+            for k in self.__slots__ if k != 'parent' \
+                and hasattr(self, k) and getattr(self, k) is not None)
+
+        return '%s(%s)' % (clsname, values)
+
+
+    __repr__ = __str__
+
+
+    def __len__(self):
+        return len(self.__slots__)
+
+
+    @classmethod
+    def observe(cls, observer):
+        """
+        Add an observer to this type
+
+        The observer will fire when ANY instance of the type is changed.
+        """
+        cls._observers.add(observer)
+
+
+    @classmethod
+    def unobserve(cls, observer):
+        """
+        Remove a previously added observer from this type
+        """
+        cls._observers.discard(observer)
 
 
     @property
@@ -62,16 +130,41 @@ class Configuration(object):
 
     def _add_child(self, child):
         if self._children is None:
-            self._children = (child,)
+            super().__setattr__('_children', (child,))
         else:
-            self._children = (*self._children, child)
+            super().__setattr__('_children', (*self._children, child))
+
+
+    def __setattr__(self, name, value):
+        if not self.__class__._mutable:
+            raise AttributeError('\'%s\' object is read-only (attr=\'%s\')' % \
+                (self.__class__.__name__, name))
+        super().__setattr__(name, value)
+
+        if self.__class__._mutable:
+            for observer in self.__class__._observers:
+                observer(self, name, value)
 
 
     def _remove_child(self, child):
         if self._children is None or child not in self._children:
             return
 
-        self._children = tuple([x for x in self._children if x != child])
+        super().__setattr__('_children', tuple([x for x in self._children if x != child]))
+
+
+    def __getattribute__(self, key):
+        item = object.__getattribute__(self, key)
+        traverse = object.__getattribute__(self, '__class__')._traverse
+
+        if not traverse or item is not None or \
+                key in ('parent', 'children') or key.startswith('_'):
+            return item
+
+        if hasattr(self, 'parent') and self.parent is not None:
+            return object.__getattribute__(self.parent, key)
+
+        return None
 
 
     def __getitem__(self, key):
@@ -79,12 +172,10 @@ class Configuration(object):
         Intercepts calls to fetch from the tuple and searches up the
         hierarchy if necessary to populate fields.
         """
-        item = super().__getitem__(key)
+        if key < len(self.__slots__):
+            return getattr(self, self.__slots__[key])
 
-        if key != self._fields.index('parent') and item is None and self.parent is not None:
-            return self.parent.__getitem__(key)
-
-        return item
+        raise AttributeError('Invalid index: %s' % key)
 
 
     def get(self, key: str, default=None):
@@ -95,7 +186,7 @@ class Configuration(object):
         :param default: Default value if None
         :return: Value of the field
         """
-        value = self.__getitem__(self._fields.index(key))
+        value = self.__getitem__(self.__slots__.index(key))
         if value is None:
             return default
         return value
@@ -110,6 +201,9 @@ class Configuration(object):
         :return: The matching field
         """
         def search_recursive(obj, key, value):
+            """
+            Recursive search
+            """
             if obj.get(key) == value:
                 yield obj
             if obj.children is not None and len(obj.children) > 0:
@@ -129,11 +223,15 @@ class Configuration(object):
             flat.extend([child.flatten() for child in self.children])
         else:
             tmp = {}
-            for field in self._fields:
+            for field in self.__slots__:
                 if field not in ['parent', '_children']:
                     tmp[field] = self.get(field)
             return self.__class__(**tmp)
         return flat
+
+
+    def _asdict(self) -> OrderedDict:
+        return OrderedDict(zip(self.__slots__, self))
 
 
     def sparsedict(self, deep=True) -> OrderedDict:
@@ -143,7 +241,9 @@ class Configuration(object):
 
         :return: The sparse dict representation
         """
-        fields = tuple([x for x in self._fields if x not in ['parent', '_children']])
+        self.__class__._traverse = False
+
+        fields = tuple([x for x in self.__slots__ if x not in ['parent', '_children']])
 
         odict = OrderedDict([x for x in zip(fields, self) if x[1] is not None])
 
@@ -153,6 +253,7 @@ class Configuration(object):
             else:
                 odict['children'] = self._children
 
+        self.__class__._traverse = True
         return odict
 
 
@@ -167,7 +268,6 @@ class Configuration(object):
                 val = mapping[field]
                 if val is None:
                     continue
-
 
                 if field_type is not None:
                     if isinstance(field_type, str):
@@ -190,7 +290,7 @@ class Configuration(object):
                                                       issubclass(field_type, dict)):
                             odict[field] = field_type(**val)
                         elif isinstance(val, Iterable) and issubclass(field_type, Iterable):
-                            if hasattr(field_type, '_fields'):
+                            if hasattr(field_type, '__slots__'):
                                 # namedtuple
                                 odict[field] = field_type(*val)
                             else:
@@ -241,25 +341,32 @@ class Configuration(object):
                     unpack(child, parent=config)
             return config
 
-        if filename in cls.__yaml_cache:
-            return cls.__yaml_cache[filename]
+        if filename in cls._yaml_cache:
+            return cls._yaml_cache[filename]
 
         data = None
         with open(filename, 'r') as yaml_file:
             data = unpack(yaml.round_trip_load(yaml_file.read()))
 
         if data is not None:
-            cls.__yaml_cache[filename] = data
+            cls._yaml_cache[filename] = data
 
         return data
 
 
     @property
-    def yaml(self):
+    def yaml(self) -> str:
+        """
+        Get the YAML representation of this object as a string
+        """
         return yaml.round_trip_dump(self)
 
 
-    def save_yaml(self, filename: str=None, header: bool=False):
+    def _yaml_header(self) -> str:
+        return None
+
+
+    def save_yaml(self, filename: str=None):
         """
         Serialize the hierarchy to a file.
 
@@ -270,22 +377,61 @@ class Configuration(object):
 
         with tempfile.NamedTemporaryFile('w', dir=os.path.dirname(filename),
                                          delete=False) as temp:
-            if header:
-                temp.write('#\n')
-                temp.write('#  uChroma device configuration\n')
-                temp.write('#\n')
-                if self.name is not None:
-                    temp.write('#  Model: %s (%s)\n' % \
-                        (self.name, self.type.value))
-                elif self.type is not None:
-                    temp.write('#  Type: %s\n' % self.type)
-                temp.write('#  Created by %s on %s\n' % \
-                    (getpass.getuser(), datetime.now().isoformat(' ')))
-                temp.write('#\n')
+            header = self._yaml_header()
+            if header is not None:
+                temp.write(header)
             yaml.round_trip_dump(self, stream=temp)
             tempname = temp.name
         os.rename(tempname, filename)
 
-        if filename in self.__class__.__yaml_cache:
-            del self.__class__.__yaml_cache[filename]
+        if filename in self.__class__._yaml_cache:
+            del self.__class__._yaml_cache[filename]
 
+
+# YAML library configuration
+def represent_flow_seq(dumper, data):
+    """
+    Dump sequences in flow style
+    """
+    return dumper.represent_sequence(u'tag:yaml.org,2002:seq', data, flow_style=True)
+
+def represent_block_map(dumper, data):
+    """
+    Dump maps in block style
+    """
+    return dumper.represent_mapping(u'tag:yaml.org,2002:map', data, flow_style=False)
+
+def represent_enum_str(dumper, data):
+    """
+    Dump enums as string keys
+    """
+    return dumper.represent_str(data.name)
+
+class FlowSequence(tuple, object):
+    """
+    A YAML sequence created from a tuple which will be represented
+    in flowed style.
+    """
+    pass
+
+class BlockMapping(OrderedDict):
+    """
+    A YAML mapping created from an OrderedDict which will be
+    represented in block style.
+    """
+    pass
+
+class LowerCaseSeq(FlowSequence):
+    """
+    A YAML sequence which will always render in lowercase, in flow style.
+    """
+    def __new__(cls, args):
+        items = []
+        for x in range(0, len(args)):
+            items.append(args[x].lower())
+        return super().__new__(cls, args)
+
+yaml.RoundTripDumper.ignore_aliases = lambda *x: True
+yaml.RoundTripDumper.add_multi_representer(Enum, represent_enum_str)
+yaml.RoundTripDumper.add_multi_representer(FlowSequence, represent_flow_seq)
+yaml.RoundTripDumper.add_multi_representer(OrderedDict, represent_block_map)

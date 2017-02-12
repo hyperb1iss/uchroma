@@ -2,12 +2,14 @@
 import os
 
 from collections import OrderedDict
+from datetime import datetime
 from enum import Enum, IntEnum
 from typing import NamedTuple
 
 import ruamel.yaml as yaml
 
-from uchroma.config import Configuration
+from uchroma.config import BlockMapping, Configuration, FlowSequence, \
+        represent_flow_seq, represent_block_map
 
 
 RAZER_VENDOR_ID = 0x1532
@@ -51,17 +53,12 @@ class Point(_Point, object):
         return '(%s, %s)' % (self.y, self.x)
 
 
-class FlowSequence(tuple):
-    pass
-
-
-class FXList(list):
-
-    def __init__(self, *args, **kwargs):
-        super(FXList, self).__init__(*args, **kwargs)
-
-        for x in range(0, len(self)):
-            self[x] = self[x].lower()
+class LowerCaseSeq(FlowSequence):
+    def __new__(cls, args):
+        items = []
+        for x in range(0, len(args)):
+            items.append(args[x].lower())
+        return super().__new__(cls, args)
 
 
 class PointList(FlowSequence):
@@ -77,9 +74,6 @@ class PointList(FlowSequence):
 class KeyMapping(OrderedDict):
     def __setitem__(self, key, value, **kwargs):
         super().__setitem__(key, PointList(value), **kwargs)
-
-class BlockMapping(OrderedDict):
-    pass
 
 class MacroKeys(BlockMapping):
     pass
@@ -100,14 +94,14 @@ class HexQuad(int):
 
 
 # Configuration
-BaseHardware = Configuration.create("Hardware", [ \
+BaseHardware = Configuration.create("BaseHardware", [ \
     ('name', str),
     ('manufacturer', str),
     ('type', 'Type'),
     ('vendor_id', HexQuad),
     ('product_id', HexQuad),
     ('dimensions', Point),
-    ('supported_fx', FXList),
+    ('supported_fx', LowerCaseSeq),
     ('quirks', Quirks),
     ('zones', Zone),
     ('key_mapping', KeyMapping),
@@ -117,8 +111,7 @@ BaseHardware = Configuration.create("Hardware", [ \
     ('macro_keys', MacroKeys),
     ('is_wireless', bool),
     ('revision', int),
-    ('assets', dict),
-    ('parent', 'BaseHardware')])
+    ('assets', dict)], yaml_name=u'!device-config')
 
 
 class Hardware(BaseHardware):
@@ -198,36 +191,26 @@ class Hardware(BaseHardware):
         return None
 
 
+    def _yaml_header(self) -> str:
+        header = '#\n#  uChroma device configuration\n#\n'
+        if self.name is not None:
+            header += '#  Model: %s (%s)\n' % (self.name, self.type.value)
+        elif self.type is not None:
+            header += '#  Type: %s\n' % self.type.name.title()
+        header += '#  Updated on: %s\n' % datetime.now().isoformat(' ')
+        header += '#\n'
+
+        return header
+
 
 # YAML library configuration
-def represent_hardware(dumper, data):
-    return dumper.represent_mapping(u'!device-config', data.sparsedict(deep=False))
-
 def represent_hex_quad(dumper, data):
     return dumper.represent_scalar(u'tag:yaml.org,2002:int', '0x%04x' % data)
-
-def represent_flow_seq(dumper, data):
-    return dumper.represent_sequence(u'tag:yaml.org,2002:seq', data, flow_style=True)
 
 def represent_dict_block_map(dumper, data):
     return dumper.represent_mapping(u'tag:yaml.org,2002:map', data._asdict(), flow_style=False)
 
-def represent_block_map(dumper, data):
-    return dumper.represent_mapping(u'tag:yaml.org,2002:map', data, flow_style=False)
-
-def represent_enum_str(dumper, data):
-    return dumper.represent_str(data.name)
-
-yaml.RoundTripLoader.add_constructor(u'!device-config', yaml.RoundTripLoader.construct_yaml_map)
-
-yaml.RoundTripDumper.ignore_aliases = lambda *x: True
-
-yaml.RoundTripDumper.add_multi_representer(Enum, represent_enum_str)
-yaml.RoundTripDumper.add_multi_representer(FlowSequence, represent_flow_seq)
-yaml.RoundTripDumper.add_multi_representer(BlockMapping, represent_block_map)
-
 yaml.RoundTripDumper.add_representer(KeyMapping, represent_block_map)
-yaml.RoundTripDumper.add_representer(Hardware, represent_hardware)
 yaml.RoundTripDumper.add_representer(HexQuad, represent_hex_quad)
 yaml.RoundTripDumper.add_representer(KeyFixupMapping, represent_dict_block_map)
 yaml.RoundTripDumper.add_representer(Point, represent_flow_seq)
