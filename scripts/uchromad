@@ -25,10 +25,10 @@ class UChromaServer(object):
         gbulb.install()
 
 
-
     @asyncio.coroutine
     def _dm_callback(self, action: str, device: BaseUChromaDevice):
         self._logger.info('%s: %s', action, device)
+        device.restore_prefs()
 
 
     def _shutdown_callback(self, loop):

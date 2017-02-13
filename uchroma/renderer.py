@@ -202,6 +202,7 @@ class Renderer(HasTraits):
                     status = yield from self.draw(layer, asyncio.get_event_loop().time())
                 except Exception as err:
                     self.logger.exception("Exception in renderer, exiting now!", exc_info=err)
+                    self.logger.error('Renderer traits: %s', self._trait_values)
                     break
 
                 if not self._running:

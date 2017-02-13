@@ -199,7 +199,7 @@ class Frame(object):
         self._driver.fx_manager.activate('custom_frame')
 
 
-    def commit(self, layers, frame_id: int=None) -> 'Frame':
+    def commit(self, layers, frame_id: int=None, show=True) -> 'Frame':
         """
         Display this frame and prepare for the next frame
 
@@ -214,18 +214,18 @@ class Frame(object):
         """
         img = Frame.compose(layers)
         self._set_frame_data(img, frame_id)
-        self._set_custom_frame()
+        if show:
+            self._set_custom_frame()
 
         return self
 
 
     def reset(self, frame_id: int=None) -> 'Frame':
         """
-        Clear the frame with the base color, flip the buffer and
-        get a fresh start.
+        Clear the frame on the hardware.
 
         :return: This frame instance
         """
-        self.commit([self.create_layer()])
+        self.commit([self.create_layer()], show=False)
 
         return self

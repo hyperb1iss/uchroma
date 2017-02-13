@@ -36,17 +36,22 @@ class Plasma(Renderer):
         self.fps = 15
 
 
+    def _gen_gradient(self):
+        self._gradient = ColorUtils.gradient(self.gradient_length, *self.color_scheme)
+
+
     @observe('color_scheme', 'gradient_length', 'preset')
     def _scheme_changed(self, changed):
+        self.logger.info("Parameters changed: %s", changed)
         if changed.name == 'preset':
             self.color_scheme.clear()
             self.color_scheme = list(changed.new.value)
-
-        self._gradient = ColorUtils.gradient(self.gradient_length, *self.color_scheme)
+        self._gen_gradient()
 
 
     def init(self, frame):
         self._start_time = time.time()
+        self._gen_gradient()
         return True
 
 

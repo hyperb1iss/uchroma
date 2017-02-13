@@ -6,7 +6,7 @@ from enum import Enum
 
 from traitlets import CaselessStrEnum, Int, List, TraitType, Undefined, UseEnum
 
-from uchroma.util import camel_to_snake, to_color
+from uchroma.util import ArgsDict, camel_to_snake, to_color
 
 
 class ColorTrait(TraitType):
@@ -149,6 +149,18 @@ def dict_as_class_traits(obj):
     for k, v in obj.items():
         traits[k] = dict_as_trait(v)
     return traits
+
+
+def get_args_dict(obj):
+    argsdict = ArgsDict()
+    for k in sorted(obj._trait_values.keys()):
+        if k not in ('description', 'hidden', 'meta'):
+            v = obj._trait_values[k]
+            trait = obj.traits()[k]
+            if trait.default_value != v and not trait.read_only \
+                    and not (hasattr(trait, 'write_once') and trait.write_once):
+                argsdict[k] = v
+    return argsdict
 
 
 class TraitsPropertiesMixin(object):

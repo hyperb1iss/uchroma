@@ -6,6 +6,7 @@ from abc import abstractmethod
 
 from traitlets import Bool, HasTraits, Unicode
 
+from uchroma.traits import get_args_dict
 from uchroma.util import camel_to_snake
 
 
@@ -81,8 +82,19 @@ class FXManager(object):
         """
         self._driver = driver
         self._fxmod = fxmod
-
         self._current_fx = (None, None)
+
+
+    def restore_prefs(self, prefs):
+        """
+        Restore last FX from preferences
+        """
+        if prefs.fx is not None:
+            args = {}
+            if prefs.fx_args is not None:
+                args = prefs.fx_args
+
+            self.activate(prefs.fx, **args)
 
 
     @property
@@ -96,6 +108,13 @@ class FXManager(object):
 
 
     def get_fx(self, fx_name) -> BaseFX:
+        """
+        Get the requested effects implementation.
+
+        Returns the last active object if appropriate.
+
+        :param fx_name: The string name of the effect object
+        """
         if self._current_fx[0] == fx_name:
             return self._current_fx[1]
 
@@ -104,7 +123,7 @@ class FXManager(object):
 
     def disable(self) -> bool:
         if 'disable' in self.available_fx:
-            return self.get_fx('disable').apply()
+            return self.activate('disable')
         return False
 
 
@@ -117,8 +136,16 @@ class FXManager(object):
             if fx.has_trait(k):
                 setattr(fx, k, v)
 
+        if fx_name not in ('custom_frame', 'disable') and self._driver.is_animating:
+            self._driver.animation_manager.reset()
+
         if fx.apply():
             self._current_fx = (fx_name, fx)
+
+            if fx_name != 'custom_frame':
+                self._driver.preferences.fx = fx_name
+                self._driver.preferences.fx_args = get_args_dict(fx)
+
             return True
 
         return False

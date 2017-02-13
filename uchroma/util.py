@@ -446,6 +446,18 @@ ObservableList = _observable_factory(list)
 ObservableOrderedDict = _observable_factory(OrderedDict)
 
 
+class Singleton(type):
+    """
+    Metaclass for creating singletons
+    """
+    def __call__(cls, *args, **kwargs):
+        try:
+            return cls.__instance
+        except AttributeError:
+            cls.__instance = super(Singleton, cls).__call__(*args, **kwargs)
+            return cls.__instance
+
+
 class RepeatingTimer(object):
     def __init__(self, interval, func, *args, **kwargs):
         self._interval = interval

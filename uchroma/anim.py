@@ -13,6 +13,7 @@ import numpy as np
 
 from uchroma.frame import Frame
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
+from uchroma.traits import get_args_dict
 from uchroma.util import Ticker
 
 
@@ -184,7 +185,6 @@ class AnimationLoop(object):
 
         self._anim_task = None
         self._error = False
-        self._frame.reset()
 
 
     def _create_buffers(self):
@@ -224,8 +224,6 @@ class AnimationLoop(object):
         if len(self._renderers) == 0:
             self.logger.error("No renderers were configured")
             return False
-
-        self._frame.reset()
 
         self._running = True
 
@@ -399,8 +397,17 @@ class AnimationManager(HasTraits):
                                    *self.renderers,
                                    default_blend_mode=blend_mode)
 
+        self._driver.reset()
+
         if self._loop.start():
             self.running = True
+
+            layers = OrderedDict()
+            for renderer in self.renderers:
+                key = '%s.%s' % (renderer.__class__.__module__, renderer.__class__.__name__)
+                layers[key] = get_args_dict(renderer)
+            self._driver.preferences.layers = layers
+
             return True
 
         return False
@@ -417,17 +424,45 @@ class AnimationManager(HasTraits):
 
         if self._loop.stop():
             self.running = False
+            self._driver.reset()
+
+            self._driver.preferences.layers = {}
             return True
 
         return False
 
 
     def clear_renderers(self) -> bool:
+        """
+        Clear the list of renderers
+        """
         if self.running:
             return False
 
         self.renderers = []
         return True
+
+
+    def reset(self):
+        """
+        Stop animations and clear the renderer list
+        """
+        self.stop()
+        self.clear_renderers()
+
+
+    def restore_prefs(self, prefs):
+        if prefs.layers is not None and len(prefs.layers) > 0:
+            try:
+                for name, args in prefs.layers.items():
+                    self.add_renderer(name, **args)
+                self.start()
+
+            except Exception as err:
+                self._logger.exception('Failed to add renderers, clearing! [%s]',
+                                       prefs.layers, exc_info=err)
+                self.clear_renderers()
+                prefs.layers = {}
 
 
     def __del__(self):

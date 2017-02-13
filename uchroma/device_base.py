@@ -7,6 +7,7 @@ from wrapt import synchronized
 from uchroma.anim import AnimationManager
 from uchroma.input import InputManager
 from uchroma.hardware import Hardware, Quirks
+from uchroma.prefs import PreferenceManager
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand
 from uchroma.util import RepeatingTimer
@@ -49,6 +50,8 @@ class BaseUChromaDevice(object):
 
         self._last_cmd_time = None
 
+        self._prefs = PreferenceManager().get(self.serial_number)
+
         self._input_manager = None
         if input_devices is not None:
             self._input_manager = InputManager(self, input_devices)
@@ -63,7 +66,7 @@ class BaseUChromaDevice(object):
     def _close(self, force: bool=False):
         if self._defer_close:
             if not force:
-                if self.animation_manager is not None and self.animation_manager.running:
+                if self.animation_manager is not None and self.is_animating:
                     return
 
                 self._close_timer.start()
@@ -99,6 +102,13 @@ class BaseUChromaDevice(object):
     @property
     def animation_manager(self):
         return self._animation_manager
+
+
+    @property
+    def is_animating(self):
+        if self.animation_manager is not None:
+            return self.animation_manager.running
+        return False
 
 
     @property
@@ -457,11 +467,27 @@ class BaseUChromaDevice(object):
         return self.hardware.key_mapping
 
 
+    @property
+    def preferences(self):
+        return self._prefs
+
+
     def reset(self) -> bool:
         """
         Reset effects and other configuration to defaults
         """
         return True
+
+
+    def restore_prefs(self):
+        """
+        Restore saved preferences
+        """
+        if self.fx_manager is not None:
+            self.fx_manager.restore_prefs(self.preferences)
+
+        if self.animation_manager is not None:
+            self.animation_manager.restore_prefs(self.preferences)
 
 
     def __repr__(self):

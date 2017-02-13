@@ -8,7 +8,7 @@ from typing import NamedTuple
 
 import ruamel.yaml as yaml
 
-from uchroma.config import BlockMapping, Configuration, FlowSequence, \
+from uchroma.config import BlockMapping, Configuration, FlowSequence, LowerCaseSeq, \
         represent_flow_seq, represent_block_map
 
 
@@ -51,14 +51,6 @@ _Point = NamedTuple('_Point', [('y', int), ('x', int)])
 class Point(_Point, object):
     def __repr__(self):
         return '(%s, %s)' % (self.y, self.x)
-
-
-class LowerCaseSeq(FlowSequence):
-    def __new__(cls, args):
-        items = []
-        for x in range(0, len(args)):
-            items.append(args[x].lower())
-        return super().__new__(cls, args)
 
 
 class PointList(FlowSequence):

@@ -10,6 +10,7 @@ rather than interacting with the hardware directly.
 """
 
 import asyncio
+import logging
 import os
 
 from collections import OrderedDict
@@ -17,6 +18,7 @@ from enum import Enum
 
 from pydbus import SessionBus
 from pydbus.generic import signal
+from traitlets.utils.bunch import Bunch
 
 from uchroma.dbus_utils import ArgSpec, DescriptorBuilder, VariantDict
 from uchroma.input import InputQueue
@@ -368,13 +370,23 @@ class AnimationManagerAPI(object):
         self._driver = driver
         self._bus = bus
         self._path = path
+        self._logger = logging.getLogger('uchroma.animapi')
         self._animgr = driver.animation_manager
+        self._layers = []
+
+        # manually notify, startup order isn't guaranteed
+        with self._animgr.hold_trait_notifications():
+            self._update_layers(Bunch(name='renderers', old=[], new=self._animgr.renderers,
+                                      owner=self, type='change'))
+            self._state_changed(Bunch(name='running', old=False, new=self._animgr.running,
+                                      owner=self, type='change'))
+
         self._animgr.observe(self._update_layers, names=['renderers'])
         self._animgr.observe(self._state_changed, names=['running'])
-        self._layers = []
 
 
     def _update_layers(self, change):
+        self._logger.debug("Layers changed: %s", change)
         if len(change.new) == 0 and len(change.old) > 0:
             for layer in self._layers:
                 layer.unregister()
@@ -397,6 +409,7 @@ class AnimationManagerAPI(object):
 
 
     def _state_changed(self, change):
+        self._logger.debug("State changed: %s", change)
         self.PropertiesChanged('org.chemlab.UChroma.AnimationManager',
                                {'AnimationRunning': self.AnimationRunning}, [])
 
@@ -504,7 +517,6 @@ class DeviceManagerAPI(object):
     def _dm_callback(self, action, device):
 
         if action == 'add':
-            device.reset()
             self._publish_device(device)
 
         elif action == 'remove':
