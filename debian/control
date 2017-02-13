@@ -13,10 +13,19 @@ Package: python3-uchroma
 Section: misc
 Architecture: all
 Depends: python3,
+         python3-evdev (>= 0.6.4),
+         python3-gbulb,
+         python3-gi,
          python3-grapefruit,
          python3-hidapi,
+         python3-hsluv,
          python3-numpy,
-         python3-pyudev
+         python3-pyudev,
+         python3-ruamel.yaml,
+         python3-pydbus,
+         python3-skimage,
+         python3-traitlets,
+         python3-wrapt
 Description: Razer Chroma peripheral interface library (Python 3)
  A library which enables control of color schemes and effects on
  the Razer Chroma line of peripherals.
