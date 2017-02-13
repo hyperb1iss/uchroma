@@ -27,7 +27,6 @@ class UChromaDevice(BaseUChromaDevice):
 
         self._frame_control = None
 
-        self._last_brightness = None
         self._suspended = False
 
 
@@ -101,7 +100,7 @@ class UChromaDevice(BaseUChromaDevice):
         if self._suspended:
             return
 
-        self._last_brightness = self.brightness
+        self.preferences.brightness = self.brightness
         self.brightness = 0.0
 
         self._suspended = True
@@ -118,8 +117,7 @@ class UChromaDevice(BaseUChromaDevice):
             return
 
         self._suspended = False
-
-        self.brightness = self._last_brightness
+        self.brightness = self.preferences.brightness
 
 
     @property
@@ -128,7 +126,7 @@ class UChromaDevice(BaseUChromaDevice):
         The current brightness level of the device lighting
         """
         if self._suspended:
-            return self._last_brightness
+            return self.preferences.brightness
 
         return self._get_brightness()
 
@@ -140,10 +138,10 @@ class UChromaDevice(BaseUChromaDevice):
 
         :param level: Brightness level, 0-100
         """
-        if self._suspended:
-            self._last_brightness = level
-        else:
+        if not self._suspended:
             self._set_brightness(level)
+
+        self.preferences.brightness = level
 
 
     def reset(self) -> bool:

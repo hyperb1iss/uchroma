@@ -464,7 +464,8 @@ class UChromaHeadset(BaseUChromaDevice):
         for num in range(0, bits.color_count):
             data[(num * 4) + 3] = level
 
-        return self.run_command(self._cmd_set_rgb[bits.color_count -1], data)
+        status = self.run_command(self._cmd_set_rgb[bits.color_count -1], data)
+        if status:
+            self.preferences.brightness = brightness
 
-
-
+        return status

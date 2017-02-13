@@ -483,6 +483,9 @@ class BaseUChromaDevice(object):
         """
         Restore saved preferences
         """
+        if hasattr(self, "brightness") and self.preferences.brightness is not None:
+            self.brightness = self.preferences.brightness
+
         if self.fx_manager is not None:
             self.fx_manager.restore_prefs(self.preferences)
 

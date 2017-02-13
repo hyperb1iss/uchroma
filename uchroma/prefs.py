@@ -19,6 +19,7 @@ CONFFILE = os.path.join(CONFDIR, 'preferences.yaml')
 _Preferences = Configuration.create('_Preferences', [ \
     ('last_updated', float),
     ('serial', str),
+    ('brightness', float),
     ('fx', str),
     ('fx_args', BlockMapping),
     ('layers', BlockMapping)], mutable=True, yaml_name=u'!preferences')
@@ -88,4 +89,3 @@ def construct_color(loader, node):
 
 yaml.RoundTripDumper.add_representer(Color, represent_color)
 yaml.RoundTripLoader.add_constructor(u'!color', construct_color)
-
