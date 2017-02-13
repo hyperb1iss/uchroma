@@ -123,9 +123,9 @@ class MagicalEnum(object):
         return _autocast_decorator(cls, fix_enum_arg)
 
 
-def max_keylen(d: dict) -> int:
+def max_keylen(d) -> int:
     """
-    Get the length of the longest key in a dict
+    Get the length of the longest key
     """
     return max(map(len, d))
 

@@ -204,5 +204,4 @@ class DescriptorBuilder(object):
 
         val += "  </interface>\n</node>"
 
-        print(val)
         return val

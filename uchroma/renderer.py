@@ -19,18 +19,9 @@ DEFAULT_FPS = 15
 NUM_BUFFERS = 2
 
 
-_RendererMeta = NamedTuple('_RendererMeta', [('display_name', str), ('description', str),
-                                             ('author', str), ('version', str)])
+RendererMeta = NamedTuple('RendererMeta', [('display_name', str), ('description', str),
+                                           ('author', str), ('version', str)])
 
-
-class RendererMeta(_RendererMeta, Instance):
-
-    read_only = True
-    allow_none = False
-
-    def __init__(self, display_name, description, author, version, *args, **kwargs):
-        super(RendererMeta, self).__init__(klass=_RendererMeta, \
-            args=(display_name, description, author, version), *args, **kwargs)
 
 
 class Renderer(HasTraits):

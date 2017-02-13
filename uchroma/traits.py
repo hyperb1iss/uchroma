@@ -115,10 +115,10 @@ def trait_as_dict(trait) -> dict:
         desc['min'] = trait.min
     if hasattr(trait, 'max'):
         desc['max'] = trait.max
-    if hasattr(trait, 'minlen'):
-        desc['minlen'] = trait.minlen
-    if hasattr(trait, 'maxlen'):
-        desc['maxlen'] = trait.maxlen
+    if hasattr(trait, '_minlen'):
+        desc['minlen'] = trait._minlen
+    if hasattr(trait, '_maxlen'):
+        desc['maxlen'] = trait._maxlen
     return desc
 
 

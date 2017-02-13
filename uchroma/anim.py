@@ -279,7 +279,8 @@ class AnimationLoop(object):
 RendererInfo = NamedTuple('RendererInfo', [('module', types.ModuleType),
                                            ('clazz', type),
                                            ('key', str),
-                                           ('meta', RendererMeta)])
+                                           ('meta', RendererMeta),
+                                           ('traits', dict)])
 
 class AnimationManager(HasTraits):
     """
@@ -319,7 +320,7 @@ class AnimationManager(HasTraits):
                     continue
 
                 key = '%s.%s' % (obj.__module__, obj.__name__)
-                info = RendererInfo(obj.__module__, obj, key, obj.meta)
+                info = RendererInfo(obj.__module__, obj, key, obj.meta, obj.class_traits())
                 self.renderer_info[key] = info
 
 
@@ -332,8 +333,16 @@ class AnimationManager(HasTraits):
         :return: The renderer object
         """
         if name not in self.renderer_info:
-            self._logger.error("Unknown renderer: %s", name)
-            return None
+            # look harder if no package name was given
+            keys = list(self.renderer_info.keys())
+            shortkeys = [v.meta.display_name.lower() for v in self.renderer_info.values()]
+
+            if name.lower() in shortkeys:
+                idx = shortkeys.index(name.lower())
+                name = keys[idx]
+            else:
+                self._logger.error("Unknown renderer: %s", name)
+                return None
 
         info = self.renderer_info[name]
 

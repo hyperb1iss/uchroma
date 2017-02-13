@@ -12,7 +12,7 @@ DEFAULT_SPEED = 8
 class Rainbow(Renderer):
 
     # meta
-    meta = RendererMeta('Color Wash', 'Simple flowing colors', 'Steve Kondik', '1.0')
+    meta = RendererMeta('Rainflow', 'Simple flowing colors', 'Steve Kondik', '1.0')
 
     # configurable traits
     speed = Int(default_value=DEFAULT_SPEED, min=0, max=20)

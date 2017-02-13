@@ -352,7 +352,7 @@ class AnimationManagerAPI(object):
               <arg direction='out' type='b' name='status' />
             </method>
 
-            <property name='AvailableRenderers' type='a{sa{ss}}' access='read' />
+            <property name='AvailableRenderers' type='a{sa{sa{sv}}}' access='read' />
 
             <property name='CurrentRenderers' type='ao' access='read'>
               <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
@@ -421,12 +421,17 @@ class AnimationManagerAPI(object):
 
     @property
     def AvailableRenderers(self) -> list:
+        avail = {}
         infos = self._animgr.renderer_info
-        result = OrderedDict()
-        for key, info in infos.items():
-            result[key] = info.meta._asdict()
 
-        return result
+        for key, info in infos.items():
+            argsdict = {}
+            argsdict['meta'] = VariantDict(info.meta._asdict())
+            for k, v in info.traits.items():
+                argsdict[k] = VariantDict(trait_as_dict(v))
+            avail[key] = argsdict
+
+        return avail
 
 
     def AddRenderer(self, name: str, traits: dict) -> str:

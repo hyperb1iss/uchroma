@@ -6,6 +6,8 @@ import sys
 
 from collections import OrderedDict
 
+from traitlets import Undefined
+
 from uchroma import __version__
 from uchroma.blending import BlendOp
 from uchroma.cmd import UChromaConsoleUtil
@@ -145,7 +147,10 @@ class UChromaTool(UChromaConsoleUtil):
         s_traits = sorted(OrderedDict(traits).items())
 
         for name, trait in s_traits:
-            if name == 'description' or name =='hidden':
+            if name in ('description', 'hidden', 'background_color', 'blend_mode', 'opacity'):
+                continue
+
+            if trait.read_only or (hasattr(trait, 'write_once') and trait.write_once):
                 continue
 
             trait_type = re.sub(r'Trait$', '', trait.__class__.__name__).lower()
@@ -160,17 +165,22 @@ class UChromaTool(UChromaConsoleUtil):
 
             constraints = []
             if hasattr(trait, 'min'):
-                constraints.append('min value: %s' % trait.min)
+                constraints.append('min: %s' % trait.min)
             if hasattr(trait, 'max'):
-                constraints.append('max value: %s' % trait.max)
-            if hasattr(trait, 'minlen'):
-                constraints.append('min length: %s' % trait.minlen)
-            if hasattr(trait, 'maxlen'):
-                constraints.append('max length: %s' % trait.maxlen)
+                constraints.append('max: %s' % trait.max)
+            if hasattr(trait, '_minlen') and trait._minlen > 0:
+                constraints.append('min length: %s' % trait._minlen)
+            if hasattr(trait, '_maxlen') and trait._maxlen != sys.maxsize:
+                constraints.append('max length: %s' % trait._maxlen)
+            if hasattr(trait, 'default_value') and trait.default_value is not Undefined:
+                constraints.append('default: %s' % trait.default_value)
 
-            print('%*s: "%s" (%s): %s' % (indent, '', name, trait_type, desc))
             if len(constraints) > 0:
-                print('%*s: - %s' % (indent, '', ', '.join(constraints)))
+                constraints = '[' + (', '.join(constraints)) + ']'
+            else:
+                constraints = ''
+
+            print('%*s| "%s" (%s): %s %s' % (indent, '', name, trait_type, desc, constraints))
 
 
     def _list_fx(self, driver):
@@ -194,6 +204,7 @@ class UChromaTool(UChromaConsoleUtil):
             print('[ %*s]: %s' % (keylen, name, desc))
             self._show_traits(traits, indent=keylen + 3)
             print('\n')
+
 
     def _fx_parser(self, args):
         driver = self.get_driver(args)
@@ -303,10 +314,17 @@ class UChromaTool(UChromaConsoleUtil):
             self.print_err('No renderers found.')
             sys.exit(1)
 
-        print('\nAvailable renderers:\n')
+        avail = OrderedDict(sorted(avail.items(), key=lambda k_v: k_v[1]['meta']['display_name']))
+        keylen = max_keylen([v['meta']['display_name'] for k, v in avail.items()])
 
-        for k, v in avail.items():
-            print('[ %*s]: %s' % (max_keylen(avail), k, v))
+        print('\nAvailable renderers and arguments:\n')
+
+        for v in avail.values():
+            meta = v.pop('meta')
+            traits = dict_as_class_traits(v)
+            print('[ %*s]: %s' % (keylen, meta['display_name'], meta['description']))
+            self._show_traits(traits, indent=keylen + 3)
+            print('\n')
 
 
     def _get_anim_args(self, argspec, variant=False):
@@ -339,6 +357,7 @@ class UChromaTool(UChromaConsoleUtil):
             sys.exit(0)
 
         if args.clear:
+            driver.StopAnimation()
             if not driver.ClearRenderers():
                 self.print_err("Failed to clear animation layers")
                 sys.exit(1)
