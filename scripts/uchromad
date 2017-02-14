@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import asyncio
 import functools
 import logging
@@ -13,16 +14,36 @@ from uchroma.device_base import BaseUChromaDevice
 from uchroma.device_manager import UChromaDeviceManager
 
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
+
+TRACE = 5
 
 class UChromaServer(object):
 
     def __init__(self):
-        self._logger = logging.getLogger('uchroma.server')
         self._dbus = None
 
         gbulb.install()
+
+        parser = argparse.ArgumentParser(description='UChroma daemon')
+        parser.add_argument("-v", "--version", action='version', version='self.version')
+        parser.add_argument("-d", "--debug", action='append_const', const=True,
+                            help='Enable debug output')
+
+        args = parser.parse_args()
+
+        self._logger = logging.getLogger('uchroma.server')
+
+        if args.debug is not None:
+            if len(args.debug) > 0:
+                level = logging.DEBUG
+                if len(args.debug) > 1:
+                    level = TRACE
+                    self._logger.debug("TRACE logging enabled!")
+                logging.getLogger().setLevel(level)
+                asyncio.get_event_loop().set_debug(True)
+
 
 
     @asyncio.coroutine
