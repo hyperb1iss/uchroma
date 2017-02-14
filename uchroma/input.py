@@ -9,10 +9,8 @@ from typing import NamedTuple
 import evdev
 
 from uchroma.hardware import PointList
-from uchroma.util import clamp
+from uchroma.util import clamp, ensure_future, LOG_TRACE
 
-
-TRACE = 5
 
 class InputManager(object):
 
@@ -67,7 +65,7 @@ class InputManager(object):
                 event_device = evdev.InputDevice(input_device)
                 self._event_devices.append(event_device)
 
-                task = asyncio.ensure_future(self._evdev_callback(event_device))
+                task = ensure_future(self._evdev_callback(event_device))
                 task.add_done_callback(functools.partial(self._evdev_close, event_device))
                 self._tasks.append(task)
 
@@ -116,11 +114,11 @@ class InputManager(object):
         self._event_callbacks.remove(callback)
 
         if len(self._event_callbacks) == 0:
-            asyncio.ensure_future(self._close_input_devices())
+            ensure_future(self._close_input_devices())
 
 
     def shutdown(self):
-        for callback in self._event_callbacks():
+        for callback in self._event_callbacks:
             self.remove_callback(callback)
 
 
@@ -290,7 +288,7 @@ class InputQueue(object):
                               keycode=ev.keycode, scancode=ev.scancode,
                               keystate=ev.keystate, coords=coords, data={})
 
-        if self._logger.isEnabledFor(TRACE):
+        if self._logger.isEnabledFor(LOG_TRACE):
             self._logger.debug('Input event: %s', event)
 
         if self._expire_time is not None:

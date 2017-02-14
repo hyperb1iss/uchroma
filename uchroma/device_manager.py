@@ -15,6 +15,7 @@ from uchroma.keyboard import UChromaKeyboard
 from uchroma.keypad import UChromaKeypad
 from uchroma.laptop import UChromaLaptop
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
+from uchroma.util import ensure_future
 
 
 class UChromaDeviceManager(object):
@@ -105,7 +106,7 @@ class UChromaDeviceManager(object):
                 self._devices[device.key] = device
 
                 if self._monitor and self._callbacks is not None and len(self._callbacks) > 0:
-                    asyncio.ensure_future(self._fire_callbacks('add', device), loop=self._loop)
+                    ensure_future(self._fire_callbacks('add', device), loop=self._loop)
 
 
     def _next_index(self):
@@ -208,7 +209,7 @@ class UChromaDeviceManager(object):
                 if removed is not None:
                     removed.close()
                     if self._callbacks is not None and len(self._callbacks) > 0:
-                        asyncio.ensure_future( \
+                        ensure_future( \
                             self._fire_callbacks('remove', removed), loop=self._loop)
 
         else:
@@ -246,7 +247,7 @@ class UChromaDeviceManager(object):
 
         if self._callbacks is not None and len(self._callbacks) > 0:
             for device in self.devices.values():
-                asyncio.ensure_future(self._fire_callbacks('add', device), loop=self._loop)
+                ensure_future(self._fire_callbacks('add', device), loop=self._loop)
 
         self._logger.debug('Udev monitor started')
 

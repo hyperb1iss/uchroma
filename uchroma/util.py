@@ -19,6 +19,11 @@ from grapefruit import Color
 from numpy import interp
 
 
+# Trace log levels
+LOG_TRACE = 5
+LOG_PROTOCOL_TRACE = 4
+
+
 # Type hint for decorated color arguments
 ColorType = typing.Union[Color, str, typing.Iterable[int], typing.Iterable[float], None]
 ColorList = typing.List[ColorType]
@@ -399,6 +404,27 @@ def lerp_degrees(start: float, end: float, amount: float) -> float:
     delta = math.atan2(math.sin(end_r - start_r), math.cos(end_r - start_r))
     return (math.degrees(start_r + delta * amount) + 360.0) % 360.0
 
+
+def ensure_future(coro, loop=None):
+    """
+    Wrapper for asyncio.ensure_future which dumps exceptions
+    """
+    if loop is None:
+        loop = asyncio.get_event_loop()
+    fut = asyncio.ensure_future(coro)
+    def exception_logging_done_cb(fut):
+        try:
+            e = fut.exception()
+        except asyncio.CancelledError:
+            return
+        if e is not None:
+            loop.call_exception_handler({
+                'message': 'Unhandled exception in async future',
+                'future': fut,
+                'exception': e,
+            })
+    fut.add_done_callback(exception_logging_done_cb)
+    return fut
 
 
 _CHANGER_METHODS = set("__setitem__ __setslice__ __delitem__ update append extend add insert pop popitem remove setdefault __iadd__".split())

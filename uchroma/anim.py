@@ -14,7 +14,7 @@ import numpy as np
 from uchroma.frame import Frame
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
 from uchroma.traits import get_args_dict
-from uchroma.util import Ticker
+from uchroma.util import ensure_future, Ticker, LOG_TRACE
 
 
 class AnimationLoop(object):
@@ -43,7 +43,6 @@ class AnimationLoop(object):
 
         self._running = False
         self._anim_task = None
-        self._error = False
 
         self._waiters = []
         self._tasks = []
@@ -114,7 +113,7 @@ class AnimationLoop(object):
         # schedule tasks to wait on each renderer queue
         for r_idx in range(0, len(self._renderers)):
             if self._waiters[r_idx] is None or self._waiters[r_idx].done():
-                self._waiters[r_idx] = asyncio.ensure_future(self._dequeue(r_idx))
+                self._waiters[r_idx] = ensure_future(self._dequeue(r_idx))
 
         # async wait for at least one completion
         yield from asyncio.wait(self._waiters, return_when=futures.FIRST_COMPLETED)
@@ -129,7 +128,9 @@ class AnimationLoop(object):
         """
         Merge layers from all renderers and commit to the hardware
         """
-        self._frame.commit(self._active_bufs)
+        if self.logger.isEnabledFor(LOG_TRACE):
+            self.logger.debug("Layers: %s", self._active_bufs)
+        self._frame.commit([layer for layer in self._active_bufs if layer is not None])
 
 
     @asyncio.coroutine
@@ -147,7 +148,7 @@ class AnimationLoop(object):
 
         # start the renderers
         for renderer in self._renderers:
-            self._tasks.append(asyncio.ensure_future(renderer._run()))
+            self._tasks.append(ensure_future(renderer._run()))
 
         tick = Ticker(1 / MAX_FPS)
 
@@ -156,7 +157,7 @@ class AnimationLoop(object):
             with tick:
                 yield from self._get_layers()
 
-                if not self._running or self._error:
+                if not self._running:
                     break
 
                 # compose and display the frame
@@ -166,9 +167,6 @@ class AnimationLoop(object):
             yield from tick.tick()
 
         self.logger.info("AnimationLoop is exiting..")
-
-        if self._error:
-            self.logger.error("Shutting down event loop due to error")
 
         yield from asyncio.gather(*self._tasks)
 
@@ -184,7 +182,6 @@ class AnimationLoop(object):
         self._renderers.clear()
 
         self._anim_task = None
-        self._error = False
 
 
     def _create_buffers(self):
@@ -205,6 +202,8 @@ class AnimationLoop(object):
                 layer = self._frame.create_layer()
                 layer.blend_mode = self._default_blend_mode
                 self._renderers[r_idx]._free_layer(layer)
+                self.logger.debug("Buffer created, renderer=%s buffer=%s",
+                                  self._renderers[r_idx], layer)
 
 
     def start(self) -> bool:
@@ -229,7 +228,7 @@ class AnimationLoop(object):
 
         self._create_buffers()
 
-        self._anim_task = asyncio.ensure_future(self._animate())
+        self._anim_task = ensure_future(self._animate())
         self._anim_task.add_done_callback(self._renderer_done)
 
         return True
@@ -247,22 +246,26 @@ class AnimationLoop(object):
 
         self._running = False
 
+        waitlist = []
+
         for renderer in self._renderers:
             renderer._stop()
 
         for task in self._tasks:
             if not task.done():
                 task.cancel()
+                waitlist.append(task)
 
         for waiter in self._waiters:
             if not waiter.done():
                 waiter.cancel()
+                waitlist.append(waiter)
 
         if self._anim_task is not None and not self._anim_task.done():
             self._anim_task.cancel()
+            waitlist.append(self._anim_task)
 
-        yield from asyncio.wait([*self._tasks, *self._waiters, self._anim_task],
-                                return_when=asyncio.ALL_COMPLETED)
+        yield from asyncio.wait(waitlist, return_when=asyncio.ALL_COMPLETED)
 
         self.logger.info("AnimationLoop stopped")
 
@@ -271,7 +274,7 @@ class AnimationLoop(object):
         if not self._running:
             return False
 
-        asyncio.ensure_future(self._stop())
+        ensure_future(self._stop())
 
         return True
 

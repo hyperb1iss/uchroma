@@ -9,11 +9,7 @@ import numpy as np
 
 from uchroma.byte_args import ByteArgs
 from uchroma.crc import fast_crc
-from uchroma.util import smart_delay
-
-
-# log level for protocol trace
-TRACE = 5
+from uchroma.util import LOG_PROTOCOL_TRACE, smart_delay
 
 
 # response codes
@@ -107,7 +103,7 @@ class RazerReport(object):
 
 
     def _hexdump(self, data, tag=""):
-        if self._logger.isEnabledFor(TRACE):
+        if self._logger.isEnabledFor(LOG_PROTOCOL_TRACE):
             self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 
