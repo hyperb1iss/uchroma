@@ -148,7 +148,7 @@ class DescriptorBuilder(object):
             elif isinstance(trait, ColorTrait):
                 sig = 's'
             elif isinstance(trait, ColorSchemeTrait):
-                sig = 's'
+                sig = 'as'
             elif isinstance(trait, ColorPresetTrait):
                 sig = 's'
             elif isinstance(trait, RendererMeta):
