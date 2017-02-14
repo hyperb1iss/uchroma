@@ -111,14 +111,15 @@ def trait_as_dict(trait) -> dict:
     if value is not Undefined:
         desc['default_value'] = value
 
-    if hasattr(trait, 'min'):
+    if hasattr(trait, 'min') and trait.min is not None:
         desc['min'] = trait.min
-    if hasattr(trait, 'max'):
+    if hasattr(trait, 'max') and trait.max is not None and trait.max < sys.maxsize:
         desc['max'] = trait.max
-    if hasattr(trait, '_minlen'):
+    if hasattr(trait, '_minlen') and trait._minlen is not None:
         desc['minlen'] = trait._minlen
-    if hasattr(trait, '_maxlen'):
+    if hasattr(trait, '_maxlen') and trait._maxlen is not None and trait._maxlen < sys.maxsize:
         desc['maxlen'] = trait._maxlen
+
     return desc
 
 

@@ -22,7 +22,7 @@ def _dbus_primitive(obj):
     elif isinstance(obj, str):
         sig = 's'
     elif isinstance(obj, int):
-        sig = 'i'
+        sig = 'x'
     elif isinstance(obj, float):
         sig = 'd'
     return sig
