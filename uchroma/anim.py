@@ -422,7 +422,7 @@ class AnimationManager(HasTraits):
         return False
 
 
-    def stop(self) -> bool:
+    def stop(self, shutdown=False) -> bool:
         """
         Stop the currently running animation
 
@@ -435,7 +435,9 @@ class AnimationManager(HasTraits):
             self.running = False
             self._driver.reset()
 
-            self._driver.preferences.layers = {}
+            if not shutdown:
+                self._driver.preferences.layers = {}
+
             return True
 
         return False

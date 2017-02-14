@@ -2,7 +2,7 @@
 
 import argparse
 import asyncio
-import functools
+import atexit
 import logging
 import signal
 import sys
@@ -35,6 +35,8 @@ class UChromaServer(object):
 
         self._logger = logging.getLogger('uchroma.server')
 
+        self._loop = asyncio.get_event_loop()
+
         if args.debug is not None:
             if len(args.debug) > 0:
                 level = logging.DEBUG
@@ -42,7 +44,7 @@ class UChromaServer(object):
                     level = TRACE
                     self._logger.debug("TRACE logging enabled!")
                 logging.getLogger().setLevel(level)
-                asyncio.get_event_loop().set_debug(True)
+                self._loop.set_debug(True)
 
 
 
@@ -52,42 +54,47 @@ class UChromaServer(object):
         device.restore_prefs()
 
 
-    def _shutdown_callback(self, loop):
+    def _shutdown_callback(self):
         self._logger.info("Shutting down")
-        loop.stop()
+
+        self._loop.stop()
 
 
     def run(self):
         dm = UChromaDeviceManager()
         dm.callbacks.append(self._dm_callback)
 
+        atexit.register(UChromaServer.exit, self._loop)
+
         self._dbus = DeviceManagerAPI(dm)
 
-        loop = asyncio.get_event_loop()
-
         for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, functools.partial(self._shutdown_callback, loop))
+            self._loop.add_signal_handler(sig, self._shutdown_callback)
 
         try:
             dm.monitor_start()
             self._dbus.run()
 
-            loop.run_forever()
+            self._loop.run_forever()
 
         except KeyboardInterrupt:
             pass
 
         finally:
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                self._loop.remove_signal_handler(sig)
+
             dm.monitor_stop()
             dm.close_devices()
 
-            done, pending = loop.run_until_complete(asyncio.gather(*list(asyncio.Task.all_tasks())))
-            print('pending tasks: %s' % pending)
 
-            for task in done:
-                done.result()
-
+    @staticmethod
+    def exit(loop):
+        try:
+            loop.run_until_complete(asyncio.gather(*list(asyncio.Task.all_tasks())))
             loop.close()
+        except KeyboardInterrupt:
+            pass
 
 
 if __name__ == '__main__':

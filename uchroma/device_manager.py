@@ -221,7 +221,7 @@ class UChromaDeviceManager(object):
         Close all open devices and perform cleanup
         """
         for device in self.devices.values():
-            device.close()
+            device.shutdown()
         self._devices.clear()
 
 

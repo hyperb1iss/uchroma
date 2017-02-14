@@ -45,19 +45,17 @@ class InputManager(object):
 
                         for callback in self._event_callbacks:
                             yield from callback(ev)
-                            if not self._opened:
-                                return
 
-            except (OSError, IOError, asyncio.futures.InvalidStateError) as err:
-                if not isinstance(err, asyncio.futures.InvalidStateError):
-                    self._logger.exception("Event device error", exc_info=err)
+                if not self._opened:
+                    return
+
+            except (OSError, IOError) as err:
+                self._logger.exception("Event device error", exc_info=err)
                 break
 
 
     def _evdev_close(self, event_device, future):
         self._logger.info('Closing event device %s', event_device)
-        event_device.close()
-        self._event_devices.remove(event_device)
 
 
     def _open_input_devices(self):
@@ -76,7 +74,7 @@ class InputManager(object):
                 self._logger.info('Opened event device %s', event_device)
 
             except Exception as err:
-                self.logger.exception("Failed to open device: %s", input_device, exc_info=err)
+                self._logger.exception("Failed to open device: %s", input_device, exc_info=err)
 
         if len(self._event_devices) > 0:
             self._opened = True
@@ -84,14 +82,22 @@ class InputManager(object):
         return False
 
 
+    @asyncio.coroutine
     def _close_input_devices(self):
         if not hasattr(self, '_opened') or not self._opened:
             return
 
         self._opened = False
 
+        for event_device in self._event_devices:
+            asyncio.get_event_loop().remove_reader(event_device.fileno())
+            event_device.close()
+
         for task in self._tasks:
             task.cancel()
+
+        yield from asyncio.wait(self._tasks)
+        self._event_devices.clear()
 
 
     def add_callback(self, callback):
@@ -110,12 +116,12 @@ class InputManager(object):
         self._event_callbacks.remove(callback)
 
         if len(self._event_callbacks) == 0:
-            self._close_input_devices()
+            asyncio.ensure_future(self._close_input_devices())
 
 
     def shutdown(self):
-        self._close_input_devices()
-        self._event_callbacks.clear()
+        for callback in self._event_callbacks():
+            self.remove_callback(callback)
 
 
     def grab(self, excl: bool):

@@ -63,6 +63,13 @@ class BaseUChromaDevice(object):
         self._fx_manager = None
 
 
+    def shutdown(self):
+        if self.animation_manager is not None:
+            self.animation_manager.stop(shutdown=True)
+
+        self.close(force=True)
+
+
     def _close(self, force: bool=False):
         if self._defer_close:
             if not force:
