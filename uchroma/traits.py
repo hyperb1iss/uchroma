@@ -18,7 +18,7 @@ class ColorTrait(TraitType):
     default_value = None
     info_text = "A color in HTML string format (#8080ff, 'red', etc)"
 
-    def __init__(self, default_value='black', allow_none=True, **kwargs):
+    def __init__(self, default_value=Undefined, allow_none=True, **kwargs):
         super(ColorTrait, self).__init__(default_value=default_value,
                                          allow_none=allow_none, **kwargs)
 
@@ -185,8 +185,8 @@ class TraitsPropertiesMixin(object):
             if isinstance(trait, ColorSchemeTrait):
                 return [x.html for x in value]
             if isinstance(trait, ColorTrait):
-                if value is None:
-                    return 'black'
+                if value is None or value is Undefined:
+                    return ''
                 return value.html
             if isinstance(trait, tuple) and hasattr(trait, '_asdict'):
                 return trait._asdict()
