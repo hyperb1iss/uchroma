@@ -55,7 +55,8 @@ class UChromaServer(object):
     @asyncio.coroutine
     def _dm_callback(self, action: str, device: BaseUChromaDevice):
         self._logger.info('%s: %s', action, device)
-        ensure_future(self._restore_prefs(device))
+        if action == 'add':
+            ensure_future(self._restore_prefs(device))
 
 
     def _shutdown_callback(self):
