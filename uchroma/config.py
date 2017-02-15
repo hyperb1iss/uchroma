@@ -172,7 +172,7 @@ class Configuration(Sequence, object):
             return item
 
         if hasattr(self, 'parent') and self.parent is not None:
-            return object.__getattribute__(self.parent, key)
+            return self.parent.__getattribute__(key)
 
         return None
 
