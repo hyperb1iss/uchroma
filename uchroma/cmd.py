@@ -2,9 +2,10 @@
 """
 Various helper functions that are used across the library.
 """
-import argparse
 import logging
 import sys
+
+from argparse import ArgumentParser
 
 from uchroma.client import UChromaClient
 from uchroma.version import __version__
@@ -15,7 +16,7 @@ class UChromaConsoleUtil(object):
     A base class for command-line utilities
     """
     def __init__(self):
-        parser = argparse.ArgumentParser(description=self.description)
+        parser = ArgumentParser(description=self.description)
 
         parser.add_argument("-v", "--version", action='version', version='self.version')
         parser.add_argument("--debug", action='store_true', help='Enable debug output')

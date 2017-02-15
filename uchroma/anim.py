@@ -466,6 +466,8 @@ class AnimationManager(HasTraits):
 
 
     def restore_prefs(self, prefs):
+        self._logger.debug('Restoring layers: %s', prefs.layers)
+
         if prefs.layers is not None and len(prefs.layers) > 0:
             try:
                 for name, args in prefs.layers.items():

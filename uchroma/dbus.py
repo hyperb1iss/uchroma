@@ -23,7 +23,7 @@ from traitlets.utils.bunch import Bunch
 from uchroma.dbus_utils import ArgSpec, DescriptorBuilder, VariantDict
 from uchroma.input import InputQueue
 from uchroma.traits import TraitsPropertiesMixin, trait_as_dict
-from uchroma.util import camel_to_snake, snake_to_camel
+from uchroma.util import camel_to_snake, ensure_future, snake_to_camel
 
 
 def dev_mode_enabled():
@@ -61,12 +61,16 @@ class DeviceAPI(object):
                    'zones': 'as'}
 
 
-    def __init__(self, driver):
+    def __init__(self, driver, logger):
         self._driver = driver
+        self._logger = logger
         self.__class__.dbus = self._get_descriptor()
         self._signal_input = False
         self._input_task = None
         self._input_queue = None
+
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.debug('Device API attached: %s', self.__class__.dbus)
 
 
     def __getattribute__(self, name):
@@ -122,7 +126,7 @@ class DeviceAPI(object):
                 if self._input_queue is None:
                     self._input_queue = InputQueue(self._driver)
                 self._input_queue.attach()
-                self._input_task = asyncio.ensure_future(self._dev_mode_input())
+                self._input_task = ensure_future(self._dev_mode_input())
             else:
                 self._input_queue.detach()
                 self._input_task.cancel()
@@ -253,8 +257,9 @@ class FXManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver):
+    def __init__(self, driver, logger):
         self._driver = driver
+        self._logger = logger
         self._current_fx = None
         self._current_fx_args = OrderedDict()
 
@@ -311,14 +316,33 @@ class FXManagerAPI(object):
 
 class LayerAPI(TraitsPropertiesMixin, object):
 
-    def __init__(self, layer, *args, **kwargs):
+    def __init__(self, layer, logger, *args, **kwargs):
         super(LayerAPI, self).__init__(*args, **kwargs)
 
+        self._logger = logger
         self._delegate = layer
         self.__class__.dbus = self._get_descriptor()
 
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.debug('Layer created: %s', self.__class__.dbus)
+
+
     def _get_descriptor(self):
-        builder = DescriptorBuilder(self._delegate, 'org.chemlab.UChroma.Layer')
+        exclude = ('blend_mode', 'opacity')
+        if self._delegate.zorder > 0:
+            exclude = ('background_color',)
+
+        builder = DescriptorBuilder(self._delegate, 'org.chemlab.UChroma.Layer', exclude)
+
+        for k, v in self._delegate.meta._asdict().items():
+            attrib = snake_to_camel(k)
+            setattr(self, attrib, v)
+            builder.add_property(attrib, 's')
+
+        setattr(self, 'Key', '%s.%s' % (self._delegate.__module__,
+                                        self._delegate.__class__.__name__))
+        builder.add_property('Key', 's')
+
         return builder.with_user_args('GetUserArgs').build()
 
 
@@ -365,12 +389,12 @@ class AnimationManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver, bus, path):
+    def __init__(self, driver, logger, bus, path):
         assert driver.animation_manager is not None, 'Animations not supported for this device'
         self._driver = driver
         self._bus = bus
         self._path = path
-        self._logger = logging.getLogger('uchroma.animapi')
+        self._logger = logger
         self._animgr = driver.animation_manager
         self._layers = []
 
@@ -393,7 +417,7 @@ class AnimationManagerAPI(object):
         elif len(change.new) > len(change.old):
             layer = change.new[-1]
             with layer.hold_trait_notifications():
-                layerapi = LayerAPI(layer)
+                layerapi = LayerAPI(layer, self._logger)
                 path = self._layer_path(layer.zorder)
                 self._layers.append(self._bus.register_object(path, layerapi, None))
 
@@ -493,7 +517,9 @@ class DeviceManagerAPI(object):
 
     def _publish_device(self, device):
 
-        devapi = DeviceAPI(device)
+        logger = logging.getLogger('uchroma.deviceapi-%d' % device.device_index)
+
+        devapi = DeviceAPI(device, logger)
 
         path = DeviceAPI._get_bus_path(device)
 
@@ -502,11 +528,11 @@ class DeviceManagerAPI(object):
 
         if device.fx_manager is not None:
             self._devs[path].append(self._bus.register_object( \
-                path, FXManagerAPI(device), None))
+                path, FXManagerAPI(device, logger), None))
 
         if device.animation_manager is not None:
             self._devs[path].append(self._bus.register_object( \
-                path, AnimationManagerAPI(device, self._bus, path), None))
+                path, AnimationManagerAPI(device, logger, self._bus, path), None))
 
 
     def _unpublish_device(self, device):

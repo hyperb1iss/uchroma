@@ -36,6 +36,8 @@ class UChromaTool(UChromaConsoleUtil):
         dump = sub.add_parser('dump', help='Dump device info')
         dump.add_argument("-d", "--device", type=str,
                           help='HID device to use (/dev/hidrawX or USB identifier)')
+        dump.add_argument("-w", "--wide", action="store_true",
+                          help="Wide output (don't truncate long lines")
         dump.set_defaults(func=self._dump_parser)
         return dump
 
@@ -115,7 +117,7 @@ class UChromaTool(UChromaConsoleUtil):
         anim.add_argument('-q', '--stop', action='store_true',
                           help='Stops the currently running animation')
         anim.add_argument('-c', '--clear', action='store_true',
-                          help='Clear the current animation settings')
+                          help='Stop and clear the current animation settings')
         anim.add_argument('-m', '--modify', type=str, action='append',
                           help='Modify an existing animation layer')
         anim.add_argument('-b', '--blend', type=str,
@@ -201,8 +203,8 @@ class UChromaTool(UChromaConsoleUtil):
             if 'description' in traits:
                 desc = traits['description'].default_value
 
-            print('[ %*s]: %s' % (keylen, name, desc))
-            self._show_traits(traits, indent=keylen + 3)
+            print('%*s | %s' % (keylen, name, desc))
+            self._show_traits(traits, indent=keylen + 1)
             print('\n')
 
 
@@ -279,14 +281,52 @@ class UChromaTool(UChromaConsoleUtil):
 
 
 
+    @staticmethod
+    def ellipsize(line: str, length: int=80):
+        if not isinstance(line, str):
+            line = repr(line)
+
+        if len(line) < length:
+            return line
+        return '%s(...)' % line[:length]
+
+
     def _dump_parser(self, args):
         driver = self.get_driver(args)
         result = driver.GetAll('org.chemlab.UChroma.Device')
-
+        keylen = max_keylen(result)
         props = sorted(OrderedDict(result).items())
+
+        layerargs = []
+        if hasattr(driver, 'CurrentRenderers'):
+            num_renderers = len(driver.CurrentRenderers)
+            if num_renderers > 0:
+                for layer_idx in range(0, num_renderers):
+                    layer = self._client.get_layer(driver, layer_idx)
+                    layerargs.append(ArgsDict(sorted( \
+                        layer.GetAll('org.chemlab.UChroma.Layer').items())))
+                    keylen = max(keylen, max_keylen(layerargs))
+
+
         print('\nDevice properties:\n')
         for k, v in props:
-            print('[ %*s]: %s' % (max_keylen(result), k, v))
+            if not args.wide:
+                v = UChromaTool.ellipsize(v)
+            print(' %*s |  %s' % (keylen, k, v))
+
+        if len(layerargs) > 0:
+            print('\n\nAnimation renderer state:\n')
+            for layer in layerargs:
+                print(' %*s |  %s' % \
+                    (keylen, ('Layer %d' % int(layer.get('Zorder'))), layer.get('Key')))
+                print(' %s' % ('-' * (keylen + 80)))
+
+                for k, v in layer.items():
+                    if k not in ('Zorder', 'Key'):
+                        print(' %*s |  %s' % (keylen, k, v))
+
+                print('\n')
+
         sys.exit(0)
 
 
@@ -322,8 +362,8 @@ class UChromaTool(UChromaConsoleUtil):
         for v in avail.values():
             meta = v.pop('meta')
             traits = dict_as_class_traits(v)
-            print('[ %*s]: %s' % (keylen, meta['display_name'], meta['description']))
-            self._show_traits(traits, indent=keylen + 3)
+            print('%*s : %s' % (keylen, meta['display_name'], meta['description']))
+            self._show_traits(traits, indent=keylen + 1)
             print('\n')
 
 

@@ -91,13 +91,14 @@ class DescriptorBuilder(object):
       api.__class__.dbus = builder.build()
       bus.register_object(path, api, None)
     """
-    def __init__(self, obj, interface_name):
+    def __init__(self, obj, interface_name, exclude=None):
         self._interface_name = interface_name
         self._obj = obj
         self._ro_props = OrderedDict()
         self._rw_props = OrderedDict()
         self._methods = []
         self._signals = []
+        self._exclude = exclude
 
         if isinstance(obj, HasTraits):
             self._parse_traits()
@@ -133,6 +134,9 @@ class DescriptorBuilder(object):
 
     def _parse_traits(self):
         for name, trait in self._obj.traits().items():
+            if self._exclude is not None and name in self._exclude:
+                continue
+
             sig = None
             if isinstance(trait, Unicode):
                 sig = 's'
