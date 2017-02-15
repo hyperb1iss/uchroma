@@ -8,8 +8,8 @@ from typing import NamedTuple
 
 import ruamel.yaml as yaml
 
-from uchroma.config import BlockMapping, Configuration, FlowSequence, LowerCaseSeq, \
-        represent_flow_seq, represent_block_map
+from uchroma.config import Configuration, FlowSequence, LowerCaseSeq, \
+        represent_flow_seq
 
 
 RAZER_VENDOR_ID = 0x1532
@@ -67,16 +67,13 @@ class KeyMapping(OrderedDict):
     def __setitem__(self, key, value, **kwargs):
         super().__setitem__(key, PointList(value), **kwargs)
 
-class MacroKeys(BlockMapping):
-    pass
-
 _KeyFixupMapping = NamedTuple('_KeyFixupMapping', [('copy', PointList),
                                                    ('delete', PointList),
                                                    ('insert', PointList)])
 _KeyFixupMapping.__new__.__defaults__ = (None,) * len(_KeyFixupMapping._fields)
 class KeyFixupMapping(_KeyFixupMapping):
     def _asdict(self):
-        return BlockMapping([x for x in zip(self._fields, self) if x[1] is not None])
+        return OrderedDict([x for x in zip(self._fields, self) if x[1] is not None])
 
 Zone = NamedTuple('Zone', [('name', str), ('coord', Point), ('width', int), ('height', int)])
 
@@ -100,7 +97,7 @@ BaseHardware = Configuration.create("BaseHardware", [ \
     ('key_fixup_mapping', KeyFixupMapping),
     ('key_row_offsets', tuple),
     ('supported_leds', tuple),
-    ('macro_keys', MacroKeys),
+    ('macro_keys', OrderedDict),
     ('is_wireless', bool),
     ('revision', int),
     ('assets', dict)], yaml_name=u'!device-config')
@@ -199,11 +196,10 @@ class Hardware(BaseHardware):
 def represent_hex_quad(dumper, data):
     return dumper.represent_scalar(u'tag:yaml.org,2002:int', '0x%04x' % data)
 
-def represent_dict_block_map(dumper, data):
-    return dumper.represent_mapping(u'tag:yaml.org,2002:map', data._asdict(), flow_style=False)
+def represent_namedtuple(dumper, data):
+    return dumper.represent_ordereddict(data._asdict())
 
-yaml.RoundTripDumper.add_representer(KeyMapping, represent_block_map)
 yaml.RoundTripDumper.add_representer(HexQuad, represent_hex_quad)
-yaml.RoundTripDumper.add_representer(KeyFixupMapping, represent_dict_block_map)
+yaml.RoundTripDumper.add_representer(KeyFixupMapping, represent_namedtuple)
 yaml.RoundTripDumper.add_representer(Point, represent_flow_seq)
 yaml.RoundTripDumper.add_representer(Zone, represent_flow_seq)

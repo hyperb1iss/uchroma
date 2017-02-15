@@ -2,13 +2,14 @@
 import os
 import time
 
+from collections import OrderedDict
 from datetime import datetime
 
 import ruamel.yaml as yaml
 
 from grapefruit import Color
 
-from uchroma.config import BlockMapping, Configuration, FlowSequence
+from uchroma.config import Configuration
 from uchroma.util import Singleton
 
 
@@ -21,8 +22,8 @@ _Preferences = Configuration.create('_Preferences', [ \
     ('serial', str),
     ('brightness', float),
     ('fx', str),
-    ('fx_args', BlockMapping),
-    ('layers', BlockMapping)], mutable=True, yaml_name=u'!preferences')
+    ('fx_args', OrderedDict),
+    ('layers', OrderedDict)], mutable=True, yaml_name=u'!preferences')
 
 
 class Preferences(_Preferences):

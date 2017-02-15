@@ -1,3 +1,4 @@
+# pylint: disable=no-member,protected-access
 import os
 import sys
 import tempfile
@@ -286,8 +287,9 @@ class Configuration(Sequence, object):
                         continue
 
                     try:
-                        if isinstance(val, dict) and (issubclass(field_type, tuple) or \
-                                                      issubclass(field_type, dict)):
+                        if isinstance(val, dict) and issubclass(field_type, dict):
+                            odict[field] = field_type(val.items())
+                        elif isinstance(val, dict) and issubclass(field_type, tuple):
                             odict[field] = field_type(**val)
                         elif isinstance(val, Iterable) and issubclass(field_type, Iterable):
                             if hasattr(field_type, '__slots__'):
@@ -395,12 +397,6 @@ def represent_flow_seq(dumper, data):
     """
     return dumper.represent_sequence(u'tag:yaml.org,2002:seq', data, flow_style=True)
 
-def represent_block_map(dumper, data):
-    """
-    Dump maps in block style
-    """
-    return dumper.represent_mapping(u'tag:yaml.org,2002:map', data, flow_style=False)
-
 def represent_enum_str(dumper, data):
     """
     Dump enums as string keys
@@ -411,13 +407,6 @@ class FlowSequence(tuple, object):
     """
     A YAML sequence created from a tuple which will be represented
     in flowed style.
-    """
-    pass
-
-class BlockMapping(OrderedDict):
-    """
-    A YAML mapping created from an OrderedDict which will be
-    represented in block style.
     """
     pass
 
@@ -434,4 +423,5 @@ class LowerCaseSeq(FlowSequence):
 yaml.RoundTripDumper.ignore_aliases = lambda *x: True
 yaml.RoundTripDumper.add_multi_representer(Enum, represent_enum_str)
 yaml.RoundTripDumper.add_multi_representer(FlowSequence, represent_flow_seq)
-yaml.RoundTripDumper.add_multi_representer(OrderedDict, represent_block_map)
+
+yaml.RoundTripDumper.add_multi_representer(OrderedDict, yaml.RoundTripDumper.represent_ordereddict)
