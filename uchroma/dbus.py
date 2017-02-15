@@ -16,6 +16,7 @@ import os
 from collections import OrderedDict
 from enum import Enum
 
+from grapefruit import Color
 from pydbus import SessionBus
 from pydbus.generic import signal
 from traitlets.utils.bunch import Bunch
@@ -39,13 +40,15 @@ class DeviceAPI(object):
         InputEvent = signal()
 
 
-    _PROPERTIES = {'bus_path': 'o',
+    _PROPERTIES = {'battery_level': 'd',
+                   'bus_path': 'o',
                    'device_index': 'u',
                    'device_type': 's',
                    'driver_version': 's',
                    'firmware_version': 's',
                    'has_matrix': 'b',
                    'height': 'i',
+                   'is_charging': 'b',
                    'is_wireless': 'b',
                    'key': 's',
                    'manufacturer': 's',
@@ -59,6 +62,11 @@ class DeviceAPI(object):
                    'vendor_id': 'u',
                    'width': 'i',
                    'zones': 'as'}
+
+
+    _RW_PROPERTIES = {'polling_rate': 's',
+                      'dpi': 'a(ii)',
+                      'dock_charge_color': 's'}
 
 
     def __init__(self, driver):
@@ -77,10 +85,13 @@ class DeviceAPI(object):
         # Intercept everything and delegate to the device class by converting
         # names between the D-Bus conventions to Python conventions.
         prop_name = camel_to_snake(name)
-        if prop_name in DeviceAPI._PROPERTIES and hasattr(self._driver, prop_name):
+        if (prop_name in DeviceAPI._PROPERTIES or prop_name in DeviceAPI._RW_PROPERTIES) \
+                and hasattr(self._driver, prop_name):
             value = getattr(self._driver, prop_name)
             if isinstance(value, Enum):
                 return value.name.lower()
+            if isinstance(value, Color):
+               return value.html
             return value
 
         else:
@@ -209,6 +220,10 @@ class DeviceAPI(object):
         for name, sig in DeviceAPI._PROPERTIES.items():
             if hasattr(self._driver, name):
                 builder.add_property(name, sig, False)
+
+        for name, sig in DeviceAPI._RW_PROPERTIES.items():
+            if hasattr(self._driver, name):
+                builder.add_property(name, sig, True)
 
         if hasattr(self._driver, 'brightness'):
             builder.add_property('brightness', 'd', True)
