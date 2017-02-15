@@ -1,7 +1,5 @@
-import logging
 import re
 
-import colorlog
 import hidapi
 
 from wrapt import synchronized
@@ -12,7 +10,7 @@ from uchroma.hardware import Hardware, Quirks
 from uchroma.prefs import PreferenceManager
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand
-from uchroma.util import RepeatingTimer
+from uchroma.util import RepeatingTimer, get_logger
 from uchroma.version import __version__
 
 
@@ -38,11 +36,7 @@ class BaseUChromaDevice(object):
         self._devindex = index
         self._sys_path = sys_path
 
-        handler = colorlog.StreamHandler()
-        handler.setFormatter(colorlog.ColoredFormatter(
-            '[%(log_color)s%(asctime)s: %(levelname)s/%(name)s] %(message)s'))
-        self.logger = colorlog.getLogger('uchroma.driver-%d' % index)
-        self.logger.addHandler(handler)
+        self.logger = get_logger('uchroma.driver-%d' % index)
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)

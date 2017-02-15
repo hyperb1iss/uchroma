@@ -1,6 +1,5 @@
 # pylint: disable=invalid-name, too-many-instance-attributes, too-many-function-args
 import asyncio
-import logging
 
 from abc import abstractmethod
 from typing import NamedTuple
@@ -11,7 +10,7 @@ from uchroma.input import InputQueue
 from uchroma.frame import Frame
 from uchroma.layer import Layer
 from uchroma.traits import ColorTrait, WriteOnceInt
-from uchroma.util import Ticker
+from uchroma.util import Ticker, get_logger
 
 
 MAX_FPS = 30
@@ -57,7 +56,7 @@ class Renderer(HasTraits):
         if hasattr(driver, 'input_manager') and driver.input_manager is not None:
             self._input_queue = InputQueue(driver)
 
-        self._logger = logging.getLogger('uchroma.%s.%d' % (self.__class__.__name__, zorder))
+        self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, zorder))
         super(Renderer, self).__init__(*args, **kwargs)
 
 

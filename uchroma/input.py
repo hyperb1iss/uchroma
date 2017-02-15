@@ -1,7 +1,6 @@
 # pylint: disable=no-member, invalid-name, unexpected-keyword-arg, no-value-for-parameter
 import asyncio
 import functools
-import logging
 import time
 
 from typing import NamedTuple

@@ -1,7 +1,6 @@
 # pylint: disable=unused-argument, no-member, no-self-use, protected-access, not-an-iterable, invalid-name
 import asyncio
 import importlib
-import logging
 import types
 
 from collections import OrderedDict

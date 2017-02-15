@@ -1,5 +1,4 @@
 # pylint: disable=invalid-name
-import logging
 import math
 
 import numpy as np
@@ -7,7 +6,7 @@ from grapefruit import Color
 from skimage import draw
 
 from uchroma.blending import BlendOp
-from uchroma.util import clamp, colorarg, ColorType, to_color
+from uchroma.util import clamp, colorarg, ColorType, get_logger, to_color
 
 
 class Layer(object):
@@ -17,7 +16,7 @@ class Layer(object):
         self._height = height
 
         if logger is None:
-            self._logger = logging.getLogger('uchroma.frame')
+            self._logger = get_logger('uchroma.frame')
         else:
             self._logger = logger
 

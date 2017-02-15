@@ -1,5 +1,4 @@
 # pylint: disable=import-error, no-name-in-module, invalid-name, redefined-variable-type
-import logging
 import struct
 import time
 

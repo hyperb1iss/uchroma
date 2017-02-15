@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 from collections import OrderedDict
 
@@ -15,7 +14,7 @@ from uchroma.keyboard import UChromaKeyboard
 from uchroma.keypad import UChromaKeypad
 from uchroma.laptop import UChromaLaptop
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
-from uchroma.util import ensure_future
+from uchroma.util import ensure_future, get_logger
 
 
 class UChromaDeviceManager(object):
@@ -32,7 +31,7 @@ class UChromaDeviceManager(object):
     """
 
     def __init__(self, *callbacks):
-        self._logger = logging.getLogger('uchroma.devicemanager')
+        self._logger = get_logger('uchroma.devicemanager')
 
         self._devices = OrderedDict()
         self._monitor = False
@@ -132,7 +131,7 @@ class UChromaDeviceManager(object):
         if hardware.type == Hardware.Type.MOUSE:
             if hardware.has_quirk(Quirks.WIRELESS):
                 return UChromaWirelessMouse(hardware, devinfo, index, sys_path, input_devs)
-            return UChromaMouse(hardware, devinfo, sys_path, input_devs)
+            return UChromaMouse(hardware, devinfo, index, sys_path, input_devs)
 
         if hardware.type == Hardware.Type.LAPTOP:
             return UChromaLaptop(hardware, devinfo, index, sys_path, input_devs)

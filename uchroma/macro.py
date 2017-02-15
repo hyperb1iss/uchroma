@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 from evdev.uinput import UInput
 

@@ -4,6 +4,7 @@ Various helper functions that are used across the library.
 """
 import asyncio
 import inspect
+import logging
 import math
 import re
 import struct
@@ -14,6 +15,7 @@ import weakref
 from collections import Iterable, OrderedDict
 from threading import Timer
 
+import colorlog
 import wrapt
 from grapefruit import Color
 from numpy import interp
@@ -127,6 +129,14 @@ class MagicalEnum(object):
 
         return _autocast_decorator(cls, fix_enum_arg)
 
+
+def get_logger(tag):
+    handler = colorlog.StreamHandler()
+    handler.setFormatter(colorlog.ColoredFormatter( \
+        ' %(log_color)s%(name)s/%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s'))
+    logger = logging.getLogger(tag)
+    logger.addHandler(handler)
+    return logger
 
 def max_keylen(d) -> int:
     """

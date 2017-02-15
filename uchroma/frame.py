@@ -1,5 +1,4 @@
 # pylint: disable=invalid-name, too-many-arguments, no-member
-import logging
 import time
 import warnings
 
@@ -61,7 +60,7 @@ class Frame(object):
         only layers which match the physical size of the
         lighting matrix are supported.
         """
-        return Layer(self._width, self._height)
+        return Layer(self._width, self._height, logger=self._logger)
 
 
     @property

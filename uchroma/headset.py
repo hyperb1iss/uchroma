@@ -1,5 +1,4 @@
 # pylint: disable=protected-access
-import logging
 import hidapi
 
 from wrapt import synchronized

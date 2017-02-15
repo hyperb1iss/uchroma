@@ -1,5 +1,3 @@
-import logging
-
 import hidapi
 
 from uchroma.device_base import BaseUChromaDevice
