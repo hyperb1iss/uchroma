@@ -4,6 +4,7 @@ import sys
 import tempfile
 
 from collections import Iterable, OrderedDict, Sequence
+from contextlib import contextmanager
 
 from enum import Enum
 
@@ -47,6 +48,7 @@ class Configuration(Sequence, object):
         derived = cls.__class__(name, (cls, object), \
             {'__slots__': (*field_names, 'parent', '_children'),
              '_mutable': mutable,
+             '_notify': True,
              '_traverse': True,
              '_yaml_cache': {},
              '_observers': set(),
@@ -103,6 +105,13 @@ class Configuration(Sequence, object):
         return len(self.__slots__)
 
 
+    @contextmanager
+    def observers_paused(self):
+        self.__class__._notify = False
+        yield
+        self.__class__._notify = True
+
+
     @classmethod
     def observe(cls, observer):
         """
@@ -142,7 +151,7 @@ class Configuration(Sequence, object):
                 (self.__class__.__name__, name))
         super().__setattr__(name, value)
 
-        if self.__class__._mutable:
+        if self.__class__._mutable and self.__class__._notify:
             for observer in self.__class__._observers:
                 observer(self, name, value)
 

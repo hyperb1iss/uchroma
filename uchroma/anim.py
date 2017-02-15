@@ -464,7 +464,7 @@ class AnimationManager(HasTraits):
             self._driver.reset()
 
             if not shutdown:
-                self._driver.preferences.layers = {}
+                self._driver.preferences.layers = None
 
             return True
 

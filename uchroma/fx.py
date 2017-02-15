@@ -144,7 +144,10 @@ class FXManager(object):
 
             if fx_name != 'custom_frame':
                 self._driver.preferences.fx = fx_name
-                self._driver.preferences.fx_args = get_args_dict(fx)
+                argsdict = get_args_dict(fx)
+                if len(argsdict) == 0:
+                    argsdict = None
+                self._driver.preferences.fx_args = argsdict
 
             return True
 

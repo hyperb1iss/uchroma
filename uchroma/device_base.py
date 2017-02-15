@@ -509,14 +509,15 @@ class BaseUChromaDevice(object):
         """
         Restore saved preferences
         """
-        if hasattr(self, "brightness") and self.preferences.brightness is not None:
-            self.brightness = self.preferences.brightness
+        with self.preferences.observers_paused():
+            if hasattr(self, "brightness") and self.preferences.brightness is not None:
+                self.brightness = self.preferences.brightness
 
-        if self.fx_manager is not None:
-            self.fx_manager.restore_prefs(self.preferences)
+            if self.fx_manager is not None:
+                self.fx_manager.restore_prefs(self.preferences)
 
-        if self.animation_manager is not None:
-            self.animation_manager.restore_prefs(self.preferences)
+            if self.animation_manager is not None:
+                self.animation_manager.restore_prefs(self.preferences)
 
 
     def __repr__(self):
