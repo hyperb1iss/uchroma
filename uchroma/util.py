@@ -411,7 +411,7 @@ def ensure_future(coro, loop=None):
     """
     if loop is None:
         loop = asyncio.get_event_loop()
-    fut = asyncio.ensure_future(coro)
+    fut = asyncio.ensure_future(coro, loop=loop)
     def exception_logging_done_cb(fut):
         try:
             e = fut.exception()
@@ -637,7 +637,7 @@ class ValueAnimator(object):
         if asyncio.get_event_loop().is_running():
             if self._task is not None:
                 self._task.cancel()
-            self._task = asyncio.ensure_future(self._animate(start, end))
+            self._task = ensure_future(self._animate(start, end))
         else:
             self._callback(end)
 
