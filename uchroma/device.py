@@ -8,6 +8,7 @@ from uchroma.fx import FXManager
 from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LED
 from uchroma.standard_fx import StandardFX
+from uchroma.util import ValueAnimator
 
 
 class UChromaDevice(BaseUChromaDevice):
@@ -17,6 +18,7 @@ class UChromaDevice(BaseUChromaDevice):
 
     def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
                  sys_path: str, input_devices=None, *args, **kwargs):
+
         super(UChromaDevice, self).__init__(hardware, devinfo, devindex,
                                             sys_path, input_devices,
                                             *args, **kwargs)
@@ -27,7 +29,9 @@ class UChromaDevice(BaseUChromaDevice):
 
         self._frame_control = None
 
+        self._brightness_animator = ValueAnimator(self._brightness_callback)
         self._suspended = False
+
 
 
     def get_led(self, led_type: LED.Type) -> LED:
@@ -85,8 +89,17 @@ class UChromaDevice(BaseUChromaDevice):
         return self.get_led(LED.Type.BACKLIGHT).brightness
 
 
+    def _run_power_callbacks(self, level):
+        suspended = self.suspended and level == 0
+        for callback in self._power_callbacks:
+            callback(level, suspended)
+
+
     @property
     def suspended(self):
+        """
+        The power state of the device, true if suspended
+        """
         return self._suspended
 
 
@@ -101,8 +114,7 @@ class UChromaDevice(BaseUChromaDevice):
             return
 
         self.preferences.brightness = self.brightness
-        self.brightness = 0.0
-
+        self._brightness_animator.animate(self.brightness, 0)
         self._suspended = True
 
 
@@ -131,6 +143,11 @@ class UChromaDevice(BaseUChromaDevice):
         return self._get_brightness()
 
 
+    def _brightness_callback(self, level):
+        self._set_brightness(level)
+        self._run_power_callbacks(level)
+
+
     @brightness.setter
     def brightness(self, level: float):
         """
@@ -139,7 +156,7 @@ class UChromaDevice(BaseUChromaDevice):
         :param level: Brightness level, 0-100
         """
         if not self._suspended:
-            self._set_brightness(level)
+            self._brightness_animator.animate(self.brightness, level)
 
         self.preferences.brightness = level
 

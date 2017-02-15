@@ -50,6 +50,9 @@ class AnimationLoop(object):
         self._bufs = None
         self._active_bufs = None
 
+        self._pause_event = asyncio.Event()
+        self._pause_event.set()
+
         self.logger = logging.getLogger('uchroma.animloop')
 
 
@@ -154,6 +157,8 @@ class AnimationLoop(object):
 
         # loop forever, waiting for layers
         while self._running:
+            yield from self._pause_event.wait()
+
             with tick:
                 yield from self._get_layers()
 
@@ -279,6 +284,18 @@ class AnimationLoop(object):
         return True
 
 
+    def pause(self, paused):
+        if paused != self._pause_event.is_set():
+            return
+
+        self.logger.debug("Loop paused: %s", paused)
+
+        if paused:
+            self._pause_event.clear()
+        else:
+            self._pause_event.set()
+
+
 RendererInfo = NamedTuple('RendererInfo', [('module', types.ModuleType),
                                            ('clazz', type),
                                            ('key', str),
@@ -298,10 +315,11 @@ class AnimationManager(HasTraits):
         super(AnimationManager, self).__init__()
 
         self._driver = driver
-
         self._loop = None
-
+        self._paused = False
         self._logger = logging.getLogger('uchroma.animmgr')
+
+        driver.add_power_callback(self._power_callback)
 
         with self.hold_trait_notifications():
             # TODO: Get a proper plugin system going
@@ -325,6 +343,13 @@ class AnimationManager(HasTraits):
                 key = '%s.%s' % (obj.__module__, obj.__name__)
                 info = RendererInfo(obj.__module__, obj, key, obj.meta, obj.class_traits())
                 self.renderer_info[key] = info
+
+
+    def _power_callback(self, brightness, suspended):
+        if self.running and self._paused != suspended:
+            self._loop.pause(suspended)
+            self._paused = suspended
+            self._logger.info("Animation paused: %s", self._paused)
 
 
     def _get_renderer(self, name, **traits) -> Renderer:

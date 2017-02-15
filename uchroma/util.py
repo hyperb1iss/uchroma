@@ -583,3 +583,63 @@ class Ticker(object):
     @interval.setter
     def interval(self, value: float):
         self._interval = value
+
+
+class ValueAnimator(object):
+    """
+    Animates a value over a duration from a start to end,
+    invoking a callback at each interval.
+    """
+    def __init__(self, callback, min_value: float=0.0,
+                 max_value: float=100.0, max_time: float=1.5,
+                 fps: float=30.0):
+        self._callback = callback
+        self._range = max_value - min_value
+        self._max_time = max_time
+        self._fps = 1.0 / float(fps)
+        self._task = None
+
+
+    @asyncio.coroutine
+    def _animate(self, start, end):
+        # animation duration
+        duration = (abs(end - start) / self._range) * self._max_time
+
+        if duration == 0:
+            return
+
+        # step size
+        step = self._range / (duration / self._fps)
+        if end < start:
+            step *= -1
+
+        # animate
+        tick = Ticker(self._fps)
+        current = start
+        while current != end:
+            with tick:
+                current = clamp(current + step, min(start, end), max(start, end))
+                self._callback(current)
+                yield from tick.tick()
+
+        self._task = None
+
+
+    def animate(self, start: float, end: float):
+        """
+        Executes the given callback over the period of max_time
+        at the given FPS, to animate from start to end.
+        This can be used for things like brightness levels.
+
+        :param start: Starting value
+        :param end: Ending value
+        """
+        if asyncio.get_event_loop().is_running():
+            if self._task is not None:
+                self._task.cancel()
+            self._task = asyncio.ensure_future(self._animate(start, end))
+        else:
+            self._callback(end)
+
+
+

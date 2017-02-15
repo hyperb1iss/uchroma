@@ -51,6 +51,7 @@ class BaseUChromaDevice(object):
         self._last_cmd_time = None
 
         self._prefs = PreferenceManager().get(self.serial_number)
+        self._power_callbacks = []
 
         self._input_manager = None
         if input_devices is not None:
@@ -484,6 +485,24 @@ class BaseUChromaDevice(object):
         Reset effects and other configuration to defaults
         """
         return True
+
+
+    def add_power_callback(self, callback):
+        """
+        Add a power callback
+
+        :param callback: function which accepts suspend state and brightness
+        """
+        if callback not in self._power_callbacks:
+            self._power_callbacks.append(callback)
+
+
+    def remove_power_callback(self, callback):
+        """
+        Removes a power callback
+        """
+        if callback in self._power_callbacks:
+            self._power_callbacks.remove(callback)
 
 
     def restore_prefs(self):
