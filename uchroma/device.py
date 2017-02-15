@@ -23,7 +23,6 @@ class UChromaDevice(BaseUChromaDevice):
                                             sys_path, input_devices,
                                             *args, **kwargs)
 
-        self._logger = logging.getLogger('uchroma.driver')
         self._leds = {}
         self._fx_manager = FXManager(self, StandardFX(self))
 

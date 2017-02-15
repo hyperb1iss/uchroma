@@ -53,7 +53,7 @@ class AnimationLoop(object):
         self._pause_event = asyncio.Event()
         self._pause_event.set()
 
-        self.logger = logging.getLogger('uchroma.animloop')
+        self._logger = frame._driver.logger
 
 
     @asyncio.coroutine
@@ -131,8 +131,8 @@ class AnimationLoop(object):
         """
         Merge layers from all renderers and commit to the hardware
         """
-        if self.logger.isEnabledFor(LOG_TRACE):
-            self.logger.debug("Layers: %s", self._active_bufs)
+        if self._logger.isEnabledFor(LOG_TRACE):
+            self._logger.debug("Layers: %s", self._active_bufs)
         self._frame.commit([layer for layer in self._active_bufs if layer is not None])
 
 
@@ -147,7 +147,7 @@ class AnimationLoop(object):
         layers are ready, the loop yields to prevent spurious
         wakeups.
         """
-        self.logger.info("AnimationLoop is starting..")
+        self._logger.info("AnimationLoop is starting..")
 
         # start the renderers
         for renderer in self._renderers:
@@ -171,7 +171,7 @@ class AnimationLoop(object):
             # FIXME: Use "async with" on Python 3.6+
             yield from tick.tick()
 
-        self.logger.info("AnimationLoop is exiting..")
+        self._logger.info("AnimationLoop is exiting..")
 
         yield from asyncio.gather(*self._tasks)
 
@@ -180,7 +180,7 @@ class AnimationLoop(object):
         """
         Invoked when the renderer exits
         """
-        self.logger.info("AnimationLoop is cleaning up")
+        self._logger.info("AnimationLoop is cleaning up")
         for renderer in self._renderers:
             renderer.finish(self._frame)
 
@@ -207,7 +207,7 @@ class AnimationLoop(object):
                 layer = self._frame.create_layer()
                 layer.blend_mode = self._default_blend_mode
                 self._renderers[r_idx]._free_layer(layer)
-                self.logger.debug("Buffer created, renderer=%s buffer=%s",
+                self._logger.debug("Buffer created, renderer=%s buffer=%s",
                                   self._renderers[r_idx], layer)
 
 
@@ -222,11 +222,11 @@ class AnimationLoop(object):
         :return: True if the loop was started
         """
         if self._running:
-            self.logger.error("Animation loop already running")
+            self._logger.error("Animation loop already running")
             return False
 
         if len(self._renderers) == 0:
-            self.logger.error("No renderers were configured")
+            self._logger.error("No renderers were configured")
             return False
 
         self._running = True
@@ -272,7 +272,7 @@ class AnimationLoop(object):
 
         yield from asyncio.wait(waitlist, return_when=asyncio.ALL_COMPLETED)
 
-        self.logger.info("AnimationLoop stopped")
+        self._logger.info("AnimationLoop stopped")
 
 
     def stop(self):
@@ -288,7 +288,7 @@ class AnimationLoop(object):
         if paused != self._pause_event.is_set():
             return
 
-        self.logger.debug("Loop paused: %s", paused)
+        self._logger.debug("Loop paused: %s", paused)
 
         if paused:
             self._pause_event.clear()
@@ -317,7 +317,7 @@ class AnimationManager(HasTraits):
         self._driver = driver
         self._loop = None
         self._paused = False
-        self._logger = logging.getLogger('uchroma.animmgr')
+        self._logger = driver.logger
 
         driver.add_power_callback(self._power_callback)
 

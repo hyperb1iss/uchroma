@@ -14,7 +14,7 @@ class MacroDevice(object):
             raise ValueError('This device does not support input events')
 
         self._driver = driver
-        self._logger = logging.getLogger('uchroma.macro')
+        self._logger = driver.logger
 
         self._macro_keys = driver.hardware.macro_keys
 

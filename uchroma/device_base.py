@@ -1,5 +1,7 @@
+import logging
 import re
 
+import colorlog
 import hidapi
 
 from wrapt import synchronized
@@ -35,6 +37,12 @@ class BaseUChromaDevice(object):
         self._devinfo = devinfo
         self._devindex = index
         self._sys_path = sys_path
+
+        handler = colorlog.StreamHandler()
+        handler.setFormatter(colorlog.ColoredFormatter(
+            '[%(log_color)s%(asctime)s: %(levelname)s/%(name)s] %(message)s'))
+        self.logger = colorlog.getLogger('uchroma.driver-%d' % index)
+        self.logger.addHandler(handler)
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)
@@ -109,7 +117,9 @@ class BaseUChromaDevice(object):
 
     @property
     def animation_manager(self):
-        return self._animation_manager
+        if hasattr(self, '_animation_manager'):
+            return self._animation_manager
+        return None
 
 
     @property
@@ -151,9 +161,15 @@ class BaseUChromaDevice(object):
         self._last_cmd_time = last_cmd_time
 
 
-    def _ensure_open(self):
-        if self._dev is None:
-            self._dev = hidapi.Device(self._devinfo, blocking=False)
+    def _ensure_open(self) -> bool:
+        try:
+            if self._dev is None:
+                self._dev = hidapi.Device(self._devinfo, blocking=False)
+        except Exception as err:
+            self.logger.exception("Failed to open connection", exc_info=err)
+            return False
+
+        return True
 
 
     def get_report(self, command_class: int, command_id: int, data_size: int,
@@ -240,10 +256,12 @@ class BaseUChromaDevice(object):
     @synchronized
     def run_report(self, report: RazerReport, delay: float=None) -> bool:
         try:
-            self._ensure_open()
-            return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
+            if self._ensure_open():
+                return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
         finally:
             self._close()
+
+        return False
 
 
     def run_command(self, command: BaseCommand, *args, transaction_id: int=0xFF,

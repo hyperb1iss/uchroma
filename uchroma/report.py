@@ -68,7 +68,7 @@ class RazerReport(object):
                  status=0x00, transaction_id=0xFF, remaining_packets=0x00,
                  protocol_type=0x00, data=None, crc=None, reserved=None):
 
-        self._logger = logging.getLogger('uchroma.report')
+        self._logger = driver.logger
 
         self._driver = driver
 

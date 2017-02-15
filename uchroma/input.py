@@ -21,7 +21,7 @@ class InputManager(object):
         self._event_devices = []
         self._event_callbacks = []
 
-        self._logger = logging.getLogger('uchroma-input-%s' % driver.name)
+        self._logger = driver.logger
 
         self._opened = False
         self._closing = False
@@ -182,7 +182,7 @@ class InputQueue(object):
 
     def __init__(self, driver, expire_time=None):
 
-        self._logger = logging.getLogger('uchroma.inputqueue')
+        self._logger = driver.logger
         self._input_manager = driver.input_manager
         self._key_mapping = driver.hardware.key_mapping
         self._expire_time = 0

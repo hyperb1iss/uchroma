@@ -1,6 +1,5 @@
 # pylint: disable=protected-access
 import logging
-
 import hidapi
 
 from wrapt import synchronized
@@ -12,7 +11,7 @@ from uchroma.hardware import Hardware
 from uchroma.traits import ColorSchemeTrait, ColorTrait
 from uchroma.types import BaseCommand
 from uchroma.util import smart_delay, set_bits, scale_brightness, \
-    test_bit, to_byte, to_color, to_rgb
+    test_bit, to_byte, to_color, to_rgb, LOG_PROTOCOL_TRACE
 
 
 # Output report 4, input report 5
@@ -248,8 +247,6 @@ class UChromaHeadset(BaseUChromaDevice):
         else:
             raise ValueError('Incompatible model (%s)' % repr(self.hardware))
 
-        self._logger = logging.getLogger('uchroma.headset')
-
         self._fx_manager = FXManager(self, KrakenFX(self))
 
 
@@ -269,8 +266,8 @@ class UChromaHeadset(BaseUChromaDevice):
 
 
     def _hexdump(self, data: bytes, tag=""):
-        if data is not None:
-            self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
+        if data is not None and self.logger.isEnabledFor(LOG_PROTOCOL_TRACE):
+            self.logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
 
 
     @synchronized
@@ -292,7 +289,7 @@ class UChromaHeadset(BaseUChromaDevice):
             return True
 
         except (OSError, IOError) as err:
-            self._logger.exception('Caught exception running command', exc_info=err)
+            self.logger.exception('Caught exception running command', exc_info=err)
 
         finally:
             self._close()
@@ -331,7 +328,7 @@ class UChromaHeadset(BaseUChromaDevice):
             return resp[1:command.length+1]
 
         except (OSError, IOError) as err:
-            self._logger.exception('Caught exception running command', exc_info=err)
+            self.logger.exception('Caught exception running command', exc_info=err)
 
         finally:
             self._close()
@@ -383,7 +380,7 @@ class UChromaHeadset(BaseUChromaDevice):
 
     def _set_rgb(self, *colors, brightness: float=None) -> bool:
         if colors is None or len(colors) == 0:
-            self._logger.error('RGB group out of range')
+            self.logger.error('RGB group out of range')
             return False
 
         # only allow what the hardware permits

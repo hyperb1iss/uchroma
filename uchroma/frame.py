@@ -45,7 +45,7 @@ class Frame(object):
         self._width = width
         self._height = height
 
-        self._logger = logging.getLogger('uchroma.frame')
+        self._logger = driver.logger
 
         self._report = None
 

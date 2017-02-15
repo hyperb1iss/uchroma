@@ -58,7 +58,6 @@ class Renderer(HasTraits):
             self._input_queue = InputQueue(driver)
 
         self._logger = logging.getLogger('uchroma.%s.%d' % (self.__class__.__name__, zorder))
-        self._logger.info('call super')
         super(Renderer, self).__init__(*args, **kwargs)
 
 

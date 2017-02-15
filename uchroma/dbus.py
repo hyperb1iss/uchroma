@@ -61,9 +61,9 @@ class DeviceAPI(object):
                    'zones': 'as'}
 
 
-    def __init__(self, driver, logger):
+    def __init__(self, driver):
         self._driver = driver
-        self._logger = logger
+        self._logger = driver.logger
         self.__class__.dbus = self._get_descriptor()
         self._signal_input = False
         self._input_task = None
@@ -257,9 +257,9 @@ class FXManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver, logger):
+    def __init__(self, driver):
         self._driver = driver
-        self._logger = logger
+        self._logger = driver.logger
         self._current_fx = None
         self._current_fx_args = OrderedDict()
 
@@ -389,12 +389,12 @@ class AnimationManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver, logger, bus, path):
+    def __init__(self, driver, bus, path):
         assert driver.animation_manager is not None, 'Animations not supported for this device'
         self._driver = driver
         self._bus = bus
         self._path = path
-        self._logger = logger
+        self._logger = driver.logger
         self._animgr = driver.animation_manager
         self._layers = []
 
@@ -516,10 +516,7 @@ class DeviceManagerAPI(object):
 
 
     def _publish_device(self, device):
-
-        logger = logging.getLogger('uchroma.deviceapi-%d' % device.device_index)
-
-        devapi = DeviceAPI(device, logger)
+        devapi = DeviceAPI(device)
 
         path = DeviceAPI._get_bus_path(device)
 
@@ -528,11 +525,11 @@ class DeviceManagerAPI(object):
 
         if device.fx_manager is not None:
             self._devs[path].append(self._bus.register_object( \
-                path, FXManagerAPI(device, logger), None))
+                path, FXManagerAPI(device), None))
 
         if device.animation_manager is not None:
             self._devs[path].append(self._bus.register_object( \
-                path, AnimationManagerAPI(device, logger, self._bus, path), None))
+                path, AnimationManagerAPI(device, self._bus, path), None))
 
 
     def _unpublish_device(self, device):
@@ -541,7 +538,7 @@ class DeviceManagerAPI(object):
         if path in self._devs:
             for obj in self._devs[path]:
                 obj.unregister()
-            self._devs.remove(path)
+            self._devs.pop(path)
 
 
     @asyncio.coroutine

@@ -12,11 +12,14 @@ from uchroma.util import clamp, colorarg, ColorType, to_color
 
 class Layer(object):
 
-    def __init__(self, width: int, height: int):
+    def __init__(self, width: int, height: int, logger=None):
         self._width = width
         self._height = height
 
-        self._logger = logging.getLogger('uchroma.frame')
+        if logger is None:
+            self._logger = logging.getLogger('uchroma.frame')
+        else:
+            self._logger = logger
 
         self._matrix = np.zeros(shape=(self._height, self._width, 4), dtype=np.float)
 
