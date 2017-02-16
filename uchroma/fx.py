@@ -4,6 +4,7 @@ import re
 
 from abc import abstractmethod
 
+from frozendict import frozendict
 from traitlets import Bool, HasTraits, Unicode
 
 from uchroma.traits import get_args_dict
@@ -31,8 +32,8 @@ class BaseFX(HasTraits, object):
 class FXModule(object):
     def __init__(self, driver):
         self._driver = driver
-        self._available_fx = self._load_fx()
-        self._user_args = self._load_traits()
+        self._available_fx = frozendict(self._load_fx())
+        self._user_args = frozendict(self._load_traits())
 
 
     def _load_fx(self) -> dict:

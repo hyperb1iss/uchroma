@@ -1,12 +1,15 @@
 # pylint: disable=protected-access
+import enum
 import importlib
 import sys
 
-from enum import Enum
-
-from traitlets import CaselessStrEnum, Int, List, TraitType, Undefined, UseEnum
+from frozendict import frozendict
+from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, List, TraitType, Undefined, UseEnum
 
 from uchroma.util import ArgsDict, camel_to_snake, to_color
+
+
+MAGIC_TRAITS = ('description', 'hidden', 'meta', 'config', 'type')
 
 
 class ColorTrait(TraitType):
@@ -15,10 +18,9 @@ class ColorTrait(TraitType):
     type coercion as needed.
     """
 
-    default_value = None
     info_text = "A color in HTML string format (#8080ff, 'red', etc)"
 
-    def __init__(self, default_value=Undefined, allow_none=True, **kwargs):
+    def __init__(self, default_value='', allow_none=True, **kwargs):
         super(ColorTrait, self).__init__(default_value=default_value,
                                          allow_none=allow_none, **kwargs)
 
@@ -69,6 +71,12 @@ class WriteOnceInt(WriteOnceMixin, Int):
     pass
 
 
+class FrozenDict(WriteOnceMixin, Dict):
+
+    def validate(self, obj, value):
+        return frozendict(super().validate(obj, value))
+
+
 class UseEnumCaseless(UseEnum):
     def select_by_name(self, value, default=Undefined):
         if value.startswith(self.name_prefix):
@@ -92,7 +100,7 @@ def trait_as_dict(trait) -> dict:
     trait_type = trait.__class__.__name__
     if isinstance(trait, UseEnum):
         trait_type = CaselessStrEnum.__name__
-        desc['values'] = list(trait.enum_class.__members__.keys())
+        desc['values'] = tuple(trait.enum_class.__members__.keys())
 
     desc['type'] = trait_type
 
@@ -106,7 +114,7 @@ def trait_as_dict(trait) -> dict:
     desc['allow_none'] = trait.allow_none
 
     value = trait.default_value
-    if isinstance(value, Enum):
+    if isinstance(value, enum.Enum):
         value = value.name
     if value is not Undefined:
         desc['default_value'] = value
@@ -123,6 +131,28 @@ def trait_as_dict(trait) -> dict:
     return desc
 
 
+def class_traits_as_dict(obj, incl_all=False):
+    cls_dt = {}
+    traits = {}
+    if type(obj) == type:
+        traits = obj.class_traits()
+    elif isinstance(obj, dict):
+        traits = obj
+    else:
+        traits = obj.__class__.traits()
+
+    for k, v in traits.items():
+        if k not in MAGIC_TRAITS or incl_all:
+            dt = trait_as_dict(v)
+            if dt is None:
+                continue
+            if not incl_all:
+                if v.read_only or (hasattr(v, 'write_once') and v.write_once):
+                    continue
+            cls_dt[k] = dt
+    return cls_dt
+
+
 TRAITLETS = importlib.import_module('traitlets')
 LOCAL_TRAITS = importlib.import_module('uchroma.traits')
 
@@ -130,7 +160,10 @@ def dict_as_trait(obj):
     """
     Create a trait from a dict (trait_as_dict).
     """
-    trait_type = obj.pop('type')
+    trait_type = obj.pop('type', None)
+    if trait_type is None:
+        return None
+
     cls = None
     if hasattr(LOCAL_TRAITS, trait_type):
         cls = getattr(LOCAL_TRAITS, trait_type)
@@ -145,23 +178,52 @@ def dict_as_trait(obj):
     return cls(**obj)
 
 
-def dict_as_class_traits(obj):
+def dict_as_class_traits(obj, incl_all=False):
     traits = {}
     for k, v in obj.items():
-        traits[k] = dict_as_trait(v)
+        if k not in MAGIC_TRAITS or incl_all:
+            trait = dict_as_trait(v)
+            if trait is None:
+                continue
+            if not incl_all:
+                if trait.read_only or (hasattr(trait, 'write_once') and trait.write_once):
+                    continue
+            traits[k] = trait
+
     return traits
 
 
 def get_args_dict(obj):
     argsdict = ArgsDict()
     for k in sorted(obj._trait_values.keys()):
-        if k not in ('description', 'hidden', 'meta'):
+        if k not in MAGIC_TRAITS:
             v = obj._trait_values[k]
             trait = obj.traits()[k]
             if trait.default_value != v and not trait.read_only \
                     and not (hasattr(trait, 'write_once') and trait.write_once):
                 argsdict[k] = v
     return argsdict
+
+
+def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
+
+    for key, trait in traits.items():
+        if key in MAGIC_TRAITS:
+            continue
+
+        argname = '--%s' % key
+        if prefix is not None:
+            argname = '--%s.%s' % (prefix, key)
+
+        if isinstance(trait, Container):
+            parser.add_argument(argname, nargs='+', help=trait.info_text)
+        elif isinstance(trait, Enum):
+            parser.add_argument(argname, type=str, choices=trait.values, help=trait.info_text)
+        else:
+            argtype = str
+            if hasattr(trait, 'default_value'):
+                argtype = type(trait.default_value)
+            parser.add_argument(argname, type=argtype, help=trait.info_text)
 
 
 class TraitsPropertiesMixin(object):

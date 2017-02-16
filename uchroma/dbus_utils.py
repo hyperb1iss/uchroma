@@ -1,78 +1,149 @@
 # pylint: disable=invalid-name
+import enum
+
 from collections import OrderedDict
 from typing import NamedTuple
 
+from frozendict import frozendict
 from gi.repository.GLib import Variant
-from traitlets import HasTraits, Int, Float, Unicode, Bool
+from grapefruit import Color
+from traitlets import HasTraits, Int, Float, Unicode, Bool, TraitType
 
 import numpy as np
 
 from uchroma.renderer import RendererMeta
-from uchroma.traits import ColorTrait, ColorSchemeTrait, ColorPresetTrait
-from uchroma.util import snake_to_camel
+from uchroma.traits import ColorTrait, ColorSchemeTrait, ColorPresetTrait, trait_as_dict
+from uchroma.util import get_logger, snake_to_camel
 
 
 ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str)])
 
+logger = get_logger('uchroma.util')
 
-def _dbus_primitive(obj):
-    sig = None
-    if isinstance(obj, bool):
-        sig = 'b'
-    elif isinstance(obj, str):
-        sig = 's'
-    elif isinstance(obj, int):
-        sig = 'x'
-    elif isinstance(obj, float):
-        sig = 'd'
-    return sig
+def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
+    """
+    Recursively walks obj and builds a D-Bus signature
+    by inspecting types. Variant types are created as
+    necessary, and the returned obj may have changed.
 
+    :param obj: An arbitrary primitive or container type
+    :param variant: Force wrapping contained objects with variants
+    :param camel_keys: Convert dict keys to CamelCase
+    """
+    sig = ''
+    v_force = variant
 
-def variant(obj):
-    sig = _dbus_primitive(obj)
-    if sig is None:
-        if isinstance(obj, np.ndarray):
-            dtype = obj.dtype.kind
-            if dtype == 'f':
-                dtype = 'd'
+    try:
+        if isinstance(obj, bool):
+            sig = 'b'
 
-            sig = 'a' * obj.ndim + dtype
-            obj = obj.tolist()
+        elif isinstance(obj, str):
+            sig = 's'
 
-        elif isinstance(obj, tuple) or isinstance(obj, list):
+        elif isinstance(obj, int):
+            sig = 'x'
+
+        elif isinstance(obj, float):
+            sig = 'd'
+
+        elif isinstance(obj, Color):
+            sig = 's'
+            obj = obj.html
+
+        elif isinstance(obj, TraitType):
+            obj, sig = dbus_prepare(trait_as_dict(obj))
+
+        elif hasattr(obj, '_asdict') and hasattr(obj, '_field_types'):
+            # typing.NamedTuple
+            obj, sig = dbus_prepare(obj._asdict())
+
+        elif isinstance(obj, enum.EnumMeta):
+            # top level enum, tuple of string keys
+            obj = tuple(obj.__members__.keys())
+            sig = '(%s)' % ('s' * len(obj))
+
+        elif isinstance(obj, enum.Enum):
+            obj = obj.name
+            sig = 's'
+
+        elif isinstance(obj, tuple):
+            sig = '('
+            tmp = []
+            for item in obj:
+                # struct of all items
+                r_obj, r_sig = dbus_prepare(item)
+                sig += r_sig
+                tmp.append(r_obj)
+            sig += ')'
+            obj = tuple(tmp)
+
+        elif isinstance(obj, list):
             sig = 'a'
-            if isinstance(obj[0], tuple) or isinstance(obj[0], list):
-                sig += 'a'
-                etype = _dbus_primitive(obj[0][0])
+            tmp = []
+            if not v_force and all(isinstance(x, type(obj[0])) for x in obj):
+                # all items same type
+                for item in obj:
+                    if item is None:
+                        continue
+                    r_obj, r_sig = dbus_prepare(item)
+                    tmp.append(r_obj)
+                sig += dbus_prepare(tmp[0])[1]
             else:
-                etype = _dbus_primitive(obj[0])
+                # wrap items with variants
+                for item in obj:
+                    if item is None:
+                        continue
+                    r_obj, r_sig = dbus_prepare(item, variant=v_force)
+                    if r_obj is None:
+                        tmp.append(None)
+                    else:
+                        tmp.append(Variant(r_sig, r_obj))
+                sig += 'v'
+            obj = tmp
 
-            if etype is None:
-                raise TypeError("Unable to create container variant for %s / %s (%s / %s)" % \
-                    (obj, obj[0], type(obj), type(obj[0])))
-            sig += etype
-
-        elif isinstance(obj, dict):
-            sig = 'a{sv}'
-
-        else:
-            raise TypeError('Unable to create variant for %s (%s)' % (obj, type(obj)))
-
-    return Variant(sig, obj)
-
-
-class VariantDict(OrderedDict):
-    def __init__(self, *args, **kwargs):
-        super(VariantDict, self).__init__(*args, **kwargs)
-
-        empty = []
-        for k, v in self.items():
-            if v is None:
-                empty.append(k)
+        elif isinstance(obj, (dict, frozendict)):
+            if isinstance(obj, frozendict):
+                tmp = {}
             else:
-                self[k] = variant(v)
-        for empty_key in empty:
-            self.pop(empty_key)
+                tmp = obj.__class__()
+            sig = 'a{s'
+            vals = list(obj.values())
+
+            if not variant and all(isinstance(x, type(vals[0])) for x in vals):
+                # all values same type
+                for k, v in obj.items():
+                    if v is None:
+                        continue
+                    r_obj, r_sig = dbus_prepare(v, variant=v_force)
+                    if camel_keys:
+                        k = snake_to_camel(k)
+                    tmp[k] = r_obj
+                sig += dbus_prepare(vals[0])[1]
+            else:
+                # wrap values with variants
+                for k, v in obj.items():
+                    if v is None:
+                        continue
+                    r_obj, r_sig = dbus_prepare(v, variant=v_force)
+                    if camel_keys:
+                        k = snake_to_camel(k)
+                    if r_obj is None:
+                        tmp[k] = None
+                    else:
+                        tmp[k] = Variant(r_sig, r_obj)
+                sig += 'v'
+            obj = tmp
+            sig += '}'
+
+        elif isinstance(obj, type):
+            obj = obj.__name__
+            sig = 's'
+
+    except Exception as err:
+        logger.exception('obj: %s  sig: %s', obj, sig, exc_info=err)
+        raise
+
+    return obj, sig
 
 
 class DescriptorBuilder(object):

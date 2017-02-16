@@ -16,28 +16,29 @@ class UChromaConsoleUtil(object):
     A base class for command-line utilities
     """
     def __init__(self):
-        parser = ArgumentParser(description=self.description)
+        self._parser = ArgumentParser(description=self.description, add_help=False)
 
-        parser.add_argument("-v", "--version", action='version', version='self.version')
-        parser.add_argument("--debug", action='store_true', help='Enable debug output')
+        self._parser.add_argument('-v', '--version', action='version', version='self.version')
+        self._parser.add_argument('--debug', action='store_true', help="Enable debug output")
+        self._parser.add_argument('-d', '--device', type=str,
+                                  help="Select target device name or index")
 
-        sub = parser.add_subparsers(title='Subcommands')
+        sub = self._parser.add_subparsers(title='Subcommands')
 
         list_devs = sub.add_parser('list', help='List devices')
         list_devs.set_defaults(func=self._list_devices)
 
         self._add_subparsers(sub)
 
-        self._args = parser.parse_args()
+        self._args, self._unparsed = self._parser.parse_known_args()
 
         if self._args.debug:
             logging.getLogger().setLevel(logging.DEBUG)
 
         if not hasattr(self._args, 'func'):
-            parser.print_help()
+            self._parser.print_help()
             sys.exit(1)
 
-        self._parser = parser
         self._client = UChromaClient()
 
 
@@ -75,13 +76,13 @@ class UChromaConsoleUtil(object):
         print(' '.join([str(x) for x in args]) + '\n', file=sys.stderr)
 
 
-    def get_driver(self, args):
+    def get_driver(self):
         driver = None
 
-        if args.device is not None:
-            driver = self._client.get_device(args.device)
+        if hasattr(self._args, 'device') and self._args.device is not None:
+            driver = self._client.get_device(self._args.device)
             if driver is None:
-                self.print_err("Invalid device: %s" % args.device)
+                self.print_err("Invalid device: %s" % self._args.device)
                 sys.exit(1)
 
         else:

@@ -7,6 +7,7 @@ from collections import OrderedDict
 from concurrent import futures
 from typing import List, NamedTuple
 
+from frozendict import frozendict
 from traitlets import Bool, Dict, HasTraits, List
 import numpy as np
 
@@ -307,7 +308,7 @@ class AnimationManager(HasTraits):
     """
 
     renderers = List()
-    renderer_info = Dict()
+    _renderer_info = Dict()
     running = Bool(False)
 
     def __init__(self, driver):
@@ -322,7 +323,7 @@ class AnimationManager(HasTraits):
 
         with self.hold_trait_notifications():
             # TODO: Get a proper plugin system going
-            self.renderer_info = OrderedDict()
+            self._renderer_info = OrderedDict()
 
             self._fxlib = importlib.import_module('uchroma.fxlib')
             self._discover_renderers()
@@ -341,7 +342,7 @@ class AnimationManager(HasTraits):
 
                 key = '%s.%s' % (obj.__module__, obj.__name__)
                 info = RendererInfo(obj.__module__, obj, key, obj.meta, obj.class_traits())
-                self.renderer_info[key] = info
+                self._renderer_info[key] = info
 
 
     def _power_callback(self, brightness, suspended):
@@ -359,10 +360,10 @@ class AnimationManager(HasTraits):
 
         :return: The renderer object
         """
-        if name not in self.renderer_info:
+        if name not in self._renderer_info:
             # look harder if no package name was given
-            keys = list(self.renderer_info.keys())
-            shortkeys = [v.meta.display_name.lower() for v in self.renderer_info.values()]
+            keys = list(self._renderer_info.keys())
+            shortkeys = [v.meta.display_name.lower() for v in self._renderer_info.values()]
 
             if name.lower() in shortkeys:
                 idx = shortkeys.index(name.lower())
@@ -371,7 +372,7 @@ class AnimationManager(HasTraits):
                 self._logger.error("Unknown renderer: %s", name)
                 return None
 
-        info = self.renderer_info[name]
+        info = self._renderer_info[name]
 
         try:
             zorder = len(self.renderers)
@@ -381,6 +382,11 @@ class AnimationManager(HasTraits):
             self._logger.exception('Invalid renderer: %s', name, exc_info=err)
 
         return None
+
+
+    @property
+    def renderer_info(self) -> frozendict:
+        return self._renderer_info
 
 
     def add_renderer(self, name, **traits) -> int:

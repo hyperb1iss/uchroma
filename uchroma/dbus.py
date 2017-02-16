@@ -21,9 +21,9 @@ from pydbus import SessionBus
 from pydbus.generic import signal
 from traitlets.utils.bunch import Bunch
 
-from uchroma.dbus_utils import ArgSpec, DescriptorBuilder, VariantDict
+from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder
 from uchroma.input import InputQueue
-from uchroma.traits import TraitsPropertiesMixin, trait_as_dict
+from uchroma.traits import class_traits_as_dict, TraitsPropertiesMixin, trait_as_dict
 from uchroma.util import camel_to_snake, ensure_future, snake_to_camel
 
 
@@ -113,7 +113,7 @@ class DeviceAPI(object):
         while self._signal_input:
             event = yield from self._input_queue.get_events()
             if event is not None:
-                self.InputEvent(VariantDict(event._asdict()))
+                self.InputEvent(dbus_prepare(event, variant=True)[0])
 
 
     @property
@@ -148,7 +148,7 @@ class DeviceAPI(object):
 
     @property
     def FrameDebugOpts(self) -> dict:
-        return VariantDict(self._driver.frame_control.debug_opts)
+        return dbus_prepare(self._driver.frame_control.debug_opts, variant=True)[0]
 
 
     @property
@@ -267,7 +267,7 @@ class FXManagerAPI(object):
               <arg direction='out' type='s' name='name' />
             </signal>
 
-            <property name='AvailableFX' type='a{sa{sa{sv}}}' access='read' />
+            <property name='AvailableFX' type='a{sv}' access='read' />
           </interface>
         </node>
     """
@@ -286,13 +286,9 @@ class FXManagerAPI(object):
 
         for fx in self._driver.fx_manager.available_fx:
             args = user_args[fx]
-            argsdict = {}
-            for k, v in args.items():
-                argsdict[k] = VariantDict(trait_as_dict(v))
+            avail[fx] = class_traits_as_dict(args)
 
-            avail[fx] = argsdict
-
-        return avail
+        return dbus_prepare(avail, variant=True)[0]
 
 
     def HasFX(self, name: str) -> bool:
@@ -365,7 +361,7 @@ class LayerAPI(TraitsPropertiesMixin, object):
         argsdict = {}
         traits = self._delegate.traits()
         for k, v in traits.items():
-            argsdict[snake_to_camel(k)] = VariantDict(trait_as_dict(v))
+            argsdict[snake_to_camel(k)] = dbus_prepare(v, variant=True)[0]
         return argsdict
 
 
@@ -391,7 +387,7 @@ class AnimationManagerAPI(object):
               <arg direction='out' type='b' name='status' />
             </method>
 
-            <property name='AvailableRenderers' type='a{sa{sa{sv}}}' access='read' />
+            <property name='AvailableRenderers' type='a{sa{sv}}' access='read' />
 
             <property name='CurrentRenderers' type='ao' access='read'>
               <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
@@ -465,12 +461,11 @@ class AnimationManagerAPI(object):
 
         for key, info in infos.items():
             argsdict = {}
-            argsdict['meta'] = VariantDict(info.meta._asdict())
-            for k, v in info.traits.items():
-                argsdict[k] = VariantDict(trait_as_dict(v))
+            argsdict['meta'] = info.meta
+            argsdict.update(info.traits)
             avail[key] = argsdict
 
-        return avail
+        return dbus_prepare(avail)[0]
 
 
     def AddRenderer(self, name: str, traits: dict) -> str:
