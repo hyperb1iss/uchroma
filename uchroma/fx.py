@@ -82,6 +82,7 @@ class FXManager(object):
         :param driver: The UChromaDevice to control
         """
         self._driver = driver
+        self._logger = driver.logger
         self._fxmod = fxmod
         self._current_fx = (None, None)
 
@@ -137,8 +138,10 @@ class FXManager(object):
             if fx.has_trait(k):
                 setattr(fx, k, v)
 
-        if fx_name not in ('custom_frame', 'disable') and self._driver.is_animating:
-            self._driver.animation_manager.reset()
+        if fx_name not in ('custom_frame', 'disable'):
+            self._logger.debug("activate fx: %s traits: %s", fx_name, fx._trait_values)
+            if self._driver.is_animating:
+                self._driver.animation_manager.reset()
 
         if fx.apply():
             self._current_fx = (fx_name, fx)

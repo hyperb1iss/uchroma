@@ -236,7 +236,7 @@ class StandardFX(FXModule):
 
     class SweepFX(BaseFX):
         description = Unicode('Colors sweep across the device')
-        color = ColorTrait(default_value='green')
+        colors = ColorTrait(default_value='green')
         base_color = ColorTrait()
         speed = Int(default_value=15, min=1, max=30)
         direction = UseEnumCaseless(enum_class=Direction, default_value=Direction.RIGHT)
@@ -259,8 +259,8 @@ class StandardFX(FXModule):
 
     class MorphFX(BaseFX):
         description = Unicode('Morphing colors when keys are pressed')
-        color = ColorTrait(default_value='magenta')
-        base_color = ColorTrait(default_value='blue')
+        color = ColorTrait(default_value='darkblue')
+        base_color = ColorTrait(default_value='magenta')
         speed = Int(default_value=2, min=1, max=4)
 
         def apply(self) -> bool:
@@ -274,7 +274,7 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return self._fxmod.set_effect(FX.MORPH, 0x04, self.speed, self.base_color, self.color)
+            return self._fxmod.set_effect(FX.MORPH, 0x04, self.speed, self.color, self.base_color)
 
 
     class FireFX(BaseFX):
