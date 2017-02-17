@@ -4,7 +4,8 @@ import importlib
 import sys
 
 from frozendict import frozendict
-from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, List, TraitType, Undefined, UseEnum
+from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, HasTraits, \
+        List, TraitType, Undefined, UseEnum
 
 from uchroma.util import ArgsDict, camel_to_snake, to_color
 
@@ -20,7 +21,7 @@ class ColorTrait(TraitType):
 
     info_text = "A color in HTML string format (#8080ff, 'red', etc)"
 
-    def __init__(self, default_value='', allow_none=True, **kwargs):
+    def __init__(self, default_value='black', allow_none=False, **kwargs):
         super(ColorTrait, self).__init__(default_value=default_value,
                                          allow_none=allow_none, **kwargs)
 
@@ -224,6 +225,43 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
             if hasattr(trait, 'default_value'):
                 argtype = type(trait.default_value)
             parser.add_argument(argname, type=argtype, help=trait.info_text)
+
+
+def apply_from_argparse(args, traits: dict=None, target=None) -> dict:
+    """
+    Applies arguments added via add_traits_to_argparse to
+    a target object which implements HasTraits. If a target
+    is not known, a dict of traits may be passed instead.
+    Will throw TraitError if validation fails.
+
+    :param args: Parsed args from argparse
+    :param traits: Dictionary of traits (optional)
+    :param target: Target object (optional)
+    :return: Dict of the arguments which actually changed
+    """
+    # apply the traits to an empty object, which will run
+    # the validators on the client
+    if target is None:
+        if traits is None:
+            raise ValueError("Either traits or target must be specified")
+        target = HasTraits()
+        target.add_traits(**traits)
+
+    # determine what should actually be changed
+    argkeys = [k for k, v in args.__dict__.items() if v is not None]
+    intersect = set(target.traits().keys()).intersection(set(argkeys))
+
+    # apply the argparse flags to the target object
+    for key in intersect:
+        value = args.__dict__[key]
+        setattr(target, key, getattr(args, key))
+
+    # if all validators passed, return a dict of the changed args
+    changed = {}
+    for key in intersect:
+        changed[key] = getattr(target, key)
+
+    return changed
 
 
 class TraitsPropertiesMixin(object):

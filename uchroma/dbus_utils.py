@@ -1,13 +1,14 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, redefined-variable-type
 import enum
 
 from collections import OrderedDict
 from typing import NamedTuple
 
-from frozendict import frozendict
 from gi.repository.GLib import Variant
-from grapefruit import Color
 from traitlets import HasTraits, Int, Float, Unicode, Bool, TraitType
+
+from frozendict import frozendict
+from grapefruit import Color
 
 import numpy as np
 
@@ -20,6 +21,18 @@ ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str
 
 logger = get_logger('uchroma.util')
 
+def _check_variance(items: list):
+    if len(items) == 0:
+        return True
+
+    if len(items) == 1:
+        return False
+
+    first_sig = dbus_prepare(items[0])[1]
+
+    return not all(dbus_prepare(x)[1] == first_sig for x in items)
+
+
 def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
     """
     Recursively walks obj and builds a D-Bus signature
@@ -31,17 +44,25 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
     :param camel_keys: Convert dict keys to CamelCase
     """
     sig = ''
-    v_force = variant
+    use_variant = variant
 
     try:
-        if isinstance(obj, bool):
+        if isinstance(obj, Variant):
+            sig = 'v'
+
+        elif isinstance(obj, bool):
             sig = 'b'
 
         elif isinstance(obj, str):
             sig = 's'
 
         elif isinstance(obj, int):
-            sig = 'x'
+            if obj < pow(2, 16):
+                sig = 'n'
+            elif obj < pow(2, 32):
+                sig = 'i'
+            else:
+                sig = 'x'
 
         elif isinstance(obj, float):
             sig = 'd'
@@ -51,11 +72,11 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
             obj = obj.html
 
         elif isinstance(obj, TraitType):
-            obj, sig = dbus_prepare(trait_as_dict(obj))
+            obj, sig = dbus_prepare(trait_as_dict(obj), variant=True)
 
         elif hasattr(obj, '_asdict') and hasattr(obj, '_field_types'):
             # typing.NamedTuple
-            obj, sig = dbus_prepare(obj._asdict())
+            obj, sig = dbus_prepare(obj._asdict(), variant=True)
 
         elif isinstance(obj, enum.EnumMeta):
             # top level enum, tuple of string keys
@@ -67,84 +88,80 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
             sig = 's'
 
         elif isinstance(obj, tuple):
-            if len(obj) > 0:
-                tmp = []
-                sig = '('
-                for item in obj:
-                    # struct of all items
-                    r_obj, r_sig = dbus_prepare(item)
-                    sig += r_sig
-                    tmp.append(r_obj)
-                sig += ')'
-                obj = tuple(tmp)
+            tmp = []
+            sig = '('
+
+            for item in obj:
+                if item is None and use_variant:
+                    continue
+                # struct of all items
+                r_obj, r_sig = dbus_prepare(item)
+                if r_obj is None:
+                    continue
+                sig += r_sig
+                tmp.append(r_obj)
+            sig += ')'
+            obj = tuple(tmp)
 
         elif isinstance(obj, list):
-            if len(obj) > 0:
-                tmp = []
-                sig = 'a'
-                if not v_force and all(isinstance(x, type(obj[0])) for x in obj):
-                    # all items same type
-                    for item in obj:
-                        if item is None:
-                            continue
-                        r_obj, r_sig = dbus_prepare(item)
-                        tmp.append(r_obj)
-                    sig += dbus_prepare(tmp[0])[1]
+            tmp = []
+            sig = 'a'
+            is_variant = use_variant or _check_variance(obj)
+
+            for item in obj:
+                if item is None and is_variant:
+                    continue
+                r_obj, r_sig = dbus_prepare(item, variant=is_variant)
+                if r_obj is None and is_variant:
+                    continue
+                if is_variant:
+                    tmp.append(r_sig, r_obj)
                 else:
-                    # wrap items with variants
-                    for item in obj:
-                        if item is None:
-                            continue
-                        r_obj, r_sig = dbus_prepare(item, variant=v_force)
-                        if r_obj is None:
-                            tmp.append(None)
-                        else:
-                            tmp.append(Variant(r_sig, r_obj))
-                    sig += 'v'
-                obj = tmp
+                    tmp.append(r_obj)
+
+            if is_variant:
+                sig += 'v'
+            else:
+                sig += dbus_prepare(tmp[0])[1]
+
+            obj = tmp
 
         elif isinstance(obj, (dict, frozendict)):
-            if len(obj) > 0:
-                if isinstance(obj, frozendict):
-                    tmp = {}
-                else:
-                    tmp = obj.__class__()
-                vals = list(obj.values())
-                sig = 'a{s'
+            if isinstance(obj, frozendict):
+                tmp = {}
+            else:
+                tmp = obj.__class__()
+            sig = 'a{s'
+            vals = [x for x in obj.values() if x is not None]
+            is_variant = use_variant or _check_variance(vals)
 
-                if not variant and all(isinstance(x, type(vals[0])) for x in vals):
-                    # all values same type
-                    for k, v in obj.items():
-                        if v is None:
-                            continue
-                        r_obj, r_sig = dbus_prepare(v, variant=v_force)
-                        if camel_keys:
-                            k = snake_to_camel(k)
-                        tmp[k] = r_obj
-                    if len(tmp) > 0:
-                        sig += dbus_prepare(vals[0])[1]
+            for k, v in obj.items():
+                if v is None:
+                    continue
+                r_obj, r_sig = dbus_prepare(v)
+                if r_obj is None:
+                    continue
+                if camel_keys:
+                    k = snake_to_camel(k)
+                if is_variant:
+                    tmp[k] = Variant(r_sig, r_obj)
                 else:
-                    # wrap values with variants
-                    for k, v in obj.items():
-                        if v is None:
-                            continue
-                        r_obj, r_sig = dbus_prepare(v, variant=v_force)
-                        if camel_keys:
-                            k = snake_to_camel(k)
-                        if r_obj is None:
-                            tmp[k] = None
-                        else:
-                            tmp[k] = Variant(r_sig, r_obj)
-                    sig += 'v'
-                obj = tmp
-                sig += '}'
+                    tmp[k] = r_obj
+
+            if is_variant:
+                sig += 'v'
+            else:
+                sig += dbus_prepare(vals[0])[1]
+
+            obj = tmp
+            sig += '}'
 
         elif isinstance(obj, type):
             obj = obj.__name__
             sig = 's'
 
     except Exception as err:
-        logger.exception('obj: %s  sig: %s', obj, sig, exc_info=err)
+        logger.exception('obj: %s  sig: %s variant: %s', obj, sig, variant, exc_info=err)
         raise
 
     return obj, sig

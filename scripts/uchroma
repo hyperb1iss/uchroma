@@ -16,7 +16,8 @@ from uchroma.cmd import UChromaConsoleUtil
 from uchroma.color import ColorPair
 from uchroma.dbus_utils import dbus_prepare
 from uchroma.led import LED
-from uchroma.traits import add_traits_to_argparse, dict_as_class_traits
+from uchroma.renderer import RendererMeta
+from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_class_traits
 from uchroma.util import ArgsDict, max_keylen
 
 
@@ -83,24 +84,19 @@ class UChromaTool(UChromaConsoleUtil):
 
 
     def _add_anim_options(self, sub):
-        anim = sub.add_parser('anim', help='Animation control')
-        anim.add_argument("-d", "--device", type=str,
-                          help='HID device to use (/dev/hidrawX or USB identifier)')
-        anim.add_argument('--list', action='store_true',
-                          help='List available renderers')
-        anim.add_argument('-a', '--add', type=str, action='append',
-                          help='Adds a new animation layer')
+        anim = sub.add_parser('anim', help='Animation control', add_help=False)
+        anim.add_argument('-l', '--list', action='store_true',
+                          help="List supported effects")
+        anim.add_argument('-m', '--modify', type=int,
+                          help="Change options of an existing layer")
         anim.add_argument('-s', '--start', action='store_true',
-                          help='Starts animation with the configured layers')
-        anim.add_argument('-q', '--stop', action='store_true',
-                          help='Stops the currently running animation')
+                          help="Starts all layers of a paused or staged animation")
+        anim.add_argument('-x', '--stop', action='store_true',
+                          help="Stop the currently running animation")
+        anim.add_argument('-p', '--pause', action='store_true',
+                          help="Stop the animation, but keep the configuration")
         anim.add_argument('-c', '--clear', action='store_true',
-                          help='Stop and clear the current animation settings')
-        anim.add_argument('-m', '--modify', type=str, action='append',
-                          help='Modify an existing animation layer')
-        anim.add_argument('-b', '--blend', type=str,
-                          choices=BlendOp.get_modes(),
-                          help='Default blending mode (multiple layers only)')
+                          help="Clear staged animation layers")
         anim.set_defaults(func=self._anim_parser)
         return anim
 
@@ -257,7 +253,8 @@ class UChromaTool(UChromaConsoleUtil):
 
     def _activate_fx(self, args, driver, fx, **kwargs) -> bool:
         if driver.HasFX(fx):
-            return driver.SetFX(fx.lower(), dbus_prepare(kwargs, variant=True)[0])
+            print(dbus_prepare(kwargs))
+            return driver.SetFX(fx.lower(), dbus_prepare(kwargs)[0])
 
         else:
             self.print_err('Support for this effect (%s) is not implemented' % args.fx_cmd)
@@ -370,43 +367,32 @@ class UChromaTool(UChromaConsoleUtil):
             driver.Brightness = args.level
 
 
-    def _list_anims(self, driver):
-        avail = driver.AvailableRenderers
+    def _load_renderer_info(self, avail_renderers):
+        sar = OrderedDict(sorted(avail_renderers.items(),
+                                   key=lambda k_v: k_v[1]['meta']['display_name']))
+        exploded = OrderedDict()
+        for name, t_anim in sar.items():
+            info = {}
+            info['meta'] = RendererMeta(**t_anim['meta'])
+            info['traits'] = dict_as_class_traits(t_anim['traits'])
+            exploded[name] = info
+        return exploded
 
-        if avail is None or len(avail) == 0:
+
+    def _list_anims(self, renderer_info):
+        if renderer_info is None or len(renderer_info) == 0:
             self.print_err('No renderers found.')
             sys.exit(1)
 
-        avail = OrderedDict(sorted(avail.items(), key=lambda k_v: k_v[1]['meta']['display_name']))
-        keylen = max_keylen([v['meta']['display_name'] for k, v in avail.items()])
+        keylen = max_keylen([v['meta'].display_name for k, v in renderer_info.items()])
 
         print('\nAvailable renderers and arguments:\n')
 
-        for v in avail.values():
-            meta = v.pop('meta')
-            traits = dict_as_class_traits(v)
-            print('%*s : %s' % (keylen, meta['display_name'], meta['description']))
-            self._show_traits(traits, indent=keylen + 1)
+        for renderer in renderer_info.values():
+            print('%*s : %s' % (keylen, renderer['meta'].display_name,
+                                renderer['meta'].description))
+            self._show_traits(renderer['traits'], indent=keylen + 1)
             print('\n')
-
-
-    def _get_anim_args(self, argspec, variant=False):
-        # format is "anim.class.name:key=value,key=value,key=value"
-        tokens = argspec.split(':')
-        argsdict = OrderedDict()
-        layer = tokens[0]
-
-        if len(tokens) == 2:
-            pairs = tokens[1].split(',')
-            for pair in pairs:
-                kv = pair.split('=')
-                if len(kv) == 2:
-                    argsdict[kv[0]] = kv[1]
-
-        #if variant:
-        #    argsdict = VariantDict(argsdict)
-
-        return layer, argsdict
 
 
     def _anim_parser(self, args):
@@ -415,44 +401,91 @@ class UChromaTool(UChromaConsoleUtil):
             self.print_err('This device does not support animations.')
             sys.exit(1)
 
-        if args.list:
-            self._list_anims(driver)
-            sys.exit(0)
+        animparser = ArgumentParser(description=self.description, conflict_handler='resolve')
+        animparser.add_argument('-a', '--add', action='store_true',
+                                help="Add a new layer to the animation")
+        animparser.add_argument('-n', '--no-start', action='store_true',
+                                help="Add the layer, but do not immediately start it")
 
-        if args.clear:
-            driver.StopAnimation()
-            if not driver.ClearRenderers():
+        sub = animparser.add_subparsers(title='Animation renderers', dest='anim_cmd')
+
+        avail = driver.AvailableRenderers
+        if avail is None or len(avail) == 0:
+            self.print_err("No renderers available.")
+
+        renderer_info = self._load_renderer_info(avail)
+
+        anim_sub = {}
+        for name, info in renderer_info.items():
+            anim_sub[name] = sub.add_parser(name, help=info['meta'].description)
+            add_traits_to_argparse(info['traits'], anim_sub[name])
+
+        sub.add_parser('list')
+        sub.add_parser('start')
+        sub.add_parser('stop')
+        sub.add_parser('clear')
+
+        anim_args = animparser.parse_args(self._unparsed)
+        anim_cmd = anim_args.anim_cmd
+
+        if anim_cmd == 'clear' or args.clear:
+            if driver.ClearRenderers():
                 self.print_err("Failed to clear animation layers")
                 sys.exit(1)
+            sys.exit(0)
 
-        if args.add is not None and len(args.add) > 0:
-            for add in args.add:
-                layer, argsdict = self._get_anim_args(add, variant=True)
-                obj = driver.AddRenderer(layer, argsdict)
-                if obj is None:
-                    self.print_err("Failed to create renderer")
-                    sys.exit(1)
+        if anim_cmd == 'list' or args.list:
+            self._list_anims(renderer_info)
+            sys.exit(0)
 
-                print('Created layer: %s' % obj)
+        if anim_cmd == 'stop' or args.stop:
+            driver.StopAnimation()
+            if not args.pause and driver.ClearRenderers():
+                self.print_err("Failed to clear animation layers")
+                sys.exit(1)
+            sys.exit(0)
 
-        if args.modify is not None and len(args.modify) > 0:
-            for modify in args.modify:
-                layer, argsdict = self._get_anim_args(modify)
-                layer_obj = self._client.get_layer(driver, int(layer))
-                for k, v in argsdict.items():
-                    self.set_property(layer_obj, k, v)
-                sys.exit(0)
-
-        if args.start:
+        if anim_cmd == 'start' or args.start:
             if not driver.StartAnimation():
                 self.print_err("Failed to start animation")
                 sys.exit(1)
+            sys.exit(0)
 
-        elif args.stop:
-            if not driver.StopAnimation():
-                self.print_err("Failed to stop animation")
+        layer = None
+        if anim_cmd in renderer_info:
+            layer = anim_cmd
+            req_anim = renderer_info[anim_cmd]
+
+            trait_holder = apply_from_argparse(anim_args, traits=req_anim['traits'])
+            print(trait_holder)
+            layer = driver.AddRenderer(layer, dbus_prepare(trait_holder)[0])
+            if layer is None:
+                self.print_err("Failed to create renderer")
                 sys.exit(1)
 
+            print('Created layer: %s' % layer)
+            if not anim_args.no_start:
+                if not driver.StartAnimation():
+                    self.print_err("Failed to start animation")
+                    sys.exit(1)
+            sys.exit(0)
+
+        if args.modify is not None and len(args.modify) > 0:
+            layers = driver.CurrentRenderers
+            if args.modify > len(layers):
+                self.print_err("Layer index out of range")
+                sys.exit(1)
+
+            req_anim = renderer_info[layers[args.modify][0]]
+            trait_holder = apply_from_argparse(anim_args, traits=req_anim['traits'])
+            layer_obj = self._client.get_layer(driver, args.modify)
+
+            for name in trait_holder._traits().keys():
+                if hasattr(anim_args, name):
+                    self.set_property(layer_obj, name, getattr(anim_args, name))
+            sys.exit(0)
+
+        animparser.print_help()
         sys.exit(0)
 
 

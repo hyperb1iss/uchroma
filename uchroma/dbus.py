@@ -113,7 +113,7 @@ class DeviceAPI(object):
         while self._signal_input:
             event = yield from self._input_queue.get_events()
             if event is not None:
-                self.InputEvent(dbus_prepare(event, variant=True)[0])
+                self.InputEvent(dbus_prepare(event)[0])
 
 
     @property
@@ -148,7 +148,7 @@ class DeviceAPI(object):
 
     @property
     def FrameDebugOpts(self) -> dict:
-        return dbus_prepare(self._driver.frame_control.debug_opts, variant=True)[0]
+        return dbus_prepare(self._driver.frame_control.debug_opts)[0]
 
 
     @property
@@ -267,7 +267,7 @@ class FXManagerAPI(object):
               <arg direction='out' type='s' name='name' />
             </signal>
 
-            <property name='AvailableFX' type='a{sv}' access='read' />
+            <property name='AvailableFX' type='a{sa{sa{sv}}}' access='read' />
           </interface>
         </node>
     """
@@ -285,10 +285,9 @@ class FXManagerAPI(object):
         user_args = self._driver.fx_manager.user_args
 
         for fx in self._driver.fx_manager.available_fx:
-            args = user_args[fx]
-            avail[fx] = class_traits_as_dict(args)
+            avail[fx] = user_args[fx]
 
-        return dbus_prepare(avail, variant=True)[0]
+        return dbus_prepare(avail)[0]
 
 
     def HasFX(self, name: str) -> bool:
@@ -361,7 +360,7 @@ class LayerAPI(TraitsPropertiesMixin, object):
         argsdict = {}
         traits = self._delegate.traits()
         for k, v in traits.items():
-            argsdict[snake_to_camel(k)] = dbus_prepare(v, variant=True)[0]
+            argsdict[snake_to_camel(k)] = dbus_prepare(v)[0]
         return argsdict
 
 
@@ -389,7 +388,7 @@ class AnimationManagerAPI(object):
 
             <property name='AvailableRenderers' type='a{sa{sv}}' access='read' />
 
-            <property name='CurrentRenderers' type='ao' access='read'>
+            <property name='CurrentRenderers' type='a(so)' access='read'>
               <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
             </property>
 
@@ -450,25 +449,27 @@ class AnimationManagerAPI(object):
 
 
     @property
-    def CurrentRenderers(self) -> list:
-        return [self._layer_path(layer.zorder) for layer in self._animgr.renderers]
+    def CurrentRenderers(self) -> tuple:
+        current = []
+        for layer in self._animgr.renderers:
+            key = '%s.%s' % (layer.__class__.__module__, layer.__class__.__name__)
+            current.append((key, self._layer_path(layer.zorder)))
+        return tuple(current)
 
 
     @property
-    def AvailableRenderers(self) -> list:
+    def AvailableRenderers(self) -> dict:
         avail = {}
         infos = self._animgr.renderer_info
 
         for key, info in infos.items():
-            argsdict = {}
-            argsdict['meta'] = info.meta
-            argsdict.update(info.traits)
-            avail[key] = argsdict
+            avail[key] = dbus_prepare({'meta': info.meta, 'traits': info.traits})[0]
 
-        return dbus_prepare(avail)[0]
+        return avail
 
 
     def AddRenderer(self, name: str, traits: dict) -> str:
+        self._logger.debug('AddRenderer: name=%s traits=%s', name, traits)
         z = self._animgr.add_renderer(name, **traits)
         if z >= 0:
             return self._layer_path(z)

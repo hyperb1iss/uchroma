@@ -50,7 +50,7 @@ class UChromaClient(object):
         if layer_idx >= len(layers):
             raise ValueError("Layer index out of range")
 
-        return self._bus.get(SERVICE, layers[layer_idx])
+        return self._bus.get(SERVICE, layers[layer_idx][1])
 
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ import textwrap
 import gbulb
 
 from uchroma.cmd import UChromaConsoleUtil
-from uchroma.dbus_utils import VariantDict
+from uchroma.dbus_utils import dbus_prepare
 from uchroma.hardware import Hardware, KeyMapping, Point
 from uchroma.input import KeyInputEvent
 
@@ -157,7 +157,7 @@ class KeyConfigTool(object):
     def _update_active_key(self, position=None):
         if position is not None:
             self._position = position
-        self._driver.SetFX('alignment', VariantDict( \
+        self._driver.SetFX('alignment', dbus_prepare( \
             {'cur_row': self._position[0], 'cur_col': self._position[1]}))
 
 
