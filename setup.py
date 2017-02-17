@@ -3,10 +3,10 @@ import re
 
 from pydoc import locate
 
-from Cython.Build import cythonize
 from setuptools import setup
 from setuptools.command.install import install
 
+from Cython.Build import cythonize
 
 RAZER_VENDOR_ID = 0x1532
 
@@ -63,6 +63,8 @@ setup(name='uchroma',
       zip_safe=False,
       keywords='razer chroma uchroma driver keyboard mouse',
       include_package_data=True,
+      setup_requires=['pytest-runner'],
+      tests_require=['pytest'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',

@@ -182,7 +182,7 @@ class Configuration(Sequence, object):
         Intercepts calls to fetch from the tuple and searches up the
         hierarchy if necessary to populate fields.
         """
-        if key < len(self.__slots__):
+        if key <= len(self.__slots__):
             return getattr(self, self.__slots__[key])
 
         raise AttributeError('Invalid index: %s' % key)
