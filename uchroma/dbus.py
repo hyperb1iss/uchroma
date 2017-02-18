@@ -470,10 +470,11 @@ class AnimationManagerAPI(object):
 
     def AddRenderer(self, name: str, traits: dict) -> str:
         self._logger.debug('AddRenderer: name=%s traits=%s', name, traits)
-        z = self._animgr.add_renderer(name, **traits)
-        if z >= 0:
-            return self._layer_path(z)
-        return None
+        with self._animgr.hold_trait_notifications():
+            z = self._animgr.add_renderer(name, **traits)
+            if z >= 0:
+                return self._layer_path(z)
+            return None
 
 
     def ClearRenderers(self):

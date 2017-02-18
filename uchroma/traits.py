@@ -1,16 +1,16 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, invalid-name
 import enum
 import importlib
 import sys
 
-from frozendict import frozendict
 from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, HasTraits, \
         List, TraitType, Undefined, UseEnum
+from frozendict import frozendict
 
 from uchroma.util import ArgsDict, camel_to_snake, to_color
 
 
-MAGIC_TRAITS = ('description', 'hidden', 'meta', 'config', 'type')
+MAGIC_TRAITS = ('hidden', 'meta', 'config', 'type')
 
 
 class ColorTrait(TraitType):
@@ -41,7 +41,7 @@ class ColorSchemeTrait(List):
     """
     info_text = 'A list of colors to use, in HTML string format'
 
-    def __init__(self, default_value=(), minlen=0, maxlen=sys.maxsize, **kwargs):
+    def __init__(self, default_value=[], minlen=0, maxlen=sys.maxsize, **kwargs):
         super(ColorSchemeTrait, self).__init__(trait=ColorTrait,
                                                default_value=default_value,
                                                minlen=minlen, maxlen=maxlen, **kwargs)
@@ -219,7 +219,9 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
         if isinstance(trait, Container):
             parser.add_argument(argname, nargs='+', help=trait.info_text)
         elif isinstance(trait, Enum):
-            parser.add_argument(argname, type=str, choices=trait.values, help=trait.info_text)
+            parser.add_argument(argname, type=str,
+                                choices=trait.values,
+                                help=trait.info_text)
         else:
             argtype = str
             if hasattr(trait, 'default_value'):
@@ -259,7 +261,7 @@ def apply_from_argparse(args, traits: dict=None, target=None) -> dict:
     # if all validators passed, return a dict of the changed args
     changed = {}
     for key in intersect:
-        changed[key] = getattr(target, key)
+        changed[key] = target._trait_values[key]
 
     return changed
 
@@ -270,7 +272,7 @@ class TraitsPropertiesMixin(object):
 
 
     def get_user_args(self) -> dict:
-        return (self._delegate)
+        return self._delegate
 
 
     def __getattribute__(self, name):

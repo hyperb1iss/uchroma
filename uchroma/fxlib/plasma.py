@@ -22,8 +22,8 @@ class Plasma(Renderer):
                         'Steve Kondik', 'v1.0')
 
     # configurable traits
-    color_scheme = ColorSchemeTrait(minlen=2, default_value=['black', 'white'])
-    preset = ColorPresetTrait(ColorScheme, default_value=None)
+    color_scheme = ColorSchemeTrait(minlen=2, default_value=[*ColorScheme.Qap.value])
+    preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Qap)
     gradient_length = Int(default_value=360)
 
 
@@ -32,7 +32,6 @@ class Plasma(Renderer):
 
         self._gradient = None
         self._start_time = 0
-        self.preset = ColorScheme.Qap
         self.fps = 15
 
 
@@ -42,11 +41,12 @@ class Plasma(Renderer):
 
     @observe('color_scheme', 'gradient_length', 'preset')
     def _scheme_changed(self, changed):
-        self.logger.info("Parameters changed: %s", changed)
-        if changed.name == 'preset':
-            self.color_scheme.clear()
-            self.color_scheme = list(changed.new.value)
-        self._gen_gradient()
+        with self.hold_trait_notifications():
+            self.logger.debug("Parameters changed: %s", changed)
+            if changed.name == 'preset':
+                self.color_scheme.clear()
+                self.color_scheme = list(changed.new.value)
+            self._gen_gradient()
 
 
     def init(self, frame):

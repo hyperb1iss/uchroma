@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # pylint: disable=protected-access, invalid-name
-import functools
-import logging
 import re
 import sys
 
+from abc import abstractmethod
 from argparse import ArgumentParser
 from collections import OrderedDict
+from typing import NamedTuple
 
 from traitlets import HasTraits, Undefined
 
@@ -21,95 +21,65 @@ from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_
 from uchroma.util import ArgsDict, max_keylen
 
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+RemoteTraits = NamedTuple('RemoteTraits', [('name', str),
+                                           ('description', str),
+                                           ('traits', dict)])
+
+def ellipsize(line: str, length: int=80):
+    if not isinstance(line, str):
+        line = repr(line)
+
+    if len(line) < length:
+        return line
+    return '%s(...)' % line[:length]
 
 
-class UChromaTool(UChromaConsoleUtil):
+class AbstractCommand(object):
+    def __init__(self, parent):
+        self._parent = parent
 
 
-    def _add_subparsers(self, sub):
-        self._brightness_sub = self._add_brightness_options(sub)
-        self._anim_sub = self._add_anim_options(sub)
-        self._fx_sub = self._add_fx_options(sub)
-        self._led_sub = self._add_led_options(sub)
-        self._dump_sub = self._add_dump_options(sub)
+    @property
+    def driver(self):
+        return self._parent.get_driver()
 
 
-    def _add_dump_options(self, sub):
-        dump = sub.add_parser('dump', help='Dump device info')
-        dump.add_argument("-w", "--wide", action="store_true",
-                          help="Wide output (don't truncate long lines")
-        dump.set_defaults(func=self._dump_parser)
-        return dump
+    @property
+    def client(self):
+        return self._parent._client
 
 
-    def _add_fx_options(self, sub):
-        fx = sub.add_parser('fx', help='Lighting and effects', add_help=False)
-        fx.add_argument('--list', action='store_true',
-                        help='List supported effects')
-
-        fx.set_defaults(func=self._fx_parser)
-        return fx
+    @property
+    def unparsed_args(self):
+        return self._parent._unparsed
 
 
-    def _add_brightness_options(self, sub):
-        bright = sub.add_parser('brightness', help='Set/get brightness level')
-        bright.add_argument('level', metavar='BRIGHTNESS', type=float, nargs='?',
-                            help='Brightness level to set (0-100)')
-
-        bright.set_defaults(func=self._brightness_parser)
-        return bright
+    @property
+    def parent_parser(self):
+        return self._parent._parser
 
 
-    def _add_led_options(self, sub):
-        # FIXME: Per-device LEDs
-        led = sub.add_parser('led', help='LED control')
-        led.add_argument('led_type', metavar='LED type', type=str,
-                         choices=[x.name.lower() for x in LED.Type],
-                         help='Type of LED to control')
-        led.add_argument('-i', '--info', action='store_true', help='Get status of LED')
-
-        ledx = led.add_argument_group('LED attributes')
-        ledx.add_argument('-s', '--state', type=bool,
-                          help='State for the LED')
-        ledx.add_argument('-m', '--mode', type=str,
-                          choices=[x.name.lower() for x in LED.Mode],
-                          help='Mode for the LED')
-        ledx.add_argument('-c', '--color', type=str,
-                          help='RGB color for the LED')
-        ledx.add_argument('-b', '--brightness', metavar='BRIGHTNESS', type=float,
-                          help='Set brightness (0-100)')
-        led.set_defaults(func=self._led_parser)
-        return led
+    def exit(self, status=0, message=None):
+        self._parent._parser.exit(status, message)
 
 
-    def _add_anim_options(self, sub):
-        anim = sub.add_parser('anim', help='Animation control', add_help=False)
-        anim.add_argument('-l', '--list', action='store_true',
-                          help="List supported effects")
-        anim.add_argument('-m', '--modify', type=int,
-                          help="Change options of an existing layer")
-        anim.add_argument('-s', '--start', action='store_true',
-                          help="Starts all layers of a paused or staged animation")
-        anim.add_argument('-x', '--stop', action='store_true',
-                          help="Stop the currently running animation")
-        anim.add_argument('-p', '--pause', action='store_true',
-                          help="Stop the animation, but keep the configuration")
-        anim.add_argument('-c', '--clear', action='store_true',
-                          help="Clear staged animation layers")
-        anim.set_defaults(func=self._anim_parser)
-        return anim
+    def error(self, message):
+        self._parent.error(message)
+
+
+    def set_property(self, target, name, value):
+        self._parent.set_property(target, name, value)
 
 
     @staticmethod
-    def _get_preset(args):
+    def get_preset(args):
         if args.preset is None:
             return None
         return ColorPair[args.preset.upper()].name.lower()
 
 
     @staticmethod
-    def _get_color(args, num):
+    def get_color(args, num):
         if args.color is None:
             return None
 
@@ -119,7 +89,7 @@ class UChromaTool(UChromaConsoleUtil):
         return args.color[num]
 
 
-    def _show_traits(self, traits, indent=0):
+    def show_traits(self, traits, indent=0):
         s_traits = sorted(OrderedDict(traits).items())
 
         for name, trait in s_traits:
@@ -158,113 +128,110 @@ class UChromaTool(UChromaConsoleUtil):
             print('%*s| "%s" (%s): %s %s' % (indent, '', name, trait_type, desc, constraint_str))
 
 
-    def _load_fx_traits(self, sfx):
-        fx_traits = OrderedDict()
-        for name, t_dict in sorted(sfx.items()):
-            traits = dict_as_class_traits(t_dict)
-            if 'hidden' in traits:
-                if traits['hidden'].default_value:
-                    continue
-            desc = "No description available"
-            if 'description' in traits:
-                desc = traits['description'].default_value
-            trait_data = {}
-            trait_data['traits'] = traits
-            trait_data['desc'] = desc
-            fx_traits[name] = trait_data
-
-        return fx_traits
+    @abstractmethod
+    def add_parser(self, parser):
+        pass
 
 
-    def _list_fx(self, fx_traits):
-        if fx_traits is None or len(fx_traits) == 0:
-            self.print_err('No supported effects found.')
-            sys.exit(1)
-
-        print('\nBuilt-in effects and arguments:\n')
-        keylen = max_keylen(fx_traits)
-
-        for name, trait_data in fx_traits.items():
-            print('%*s | %s' % (keylen, name, trait_data['desc']))
-            self._show_traits(trait_data['traits'], indent=keylen + 1)
-            print('\n')
+    @abstractmethod
+    def parse(self, args):
+        pass
 
 
-    def _fx_parser(self, args):
-        driver = self.get_driver()
-
-        sfx = driver.AvailableFX
-
-        fxparser = ArgumentParser(description=self.description, conflict_handler='resolve')
-        fxparser.add_argument('--list', action='store_true',
-                              help='List supported effects')
-
-        sub = fxparser.add_subparsers(title='Built-in effects', dest='fx_cmd')
-
-        fx_traits = self._load_fx_traits(sfx)
-
-        if args.list:
-            self._list_fx(fx_traits)
-            sys.exit(0)
-
-        # turn all traits into argparse commands
-        for name, trait_data in fx_traits.items():
-            fx_sub = sub.add_parser(name, help=trait_data['desc'])
-            add_traits_to_argparse(trait_data['traits'], fx_sub)
-
-        # and a "list" subcommand (same as --list)
-        sub.add_parser('list')
-
-        # parse what the main parser left behind
-        args = fxparser.parse_args(self._unparsed)
-
-        if args.fx_cmd is None:
-            fxparser.print_help()
-            sys.exit(1)
-
-        if args.fx_cmd == 'list' or args.list:
-            self._list_fx(fx_traits)
-            sys.exit(0)
-
-        # apply the traits to an empty object, which will run
-        # the validators on the client
-        trait_holder = HasTraits()
-        traits = fx_traits[args.fx_cmd]['traits']
-        trait_holder.add_traits(**traits)
-
-        # apply the argparse flags to the holder object
-        for name in trait_holder.traits().keys():
-            if hasattr(args, name):
-                value = getattr(args, name)
-                if value is not None:
-                    setattr(trait_holder, name, getattr(args, name))
-
-        if driver.HasFX(args.fx_cmd):
-            if self._activate_fx(args, driver, args.fx_cmd, **trait_holder._trait_values):
-                sys.exit(0)
-
-            self.print_err('Failed to activate effect')
-            sys.exit(1)
-
-        self.print_err('Unsupported effect: %s\n' % args.fx_cmd)
-        fxparser.print_help()
-        sys.exit(1)
+class DumpCommand(AbstractCommand):
+    def add_parser(self, sub):
+        dump = sub.add_parser('dump', help='Dump device info')
+        dump.add_argument("-w", "--wide", action="store_true",
+                          help="Wide output (don't truncate long lines")
+        dump.set_defaults(func=self.parse)
+        return dump
 
 
-    def _activate_fx(self, args, driver, fx, **kwargs) -> bool:
-        if driver.HasFX(fx):
-            print(dbus_prepare(kwargs))
-            return driver.SetFX(fx.lower(), dbus_prepare(kwargs)[0])
+    def parse(self, args):
+        result = self.driver.GetAll('org.chemlab.UChroma.Device')
+        keylen = max_keylen(result)
+        props = sorted(OrderedDict(result).items())
+
+        layerargs = []
+        if hasattr(self.driver, 'CurrentRenderers'):
+            num_renderers = len(self.driver.CurrentRenderers)
+            if num_renderers > 0:
+                for layer_idx in range(0, num_renderers):
+                    layer = self.client.get_layer(self.driver, layer_idx)
+                    layerargs.append(ArgsDict(sorted( \
+                        layer.GetAll('org.chemlab.UChroma.Layer').items())))
+                    keylen = max(keylen, max_keylen(layerargs))
+
+
+        print('\nDevice properties:\n')
+        for k, v in props:
+            if not args.wide:
+                v = ellipsize(v)
+            print(' %*s |  %s' % (keylen, k, v))
+
+        if len(layerargs) > 0:
+            print('\n\nAnimation renderer state:\n')
+            for layer in layerargs:
+                print(' %*s |  %s' % \
+                    (keylen, ('Layer %d' % int(layer.get('Zorder'))), layer.get('Key')))
+                print(' %s' % ('-' * (keylen + 80)))
+
+                for k, v in layer.items():
+                    if k not in ('Zorder', 'Key'):
+                        print(' %*s |  %s' % (keylen, k, v))
+
+                print('\n')
+
+
+class BrightnessCommand(AbstractCommand):
+    def add_parser(self, sub):
+        bright = sub.add_parser('brightness', help='Set/get brightness level')
+        bright.add_argument('level', metavar='BRIGHTNESS', type=float, nargs='?',
+                            help='Brightness level to set (0-100)')
+
+        bright.set_defaults(func=self.parse)
+        return bright
+
+
+    def parse(self, args):
+        if not hasattr(self.driver, 'Brightness'):
+            self.error('This device does not support brightness control.')
+
+        if args.level is None:
+            print('%f' % self.driver.Brightness)
 
         else:
-            self.print_err('Support for this effect (%s) is not implemented' % args.fx_cmd)
-            sys.exit(1)
+            if args.level < 0 or args.level > 100:
+                self.error('Brightness must be between 0 and 100')
 
-        return False
+            self.driver.Brightness = args.level
 
 
-    def _led_parser(self, args):
-        with self.get_driver() as driver:
+class LEDCommand(AbstractCommand):
+    def add_parser(self, sub):
+        # FIXME: Per-device LEDs
+        led = sub.add_parser('led', help='LED control')
+        led.add_argument('led_type', metavar='LED type', type=str,
+                         choices=[x.name.lower() for x in LED.Type],
+                         help='Type of LED to control')
+        led.add_argument('-i', '--info', action='store_true', help='Get status of LED')
+
+        ledx = led.add_argument_group('LED attributes')
+        ledx.add_argument('-s', '--state', type=bool,
+                          help='State for the LED')
+        ledx.add_argument('-m', '--mode', type=str,
+                          choices=[x.name.lower() for x in LED.Mode],
+                          help='Mode for the LED')
+        ledx.add_argument('-c', '--color', type=str,
+                          help='RGB color for the LED')
+        ledx.add_argument('-b', '--brightness', metavar='BRIGHTNESS', type=float,
+                          help='Set brightness (0-100)')
+        led.set_defaults(func=self.parse)
+        return led
+
+
+    def parse(self, args):
+        with self.driver as driver:
 
             led = driver.get_led(LED.Type[args.led_type.upper()])
             if led is None:
@@ -294,199 +261,280 @@ class UChromaTool(UChromaConsoleUtil):
 
                 if args.brightness is not None:
                     if args.brightness < 0 or args.brightness > 100:
-                        self.print_err("Brightness value must be between 0 and 100")
-                        sys.exit(1)
+                        self.error("Brightness value must be between 0 and 100")
 
                     led.brightness = args.brightness
 
 
+class FXCommand(AbstractCommand):
+    def add_parser(self, sub):
+        fx = sub.add_parser('fx', help='Lighting and effects', add_help=False)
+        fx.add_argument('--list', action='store_true',
+                        help='List supported effects')
 
-    @staticmethod
-    def ellipsize(line: str, length: int=80):
-        if not isinstance(line, str):
-            line = repr(line)
-
-        if len(line) < length:
-            return line
-        return '%s(...)' % line[:length]
-
-
-    def _dump_parser(self, args):
-        driver = self.get_driver()
-        result = driver.GetAll('org.chemlab.UChroma.Device')
-        keylen = max_keylen(result)
-        props = sorted(OrderedDict(result).items())
-
-        layerargs = []
-        if hasattr(driver, 'CurrentRenderers'):
-            num_renderers = len(driver.CurrentRenderers)
-            if num_renderers > 0:
-                for layer_idx in range(0, num_renderers):
-                    layer = self._client.get_layer(driver, layer_idx)
-                    layerargs.append(ArgsDict(sorted( \
-                        layer.GetAll('org.chemlab.UChroma.Layer').items())))
-                    keylen = max(keylen, max_keylen(layerargs))
+        fx.set_defaults(func=self.parse)
+        return fx
 
 
-        print('\nDevice properties:\n')
-        for k, v in props:
-            if not args.wide:
-                v = UChromaTool.ellipsize(v)
-            print(' %*s |  %s' % (keylen, k, v))
+    def _load_fx_traits(self, sfx):
+        fx_traits = OrderedDict()
+        for name, t_dict in sorted(sfx.items()):
+            traits = dict_as_class_traits(t_dict)
+            if 'hidden' in traits:
+                if traits['hidden'].default_value:
+                    continue
+            desc = "No description available"
+            if 'description' in traits:
+                desc = traits['description'].default_value
 
-        if len(layerargs) > 0:
-            print('\n\nAnimation renderer state:\n')
-            for layer in layerargs:
-                print(' %*s |  %s' % \
-                    (keylen, ('Layer %d' % int(layer.get('Zorder'))), layer.get('Key')))
-                print(' %s' % ('-' * (keylen + 80)))
-
-                for k, v in layer.items():
-                    if k not in ('Zorder', 'Key'):
-                        print(' %*s |  %s' % (keylen, k, v))
-
-                print('\n')
-
-        sys.exit(0)
+            fx_traits[name] = RemoteTraits(name, desc, traits)
+        return fx_traits
 
 
-    def _brightness_parser(self, args):
-        driver = self.get_driver()
-        if not hasattr(driver, 'Brightness'):
-            self.print_err('This device does not support brightness control.')
-            sys.exit(1)
+    def _list_fx(self, fx_traits):
+        if fx_traits is None or len(fx_traits) == 0:
+            self.error('No supported effects found.')
 
-        if args.level is None:
-            print('%f' % driver.Brightness)
+        print('\nBuilt-in effects and arguments:\n')
+        keylen = max_keylen(fx_traits)
 
-        else:
-            if args.level < 0 or args.level > 100:
-                self.print_err('Brightness must be between 0 and 100')
-                sys.exit(1)
-
-            driver.Brightness = args.level
-
-
-    def _load_renderer_info(self, avail_renderers):
-        sar = OrderedDict(sorted(avail_renderers.items(),
-                                   key=lambda k_v: k_v[1]['meta']['display_name']))
-        exploded = OrderedDict()
-        for name, t_anim in sar.items():
-            info = {}
-            info['meta'] = RendererMeta(**t_anim['meta'])
-            info['traits'] = dict_as_class_traits(t_anim['traits'])
-            exploded[name] = info
-        return exploded
-
-
-    def _list_anims(self, renderer_info):
-        if renderer_info is None or len(renderer_info) == 0:
-            self.print_err('No renderers found.')
-            sys.exit(1)
-
-        keylen = max_keylen([v['meta'].display_name for k, v in renderer_info.items()])
-
-        print('\nAvailable renderers and arguments:\n')
-
-        for renderer in renderer_info.values():
-            print('%*s : %s' % (keylen, renderer['meta'].display_name,
-                                renderer['meta'].description))
-            self._show_traits(renderer['traits'], indent=keylen + 1)
+        for name, trait_data in fx_traits.items():
+            print('%*s | %s' % (keylen, name, trait_data.description))
+            self.show_traits(trait_data.traits, indent=keylen + 1)
             print('\n')
 
 
-    def _anim_parser(self, args):
-        driver = self.get_driver()
-        if not driver.HasMatrix:
-            self.print_err('This device does not support animations.')
+    def parse(self, args):
+        sfx = self.driver.AvailableFX
+
+        fxparser = ArgumentParser(description='FX Commands', conflict_handler='resolve')
+        fxparser.add_argument('--list', action='store_true',
+                              help='List supported effects')
+
+        sub = fxparser.add_subparsers(title='Built-in effects', dest='fx_cmd')
+
+        fx_traits = self._load_fx_traits(sfx)
+
+        if args.list:
+            self._list_fx(fx_traits)
+            sys.exit(0)
+
+        # turn all traits into argparse commands
+        for name, trait_data in fx_traits.items():
+            fx_sub = sub.add_parser(name, help=trait_data.description)
+            add_traits_to_argparse(trait_data.traits, fx_sub)
+
+        # and a "list" subcommand (same as --list)
+        sub.add_parser('list')
+
+        # parse what the main parser left behind
+        args = fxparser.parse_args(self.unparsed_args)
+
+        if args.fx_cmd is None:
+            fxparser.print_help()
             sys.exit(1)
 
-        animparser = ArgumentParser(description=self.description, conflict_handler='resolve')
-        animparser.add_argument('-a', '--add', action='store_true',
-                                help="Add a new layer to the animation")
-        animparser.add_argument('-n', '--no-start', action='store_true',
-                                help="Add the layer, but do not immediately start it")
+        if args.fx_cmd == 'list' or args.list:
+            self._list_fx(fx_traits)
+            sys.exit(0)
 
-        sub = animparser.add_subparsers(title='Animation renderers', dest='anim_cmd')
+        # apply the traits to an empty object, which will run
+        # the validators on the client
+        trait_holder = HasTraits()
+        traits = fx_traits[args.fx_cmd].traits
+        trait_holder.add_traits(**traits)
 
-        avail = driver.AvailableRenderers
+        # apply the argparse flags to the holder object
+        for name in trait_holder.traits().keys():
+            if hasattr(args, name):
+                value = getattr(args, name)
+                if value is not None:
+                    setattr(trait_holder, name, getattr(args, name))
+
+        if self.driver.HasFX(args.fx_cmd):
+            if self._activate_fx(args, args.fx_cmd, trait_holder._trait_values):
+                sys.exit(0)
+
+            self.error('Failed to activate effect')
+
+        fxparser.print_help()
+        self.error('Unsupported effect: %s\n' % args.fx_cmd)
+        sys.exit(1)
+
+
+    def _activate_fx(self, args, fx, tv) -> bool:
+        if self.driver.HasFX(fx):
+            return self.driver.SetFX(fx.lower(), dbus_prepare(tv, variant=True)[0])
+
+        else:
+            self.error('Support for this effect (%s) is not implemented' % args.fx_cmd)
+
+        return False
+
+
+class AnimationCommand(AbstractCommand):
+    def __init__(self, *args, **kwargs):
+        super(AnimationCommand, self).__init__(*args, **kwargs)
+        self._renderer_info = None
+        self._anim_args = None
+        self._unparsed = None
+        self._add_parser = None
+        self._anim_parser = None
+        self._mod_parser = None
+        self._sub = None
+
+    def add_parser(self, sub):
+        self._sub = sub.add_parser('anim', help='Animation control', add_help=False)
+        self._sub.set_defaults(func=self.parse)
+        return self._sub
+
+
+    def parse(self, args):
+        self._anim_parser = ArgumentParser(description="Animation commands",
+                                           parents=[self._sub])
+
+        sub = self._anim_parser.add_subparsers(title='Animation renderers')
+
+        sub.add_parser('list', help="List available renderers").set_defaults(func_anim=self._list)
+
+        self._add_parser = sub.add_parser('add', help="Add a new renderer", add_help=False)
+        self._add_parser.add_argument('name', type=str, help="Class name of the renderer")
+        self._add_parser.add_argument('-p', '--paused', action='store_true',
+                                      help="Do not immediately start")
+        self._add_parser.set_defaults(func_anim=self._add)
+
+        self._mod_parser = sub.add_parser('modify', help="Modify an existing layer", add_help=False)
+        self._mod_parser.add_argument('layer', type=int, help="Layer index to modify")
+        self._mod_parser.set_defaults(func_anim=self._modify)
+
+        sub.add_parser('start', help="Start a paused animation").set_defaults(func_anim=self._start)
+        sub.add_parser('stop', help="Stop the running animation").set_defaults(func_anim=self._stop)
+        sub.add_parser('pause', help="Pause the animation").set_defaults(func_anim=self._pause)
+
+        anim_args, self._unparsed = self._anim_parser.parse_known_args(self.unparsed_args)
+
+        if not hasattr(anim_args, 'func_anim'):
+            self._anim_parser.print_help()
+            sys.exit(1)
+
+        anim_args.func_anim(anim_args)
+
+
+    @property
+    def renderer_info(self):
+        if self._renderer_info is not None:
+            return self._renderer_info
+
+        avail = self.driver.AvailableRenderers
         if avail is None or len(avail) == 0:
-            self.print_err("No renderers available.")
+            self.error("No renderers available.")
+            sys.exit(1)
 
-        renderer_info = self._load_renderer_info(avail)
+        sar = OrderedDict(sorted(avail.items(),
+                                 key=lambda k_v: k_v[1]['meta']['display_name']))
+        exploded = OrderedDict()
+        for name, t_anim in sar.items():
+            exploded[name] = RemoteTraits(t_anim['meta']['display_name'],
+                                          t_anim['meta']['description'],
+                                          dict_as_class_traits(t_anim['traits']))
+        self._renderer_info = exploded
+        return self._renderer_info
 
-        anim_sub = {}
-        for name, info in renderer_info.items():
-            anim_sub[name] = sub.add_parser(name, help=info['meta'].description)
-            add_traits_to_argparse(info['traits'], anim_sub[name])
 
-        sub.add_parser('list')
-        sub.add_parser('start')
-        sub.add_parser('stop')
-        sub.add_parser('clear')
+    def _list(self, args):
+        keylen = max_keylen([v.name for k, v in self.renderer_info.items()])
 
-        anim_args = animparser.parse_args(self._unparsed)
-        anim_cmd = anim_args.anim_cmd
+        print('\nAvailable renderers and arguments:\n')
 
-        if anim_cmd == 'clear' or args.clear:
-            if driver.ClearRenderers():
-                self.print_err("Failed to clear animation layers")
-                sys.exit(1)
-            sys.exit(0)
+        for renderer in self.renderer_info.values():
+            print('%*s : %s' % (keylen, renderer.name, renderer.description))
+            self.show_traits(renderer.traits, indent=keylen + 1)
+            print('\n')
 
-        if anim_cmd == 'list' or args.list:
-            self._list_anims(renderer_info)
-            sys.exit(0)
 
-        if anim_cmd == 'stop' or args.stop:
-            driver.StopAnimation()
-            if not args.pause and driver.ClearRenderers():
-                self.print_err("Failed to clear animation layers")
-                sys.exit(1)
-            sys.exit(0)
+    def _pause(self, args):
+        if not self.driver.StopAnimation():
+            self.error("Failed to stop animation")
 
-        if anim_cmd == 'start' or args.start:
-            if not driver.StartAnimation():
-                self.print_err("Failed to start animation")
-                sys.exit(1)
-            sys.exit(0)
 
-        layer = None
-        if anim_cmd in renderer_info:
-            layer = anim_cmd
-            req_anim = renderer_info[anim_cmd]
+    def _stop(self, args):
+        self._pause(args)
+        if not self.driver.ClearRenderers():
+            self.error("Failed to clear animation layers")
 
-            trait_holder = apply_from_argparse(anim_args, traits=req_anim['traits'])
-            print(trait_holder)
-            layer = driver.AddRenderer(layer, dbus_prepare(trait_holder)[0])
-            if layer is None:
-                self.print_err("Failed to create renderer")
-                sys.exit(1)
 
-            print('Created layer: %s' % layer)
-            if not anim_args.no_start:
-                if not driver.StartAnimation():
-                    self.print_err("Failed to start animation")
-                    sys.exit(1)
-            sys.exit(0)
+    def _start(self, args):
+        if not self.driver.StartAnimation():
+            self.error("Failed to start animation")
 
-        if args.modify is not None and len(args.modify) > 0:
-            layers = driver.CurrentRenderers
-            if args.modify > len(layers):
-                self.print_err("Layer index out of range")
-                sys.exit(1)
 
-            req_anim = renderer_info[layers[args.modify][0]]
-            trait_holder = apply_from_argparse(anim_args, traits=req_anim['traits'])
-            layer_obj = self._client.get_layer(driver, args.modify)
+    def _parse_traits(self, req_anim, required: bool=False) -> dict:
+        parser = ArgumentParser(description=req_anim.description,
+                                parents=[self._sub],
+                                conflict_handler='resolve')
 
-            for name in trait_holder._traits().keys():
-                if hasattr(anim_args, name):
-                    self.set_property(layer_obj, name, getattr(anim_args, name))
-            sys.exit(0)
+        add_traits_to_argparse(req_anim.traits, parser)
+        args = parser.parse_args(self._unparsed)
 
-        animparser.print_help()
-        sys.exit(0)
+        changed = apply_from_argparse(args, req_anim.traits)
+
+        if required and len(changed) == 0:
+            parser.print_help()
+            self.error("At least one option must be selected to modify")
+
+
+    def _add(self, args):
+        rname = args.name
+        if rname not in self.renderer_info:
+            found_short_name = False
+            for k, v in self.renderer_info.items():
+                if rname.lower() == v.name.lower():
+                    rname = k
+                    found_short_name = True
+                    break
+
+            if not found_short_name:
+                self._list(args)
+                self.error("%s is not a valid renderer" % (rname))
+
+        req_anim = self.renderer_info[rname]
+        traits = self._parse_traits(req_anim)
+
+        layer = self.driver.AddRenderer(rname, dbus_prepare(traits, variant=True)[0])
+        if layer is None:
+            self.error("Failed to create renderer")
+
+        print('Created layer: %s' % layer)
+        if not args.paused:
+            if not self.driver.StartAnimation():
+                self.error("Failed to start animation")
+
+
+    def _modify(self, args):
+
+        layers = self.driver.CurrentRenderers
+        if args.layer >= len(layers):
+            self._list(args)
+            self.error("Layer index out of range")
+
+        req_anim = self.renderer_info[layers[args.layer][0]]
+        traits = self._parse_traits(req_anim, required=True)
+        layer_obj = self.client.get_layer(self.driver, args.layer)
+
+        # Renderers expose their properties via dbus while running
+        for k, v in traits.items():
+            self.set_property(layer_obj, k, v)
+
+
+
+class UChromaTool(UChromaConsoleUtil):
+
+    COMMANDS = [DumpCommand, BrightnessCommand, LEDCommand, FXCommand, AnimationCommand]
+
+    def _add_subparsers(self, sub):
+        for command in UChromaTool.COMMANDS:
+            cmd = command(self)
+            cmd.add_parser(sub)
 
 
 

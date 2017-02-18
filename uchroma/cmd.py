@@ -8,6 +8,7 @@ import sys
 from argparse import ArgumentParser
 
 from uchroma.client import UChromaClient
+from uchroma.dbus_utils import dbus_prepare, snake_to_camel
 from uchroma.version import __version__
 
 
@@ -51,10 +52,14 @@ class UChromaConsoleUtil(object):
                 firmware_version = dev.FirmwareVersion
             except IOError as err:
                 if self._args.debug:
-                    self.print_err("Error opening device: %s" % err)
+                    self.error("Error opening device: %s" % err)
 
             print('[%s]: %s (%s / %s)' % (dev.Key, dev.Name, serial_number, firmware_version))
         sys.exit(0)
+
+
+    def error(self, message):
+        self._parser.error(message)
 
 
     @property
@@ -72,17 +77,13 @@ class UChromaConsoleUtil(object):
         list_devs.set_defaults(func=self._list_devices)
 
 
-    def print_err(self, *args):
-        print(' '.join([str(x) for x in args]) + '\n', file=sys.stderr)
-
-
     def get_driver(self):
         driver = None
 
         if hasattr(self._args, 'device') and self._args.device is not None:
             driver = self._client.get_device(self._args.device)
             if driver is None:
-                self.print_err("Invalid device: %s" % self._args.device)
+                self.error("Invalid device: %s" % self._args.device)
                 sys.exit(1)
 
         else:
@@ -90,13 +91,14 @@ class UChromaConsoleUtil(object):
             if len(dev_paths) == 1:
                 driver = self._client.get_device(dev_paths[0])
             else:
-                self.print_err("Multiple devices found, select one with --device")
+                self.error("Multiple devices found, select one with --device")
                 sys.exit(1)
 
         return driver
 
 
     def set_property(self, target, name, value):
+        name = snake_to_camel(name)
         if not hasattr(target, name):
             raise ValueError("Invalid property: %s" % name)
         cls_obj = getattr(target.__class__, name)
@@ -111,7 +113,7 @@ class UChromaConsoleUtil(object):
             elif typespec == 'b':
                 value = bool(value)
             else:
-                raise TypeError("Unable to handle type %s" % typespec)
+                value = dbus_prepare(value)[0]
         setattr(target, name, value)
 
 
