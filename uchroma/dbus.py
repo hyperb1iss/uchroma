@@ -16,14 +16,16 @@ import os
 from collections import OrderedDict
 from enum import Enum
 
-from grapefruit import Color
 from pydbus import SessionBus
 from pydbus.generic import signal
 from traitlets.utils.bunch import Bunch
 
+from grapefruit import Color
+
 from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder
 from uchroma.input import InputQueue
-from uchroma.traits import class_traits_as_dict, TraitsPropertiesMixin, trait_as_dict
+from uchroma.led import LEDType
+from uchroma.traits import TraitsPropertiesMixin
 from uchroma.util import camel_to_snake, ensure_future, snake_to_camel
 
 
@@ -56,7 +58,6 @@ class DeviceAPI(object):
                    'product_id': 'u',
                    'revision': 'u',
                    'serial_number': 's',
-                   'supported_leds': 'as',
                    'key_mapping': 'a{saau}',
                    'sys_path': 's',
                    'vendor_id': 'u',
@@ -91,7 +92,9 @@ class DeviceAPI(object):
             if isinstance(value, Enum):
                 return value.name.lower()
             if isinstance(value, Color):
-               return value.html
+                return value.html
+            if isinstance(value, (list, tuple)) and len(value) > 0 and isinstance(value[0], Enum):
+                return [x.name.lower() for x in value]
             return value
 
         else:
@@ -114,6 +117,11 @@ class DeviceAPI(object):
             event = yield from self._input_queue.get_events()
             if event is not None:
                 self.InputEvent(dbus_prepare(event)[0])
+
+
+    @property
+    def SupportedLeds(self) -> list:
+        return [x.name.lower() for x in self._driver.supported_leds]
 
 
     @property
@@ -242,6 +250,77 @@ class DeviceAPI(object):
         return builder.build()
 
 
+class LEDManagerAPI(object):
+    """
+        <node>
+          <interface name='org.chemlab.UChroma.LEDManager'>
+            <property name='AvailableLEDs' type='a{sa{sa{sv}}}' access='read' />
+
+            <method name='GetLED'>
+              <arg direction='in' type='s' name='led' />
+              <arg direction='out' type='a{sv}' name='properties' />
+            </method>
+
+            <method name='SetLED'>
+              <arg direction='in' type='s' name='led' />
+              <arg direction='in' type='a{sv}' name='properties' />
+              <arg direction='out' type='b' name='status' />
+            </method>
+
+            <signal name='LEDChanged'>
+              <arg direction='out' type='s' name='led' />
+            </signal>
+          </interface>
+        </node>
+    """
+
+    def __init__(self, driver):
+        self._driver = driver
+        self._logger = driver.logger
+        self._driver.led_manager.add_observer(self._observer)
+
+
+    def _observer(self, led):
+        self.LEDChanged(led.led_type.name.lower())
+
+
+    @property
+    def AvailableLEDs(self):
+        leds = {}
+        for led in self._driver.led_manager.supported_leds:
+            leds[led.name.lower()] = self._driver.led_manager.get(led).class_traits()
+
+        return dbus_prepare(leds)[0]
+
+
+    def GetLED(self, name: str) -> dict:
+        ledtype = LEDType[name.upper()]
+        if ledtype is None:
+            self._logger.error("Unknown LED type: %s", name)
+            return {}
+
+        return dbus_prepare(self._driver.led_manager.get(ledtype))[0]
+
+
+    def SetLED(self, name: str, properties: dict) -> bool:
+        ledtype = LEDType[name.upper()]
+        if ledtype is None:
+            self._logger.error("Unknown LED type: %s", name)
+            return False
+
+        led = self._driver.led_manager.get(ledtype)
+
+        with led.hold_trait_notifications():
+            self._logger.debug('Set LED property [%s]: %s', ledtype, properties)
+            for k, v in properties.items():
+                if led.has_trait(k):
+                    setattr(led, k, v)
+
+        return True
+
+
+    LEDChanged = signal()
+
 
 class FXManagerAPI(object):
     """
@@ -334,7 +413,7 @@ class LayerAPI(TraitsPropertiesMixin, object):
         self.__class__.dbus = self._get_descriptor()
 
         if self._logger.isEnabledFor(logging.DEBUG):
-            self._logger.debug('Layer created: %s', self.__class__.dbus)
+            self._logger.debug('Layer node created: %s', self.__class__.dbus)
 
 
     def _get_descriptor(self):
@@ -542,6 +621,10 @@ class DeviceManagerAPI(object):
         if device.animation_manager is not None:
             self._devs[path].append(self._bus.register_object( \
                 path, AnimationManagerAPI(device, self._bus, path), None))
+
+        if device.led_manager is not None:
+            self._devs[path].append(self._bus.register_object( \
+                path, LEDManagerAPI(device), None))
 
 
     def _unpublish_device(self, device):

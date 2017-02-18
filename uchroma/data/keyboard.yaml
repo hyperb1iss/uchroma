@@ -8,6 +8,7 @@
 manufacturer: Razer
 type: KEYBOARD
 vendor_id: 0x1532
+supported_leds: [backlight, logo]
 children:
 - !device-config
   supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight]

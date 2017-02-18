@@ -74,6 +74,9 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
         elif isinstance(obj, TraitType):
             obj, sig = dbus_prepare(trait_as_dict(obj), variant=True)
 
+        elif isinstance(obj, HasTraits):
+            obj, sig = dbus_prepare(obj._trait_values, variant=True)
+
         elif hasattr(obj, '_asdict') and hasattr(obj, '_field_types'):
             # typing.NamedTuple
             obj, sig = dbus_prepare(obj._asdict(), variant=True)
@@ -249,6 +252,8 @@ class DescriptorBuilder(object):
                 sig = 's'
             elif isinstance(trait, RendererMeta):
                 sig = 'a{ss}'
+            elif isinstance(trait, Enum):
+                sig = 's'
 
             write_once = False
             if hasattr(trait, 'write_once'):

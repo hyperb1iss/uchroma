@@ -16,7 +16,7 @@ children:
   - !device-config
     name: Tartarus Chroma
     product_id: 0x0208
-    quirks: PROFILE_LEDS
+    supported_leds: [backlight, profile_blue, profile_green, profile_red]
     macro_keys:
       numeric: [15, 16, 17, 18, 19,   # keys 1-5
                 58, 30, 31, 32, 33,   # keys 6-10

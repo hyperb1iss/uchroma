@@ -9,6 +9,7 @@ manufacturer: Razer
 type: MOUSE
 vendor_id: 0x1532
 supported_fx: [disable, wave, reactive, breathe, spectrum, static]
+supported_leds: [backlight, battery, scroll_wheel]
 children:
 - !device-config
   name: Imperator 2012

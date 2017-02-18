@@ -91,6 +91,10 @@ class UseEnumCaseless(UseEnum):
         return self.enum_class[list(self.enum_class.__members__.keys())[idx]]
 
 
+class WriteOnceUseEnumCaseless(WriteOnceMixin, UseEnumCaseless):
+    pass
+
+
 def trait_as_dict(trait) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like

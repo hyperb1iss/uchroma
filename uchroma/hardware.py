@@ -10,6 +10,7 @@ import ruamel.yaml as yaml
 
 from uchroma.config import Configuration, FlowSequence, LowerCaseSeq, \
         represent_flow_seq
+from uchroma.led import LEDType
 
 
 RAZER_VENDOR_ID = 0x1532
@@ -91,12 +92,12 @@ BaseHardware = Configuration.create("BaseHardware", [ \
     ('product_id', HexQuad),
     ('dimensions', Point),
     ('supported_fx', LowerCaseSeq),
+    ('supported_leds', LEDType),
     ('quirks', Quirks),
     ('zones', Zone),
     ('key_mapping', KeyMapping),
     ('key_fixup_mapping', KeyFixupMapping),
     ('key_row_offsets', tuple),
-    ('supported_leds', tuple),
     ('macro_keys', OrderedDict),
     ('is_wireless', bool),
     ('revision', int),

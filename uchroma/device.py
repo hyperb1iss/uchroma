@@ -4,7 +4,7 @@ from uchroma.device_base import BaseUChromaDevice
 from uchroma.frame import Frame
 from uchroma.fx import FXManager
 from uchroma.hardware import Hardware, Quirks
-from uchroma.led import LED
+from uchroma.led import LED, LEDManager, LEDType
 from uchroma.standard_fx import StandardFX
 from uchroma.util import ValueAnimator
 
@@ -21,8 +21,8 @@ class UChromaDevice(BaseUChromaDevice):
                                             sys_path, input_devices,
                                             *args, **kwargs)
 
-        self._leds = {}
         self._fx_manager = FXManager(self, StandardFX(self))
+        self._led_manager = LEDManager(self)
 
         self._frame_control = None
 
@@ -30,8 +30,7 @@ class UChromaDevice(BaseUChromaDevice):
         self._suspended = False
 
 
-
-    def get_led(self, led_type: LED.Type) -> LED:
+    def get_led(self, led_type: LEDType) -> LED:
         """
         Fetches the requested LED interface on this device
 
@@ -39,10 +38,9 @@ class UChromaDevice(BaseUChromaDevice):
 
         :return: The LED interface, if available
         """
-        if led_type not in self._leds:
-            self._leds[led_type] = LED(self, led_type)
-
-        return self._leds[led_type]
+        if self.led_manager is None:
+            return None
+        return self.led_manager.get(led_type)
 
 
     @property
@@ -67,23 +65,23 @@ class UChromaDevice(BaseUChromaDevice):
 
     def _set_brightness(self, level: float):
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
-            self.get_led(LED.Type.SCROLL_WHEEL).brightness = level
+            self.get_led(LEDType.SCROLL_WHEEL).brightness = level
 
         elif self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
-            self.get_led(LED.Type.LOGO).brightness = level
+            self.get_led(LEDType.LOGO).brightness = level
 
         else:
-            self.get_led(LED.Type.BACKLIGHT).brightness = level
+            self.get_led(LEDType.BACKLIGHT).brightness = level
 
 
     def _get_brightness(self) -> float:
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
-            return self.get_led(LED.Type.SCROLL_WHEEL).brightness
+            return self.get_led(LEDType.SCROLL_WHEEL).brightness
 
         if self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
-            return self.get_led(LED.Type.LOGO).brightness
+            return self.get_led(LEDType.LOGO).brightness
 
-        return self.get_led(LED.Type.BACKLIGHT).brightness
+        return self.get_led(LEDType.BACKLIGHT).brightness
 
 
     def _run_power_callbacks(self, level):
@@ -156,6 +154,16 @@ class UChromaDevice(BaseUChromaDevice):
             self._brightness_animator.animate(self.brightness, level)
 
         self.preferences.brightness = level
+
+
+    @property
+    def supported_leds(self) -> tuple:
+        return self.hardware.supported_leds
+
+
+    @property
+    def led_manager(self) -> LEDManager:
+        return self._led_manager
 
 
     def reset(self) -> bool:

@@ -8,7 +8,7 @@ from grapefruit import Color
 from uchroma.device import UChromaDevice
 from uchroma.device_base import BaseCommand
 from uchroma.hardware import Hardware
-from uchroma.led import LED
+from uchroma.led import LEDType
 from uchroma.report import Status
 from uchroma.util import clamp, scale, scale_brightness, to_color
 
@@ -211,7 +211,7 @@ class UChromaWirelessMouse(UChromaMouse):
         """
         The color of the dock LEDs while charging
         """
-        return self.get_led(LED.Type.BATTERY).color
+        return self.get_led(LEDType.BATTERY).color
 
 
     @dock_charge_color.setter
@@ -223,7 +223,7 @@ class UChromaWirelessMouse(UChromaMouse):
             self.enable_dock_charge_effect(False)
         else:
             self.enable_dock_charge_effect(True)
-            self.get_led(LED.Type.BATTERY).color = to_color(color)
+            self.get_led(LEDType.BATTERY).color = to_color(color)
 
 
     def set_low_battery_threshold(self, threshold: float) -> bool:

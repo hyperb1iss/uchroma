@@ -7,7 +7,7 @@ from traitlets import Bool, Int, Unicode
 from uchroma.color import ColorUtils
 from uchroma.fx import BaseFX, FXModule
 from uchroma.hardware import Hardware, Quirks
-from uchroma.led import LED
+from uchroma.led import LEDType
 from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
 from uchroma.types import BaseCommand
 from uchroma.util import MagicalEnum
@@ -143,7 +143,7 @@ class StandardFX(FXModule):
 
     def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:
         return self._driver.run_command(StandardFX.Command.SET_EFFECT_EXTENDED, 0x01,
-                                        LED.Type.BACKLIGHT, effect, *args, transaction_id=0x3F)
+                                        LEDType.BACKLIGHT, effect, *args, transaction_id=0x3F)
 
 
     def set_effect(self, effect: Enum, *args) -> bool:

@@ -15,8 +15,7 @@ from uchroma.blending import BlendOp
 from uchroma.cmd import UChromaConsoleUtil
 from uchroma.color import ColorPair
 from uchroma.dbus_utils import dbus_prepare
-from uchroma.led import LED
-from uchroma.renderer import RendererMeta
+from uchroma.led import LEDMode, LEDType
 from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_class_traits
 from uchroma.util import ArgsDict, max_keylen
 
@@ -212,7 +211,7 @@ class LEDCommand(AbstractCommand):
         # FIXME: Per-device LEDs
         led = sub.add_parser('led', help='LED control')
         led.add_argument('led_type', metavar='LED type', type=str,
-                         choices=[x.name.lower() for x in LED.Type],
+                         choices=[x.name.lower() for x in LEDType],
                          help='Type of LED to control')
         led.add_argument('-i', '--info', action='store_true', help='Get status of LED')
 
@@ -220,7 +219,7 @@ class LEDCommand(AbstractCommand):
         ledx.add_argument('-s', '--state', type=bool,
                           help='State for the LED')
         ledx.add_argument('-m', '--mode', type=str,
-                          choices=[x.name.lower() for x in LED.Mode],
+                          choices=[x.name.lower() for x in LEDMode],
                           help='Mode for the LED')
         ledx.add_argument('-c', '--color', type=str,
                           help='RGB color for the LED')
@@ -233,7 +232,7 @@ class LEDCommand(AbstractCommand):
     def parse(self, args):
         with self.driver as driver:
 
-            led = driver.get_led(LED.Type[args.led_type.upper()])
+            led = driver.get_led(LEDType[args.led_type.upper()])
             if led is None:
                 sys.exit(1)
 
@@ -254,7 +253,7 @@ class LEDCommand(AbstractCommand):
                     led.state = args.state
 
                 if args.mode is not None:
-                    led.mode = LED.Mode[args.mode.upper()]
+                    led.mode = LEDMode[args.mode.upper()]
 
                 if args.color is not None:
                     led.color = args.color.lower()
@@ -413,6 +412,7 @@ class AnimationCommand(AbstractCommand):
 
         anim_args, self._unparsed = self._anim_parser.parse_known_args(self.unparsed_args)
 
+        print('anim_args: %s' % anim_args)
         if not hasattr(anim_args, 'func_anim'):
             self._anim_parser.print_help()
             sys.exit(1)
@@ -475,12 +475,13 @@ class AnimationCommand(AbstractCommand):
 
         add_traits_to_argparse(req_anim.traits, parser)
         args = parser.parse_args(self._unparsed)
-
-        changed = apply_from_argparse(args, req_anim.traits)
+        changed = apply_from_argparse(args, traits=req_anim.traits)
 
         if required and len(changed) == 0:
             parser.print_help()
             self.error("At least one option must be selected to modify")
+
+        return changed
 
 
     def _add(self, args):
@@ -499,6 +500,8 @@ class AnimationCommand(AbstractCommand):
 
         req_anim = self.renderer_info[rname]
         traits = self._parse_traits(req_anim)
+
+        print('traits: %s' % traits)
 
         layer = self.driver.AddRenderer(rname, dbus_prepare(traits, variant=True)[0])
         if layer is None:
@@ -524,7 +527,6 @@ class AnimationCommand(AbstractCommand):
         # Renderers expose their properties via dbus while running
         for k, v in traits.items():
             self.set_property(layer_obj, k, v)
-
 
 
 class UChromaTool(UChromaConsoleUtil):
