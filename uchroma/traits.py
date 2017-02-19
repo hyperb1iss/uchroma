@@ -1,4 +1,4 @@
-# pylint: disable=protected-access, invalid-name
+# pylint: disable=protected-access, invalid-name, no-member
 import enum
 import importlib
 import sys
@@ -9,8 +9,6 @@ from frozendict import frozendict
 
 from uchroma.util import ArgsDict, camel_to_snake, to_color
 
-
-MAGIC_TRAITS = ('hidden', 'meta', 'config', 'type')
 
 
 class ColorTrait(TraitType):
@@ -99,101 +97,80 @@ def trait_as_dict(trait) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like
     """
-    desc = {}
-    desc['name'] = trait.name
+    tdict = trait.__dict__.copy()
+    del tdict['this_class']
 
-    trait_type = trait.__class__.__name__
+    ttype = trait.__class__
+
     if isinstance(trait, UseEnum):
-        trait_type = CaselessStrEnum.__name__
-        desc['values'] = tuple(trait.enum_class.__members__.keys())
+        ttype = CaselessStrEnum
+        tdict['values'] = tuple(trait.enum_class.__members__.keys())
 
-    desc['type'] = trait_type
+    tdict['__class__'] = ttype.__name__
+    tdict['__module__'] = ttype.__module__
 
-    write_once = False
-    if hasattr(trait, 'write_once'):
-        write_once = trait.write_once
+    if isinstance(trait.default_value, enum.Enum):
+        tdict['default_value'] = trait.default_value.name
 
-    desc['read_only'] = trait.read_only or write_once
-    desc['info'] = trait.info_text
-    desc['help'] = trait.help
-    desc['allow_none'] = trait.allow_none
-
-    value = trait.default_value
-    if isinstance(value, enum.Enum):
-        value = value.name
-    if value is not Undefined:
-        desc['default_value'] = value
-
-    if hasattr(trait, 'min') and trait.min is not None:
-        desc['min'] = trait.min
-    if hasattr(trait, 'max') and trait.max is not None and trait.max < sys.maxsize:
-        desc['max'] = trait.max
-    if hasattr(trait, '_minlen') and trait._minlen is not None:
-        desc['minlen'] = trait._minlen
-    if hasattr(trait, '_maxlen') and trait._maxlen is not None and trait._maxlen < sys.maxsize:
-        desc['maxlen'] = trait._maxlen
-
-    return desc
+    return tdict
 
 
-def class_traits_as_dict(obj, incl_all=False):
+def class_traits_as_dict(obj):
     cls_dt = {}
     traits = {}
-    if type(obj) == type:
+    if type(obj) == type and hasattr(obj, 'class_traits'):
         traits = obj.class_traits()
     elif isinstance(obj, dict):
         traits = obj
+    elif isinstance(obj, HasTraits):
+        traits = obj.traits()
     else:
-        traits = obj.__class__.traits()
+        raise TypeError("Object does not support traits")
 
     for k, v in traits.items():
-        if k not in MAGIC_TRAITS or incl_all:
-            dt = trait_as_dict(v)
-            if dt is None:
-                continue
-            if not incl_all:
-                if v.read_only or (hasattr(v, 'write_once') and v.write_once):
-                    continue
-            cls_dt[k] = dt
+        dt = trait_as_dict(v)
+        if dt is None:
+            continue
+        cls_dt[k] = dt
     return cls_dt
 
-
-TRAITLETS = importlib.import_module('traitlets')
-LOCAL_TRAITS = importlib.import_module('uchroma.traits')
 
 def dict_as_trait(obj):
     """
     Create a trait from a dict (trait_as_dict).
     """
-    trait_type = obj.pop('type', None)
-    if trait_type is None:
-        return None
+    if '__module__' not in obj or '__class__' not in obj:
+        raise ValueError("No module or class attribute present")
 
-    cls = None
-    if hasattr(LOCAL_TRAITS, trait_type):
-        cls = getattr(LOCAL_TRAITS, trait_type)
-    elif hasattr(TRAITLETS, trait_type):
-        cls = getattr(TRAITLETS, trait_type)
-    if cls is None:
-        raise ValueError("Unknown trait: %s [%s]" % (trait_type, obj))
+    tobj = obj.copy()
 
-    if cls == CaselessStrEnum:
-        return cls(obj.pop('values'), **obj)
+    module = importlib.import_module(tobj.pop('__module__'))
+    cname = tobj.pop('__class__')
 
-    return cls(**obj)
+    if not hasattr(module, cname):
+        raise TypeError("Unknown class: %s" % cname)
+
+    cls = getattr(module, cname)
+
+    if issubclass(cls, Enum):
+        trait = cls(obj.pop('values'))
+    else:
+        trait = cls()
+
+    trait.__dict__.update(obj)
+    return trait
 
 
-def dict_as_class_traits(obj, incl_all=False):
+def dict_as_class_traits(obj: dict):
+    if not isinstance(obj, dict):
+        raise TypeError("Object must be a dict (was: %s)" % obj)
+
     traits = {}
     for k, v in obj.items():
-        if k not in MAGIC_TRAITS or incl_all:
-            trait = dict_as_trait(v)
-            if trait is None:
-                continue
-            if not incl_all:
-                if trait.read_only or (hasattr(trait, 'write_once') and trait.write_once):
-                    continue
-            traits[k] = trait
+        trait = dict_as_trait(v)
+        if trait is None:
+            continue
+        traits[k] = trait
 
     return traits
 
@@ -201,19 +178,24 @@ def dict_as_class_traits(obj, incl_all=False):
 def get_args_dict(obj):
     argsdict = ArgsDict()
     for k in sorted(obj._trait_values.keys()):
-        if k not in MAGIC_TRAITS:
-            v = obj._trait_values[k]
-            trait = obj.traits()[k]
-            if trait.default_value != v and not trait.read_only \
-                    and not (hasattr(trait, 'write_once') and trait.write_once):
-                argsdict[k] = v
+        v = obj._trait_values[k]
+        trait = obj.traits()[k]
+        if trait.default_value != v and not trait.read_only \
+                and not (hasattr(trait, 'write_once') and trait.write_once):
+            argsdict[k] = v
     return argsdict
 
 
 def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
 
     for key, trait in traits.items():
-        if key in MAGIC_TRAITS:
+        if not isinstance(trait, TraitType):
+            if isinstance(trait, dict):
+                trait = dict_as_trait(trait)
+            else:
+                raise TypeError("A dict or instance of HasTraits is required (was: %s)" % trait)
+
+        if trait.get_metadata('hidden'):
             continue
 
         argname = '--%s' % key
@@ -223,8 +205,8 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
         if isinstance(trait, Container):
             parser.add_argument(argname, nargs='+', help=trait.info_text)
         elif isinstance(trait, Enum):
-            parser.add_argument(argname, type=str,
-                                choices=trait.values,
+            parser.add_argument(argname, type=str.lower,
+                                choices=[x.lower() for x in trait.values],
                                 help=trait.info_text)
         else:
             argtype = str
@@ -259,7 +241,6 @@ def apply_from_argparse(args, traits: dict=None, target=None) -> dict:
 
     # apply the argparse flags to the target object
     for key in intersect:
-        value = args.__dict__[key]
         setattr(target, key, getattr(args, key))
 
     # if all validators passed, return a dict of the changed args
