@@ -97,8 +97,12 @@ def trait_as_dict(trait) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like
     """
-    tdict = trait.__dict__.copy()
-    del tdict['this_class']
+    tdict = vars(trait).copy()
+    if 'this_class' in tdict:
+        del tdict['this_class']
+
+    if 'klass' in tdict:
+        del tdict['klass']
 
     ttype = trait.__class__
 
@@ -150,14 +154,22 @@ def dict_as_trait(obj):
     if not hasattr(module, cname):
         raise TypeError("Unknown class: %s" % cname)
 
+    if 'klass' in tobj:
+        tobj.pop('klass')
+
+    if 'trait' in tobj and isinstance(tobj['trait'], dict):
+        if '_trait' in tobj:
+            tobj.remove('_trait')
+        tobj['trait'] = dict_as_trait(tobj.pop('trait'))
+
     cls = getattr(module, cname)
+    derived = type('%sStub' % cname, (cls,), tobj)
 
-    if issubclass(cls, Enum):
-        trait = cls(obj.pop('values'))
+    if issubclass(derived, Enum):
+        trait = derived(tobj.pop('values'))
     else:
-        trait = cls()
+        trait = derived(**tobj)
 
-    trait.__dict__.update(obj)
     return trait
 
 
@@ -198,6 +210,12 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
         if trait.get_metadata('hidden'):
             continue
 
+        if trait.read_only:
+            continue
+
+        if hasattr(trait, 'write_once') and trait.write_once:
+            continue
+
         argname = '--%s' % key
         if prefix is not None:
             argname = '--%s.%s' % (prefix, key)
@@ -215,7 +233,7 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
             parser.add_argument(argname, type=argtype, help=trait.info_text)
 
 
-def apply_from_argparse(args, traits: dict=None, target=None) -> dict:
+def apply_from_argparse(args, traits=None, target=None) -> dict:
     """
     Applies arguments added via add_traits_to_argparse to
     a target object which implements HasTraits. If a target
@@ -229,6 +247,14 @@ def apply_from_argparse(args, traits: dict=None, target=None) -> dict:
     """
     # apply the traits to an empty object, which will run
     # the validators on the client
+    traits = traits.copy()
+    for k, v in traits.items():
+        if not isinstance(v, TraitType):
+            if isinstance(v, dict):
+                k[v] = dict_as_trait(v)
+            else:
+                raise TypeError("A dict or trait object must be supplied")
+
     if target is None:
         if traits is None:
             raise ValueError("Either traits or target must be specified")
@@ -236,7 +262,7 @@ def apply_from_argparse(args, traits: dict=None, target=None) -> dict:
         target.add_traits(**traits)
 
     # determine what should actually be changed
-    argkeys = [k for k, v in args.__dict__.items() if v is not None]
+    argkeys = [k for k, v in vars(args).items() if v is not None]
     intersect = set(target.traits().keys()).intersection(set(argkeys))
 
     # apply the argparse flags to the target object
