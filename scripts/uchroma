@@ -4,18 +4,20 @@ import re
 import sys
 
 from abc import abstractmethod
-from argparse import ArgumentParser
 from collections import OrderedDict
 from typing import NamedTuple
 
+from argcomplete import autocomplete
 from traitlets import Undefined
 
 from uchroma import __version__
 from uchroma.cmd import UChromaConsoleUtil
-from uchroma.color import ColorPair
 from uchroma.dbus_utils import dbus_prepare
 from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_class_traits
 from uchroma.util import ArgsDict, max_keylen
+
+
+PYTHON_ARGCOMPLETE_OK = 1
 
 
 RemoteTraits = NamedTuple('RemoteTraits', [('name', str),
@@ -46,44 +48,8 @@ class AbstractCommand(object):
         return self._parent._client
 
 
-    @property
-    def unparsed_args(self):
-        return self._parent._unparsed
-
-
-    @property
-    def parent_parser(self):
-        return self._parent._parser
-
-
-    def exit(self, status=0, message=None):
-        self._parent._parser.exit(status, message)
-
-
-    def error(self, message):
-        self._parent.error(message)
-
-
     def set_property(self, target, name, value):
         self._parent.set_property(target, name, value)
-
-
-    @staticmethod
-    def get_preset(args):
-        if args.preset is None:
-            return None
-        return ColorPair[args.preset.upper()].name.lower()
-
-
-    @staticmethod
-    def get_color(args, num):
-        if args.color is None:
-            return None
-
-        if len(args.color) <= num:
-            return None
-
-        return args.color[num]
 
 
     @classmethod
@@ -143,6 +109,35 @@ class AbstractCommand(object):
             print('\n')
 
 
+    def parse_traits(self, args):
+        autocomplete(args.parser)
+        trait_args, unparsed = args.parser.parse_known_args(args.unparsed, args)
+
+        if not hasattr(trait_args, 'cmd_func'):
+            args.parser.print_help()
+            args.parser.exit(1)
+
+        if hasattr(trait_args, 'traits'):
+            trait_args.changed = apply_from_argparse(trait_args, traits=trait_args.traits)
+
+        trait_args.unparsed = unparsed
+        trait_args.cmd_func(trait_args)
+
+
+    @classmethod
+    def add_traits_parser(cls, parser, name, remote_traits, callback,
+                          help_text: str=None, aliases=None):
+        if help_text is None:
+            help_text = remote_traits.description
+
+        if aliases is None:
+            aliases = []
+
+        sub = parser.add_parser(name, help=help_text, aliases=aliases)
+        add_traits_to_argparse(remote_traits.traits, sub)
+        sub.set_defaults(cmd_func=callback, traits=remote_traits.traits, parser=sub)
+
+
     @abstractmethod
     def add_parser(self, parser):
         pass
@@ -155,11 +150,11 @@ class AbstractCommand(object):
 
 class DumpCommand(AbstractCommand):
     def add_parser(self, sub):
-        dump = sub.add_parser('dump', help='Dump device info')
-        dump.add_argument("-w", "--wide", action="store_true",
-                          help="Wide output (don't truncate long lines")
-        dump.set_defaults(func=self.parse)
-        return dump
+        parser = sub.add_parser('dump', help='Dump device info')
+        parser.add_argument("-w", "--wide", action="store_true",
+                            help="Wide output (don't truncate long lines")
+        parser.set_defaults(func=self.parse, parser=parser)
+        return parser
 
 
     def parse(self, args):
@@ -199,50 +194,38 @@ class DumpCommand(AbstractCommand):
 
 
 class BrightnessCommand(AbstractCommand):
-    def __init__(self, *args, **kwargs):
-        super(BrightnessCommand, self).__init__(*args, **kwargs)
-        self._sub = None
 
     def add_parser(self, sub):
-        self._sub = sub.add_parser('brightness', help='Set/get brightness level')
-        self._sub.add_argument('level', metavar='BRIGHTNESS', type=float, nargs='?',
-                               help='Brightness level to set (0-100)')
+        parser = sub.add_parser('brightness', help='Set/get brightness level')
+        parser.add_argument('level', metavar='BRIGHTNESS', type=float, nargs='?',
+                            help='Brightness level to set (0-100)')
 
-        self._sub.set_defaults(func=self.parse)
-        return self._sub
+        parser.set_defaults(func=self.parse, parser=parser)
+        return parser
 
 
     def parse(self, args):
-        if not hasattr(self.driver, 'Brightness'):
-            self._sub.error('This device does not support brightness control.')
-
         if args.level is None:
-            print('%f' % self.driver.Brightness)
+            args.exit(message='%f' % self.driver.Brightness)
 
-        else:
-            if args.level < 0 or args.level > 100:
-                self._sub.error('Brightness must be between 0 and 100')
+        if args.level < 0 or args.level > 100:
+            args.parser.error('Brightness must be between 0 and 100')
 
-            self.driver.Brightness = args.level
+        self.driver.Brightness = args.level
 
 
 class LEDCommand(AbstractCommand):
     def __init__(self, *args, **kwargs):
         super(LEDCommand, self).__init__(*args, **kwargs)
         self._leds = None
-        self._sub = None
-        self._parsers = {}
+
 
     def add_parser(self, sub):
-        # argparse trickery!
-        # since you can't chain subparsers, we create a base subparser off the
-        # root, then create new parsers in the callback with the parent
-        # set back to us. "parse_known_args" is needed to make this work.
-        self._sub = sub.add_parser('led', help='LED control', add_help=False)
-        self._sub.add_argument('-l', '--list', action='store_true',
-                               help="Show available LEDs")
-        self._sub.set_defaults(func=self.parse)
-        return self._sub
+        parser = sub.add_parser('led', help='Standalone LED control', add_help=False)
+        parser.add_argument('-l', '--list', action='store_true',
+                            help="Show available LEDs")
+        parser.set_defaults(func=self.parse, parser=parser)
+        return parser
 
 
     @property
@@ -254,76 +237,55 @@ class LEDCommand(AbstractCommand):
         for name, t_dict in sorted(self.driver.AvailableLEDs.items()):
             traits = dict_as_class_traits(t_dict)
             self._leds[name] = RemoteTraits(name.lower(), \
-                    "Standalone LED: %s" % name.title(), traits)
+                    "LED: %s" % name.title(), traits)
 
         return self._leds
 
 
     def _list(self, args):
-        if len(self.available_leds) == 0:
-            self._sub.error('No supported LEDs found')
-
-        print("\nStandalone LED controls:\n")
+        print("\nStandalone LED control:\n")
         self.list_objects(self.available_leds)
 
 
     def parse(self, args):
         if args.list:
             self._list(args)
-            sys.exit(0)
+            args.parser.exit()
 
-        led_parser = ArgumentParser(description="LED commands",
-                                    parents=[self._sub], add_help=False)
+        sub = args.parser.add_subparsers(title="Subcommands", dest='led_cmd')
 
-        sub = led_parser.add_subparsers(title="Standalone LEDs", dest='led_cmd')
-
-        sub.add_parser('list').set_defaults(func_led=self._list)
+        lp = sub.add_parser('list')
+        lp.set_defaults(cmd_func=self._list, parser=lp)
 
         # fill in args using traits
         for name, trait_data in self.available_leds.items():
-            led_sub = sub.add_parser(name, help=trait_data.description)
-            add_traits_to_argparse(trait_data.traits, led_sub)
-            led_sub.set_defaults(func_led=self._led_control)
-            self._parsers[name] = led_sub
+            self.add_traits_parser(sub, name, trait_data, self._led_control)
 
-        led_args = led_parser.parse_args(self.unparsed_args)
-
-        if not hasattr(led_args, 'func_led'):
-            led_parser.print_help()
-            sys.exit(1)
-
-        led_args.func_led(led_args)
+        self.parse_traits(args)
 
 
     def _led_control(self, args):
         led = args.led_cmd.lower()
 
-        # need at least one argument
-        if any([v is not None for k, v in vars(args).items() \
-                if k not in ('func', 'func_led', 'list', 'led_cmd')]):
-            changed = apply_from_argparse(args, traits=self.available_leds[led].traits)
+        if len(args.changed) == 0:
+            args.parser.error("At least one option is required")
 
-            if not self.driver.SetLED(led, dbus_prepare(changed, variant=True)[0]):
-                self._parsers[led].error("Failed to configure LED")
-
-        else:
-            self._parsers[led].print_help()
-            self._parsers[led].error("At least one option is required")
+        if not self.driver.SetLED(led, dbus_prepare(args.changed, variant=True)[0]):
+            args.parser.error("Failed to configure LED")
 
 
 class FXCommand(AbstractCommand):
     def __init__(self, *args, **kwargs):
         super(FXCommand, self).__init__(*args, **kwargs)
         self._fx = None
-        self._sub = None
-        self._parsers = {}
+
 
     def add_parser(self, sub):
-        self._sub = sub.add_parser('fx', help='Lighting and effects', add_help=False)
-        self._sub.add_argument('-l', '--list', action='store_true',
-                               help='List supported effects')
-        self._sub.set_defaults(func=self.parse)
-        return self._sub
+        parser = sub.add_parser('fx', help='Lighting and effects', add_help=False)
+        parser.add_argument('-l', '--list', action='store_true',
+                            help='List supported effects')
+        parser.set_defaults(func=self.parse, parser=parser)
+        return parser
 
 
     @property
@@ -344,9 +306,6 @@ class FXCommand(AbstractCommand):
 
 
     def _list(self, args):
-        if self.available_fx is None or len(self.available_fx) == 0:
-            self._sub.error('No supported effects found.')
-
         print('\nBuilt-in effects and arguments:\n')
         self.list_objects(self.available_fx)
 
@@ -354,45 +313,26 @@ class FXCommand(AbstractCommand):
     def parse(self, args):
         if args.list:
             self._list(args)
-            sys.exit(0)
+            args.parser.exit(0)
 
-        fx_parser = ArgumentParser(description='FX Commands',
-                                   parents=[self._sub])
-        sub = fx_parser.add_subparsers(title='Built-in effects', dest='fx_cmd')
+        sub = args.parser.add_subparsers(title="Subcommands", dest='fx_cmd')
 
         # and a "list" subcommand (same as --list)
-        sub.add_parser('list').set_defaults(func_fx=self._list)
+        ll = sub.add_parser('list')
+        ll.set_defaults(cmd_func=self._list, parser=ll)
 
         # turn all traits into argparse commands
         for name, trait_data in self.available_fx.items():
-            fx_sub = sub.add_parser(name, help=trait_data.description)
-            add_traits_to_argparse(trait_data.traits, fx_sub)
-            fx_sub.set_defaults(func_fx=self._activate_fx)
-            self._parsers[name] = fx_sub
+            self.add_traits_parser(sub, name, trait_data, self._activate_fx)
 
-        # parse what the main parser left behind
-        fx_args = fx_parser.parse_args(self.unparsed_args)
-
-        if not hasattr(fx_args, 'func_fx'):
-            fx_parser.print_help()
-            sys.exit(1)
-
-        fx_args.func_fx(fx_args)
+        self.parse_traits(args)
 
 
     def _activate_fx(self, args):
         fx = args.fx_cmd.lower()
-
-        if self.driver.HasFX(fx):
-            # apply the traits to an empty object, which will run
-            # the validators on the client
-            changed = apply_from_argparse(args, traits=self.available_fx[fx].traits)
-
-            if not self.driver.SetFX(fx, dbus_prepare(changed, variant=True)[0]):
-                self._parsers[fx].error("Failed to activate effect")
-
-        else:
-            self._parsers[fx].error("Unsupported effect: (%s)" % args.fx_cmd)
+        print(args)
+        if not self.driver.SetFX(fx, dbus_prepare(args.changed, variant=True)[0]):
+            args.parser.error("Failed to activate effect")
 
 
 class AnimationCommand(AbstractCommand):
@@ -400,57 +340,52 @@ class AnimationCommand(AbstractCommand):
         super(AnimationCommand, self).__init__(*args, **kwargs)
         self._renderer_info = None
         self._aliases = {}
-        self._anim_args = None
-        self._unparsed = None
-        self._parsers = {}
-        self._anim_parser = None
-        self._sub = None
+
 
     def add_parser(self, sub):
-        self._sub = sub.add_parser('anim', help='Animation control', add_help=False)
-        self._sub.add_argument('-l', '--list', action='store_true',
-                               help="List available renderers and options")
-        self._sub.set_defaults(func=self.parse)
-        return self._sub
+        parser = sub.add_parser('anim', help='Animation control', add_help=False)
+        parser.add_argument('-l', '--list', action='store_true',
+                            help="List available renderers and options")
+        parser.set_defaults(func=self.parse, parser=parser)
+        return parser
 
 
     def parse(self, args):
         if args.list:
             self._list(args)
-            exit(0)
+            args.parser.exit(0)
 
-        self._anim_parser = ArgumentParser(description="Animation renderer and layer controls",
-                                           parents=[self._sub], add_help=False)
+        sub = args.parser.add_subparsers(title="Subcommands", dest='anim_sub')
 
-        sub = self._anim_parser.add_subparsers(title='Commands')
+        ll = sub.add_parser('list')
+        ll.set_defaults(func_anim=self._list, parser=ll)
 
-        sub.add_parser('list').set_defaults(func_anim=self._list)
+        add = sub.add_parser('add', help="Add a new renderer", add_help=False)
+        add.add_argument('-p', '--paused', action='store_true',
+                         help="Do not immediately start")
+        add.set_defaults(func_anim=self._add, parser=add)
 
-        p1 = sub.add_parser('add', help="Add a new renderer", add_help=False)
-        p1.add_argument('name', type=str, help="Class name of the renderer")
-        p1.add_argument('-p', '--paused', action='store_true',
-                        help="Do not immediately start")
-        p1.set_defaults(func_anim=self._add)
-        self._parsers['add'] = p1
+        modify = sub.add_parser('modify', help="Modify an existing layer",
+                                aliases=['mod'], add_help=False)
+        modify.set_defaults(func_anim=self._modify, parser=modify)
 
-        p2 = sub.add_parser('modify', help="Modify an existing layer", add_help=False)
-        p2.add_argument('layer', type=int, help="Layer index to modify")
-        p2.set_defaults(func_anim=self._modify)
-        self._parsers['modify'] = p2
+        pause = sub.add_parser('pause', help="Pause the animation")
+        pause.set_defaults(func_anim=self._pause, parser=pause)
 
-        self._parsers['start'] = sub.add_parser('start', help="Start a paused animation") \
-                .set_defaults(func_anim=self._start)
-        self._parsers['stop'] = sub.add_parser('stop', help="Stop the running animation") \
-                .set_defaults(func_anim=self._stop)
-        self._parsers['pause'] = sub.add_parser('pause', help="Pause the animation") \
-                .set_defaults(func_anim=self._pause)
+        start = sub.add_parser('start', help="Start a paused animation")
+        start.set_defaults(func_anim=self._start, parser=start)
 
-        anim_args, self._unparsed = self._anim_parser.parse_known_args(self.unparsed_args)
+        stop = sub.add_parser('stop', help="Stop the running animation")
+        stop.set_defaults(func_anim=self._stop, parser=stop)
+
+        autocomplete(args.parser)
+        anim_args, unparsed = args.parser.parse_known_args(args.unparsed, args)
 
         if not hasattr(anim_args, 'func_anim'):
-            self._anim_parser.print_help()
-            sys.exit(1)
+            args.parser.print_help()
+            args.parser.exit(1)
 
+        anim_args.unparsed = unparsed
         anim_args.func_anim(anim_args)
 
 
@@ -461,7 +396,7 @@ class AnimationCommand(AbstractCommand):
 
         avail = self.driver.AvailableRenderers
         if avail is None or len(avail) == 0:
-            self._anim_parser.error("No renderers available.")
+            return None
 
         sar = OrderedDict(sorted(avail.items(),
                                  key=lambda k_v: k_v[1]['meta']['display_name']))
@@ -471,7 +406,7 @@ class AnimationCommand(AbstractCommand):
                               t_anim['meta']['description'],
                               dict_as_class_traits(t_anim['traits']))
             exploded[name] = rt
-            self._aliases[rt.name.replace(' ', '_').lower()] = name
+            self._aliases[name] = rt.name.replace(' ', '_').lower()
 
         self._renderer_info = exploded
         return self._renderer_info
@@ -479,91 +414,107 @@ class AnimationCommand(AbstractCommand):
 
     def _list(self, args):
         print('\nAvailable renderers and arguments:\n')
-        self.list_objects(self.renderer_info,
-                          aliases={v: k for k, v in self._aliases.items()})
+        self.list_objects(self.renderer_info, aliases=self._aliases)
 
 
     def _pause(self, args):
         if not self.driver.StopAnimation():
-            self._parsers['pause'].error("Failed to stop animation")
+            args.parser.error("Failed to stop animation")
 
 
     def _stop(self, args):
         self._pause(args)
         if not self.driver.ClearRenderers():
-            self._parsers['stop'].error("Failed to clear animation layers")
+            args.parser.error("Failed to clear animation layers")
 
 
     def _start(self, args):
         if not self.driver.StartAnimation():
-            self._parsers['start'].error("Failed to start animation")
+            args.parser.error("Failed to start animation")
 
 
-    def _parse_traits(self, req_anim, parent, required: bool=False) -> dict:
-        parser = ArgumentParser(description=req_anim.description,
-                                parents=[parent])
+    def _add_renderer(self, args):
+        rname = args.renderer
 
-        add_traits_to_argparse(req_anim.traits, parser)
-        args = parser.parse_args(self._unparsed)
-        changed = apply_from_argparse(args, traits=req_anim.traits)
+        layer = self.driver.AddRenderer(rname, dbus_prepare(args.changed, variant=True)[0])
+        if layer is None:
+            args.parser.error("Failed to create renderer")
 
-        if required and len(changed) == 0:
-            parser.print_help()
-            parser.error("At least one option must be selected to modify")
+        if not args.paused:
+            if not self.driver.StartAnimation():
+                args.parser.error("Failed to start animation")
 
-        return changed
+        args.parser.exit(message="Created layer: %s" % layer)
 
 
     def _add(self, args):
-        parser = self._parsers['add']
+        sub = args.parser.add_subparsers(title="Animation renderers", dest='renderer')
 
-        rname = args.name
-        if rname not in self.renderer_info and rname not in self._aliases:
-            self._list(args)
-            parser.error("%s is not a valid renderer" % (rname))
+        for name, trait_data in self.renderer_info.items():
+            alias = []
+            if name in self._aliases:
+                alias.append(name)
+                name = self._aliases[name]
 
-        if rname not in self.renderer_info:
-            rname = self._aliases[rname]
+            self.add_traits_parser(sub, name, trait_data, self._add_renderer, aliases=alias)
 
-        req_anim = self.renderer_info[rname]
-        traits = self._parse_traits(req_anim, parser)
+        self.parse_traits(args)
 
-        layer = self.driver.AddRenderer(rname, dbus_prepare(traits, variant=True)[0])
-        if layer is None:
-            parser.error("Failed to create renderer")
 
-        print('Created layer: %s' % layer)
-        if not args.paused:
-            if not self.driver.StartAnimation():
-                parser.error("Failed to start animation")
+    def _modify_layer(self, args):
+        layer = int(args.layer)
+
+        if len(args.changed) == 0:
+            args.parser.error("No modifications were specified, try --help")
+
+        layer_obj = self.client.get_layer(self.driver, layer)
+
+        # Renderers expose their properties via dbus while running
+        for k, v in args.changed.items():
+            self.set_property(layer_obj, k, v)
+
+        args.parser.exit(message="Layer %d updated" % layer)
 
 
     def _modify(self, args):
-        parser = self._parsers['modify']
-
         layers = self.driver.CurrentRenderers
-        if args.layer >= len(layers):
-            self._list(args)
-            parser.error("Layer index out of range")
+        if layers is None or len(layers) == 0:
+            args.parser.error("No animation layers are active")
 
-        req_anim = self.renderer_info[layers[args.layer][0]]
-        traits = self._parse_traits(req_anim, parser, required=True)
-        layer_obj = self.client.get_layer(self.driver, args.layer)
+        sub = args.parser.add_subparsers(title="Active animation layers", dest='layer')
 
-        # Renderers expose their properties via dbus while running
-        for k, v in traits.items():
-            self.set_property(layer_obj, k, v)
+        for layer_idx in range(0, len(layers)):
+            renderer = self.renderer_info[layers[layer_idx][0]]
+            self.add_traits_parser(sub, str(layer_idx), renderer, self._modify_layer, \
+                help_text="Layer %d: %s" % (layer_idx, renderer.description))
+
+        self.parse_traits(args)
 
 
 class UChromaTool(UChromaConsoleUtil):
 
-    COMMANDS = [DumpCommand, BrightnessCommand, LEDCommand, FXCommand, AnimationCommand]
-
     def _add_subparsers(self, sub):
-        for command in UChromaTool.COMMANDS:
-            cmd = command(self)
-            cmd.add_parser(sub)
+        super()._add_subparsers(sub)
 
+        driver = self.get_driver()
+        cmds = []
+
+        if hasattr(driver, 'Brightness'):
+            cmds.append(BrightnessCommand(self))
+
+        if hasattr(driver, 'AvailableLEDs'):
+            cmds.append(LEDCommand(self))
+
+        if hasattr(driver, 'AvailableFX'):
+            cmds.append(FXCommand(self))
+
+        if hasattr(driver, 'AvailableRenderers'):
+            cmds.append(AnimationCommand(self))
+
+        cmds.append(DumpCommand(self))
+
+        for cmd in cmds:
+            cmd.add_parser(sub)
 
 
 if __name__ == '__main__':

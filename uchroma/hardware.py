@@ -124,7 +124,7 @@ class Hardware(BaseHardware):
         """
         True if the device has an addressable key matrix
         """
-        return self.dimensions is not None
+        return self.dimensions is not None and self.dimensions.x > 1 and self.dimensions.y > 1
 
 
     def has_quirk(self, *quirks) -> bool:
