@@ -205,7 +205,12 @@ def to_color(*color_args) -> Color:
                 value = arg
             elif isinstance(arg, str):
                 if arg != '':
-                    value = Color.NewFromHtml(arg)
+                    # grapefruit's default str() spews a string repr of a tuple
+                    strtuple = re.match(r'\((.*, .*, .*, .*)\)', arg)
+                    if strtuple:
+                        value = Color.NewFromRgb(*[float(x) for x in strtuple.group(1).split(', ')])
+                    else:
+                        value = Color.NewFromHtml(arg)
             elif isinstance(arg, Iterable):
                 value = rgb_from_tuple(arg)
             else:

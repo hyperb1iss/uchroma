@@ -138,7 +138,7 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def _generator(gradient: list, randomize: bool=False, alternate: bool=False, rgb: bool=False):
+    def color_generator(gradient: list, randomize: bool=False, alternate: bool=False, rgb: bool=False):
         grad = gradient[:]
 
         if not randomize:
@@ -207,7 +207,7 @@ class ColorUtils(object):
         :return: generator
         """
         gradient = ColorUtils.color_scheme(color, base_color, steps)
-        return ColorUtils._generator(gradient, randomize, alternate, rgb)
+        return ColorUtils.color_generator(gradient, randomize, alternate, rgb)
 
 
     @staticmethod
@@ -250,7 +250,7 @@ class ColorUtils(object):
         """
         gradient = ColorUtils.interference(steps)
 
-        return ColorUtils._generator(gradient, randomize, alternate, rgb)
+        return ColorUtils.color_generator(gradient, randomize, alternate, rgb)
 
 
     @staticmethod

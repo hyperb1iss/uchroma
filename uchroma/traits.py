@@ -1,11 +1,13 @@
 # pylint: disable=protected-access, invalid-name, no-member
 import enum
 import importlib
+import inspect
 import sys
 
-from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, HasTraits, \
+from traitlets import CaselessStrEnum, Container, Dict, Enum, Instance, Int, HasTraits, \
         List, TraitType, Undefined, UseEnum
 from frozendict import frozendict
+from grapefruit import Color
 
 from uchroma.util import ArgsDict, camel_to_snake, to_color
 
@@ -16,12 +18,12 @@ class ColorTrait(TraitType):
     A traitlet which encapsulates a grapefruit.Color and performs
     type coercion as needed.
     """
-
     info_text = "A color in HTML string format (#8080ff, 'red', etc)"
+    allow_none = True
+    default_value = 'black'
 
-    def __init__(self, default_value='black', allow_none=False, **kwargs):
-        super(ColorTrait, self).__init__(default_value=default_value,
-                                         allow_none=allow_none, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(ColorTrait, self).__init__(*args, **kwargs)
 
     def validate(self, obj, value):
         try:
@@ -39,9 +41,9 @@ class ColorSchemeTrait(List):
     """
     info_text = 'A list of colors to use, in HTML string format'
 
-    def __init__(self, default_value=[], minlen=0, maxlen=sys.maxsize, **kwargs):
-        super(ColorSchemeTrait, self).__init__(trait=ColorTrait,
-                                               default_value=default_value,
+    def __init__(self, trait=ColorTrait, default_value=(),
+                 minlen=0, maxlen=sys.maxsize, **kwargs):
+        super(ColorSchemeTrait, self).__init__(trait=trait, default_value=default_value,
                                                minlen=minlen, maxlen=maxlen, **kwargs)
 
 
@@ -97,12 +99,24 @@ def trait_as_dict(trait) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like
     """
-    tdict = vars(trait).copy()
-    if 'this_class' in tdict:
-        del tdict['this_class']
+    tdict = {k: v for k, v in vars(trait).items() if not k.startswith('__')}
+    for key in list(tdict.keys()):
+        if key.startswith('_'):
+            tdict[key[1:]] = tdict.pop(key)
+
+    params = inspect.signature(trait.__class__).parameters
+    tdict = {k: v for k, v in tdict.items() if k in params and params[k].default != v}
 
     if 'klass' in tdict:
-        del tdict['klass']
+        klass = tdict.pop('klass')
+        tdict['klass'] = '%s.%s' % (klass.__module__, klass.__name__)
+
+    if 'enum_class' in tdict:
+        klass = tdict.pop('enum_class')
+        tdict['enum_class'] = '%s.%s' % (klass.__module__, klass.__name__)
+
+    if 'trait' in tdict:
+        tdict['trait'] = trait_as_dict(tdict.pop('trait'))
 
     ttype = trait.__class__
 
@@ -110,8 +124,7 @@ def trait_as_dict(trait) -> dict:
         ttype = CaselessStrEnum
         tdict['values'] = tuple(trait.enum_class.__members__.keys())
 
-    tdict['__class__'] = ttype.__name__
-    tdict['__module__'] = ttype.__module__
+    tdict['__class__'] = (ttype.__module__, ttype.__name__)
 
     if isinstance(trait.default_value, enum.Enum):
         tdict['default_value'] = trait.default_value.name
@@ -143,32 +156,25 @@ def dict_as_trait(obj):
     """
     Create a trait from a dict (trait_as_dict).
     """
-    if '__module__' not in obj or '__class__' not in obj:
-        raise ValueError("No module or class attribute present")
+    if '__class__' not in obj:
+        raise ValueError("No module and class attribute present")
 
     tobj = obj.copy()
 
-    module = importlib.import_module(tobj.pop('__module__'))
-    cname = tobj.pop('__class__')
+    module_name, trait_class = tobj.pop('__class__')
 
-    if not hasattr(module, cname):
-        raise TypeError("Unknown class: %s" % cname)
+    module = importlib.import_module(module_name)
+    if not hasattr(module, trait_class):
+        raise TypeError("Unknown class: %s" % trait_class)
+    cls = getattr(module, trait_class)
 
-    if 'klass' in tobj:
-        tobj.pop('klass')
-
-    if 'trait' in tobj and isinstance(tobj['trait'], dict):
-        if '_trait' in tobj:
-            tobj.remove('_trait')
+    if 'trait' in tobj:
         tobj['trait'] = dict_as_trait(tobj.pop('trait'))
 
-    cls = getattr(module, cname)
-    derived = type('%sStub' % cname, (cls,), tobj)
-
-    if issubclass(derived, Enum):
-        trait = derived(tobj.pop('values'))
+    if issubclass(cls, Enum):
+        trait = cls(tobj.pop('values'), **tobj)
     else:
-        trait = derived(**tobj)
+        trait = cls(**tobj)
 
     return trait
 

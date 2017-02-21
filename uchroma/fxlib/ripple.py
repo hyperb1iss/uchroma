@@ -3,11 +3,11 @@ import asyncio
 import math
 import operator
 
-from traitlets import Int, observe
+from traitlets import Bool, Int, observe
 
-from uchroma.color import ColorUtils
+from uchroma.color import ColorScheme, ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
-from uchroma.traits import ColorTrait
+from uchroma.traits import ColorPresetTrait, ColorTrait
 from uchroma.util import clamp
 
 
@@ -29,16 +29,16 @@ class Ripple(Renderer):
     # configurable traits
     ripple_width = Int(default_value=DEFAULT_WIDTH, min=1, max=5)
     speed = Int(default_value=DEFAULT_SPEED, min=1, max=9)
+    preset = ColorPresetTrait(ColorScheme, default_value=None)
+    random = Bool(True)
     color = ColorTrait()
-    base_color = ColorTrait()
 
     def __init__(self, *args, **kwargs):
 
         super(Ripple, self).__init__(*args, **kwargs)
 
-        self._generator = None
+        self._generator = ColorUtils.rainbow_generator()
         self._max_distance = None
-
         self.key_expire_time = DEFAULT_SPEED * EXPIRE_TIME_FACTOR
 
         self.fps = 30
@@ -127,13 +127,28 @@ class Ripple(Renderer):
         return False
 
 
-    @observe('color', 'base_color')
+    @observe('preset', 'color', 'background_color', 'random')
     def _update_colors(self, change=None):
-        if self.color is None and self.base_color is None:
-            self._generator = ColorUtils.rainbow_generator()
-        else:
-            self._generator = ColorUtils.scheme_generator(
-                color=self.color, base_color=self.base_color)
+        with self.hold_trait_notifications():
+            if change.new is None:
+                return
+
+            if change.name == 'preset':
+                self.color = 'black'
+                self.random = False
+                self._generator = ColorUtils.color_generator(list(change.new.value))
+            elif change.name == 'random' and change.new:
+                self.preset = None
+                self.color = 'black'
+                self._generator = ColorUtils.rainbow_generator()
+            else:
+                self.preset = None
+                self.random = False
+                base_color = self.background_color
+                if base_color == (0, 0, 0, 1):
+                    base_color = None
+                self._generator = ColorUtils.scheme_generator(
+                    color=self.color, base_color=base_color)
 
 
     def init(self, frame) -> bool:
@@ -142,7 +157,5 @@ class Ripple(Renderer):
             return False
 
         self._max_distance = math.hypot(frame.width, frame.height)
-
-        self._update_colors()
 
         return True

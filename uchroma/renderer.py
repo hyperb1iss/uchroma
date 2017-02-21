@@ -185,6 +185,9 @@ class Renderer(HasTraits):
             with self._tick:
                 # get a buffer, blocking if necessary
                 layer = yield from self._avail_q.get()
+                layer.background_color = self.background_color
+                layer.blend_mode = self.blend_mode
+                layer.opacity = self.opacity
 
                 try:
                     # draw the layer
