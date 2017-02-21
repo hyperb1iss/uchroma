@@ -189,6 +189,8 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
     raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
 
 
+COLOR_TUPLE_STR = re.compile(r'\((.*, .*, .*, .*)\)')
+
 def to_color(*color_args) -> Color:
     """
     Convert various color representations to grapefruit.Color
@@ -206,7 +208,7 @@ def to_color(*color_args) -> Color:
             elif isinstance(arg, str):
                 if arg != '':
                     # grapefruit's default str() spews a string repr of a tuple
-                    strtuple = re.match(r'\((.*, .*, .*, .*)\)', arg)
+                    strtuple = COLOR_TUPLE_STR.match(arg)
                     if strtuple:
                         value = Color.NewFromRgb(*[float(x) for x in strtuple.group(1).split(', ')])
                     else:
@@ -442,49 +444,18 @@ def ensure_future(coro, loop=None):
     return fut
 
 
-_CHANGER_METHODS = set("__setitem__ __setslice__ __delitem__ update append extend add insert pop popitem remove setdefault __iadd__".split())
+class Signal(object):
+    def __init__(self):
+        self._handlers = set()
 
 
-def _observable_factory(cls):
-    def observers(self):
-        if not hasattr(self, '__observers'):
-            setattr(self, '__observers', weakref.WeakSet())
-        return getattr(self, '__observers')
-
-    def add_observer(self, observer):
-        self.observers().add(observer)
-
-    def remove_observer(self, observer):
-        self.observers().remove(observer)
-
-    def notify_observers(self):
-        for observer in self.observers():
-            observer(self)
-
-    def observable(func, callback):
-        def wrapper(self, *args, **kw):
-            value = func(self, *args, **kw)
-            print('wrapper args=%s value=%s' % (args, value))
-            callback(self)
-            return value
-        wrapper.__name__ = func.__name__
-        return wrapper
-
-    new_dict = cls.__dict__.copy()
-    for name, method in new_dict.items():
-        if name in _CHANGER_METHODS:
-            new_dict[name] = observable(method, notify_observers)
-
-    new_dict['observers'] = observers
-    new_dict['add_observer'] = add_observer
-    new_dict['remove_observer'] = remove_observer
-
-    return type('Observable%s' % cls.__name__.title(), (cls,), new_dict)
+    def connect(self, handler):
+        self._handlers.add(handler)
 
 
-ObservableDict = _observable_factory(dict)
-ObservableList = _observable_factory(list)
-ObservableOrderedDict = _observable_factory(OrderedDict)
+    def fire(self, *args):
+        for handler in self._handlers:
+            handler(*args)
 
 
 class Singleton(type):

@@ -84,12 +84,6 @@ class UChromaDevice(BaseUChromaDevice):
         return self.get_led(LEDType.BACKLIGHT).brightness
 
 
-    def _run_power_callbacks(self, level):
-        suspended = self.suspended and level == 0
-        for callback in self._power_callbacks:
-            callback(level, suspended)
-
-
     @property
     def suspended(self):
         """
@@ -140,7 +134,9 @@ class UChromaDevice(BaseUChromaDevice):
 
     def _brightness_callback(self, level):
         self._set_brightness(level)
-        self._run_power_callbacks(level)
+
+        suspended = self.suspended and level == 0
+        self.power_state_changed.fire(level, suspended)
 
 
     @brightness.setter

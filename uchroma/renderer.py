@@ -4,7 +4,7 @@ import asyncio
 from abc import abstractmethod
 from typing import NamedTuple
 
-from traitlets import HasTraits, Float, Instance, observe, Unicode
+from traitlets import Bool, HasTraits, Float, Int, observe, Unicode
 
 from uchroma.input import InputQueue
 from uchroma.frame import Frame
@@ -38,15 +38,16 @@ class Renderer(HasTraits):
 
     height = WriteOnceInt()
     width = WriteOnceInt()
-    zorder = WriteOnceInt()
+    zindex = Int(default_value=-1).tag(config=False)
+    running = Bool(False).tag(config=False)
 
-    def __init__(self, driver, zorder: int=0, *args, **kwargs):
+
+    def __init__(self, driver, *args, **kwargs):
         self._avail_q = asyncio.Queue(maxsize=NUM_BUFFERS)
         self._active_q = asyncio.Queue(maxsize=NUM_BUFFERS)
 
-        self._running = False
+        self.running = False
 
-        self.zorder = zorder
         self.width = driver.width
         self.height = driver.height
 
@@ -56,8 +57,16 @@ class Renderer(HasTraits):
         if hasattr(driver, 'input_manager') and driver.input_manager is not None:
             self._input_queue = InputQueue(driver)
 
-        self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, zorder))
+        self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, self.zindex))
         super(Renderer, self).__init__(*args, **kwargs)
+
+
+    @observe('zindex')
+    def _z_changed(self, change):
+        if change.old == change.new and change.new >= 0:
+            return
+
+        self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, change.new))
 
 
     def init(self, frame: Frame) -> bool:
@@ -176,12 +185,12 @@ class Renderer(HasTraits):
         Coroutine which dequeues buffers for drawing and queues them
         to the AnimationLoop when drawing is done.
         """
-        if self._running:
+        if self.running:
             return
 
-        self._running = True
+        self.running = True
 
-        while self._running:
+        while self.running:
             with self._tick:
                 # get a buffer, blocking if necessary
                 layer = yield from self._avail_q.get()
@@ -197,7 +206,7 @@ class Renderer(HasTraits):
                     self.logger.error('Renderer traits: %s', self._trait_values)
                     break
 
-                if not self._running:
+                if not self.running:
                     break
 
                 # submit for composition
@@ -208,11 +217,11 @@ class Renderer(HasTraits):
             # FIXME: Use "async with" on Python 3.6+
             yield from self._tick.tick()
 
-        self._stop()
+        yield from self._stop()
 
 
     def _flush(self):
-        if self._running:
+        if self.running:
             return
         for qlen in range(0, self._avail_q.qsize()):
             self._avail_q.get_nowait()
@@ -220,15 +229,16 @@ class Renderer(HasTraits):
             self._active_q.get_nowait()
 
 
+    @asyncio.coroutine
     def _stop(self):
-        if not self._running:
+        if not self.running:
             return
 
-        self.logger.info("Stopping renderer")
-
-        self._running = False
+        self.running = False
 
         self._flush()
 
         if self.has_key_input:
-            self._input_queue.detach()
+            yield from self._input_queue.detach()
+
+        self.logger.info("Renderer stopped: z=%d", self.zindex)

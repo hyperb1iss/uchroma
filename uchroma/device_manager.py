@@ -1,10 +1,12 @@
 import asyncio
 
 from collections import OrderedDict
+from concurrent import futures
 
 import hidapi
 
 from pyudev import Context, Monitor, MonitorObserver
+from pyudev._os import pipe
 
 from uchroma.device import UChromaDevice
 from uchroma.device_base import BaseUChromaDevice
@@ -14,7 +16,41 @@ from uchroma.keyboard import UChromaKeyboard
 from uchroma.keypad import UChromaKeypad
 from uchroma.laptop import UChromaLaptop
 from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
-from uchroma.util import ensure_future, get_logger
+from uchroma.util import ensure_future, get_logger, Signal
+
+
+class AsyncMonitorObserver(object):
+
+    def __init__(self, monitor, callback=None, name=None, *args, **kwargs):
+        if callback is None:
+            raise ValueError('callback missing')
+
+        self.monitor = monitor
+        self._stop_event = None
+        self._callback = callback
+
+        self._executor = futures.ThreadPoolExecutor(max_workers=2)
+        self._task = None
+
+
+    def _run(self):
+        self._stop_event = pipe.Pipe.open()
+        MonitorObserver.run(self)
+
+
+    def _stop(self):
+        MonitorObserver.send_stop(self)
+
+
+    @asyncio.coroutine
+    def start(self):
+        asyncio.get_event_loop().run_in_executor(self._executor, self._run)
+
+
+    @asyncio.coroutine
+    def stop(self):
+        asyncio.get_event_loop().run_in_executor(self._executor, self._stop)
+        self._executor.shutdown()
 
 
 class UChromaDeviceManager(object):
@@ -44,13 +80,16 @@ class UChromaDeviceManager(object):
 
         self._loop = asyncio.get_event_loop()
 
+        self.device_added = Signal()
+        self.device_removed = Signal()
+
         self.discover()
 
 
     @asyncio.coroutine
     def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
         # delay for udev setup
-        yield from asyncio.sleep(0.2)
+        asyncio.sleep(0.2)
 
         for callback in self._callbacks:
             yield from callback(action, device)
@@ -216,15 +255,17 @@ class UChromaDeviceManager(object):
                 self.discover()
 
 
+    @asyncio.coroutine
     def close_devices(self):
         """
         Close all open devices and perform cleanup
         """
         for device in self.devices.values():
-            device.shutdown()
+            yield from device.shutdown()
         self._devices.clear()
 
 
+    @asyncio.coroutine
     def monitor_start(self):
         """
         Start watching for device changes
@@ -239,8 +280,9 @@ class UChromaDeviceManager(object):
         udev_monitor.filter_by_tag('uchroma')
         udev_monitor.filter_by(subsystem='usb', device_type=u'usb_device')
 
-        self._udev_observer = MonitorObserver(udev_monitor, callback=self._udev_event,
-                                              name='uchroma-monitor')
+        self._udev_observer = AsyncMonitorObserver(udev_monitor, callback=self._udev_event,
+                                                   name='uchroma-monitor')
+        ensure_future(self._udev_observer.start())
         self._udev_observer.start()
         self._monitor = True
 
@@ -251,6 +293,7 @@ class UChromaDeviceManager(object):
         self._logger.debug('Udev monitor started')
 
 
+    @asyncio.coroutine
     def monitor_stop(self):
         """
         Stop watching for device changes
@@ -258,7 +301,7 @@ class UChromaDeviceManager(object):
         if not self._monitor:
             return
 
-        self._udev_observer.send_stop()
+        yield from ensure_future(self._udev_observer.stop())
         self._monitor = False
 
         self._logger.debug('Udev monitor stopped')

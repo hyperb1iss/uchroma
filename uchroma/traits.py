@@ -95,6 +95,16 @@ class WriteOnceUseEnumCaseless(WriteOnceMixin, UseEnumCaseless):
     pass
 
 
+def is_trait_writable(trait) -> bool:
+    if trait.read_only:
+        return False
+
+    if hasattr(trait, 'write_once') and trait.write_once:
+        return False
+
+    return True
+
+
 def trait_as_dict(trait) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like
@@ -193,13 +203,12 @@ def dict_as_class_traits(obj: dict):
     return traits
 
 
-def get_args_dict(obj):
+def get_args_dict(obj, incl_all=False):
     argsdict = ArgsDict()
     for k in sorted(obj._trait_values.keys()):
         v = obj._trait_values[k]
         trait = obj.traits()[k]
-        if trait.default_value != v and not trait.read_only \
-                and not (hasattr(trait, 'write_once') and trait.write_once):
+        if incl_all or (not trait.get_metadata('hidden') and is_trait_writable(trait)):
             argsdict[k] = v
     return argsdict
 

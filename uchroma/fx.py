@@ -1,14 +1,18 @@
 # pylint: disable=protected-access, no-member, invalid-name
+import functools
 import inspect
 import re
 
 from abc import abstractmethod
 
 from frozendict import frozendict
-from traitlets import Bool, HasTraits, Unicode
+from traitlets import Bool, HasTraits, Instance, Tuple, Unicode
 
 from uchroma.traits import get_args_dict
 from uchroma.util import camel_to_snake
+
+
+CUSTOM = 'custom_frame'
 
 
 class BaseFX(HasTraits, object):
@@ -72,19 +76,23 @@ class FXModule(object):
 
 
 
-class FXManager(object):
+class FXManager(HasTraits):
     """
     Manages device lighting effects
     """
+    current_fx = Tuple(Unicode(allow_none=True),
+                       Instance(klass=BaseFX, allow_none=True),
+                       default_value=(None, None))
 
-    def __init__(self, driver, fxmod: FXModule):
+
+    def __init__(self, driver, fxmod: FXModule, *args, **kwargs):
         """
         :param driver: The UChromaDevice to control
         """
+        super(FXManager, self).__init__(*args, **kwargs)
         self._driver = driver
         self._logger = driver.logger
         self._fxmod = fxmod
-        self._current_fx = (None, None)
 
 
     def restore_prefs(self, prefs):
@@ -117,8 +125,8 @@ class FXManager(object):
 
         :param fx_name: The string name of the effect object
         """
-        if self._current_fx[0] == fx_name:
-            return self._current_fx[1]
+        if self.current_fx[0] == fx_name:
+            return self.current_fx[1]
 
         return self._fxmod.create_fx(fx_name)
 
@@ -129,30 +137,37 @@ class FXManager(object):
         return False
 
 
+    def _activate(self, fx_name, fx, future=None):
+        # need to do this as a callback if an animation
+        # is shutting down
+        if fx.apply():
+            if fx_name != CUSTOM or (fx_name == CUSTOM and self.current_fx[0] != CUSTOM):
+                self.current_fx = (fx_name, fx)
+
+            if fx_name == CUSTOM:
+                return
+
+            self._driver.preferences.fx = fx_name
+            argsdict = get_args_dict(fx)
+            if len(argsdict) == 0:
+                argsdict = None
+            self._driver.preferences.fx_args = argsdict
+
+
     def activate(self, fx_name, **kwargs) -> bool:
         fx = self.get_fx(fx_name)
         if fx is None:
             return False
 
-        for k, v in kwargs.items():
-            if fx.has_trait(k):
-                setattr(fx, k, v)
+        if fx_name != CUSTOM and fx_name != 'disable':
+            for k, v in kwargs.items():
+                if fx.has_trait(k):
+                    setattr(fx, k, v)
 
-        if fx_name not in ('custom_frame', 'disable'):
             self._logger.debug("activate fx: %s traits: %s", fx_name, fx._trait_values)
             if self._driver.is_animating:
-                self._driver.animation_manager.reset()
+                self._driver.animation_manager.stop( \
+                        cb=functools.partial(self._activate, fx_name, fx))
+                return True
 
-        if fx.apply():
-            self._current_fx = (fx_name, fx)
-
-            if fx_name != 'custom_frame':
-                self._driver.preferences.fx = fx_name
-                argsdict = get_args_dict(fx)
-                if len(argsdict) == 0:
-                    argsdict = None
-                self._driver.preferences.fx_args = argsdict
-
-            return True
-
-        return False
+        return self._activate(fx_name, fx)

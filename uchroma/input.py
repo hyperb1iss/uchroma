@@ -3,6 +3,7 @@ import asyncio
 import functools
 import time
 
+from concurrent import futures
 from typing import NamedTuple
 
 import evdev
@@ -90,10 +91,13 @@ class InputManager(object):
             asyncio.get_event_loop().remove_reader(event_device.fileno())
             event_device.close()
 
+        tasks = []
         for task in self._tasks:
-            task.cancel()
+            if not task.done():
+                task.cancel()
+                tasks.append(task)
 
-        yield from asyncio.wait(self._tasks)
+        yield from asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
         self._event_devices.clear()
 
 
@@ -106,6 +110,7 @@ class InputManager(object):
             self._open_input_devices()
 
 
+    @asyncio.coroutine
     def remove_callback(self, callback):
         if callback not in self._event_callbacks:
             return
@@ -113,12 +118,12 @@ class InputManager(object):
         self._event_callbacks.remove(callback)
 
         if len(self._event_callbacks) == 0:
-            ensure_future(self._close_input_devices())
+            yield from self._close_input_devices()
 
 
     def shutdown(self):
         for callback in self._event_callbacks:
-            self.remove_callback(callback)
+            ensure_future(self.remove_callback(callback))
 
 
     def grab(self, excl: bool):
@@ -209,6 +214,7 @@ class InputQueue(object):
         self._logger.debug("InputQueue attached")
 
 
+    @asyncio.coroutine
     def detach(self):
         """
         Stop listening for input events
@@ -216,7 +222,7 @@ class InputQueue(object):
         if not self._attached:
             return
 
-        self._input_manager.remove_callback(self._input_callback)
+        yield from self._input_manager.remove_callback(self._input_callback)
         self._attached = False
         self._logger.debug("InputQueue detached")
 

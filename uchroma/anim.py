@@ -1,23 +1,103 @@
-# pylint: disable=unused-argument, no-member, no-self-use, protected-access, not-an-iterable, invalid-name
+# pylint: disable=unused-argument, protected-access, invalid-name
 import asyncio
 import importlib
 import types
 
 from collections import OrderedDict
 from concurrent import futures
-from typing import List, NamedTuple
+from typing import NamedTuple
 
-from frozendict import frozendict
-from traitlets import Bool, Dict, HasTraits, List
-import numpy as np
+from traitlets import Bool, HasTraits, List, observe
 
 from uchroma.frame import Frame
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
-from uchroma.traits import get_args_dict
-from uchroma.util import ensure_future, Ticker, LOG_TRACE
+from uchroma.traits import FrozenDict, get_args_dict, is_trait_writable
+from uchroma.util import ensure_future, Signal, Ticker, LOG_TRACE
 
 
-class AnimationLoop(object):
+class LayerHolder(HasTraits):
+
+    def __init__(self, renderer: Renderer, frame: Frame,
+                 blend_mode=None, *args, **kwargs):
+        super(LayerHolder, self).__init__(*args, **kwargs)
+
+        self._renderer = renderer
+        self._frame = frame
+        self._blend_mode = blend_mode
+
+        self.waiter = None
+        self.active_buf = None
+        self.task = None
+
+        self.traits_changed = Signal()
+        self._renderer.observe(self._traits_changed, names=['all'])
+
+        self._renderer._flush()
+
+        for buf in range(0, NUM_BUFFERS):
+            layer = self._frame.create_layer()
+            layer.blend_mode = self._blend_mode
+            self._renderer._free_layer(layer)
+
+
+    @property
+    def type_string(self):
+        cls = self._renderer.__class__
+        return '%s.%s' % (cls.__module__, cls.__name__)
+
+
+    @property
+    def trait_values(self):
+        return get_args_dict(self._renderer)
+
+
+    def _traits_changed(self, change):
+        if not self.renderer.running:
+            return
+
+        self.traits_changed.fire(self.zindex, self.trait_values, change.name, change.old)
+
+
+    @property
+    def zindex(self):
+        return self._renderer.zindex
+
+
+    @property
+    def renderer(self):
+        return self._renderer
+
+
+    def start(self):
+        if not self.renderer.running:
+            self.task = ensure_future(self.renderer._run())
+
+
+    @asyncio.coroutine
+    def stop(self):
+        if self.renderer.running:
+
+            tasks = []
+            if self.task is not None and not self.task.done():
+                self.task.cancel()
+                tasks.append(self.task)
+
+            if self.waiter is not None and not self.waiter.done():
+                self.waiter.cancel()
+                tasks.append(self.waiter)
+
+            yield from self.renderer._stop()
+
+            if len(tasks) > 0:
+                yield from asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
+
+            self.renderer.finish(self._frame)
+
+
+class AnimationLoop(HasTraits):
+    layers = List(default_value=(), allow_none=False)
+    running = Bool()
+
     """
     Collects the output of one or more Renderers and displays the
     composited image.
@@ -35,25 +115,35 @@ class AnimationLoop(object):
     The design of this loop intends to be as CPU-efficient as possible and
     does not wake up spuriously or otherwise consume cycles while inactive.
     """
-    def __init__(self, frame: Frame, *renderers: Renderer, default_blend_mode: str=None):
-        self._frame = frame
-        self._renderers = list(renderers)
+    def __init__(self, frame: Frame, default_blend_mode: str=None,
+                 *args, **kwargs):
+        super(AnimationLoop, self).__init__(*args, **kwargs)
 
+        self._frame = frame
         self._default_blend_mode = default_blend_mode
 
-        self._running = False
         self._anim_task = None
-
-        self._waiters = []
-        self._tasks = []
-
-        self._bufs = None
-        self._active_bufs = None
 
         self._pause_event = asyncio.Event()
         self._pause_event.set()
 
         self._logger = frame._driver.logger
+
+        self.layers_changed = Signal()
+
+
+    @observe('layers')
+    def _start_stop(self, change):
+        old = 0
+        if isinstance(change.old, list):
+            old = len(change.old)
+
+        new = len(change.new)
+
+        if old == 0 and new > 0:
+            self.start()
+        elif new == 0 and old > 0:
+            self.stop()
 
 
     @asyncio.coroutine
@@ -64,20 +154,21 @@ class AnimationLoop(object):
         are producing output at different rates). Yields until
         at least one layer is ready.
         """
-        if not self._running or r_idx >= len(self._renderers):
+        if not self.running or r_idx >= len(self.layers):
             return
 
-        renderer = self._renderers[r_idx]
+        layer = self.layers[r_idx]
+        renderer = layer.renderer
 
         # wait for a buffer
         buf = yield from renderer._active_q.get()
 
         # return the old buffer to the renderer
-        if self._active_bufs[r_idx] is not None:
-            renderer._free_layer(self._active_bufs[r_idx])
+        if layer.active_buf is not None:
+            renderer._free_layer(layer.active_buf)
 
         # put it on the active list
-        self._active_bufs[r_idx] = buf
+        layer.active_buf = buf
 
 
     def _dequeue_nowait(self, r_idx) -> bool:
@@ -86,10 +177,11 @@ class AnimationLoop(object):
 
         :return: True if any layers became active
         """
-        if not self._running or r_idx >= len(self._renderers):
+        if not self.running or r_idx >= len(self.layers):
             return False
 
-        renderer = self._renderers[r_idx]
+        layer = self.layers[r_idx]
+        renderer = layer.renderer
 
         # check if a buffer is ready
         if not renderer._active_q.empty():
@@ -97,11 +189,11 @@ class AnimationLoop(object):
             if buf is not None:
 
                 # return the last buffer
-                if self._active_bufs[r_idx] is not None:
-                    renderer._free_layer(self._active_bufs[r_idx])
+                if layer.active_buf is not None:
+                    renderer._free_layer(layer.active_buf)
 
                 # put it on the composition list
-                self._active_bufs[r_idx] = buf
+                layer.active_buf = buf
                 return True
 
         return False
@@ -114,16 +206,24 @@ class AnimationLoop(object):
         layer is active.
         """
         # schedule tasks to wait on each renderer queue
-        for r_idx in range(0, len(self._renderers)):
-            if self._waiters[r_idx] is None or self._waiters[r_idx].done():
-                self._waiters[r_idx] = ensure_future(self._dequeue(r_idx))
+        for r_idx in range(0, len(self.layers)):
+            layer = self.layers[r_idx]
+
+            if layer.waiter is None or layer.waiter.done():
+                layer.waiter = ensure_future(self._dequeue(r_idx))
 
         # async wait for at least one completion
-        yield from asyncio.wait(self._waiters, return_when=futures.FIRST_COMPLETED)
+        waiters = [layer.waiter for layer in self.layers]
+        if len(waiters) == 0:
+            return
+
+        yield from asyncio.wait(waiters, return_when=futures.FIRST_COMPLETED)
 
         # check the rest without waiting
-        for r_idx in range(0, len(self._renderers)):
-            if self._waiters[r_idx] is not None and not self._waiters[r_idx].done():
+        for r_idx in range(0, len(self.layers)):
+            layer = self.layers[r_idx]
+
+            if layer.waiter is not None and not layer.waiter.done():
                 self._dequeue_nowait(r_idx)
 
 
@@ -131,9 +231,15 @@ class AnimationLoop(object):
         """
         Merge layers from all renderers and commit to the hardware
         """
-        if self._logger.isEnabledFor(LOG_TRACE):
-            self._logger.debug("Layers: %s", self._active_bufs)
-        self._frame.commit([layer for layer in self._active_bufs if layer is not None])
+        if self._logger.isEnabledFor(LOG_TRACE - 1):
+            self._logger.debug("Layers: %s", self.layers)
+
+        active_bufs = [layer.active_buf for layer in \
+                sorted(self.layers, key=lambda z: z.zindex) \
+                if layer is not None and layer.active_buf is not None]
+
+        if len(active_bufs) > 0:
+            self._frame.commit(active_bufs)
 
 
     @asyncio.coroutine
@@ -150,19 +256,19 @@ class AnimationLoop(object):
         self._logger.info("AnimationLoop is starting..")
 
         # start the renderers
-        for renderer in self._renderers:
-            self._tasks.append(ensure_future(renderer._run()))
+        for layer in self.layers:
+            layer.start()
 
         tick = Ticker(1 / MAX_FPS)
 
         # loop forever, waiting for layers
-        while self._running:
+        while self.running:
             yield from self._pause_event.wait()
 
             with tick:
                 yield from self._get_layers()
 
-                if not self._running:
+                if not self.running:
                     break
 
                 # compose and display the frame
@@ -173,7 +279,7 @@ class AnimationLoop(object):
 
         self._logger.info("AnimationLoop is exiting..")
 
-        yield from asyncio.gather(*self._tasks)
+        yield from asyncio.gather(*[layer.task for layer in self.layers])
 
 
     def _renderer_done(self, future):
@@ -181,34 +287,80 @@ class AnimationLoop(object):
         Invoked when the renderer exits
         """
         self._logger.info("AnimationLoop is cleaning up")
-        for renderer in self._renderers:
-            renderer.finish(self._frame)
-
-        self._renderers.clear()
 
         self._anim_task = None
 
 
-    def _create_buffers(self):
-        """
-        Creates a pair of buffers for each renderer and sets up
-        the bookkeeping.
-        """
-        self._waiters = list((None,) * len(self._renderers))
+    def _update_z(self, tmp_list):
+        if len(tmp_list) > 0:
+            for layer_idx in range(0, len(tmp_list)):
+                tmp_list[layer_idx].renderer.zindex = layer_idx
 
-        # active buffer list
-        self._active_bufs = np.array((None,) * len(self._renderers))
+        # fires trait observer
+        self.layers = tmp_list
 
-        # load up the renderers with layers to draw on
-        for r_idx in range(0, len(self._renderers)):
-            self._renderers[r_idx]._flush()
 
-            for buf in range(0, NUM_BUFFERS):
-                layer = self._frame.create_layer()
-                layer.blend_mode = self._default_blend_mode
-                self._renderers[r_idx]._free_layer(layer)
-                self._logger.debug("Buffer created, renderer=%s buffer=%s",
-                                  self._renderers[r_idx], layer)
+    def _layer_traits_changed(self, *args):
+        self.layers_changed.fire('modify', *args)
+
+
+    def add_layer(self, renderer: Renderer, zindex: int=None) -> bool:
+        with self.hold_trait_notifications():
+            if zindex is None:
+                zindex = len(self.layers)
+
+            if not renderer.init(self._frame):
+                self._logger.error('Renderer %s failed to initialize', renderer.name)
+                return False
+
+            layer = LayerHolder(renderer, self._frame, self._default_blend_mode)
+            tmp = self.layers[:]
+            tmp.insert(zindex, layer)
+            self._update_z(tmp)
+
+            layer.traits_changed.connect(self._layer_traits_changed)
+
+            if self.running:
+                layer.start()
+
+            self.layers_changed.fire('add', zindex, layer.renderer)
+
+            self._logger.info("Layer created, renderer=%s zindex=%d",
+                              layer.renderer, zindex)
+        return True
+
+
+    @asyncio.coroutine
+    def remove_layer(self, layer_like):
+        with self.hold_trait_notifications():
+            if isinstance(layer_like, LayerHolder):
+                zindex = self.layers.index(layer_like)
+            elif isinstance(layer_like, int):
+                zindex = layer_like
+            else:
+                raise TypeError('Layer should be a holder or an index')
+
+            if zindex >= 0 and zindex < len(self.layers):
+                layer = self.layers[zindex]
+                layer_id = id(self.layers[zindex])
+                yield from layer.stop()
+
+                tmp = self.layers[:]
+                del tmp[zindex]
+                self._update_z(tmp)
+
+                self.layers_changed.fire('remove', zindex, layer_id)
+
+                self._logger.info("Layer %d removed", zindex)
+
+
+    @asyncio.coroutine
+    def clear_layers(self):
+        if len(self.layers) == 0:
+            return False
+        for layer in self.layers[::-1]:
+            yield from self.remove_layer(layer)
+        return True
 
 
     def start(self) -> bool:
@@ -221,17 +373,15 @@ class AnimationLoop(object):
 
         :return: True if the loop was started
         """
-        if self._running:
+        if self.running:
             self._logger.error("Animation loop already running")
             return False
 
-        if len(self._renderers) == 0:
+        if len(self.layers) == 0:
             self._logger.error("No renderers were configured")
             return False
 
-        self._running = True
-
-        self._create_buffers()
+        self.running = True
 
         self._anim_task = ensure_future(self._animate())
         self._anim_task.add_done_callback(self._renderer_done)
@@ -246,37 +396,25 @@ class AnimationLoop(object):
 
         Shuts down the loop and triggers cleanup tasks.
         """
-        if not self._running:
+        if not self.running:
             return False
 
-        self._running = False
+        self.running = False
 
-        waitlist = []
+        with self.hold_trait_notifications():
 
-        for renderer in self._renderers:
-            renderer._stop()
+            for layer in self.layers[::-1]:
+                yield from self.remove_layer(layer)
 
-        for task in self._tasks:
-            if not task.done():
-                task.cancel()
-                waitlist.append(task)
+            if self._anim_task is not None and not self._anim_task.done():
+                self._anim_task.cancel()
+                yield from asyncio.gather(self._anim_task)
 
-        for waiter in self._waiters:
-            if not waiter.done():
-                waiter.cancel()
-                waitlist.append(waiter)
-
-        if self._anim_task is not None and not self._anim_task.done():
-            self._anim_task.cancel()
-            waitlist.append(self._anim_task)
-
-        yield from asyncio.wait(waitlist, return_when=asyncio.ALL_COMPLETED)
-
-        self._logger.info("AnimationLoop stopped")
+            self._logger.info("AnimationLoop stopped")
 
 
     def stop(self):
-        if not self._running:
+        if not self.running:
             return False
 
         ensure_future(self._stop())
@@ -307,31 +445,78 @@ class AnimationManager(HasTraits):
     Configures and manages animations of one or more renderers
     """
 
-    renderers = List()
-    _renderer_info = Dict()
-    running = Bool(False)
+    _renderer_info = FrozenDict()
+    paused = Bool(False)
 
     def __init__(self, driver):
         super(AnimationManager, self).__init__()
 
         self._driver = driver
         self._loop = None
-        self._paused = False
         self._logger = driver.logger
 
-        driver.add_power_callback(self._power_callback)
+        self.layers_changed = Signal()
+        self.state_changed = Signal()
 
-        with self.hold_trait_notifications():
-            # TODO: Get a proper plugin system going
-            self._renderer_info = OrderedDict()
+        driver.power_state_changed.connect(self._power_state_changed)
 
-            self._fxlib = importlib.import_module('uchroma.fxlib')
-            self._discover_renderers()
+        self._fxlib = importlib.import_module('uchroma.fxlib')
+        self._renderer_info = self._discover_renderers()
 
-            self.renderers = []
+        self._shutting_down = False
+
+
+    @observe('paused')
+    def _state_changed(self, change):
+        # aggregate the trait notifications to a single signal
+        value = 'stopped'
+        if change.name == 'paused' and change.new and self.running:
+            value = 'paused'
+        elif change.name == 'running' and change.new and not self.paused:
+            value = 'running'
+
+        self.state_changed.fire(value)
+
+
+    def _loop_running_changed(self, change):
+        self._driver.reset()
+        self._state_changed(change)
+
+
+    def _loop_layers_changed(self, *args):
+        self.layers_changed.fire(*args)
+        self._update_prefs()
+
+
+    def _power_state_changed(self, brightness, suspended):
+        if self.running and self.paused != suspended:
+            self.pause(suspended)
+
+
+    def _create_loop(self):
+        if self._loop is None:
+            self._loop = AnimationLoop(self._driver.frame_control)
+            self._loop.observe(self._loop_running_changed, names=['running'])
+            self._loop.layers_changed.connect(self._loop_layers_changed)
+
+
+    def _update_prefs(self):
+        if self._loop is None or self._shutting_down:
+            return
+
+        prefs = OrderedDict()
+        for layer in self._loop.layers:
+            prefs[layer.type_string] = layer.trait_values
+
+        if len(prefs) > 0:
+            self._driver.preferences.layers = prefs
+        else:
+            self._driver.preferences.layers = None
 
 
     def _discover_renderers(self):
+        infos = OrderedDict()
+
         for item in self._fxlib.__dir__():
             obj = getattr(self._fxlib, item)
             if isinstance(obj, type) and issubclass(obj, Renderer):
@@ -341,18 +526,14 @@ class AnimationManager(HasTraits):
                     continue
 
                 key = '%s.%s' % (obj.__module__, obj.__name__)
-                info = RendererInfo(obj.__module__, obj, key, obj.meta, obj.class_traits())
-                self._renderer_info[key] = info
+                infos[key] = RendererInfo(obj.__module__, obj, key,
+                                          obj.meta, obj.class_traits())
+
+        self._logger.debug("Loaded renderers: %s", ', '.join(infos.keys()))
+        return infos
 
 
-    def _power_callback(self, brightness, suspended):
-        if self.running and self._paused != suspended:
-            self._loop.pause(suspended)
-            self._paused = suspended
-            self._logger.info("Animation paused: %s", self._paused)
-
-
-    def _get_renderer(self, name, **traits) -> Renderer:
+    def _get_renderer(self, name, zindex: int=None, **traits) -> Renderer:
         """
         Instantiate a renderer
 
@@ -360,23 +541,10 @@ class AnimationManager(HasTraits):
 
         :return: The renderer object
         """
-        if name not in self._renderer_info:
-            # look harder if no package name was given
-            keys = list(self._renderer_info.keys())
-            shortkeys = [v.meta.display_name.lower() for v in self._renderer_info.values()]
-
-            if name.lower() in shortkeys:
-                idx = shortkeys.index(name.lower())
-                name = keys[idx]
-            else:
-                self._logger.error("Unknown renderer: %s", name)
-                return None
-
         info = self._renderer_info[name]
 
         try:
-            zorder = len(self.renderers)
-            return info.clazz(self._driver, zorder, **traits)
+            return info.clazz(self._driver, **traits)
 
         except ImportError as err:
             self._logger.exception('Invalid renderer: %s', name, exc_info=err)
@@ -384,18 +552,13 @@ class AnimationManager(HasTraits):
         return None
 
 
-    @property
-    def renderer_info(self) -> frozendict:
-        return self._renderer_info
-
-
-    def add_renderer(self, name, **traits) -> int:
+    def add_renderer(self, name, traits: dict, zindex: int=None) -> int:
         """
         Adds a renderer which will produce a layer of this animation.
         Any number of renderers may be added and the output will be
         composited together. The z-order of the layers corresponds to
         the order renderers were added, with the first producing the
-        base layer and hte last producing the topmost layer.
+        base layer and the last producing the topmost layer.
 
         Renderers may be loaded from any valid Python package, the
         default is "uchroma.fxlib".
@@ -406,93 +569,70 @@ class AnimationManager(HasTraits):
 
         :return: Z-position of the new renderer or -1 on error
         """
+        self._create_loop()
+
+        if zindex is not None and zindex > len(self._loop.layers):
+            raise ValueError("Z-index out of range (requested %d max %d)" % \
+                    (zindex, len(self._loop.layers)))
+
         renderer = self._get_renderer(name, **traits)
         if renderer is None:
             self._logger.error('Renderer %s failed to load', renderer)
             return -1
 
-        if not renderer.init(self._driver.frame_control):
-            self._logger.error('Renderer %s failed to initialize', renderer.name)
+        if not self._loop.add_layer(renderer, zindex):
+            self._logger.error('Renderer %s failed to initialize', name)
             return -1
 
-        self.renderers = [*self.renderers, renderer]
-
-        return renderer.zorder
+        return renderer.zindex
 
 
-    def start(self, blend_mode: str=None) -> bool:
-        """
-        Start the renderers added via add_renderer
-
-        Initializes the animation loop and starts the action.
-
-        :return: True if the animation was started successfully
-        """
-        if self.running:
+    def remove_renderer(self, zindex: int) -> bool:
+        if self._loop is None:
             return False
 
-        if self.renderers is None or len(self.renderers) == 0:
-            self._logger.error('No renderers were configured')
+        if zindex is None or zindex < 0 or zindex > len(self._loop.layers):
+            self._logger.error("Z-index out of range (requested %d max %d)",
+                               zindex, len(self._loop.layers))
             return False
 
-        self._loop = AnimationLoop(self._driver.frame_control,
-                                   *self.renderers,
-                                   default_blend_mode=blend_mode)
-
-        self._driver.reset()
-
-        if self._loop.start():
-            self.running = True
-
-            layers = OrderedDict()
-            for renderer in self.renderers:
-                key = '%s.%s' % (renderer.__class__.__module__, renderer.__class__.__name__)
-                layers[key] = get_args_dict(renderer)
-            self._driver.preferences.layers = layers
-
-            return True
-
-        return False
-
-
-    def stop(self, shutdown=False) -> bool:
-        """
-        Stop the currently running animation
-
-        Cleans up the renderers and stops the animation loop.
-        """
-        if not self.running:
-            return False
-
-        if self._loop.stop():
-            self.running = False
-            self._driver.reset()
-
-            if not shutdown:
-                self._driver.preferences.layers = None
-
-            return True
-
-        return False
-
-
-    def clear_renderers(self) -> bool:
-        """
-        Clear the list of renderers
-        """
-        if self.running:
-            return False
-
-        self.renderers = []
+        ensure_future(self._loop.remove_layer(zindex))
         return True
 
 
-    def reset(self):
+    def pause(self, state=None):
+        if self._loop is not None:
+            if state is None:
+                state = not self.paused
+            if state != self.paused:
+                self._loop.pause(state)
+
+            self.paused = state
+            self._logger.info("Animation paused: %s", self.paused)
+
+        return self.paused
+
+
+    def stop(self, cb=None):
+        if self._loop is not None:
+            task = ensure_future(self._loop.clear_layers())
+            if cb is not None:
+                task.add_done_callback(cb)
+
+        return True
+
+
+    @asyncio.coroutine
+    def shutdown(self):
         """
-        Stop animations and clear the renderer list
+        Stop and remove all renderers
         """
-        self.stop()
-        self.clear_renderers()
+        self._shutting_down = True
+
+        if self._loop is None:
+            return
+
+        yield from self._loop.clear_layers()
 
 
     def restore_prefs(self, prefs):
@@ -501,16 +641,24 @@ class AnimationManager(HasTraits):
         if prefs.layers is not None and len(prefs.layers) > 0:
             try:
                 for name, args in prefs.layers.items():
-                    self.add_renderer(name, **args)
-                self.start()
+                    self.add_renderer(name, args)
 
             except Exception as err:
                 self._logger.exception('Failed to add renderers, clearing! [%s]',
                                        prefs.layers, exc_info=err)
-                self.clear_renderers()
-                prefs.layers = {}
+                self.stop()
+
+
+    @property
+    def renderer_info(self):
+        return self._renderer_info
+
+
+    @property
+    def running(self):
+        return self._loop is not None and self._loop.running
 
 
     def __del__(self):
-        if self.running:
-            self.stop()
+        if hasattr(self, '_loop') and self._loop is not None:
+            self._loop.stop()

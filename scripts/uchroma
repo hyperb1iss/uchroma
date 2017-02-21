@@ -136,6 +136,7 @@ class AbstractCommand(object):
         sub = parser.add_parser(name, help=help_text, aliases=aliases)
         add_traits_to_argparse(remote_traits.traits, sub)
         sub.set_defaults(cmd_func=callback, traits=remote_traits.traits, parser=sub)
+        return sub
 
 
     @abstractmethod
@@ -183,11 +184,11 @@ class DumpCommand(AbstractCommand):
             print('\n\nAnimation renderer state:\n')
             for layer in layerargs:
                 print(' %*s |  %s' % \
-                    (keylen, ('Layer %d' % int(layer.get('Zorder'))), layer.get('Key')))
+                    (keylen, ('Layer %d' % int(layer.get('Zindex'))), layer.get('Key')))
                 print(' %s' % ('-' * (keylen + 80)))
 
                 for k, v in layer.items():
-                    if k not in ('Zorder', 'Key'):
+                    if k not in ('Zindex', 'Key'):
                         print(' %*s |  %s' % (keylen, k, v))
 
                 print('\n')
@@ -206,7 +207,7 @@ class BrightnessCommand(AbstractCommand):
 
     def parse(self, args):
         if args.level is None:
-            args.exit(message='%f' % self.driver.Brightness)
+            args.parser.exit(message='%f' % self.driver.Brightness)
 
         if args.level < 0 or args.level > 100:
             args.parser.error('Brightness must be between 0 and 100')
@@ -330,7 +331,6 @@ class FXCommand(AbstractCommand):
 
     def _activate_fx(self, args):
         fx = args.fx_cmd.lower()
-        print(args)
         if not self.driver.SetFX(fx, dbus_prepare(args.changed, variant=True)[0]):
             args.parser.error("Failed to activate effect")
 
@@ -360,22 +360,21 @@ class AnimationCommand(AbstractCommand):
         ll = sub.add_parser('list')
         ll.set_defaults(func_anim=self._list, parser=ll)
 
-        add = sub.add_parser('add', help="Add a new renderer", add_help=False)
-        add.add_argument('-p', '--paused', action='store_true',
-                         help="Do not immediately start")
+        add = sub.add_parser('add', help="Add a new animation layer", add_help=False)
         add.set_defaults(func_anim=self._add, parser=add)
+
+        delete = sub.add_parser('delete', help="Delete a layer from the stack",
+                                aliases=['del'], add_help=False)
+        delete.set_defaults(func_anim=self._delete, parser=delete)
 
         modify = sub.add_parser('modify', help="Modify an existing layer",
                                 aliases=['mod'], add_help=False)
         modify.set_defaults(func_anim=self._modify, parser=modify)
 
-        pause = sub.add_parser('pause', help="Pause the animation")
+        pause = sub.add_parser('pause', help="Toggle pause state of the animation")
         pause.set_defaults(func_anim=self._pause, parser=pause)
 
-        start = sub.add_parser('start', help="Start a paused animation")
-        start.set_defaults(func_anim=self._start, parser=start)
-
-        stop = sub.add_parser('stop', help="Stop the running animation")
+        stop = sub.add_parser('stop', help="Stop and clear all renderers")
         stop.set_defaults(func_anim=self._stop, parser=stop)
 
         autocomplete(args.parser)
@@ -418,36 +417,38 @@ class AnimationCommand(AbstractCommand):
 
 
     def _pause(self, args):
+        paused = self.driver.PauseAnimation()
+        args.parser.exit(message="Pause state: %s\n" % paused)
+
+
+    def _stop(self, args):
         if not self.driver.StopAnimation():
             args.parser.error("Failed to stop animation")
 
 
-    def _stop(self, args):
-        self._pause(args)
-        if not self.driver.ClearRenderers():
-            args.parser.error("Failed to clear animation layers")
-
-
-    def _start(self, args):
-        if not self.driver.StartAnimation():
-            args.parser.error("Failed to start animation")
-
-
     def _add_renderer(self, args):
         rname = args.renderer
+        if rname not in self.renderer_info:
+            rname = {v: k for k, v in self._aliases.items()}[rname]
 
-        layer = self.driver.AddRenderer(rname, dbus_prepare(args.changed, variant=True)[0])
+        zindex = -1
+        if hasattr(args, 'zzz') and args.zzz is not None:
+            zindex = args.zzz
+
+        layer = self.driver.AddRenderer(rname, zindex, dbus_prepare(args.changed, variant=True)[0])
         if layer is None:
             args.parser.error("Failed to create renderer")
 
-        if not args.paused:
-            if not self.driver.StartAnimation():
-                args.parser.error("Failed to start animation")
-
-        args.parser.exit(message="Created layer: %s" % layer)
+        args.parser.exit(message="Created layer: %s\n" % layer)
 
 
     def _add(self, args):
+        layers = self.driver.CurrentRenderers
+        args.parser.add_argument('-z', '--zindex', type=int, choices=range(0, len(layers) + 1),
+                                 help="Z-index for the layer", dest='zzz')
+
+        args, args.unparsed = args.parser.parse_known_args(args.unparsed, args)
+
         sub = args.parser.add_subparsers(title="Animation renderers", dest='renderer')
 
         for name, trait_data in self.renderer_info.items():
@@ -473,7 +474,7 @@ class AnimationCommand(AbstractCommand):
         for k, v in args.changed.items():
             self.set_property(layer_obj, k, v)
 
-        args.parser.exit(message="Layer %d updated" % layer)
+        args.parser.exit(message="Layer %d updated\n" % layer)
 
 
     def _modify(self, args):
@@ -489,6 +490,23 @@ class AnimationCommand(AbstractCommand):
                 help_text="Layer %d: %s" % (layer_idx, renderer.description))
 
         self.parse_traits(args)
+
+
+    def _delete(self, args):
+        layers = self.driver.CurrentRenderers
+        if layers is None or len(layers) == 0:
+            args.parser.error("No animation layers are active")
+
+        args.parser.add_argument('zindex', type=int, choices=range(0, len(layers)),
+                                 help="Layer index to be removed")
+
+        delete_args = args.parser.parse_args(args.unparsed, args)
+
+        if not self.driver.RemoveRenderer(delete_args.zindex):
+            args.parser.error("Failed to delete layer")
+
+        args.parser.exit(message="Layer %d deleted\n" % delete_args.zindex)
+
 
 
 class UChromaTool(UChromaConsoleUtil):

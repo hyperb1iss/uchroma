@@ -22,29 +22,25 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 class UChromaDevTool(UChromaConsoleUtil):
 
     def _add_subparsers(self, sub):
+        super()._add_subparsers(sub)
         self._keys_sub = self._add_key_options(sub)
 
 
     def _add_key_options(self, sub):
         keys = sub.add_parser('keys', help='Keyboard bringup util')
-        keys.add_argument('-d', '--device', type=str,
-                          help='HID device to use (/dev/hidrawX or USB identifier)')
         keys.add_argument('-f', '--file', type=str, metavar='FILE',
                           help='Configuration file to use')
-        keys.set_defaults(func=self._key_config_tool)
+        keys.set_defaults(func=self._key_config_tool, parser=keys)
 
         return keys
 
 
     def _key_config_tool(self, args):
-        driver = self.get_driver(args)
+        driver = self.get_driver()
         if not hasattr(driver, 'InputEvent'):
-            self.print_err('Please run uchromad with UCHROMA_DEV=1 set.')
-            exit(1)
+            args.parser.error('Please run uchromad with UCHROMA_DEV=1 set.')
 
         KeyConfigTool.run(driver, args.file)
-
-        exit(0)
 
 
 class KeyConfigTool(object):
@@ -74,7 +70,6 @@ class KeyConfigTool(object):
 
         gbulb.install()
         self._loop = asyncio.get_event_loop()
-        self._task = None
         self._shutdown = False
 
 
@@ -82,8 +77,6 @@ class KeyConfigTool(object):
         self._shutdown = True
         self._driver.InputSignalEnabled = False
         self._signal.disconnect()
-        self._task.cancel()
-        self._loop.run_until_complete(asyncio.wait(self._task))
 
 
     def _key_alignment_header(self):
@@ -158,7 +151,7 @@ class KeyConfigTool(object):
         if position is not None:
             self._position = position
         self._driver.SetFX('alignment', dbus_prepare( \
-            {'cur_row': self._position[0], 'cur_col': self._position[1]}))
+            {'cur_row': self._position[0], 'cur_col': self._position[1]}, variant=True)[0])
 
 
     def _update(self):

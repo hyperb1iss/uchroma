@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name, no-member, protected-access
+# pylint: disable=invalid-name
 
 """
 D-Bus interfaces
@@ -18,7 +18,6 @@ from enum import Enum
 
 from pydbus import SessionBus
 from pydbus.generic import signal
-from traitlets.utils.bunch import Bunch
 
 from grapefruit import Color
 
@@ -26,7 +25,7 @@ from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder
 from uchroma.input import InputQueue
 from uchroma.led import LEDType
 from uchroma.traits import TraitsPropertiesMixin
-from uchroma.util import camel_to_snake, ensure_future, snake_to_camel
+from uchroma.util import camel_to_snake, ensure_future, snake_to_camel, Signal
 
 
 def dev_mode_enabled():
@@ -102,7 +101,7 @@ class DeviceAPI(object):
 
 
     @staticmethod
-    def _get_bus_path(driver):
+    def get_bus_path(driver):
         """
         Get the bus path for all services related to this device.
         """
@@ -147,8 +146,9 @@ class DeviceAPI(object):
                 self._input_queue.attach()
                 self._input_task = ensure_future(self._dev_mode_input())
             else:
-                self._input_queue.detach()
+                ensure_future(self._input_queue.detach())
                 self._input_task.cancel()
+
                 self._input_queue = None
 
             self._signal_input = state
@@ -156,7 +156,7 @@ class DeviceAPI(object):
 
     @property
     def FrameDebugOpts(self) -> dict:
-        return dbus_prepare(self._driver.frame_control.debug_opts)[0]
+        return dbus_prepare(self._driver.frame_control.debug_opts, variant=True)[0]
 
 
     @property
@@ -164,7 +164,7 @@ class DeviceAPI(object):
         """
         The bus path of this device.
         """
-        return DeviceAPI._get_bus_path(self)
+        return DeviceAPI.get_bus_path(self)
 
 
     PropertiesChanged = signal()
@@ -277,10 +277,10 @@ class LEDManagerAPI(object):
     def __init__(self, driver):
         self._driver = driver
         self._logger = driver.logger
-        self._driver.led_manager.add_observer(self._observer)
+        self._driver.led_manager.led_changed.connect(self._led_changed)
 
 
-    def _observer(self, led):
+    def _led_changed(self, led):
         self.LEDChanged(led.led_type.name.lower())
 
 
@@ -405,20 +405,87 @@ class FXManagerAPI(object):
 
 class LayerAPI(TraitsPropertiesMixin, object):
 
-    def __init__(self, layer, logger, *args, **kwargs):
+    def __init__(self, layer, bus, path, logger, *args, **kwargs):
         super(LayerAPI, self).__init__(*args, **kwargs)
 
         self._logger = logger
         self._delegate = layer
-        self.__class__.dbus = self._get_descriptor()
+        self._bus = bus
+        self._path = path
+
+        self._zindex = layer.zindex
+        self._handle = None
+
+        self._delegate.observe(self._z_changed, names=['zindex'])
+        self._delegate.observe(self._state_changed, names=['running'])
+
+        self.__class__.dbus = None
+
+        self.layer_stopped = Signal()
+
+        if layer.running:
+            self.register()
 
         if self._logger.isEnabledFor(logging.DEBUG):
             self._logger.debug('Layer node created: %s', self.__class__.dbus)
 
 
+    def _z_changed(self, change):
+        if change.old != change.new:
+            self.register()
+
+
+    def _state_changed(self, change):
+        if change.old != change.new:
+            if change.new:
+                self.register()
+            elif self._handle != None:
+                self._logger.info("Layer stopped zindex=%d (%s)",
+                                  self._zindex, self._delegate.meta)
+                self.unregister()
+                self.layer_stopped.fire(self)
+
+
+    @staticmethod
+    def get_layer_path(path, zindex):
+        return '%s/layer/%d' % (path, zindex)
+
+
+    @property
+    def layer_path(self):
+        return LayerAPI.get_layer_path(self._path, self._zindex)
+
+
+    @property
+    def layer_type(self):
+        return '%s.%s' % (self._delegate.__class__.__module__, self._delegate.__class__.__name__)
+
+
+    @property
+    def layer_zindex(self):
+        return self._zindex
+
+
+    def register(self):
+        self.unregister()
+
+        self.__class__.dbus = self._get_descriptor()
+
+        self._zindex = self._delegate.zindex
+        self._handle = self._bus.register_object(self.layer_path, self, None)
+        self._logger.info("Registered layer API: %s", self.layer_path)
+
+
+    def unregister(self):
+        if self._handle is not None:
+            self._handle.unregister()
+            self._handle = None
+            self._logger.info("Unregisted layer API: %s", self.layer_path)
+
+
     def _get_descriptor(self):
         exclude = ('blend_mode', 'opacity')
-        if self._delegate.zorder > 0:
+        if self._delegate.zindex > 0:
             exclude = ('background_color',)
 
         builder = DescriptorBuilder(self._delegate, 'org.chemlab.UChroma.Layer', exclude)
@@ -449,16 +516,18 @@ class AnimationManagerAPI(object):
           <interface name='org.chemlab.UChroma.AnimationManager'>
             <method name='AddRenderer'>
               <arg direction='in' type='s' name='name' />
+              <arg direction='in' type='i' name='zindex' />
               <arg direction='in' type='a{sv}' name='traits' />
               <arg direction='out' type='o' name='layer' />
             </method>
 
-            <method name='ClearRenderers'>
+            <method name='RemoveRenderer'>
+              <arg direction='in' type='i' name='zindex' />
               <arg direction='out' type='b' name='status' />
             </method>
 
-            <method name='StartAnimation'>
-              <arg direction='out' type='b' name='status' />
+            <method name='PauseAnimation'>
+              <arg direction='out' type='b' name='paused' />
             </method>
 
             <method name='StopAnimation'>
@@ -471,7 +540,7 @@ class AnimationManagerAPI(object):
               <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
             </property>
 
-           <property name='AnimationRunning' type='b' access='read'>
+           <property name='AnimationState' type='s' access='read'>
               <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
             </property>
           </interface>
@@ -486,54 +555,40 @@ class AnimationManagerAPI(object):
         self._logger = driver.logger
         self._animgr = driver.animation_manager
         self._layers = []
+        self._state = None
 
         # manually notify, startup order isn't guaranteed
-        with self._animgr.hold_trait_notifications():
-            self._update_layers(Bunch(name='renderers', old=[], new=self._animgr.renderers,
-                                      owner=self, type='change'))
-            self._state_changed(Bunch(name='running', old=False, new=self._animgr.running,
-                                      owner=self, type='change'))
-
-        self._animgr.observe(self._update_layers, names=['renderers'])
-        self._animgr.observe(self._state_changed, names=['running'])
-
-
-    def _update_layers(self, change):
-        self._logger.debug("Layers changed: %s", change)
-        if len(change.new) == 0 and len(change.old) > 0:
-            for layer in self._layers:
-                layer.unregister()
-        elif len(change.new) > len(change.old):
-            layer = change.new[-1]
-            with layer.hold_trait_notifications():
-                layerapi = LayerAPI(layer, self._logger)
-                path = self._layer_path(layer.zorder)
-                self._layers.append(self._bus.register_object(path, layerapi, None))
-
-        self.PropertiesChanged('org.chemlab.UChroma.AnimationManager',
-                               {'CurrentRenderers': self.CurrentRenderers}, [])
+        self._animgr.layers_changed.connect(self._layers_changed)
+        self._animgr.state_changed.connect(self._state_changed)
 
 
     PropertiesChanged = signal()
 
 
-    def _layer_path(self, z) -> str:
-        return '%s/layer/%d' % (self._path, z)
+    def _layer_stopped(self, layer):
+        del self._layers[self._layers.index(layer)]
 
 
-    def _state_changed(self, change):
-        self._logger.debug("State changed: %s", change)
+    def _layers_changed(self, action, zindex=None, layer=None):
+        if action == 'add':
+            layerapi = LayerAPI(layer, self._bus, self._path, self._logger)
+            layerapi.layer_stopped.connect(self._layer_stopped)
+            self._layers.append(layerapi)
+
         self.PropertiesChanged('org.chemlab.UChroma.AnimationManager',
-                               {'AnimationRunning': self.AnimationRunning}, [])
+                               {'CurrentRenderers': self.CurrentRenderers}, [])
+
+    def _state_changed(self, state):
+        self._state = state
+
+        self.PropertiesChanged('org.chemlab.UChroma.AnimationManager',
+                               {'AnimationState': self.AnimationState}, [])
 
 
     @property
     def CurrentRenderers(self) -> tuple:
-        current = []
-        for layer in self._animgr.renderers:
-            key = '%s.%s' % (layer.__class__.__module__, layer.__class__.__name__)
-            current.append((key, self._layer_path(layer.zorder)))
-        return tuple(current)
+        return tuple([(x.layer_type, x.layer_path) \
+            for x in sorted(self._layers, key=lambda z: z.layer_zindex)])
 
 
     @property
@@ -547,30 +602,33 @@ class AnimationManagerAPI(object):
         return avail
 
 
-    def AddRenderer(self, name: str, traits: dict) -> str:
-        self._logger.debug('AddRenderer: name=%s traits=%s', name, traits)
-        with self._animgr.hold_trait_notifications():
-            z = self._animgr.add_renderer(name, **traits)
-            if z >= 0:
-                return self._layer_path(z)
-            return None
+    def AddRenderer(self, name: str, zindex: int, traits: dict) -> str:
+        self._logger.debug('AddRenderer: name=%s zindex=%d traits=%s',
+                           name, zindex, traits)
+        if zindex < 0:
+            zindex = None
+
+        z = self._animgr.add_renderer(name, traits=traits, zindex=zindex)
+        if z >= 0:
+            return LayerAPI.get_layer_path(self._path, z)
+        return None
 
 
-    def ClearRenderers(self):
-        return self._animgr.clear_renderers()
-
-
-    def StartAnimation(self):
-        return self._animgr.start()
+    def RemoveRenderer(self, zindex: int) -> bool:
+        return self._animgr.remove_renderer(zindex)
 
 
     def StopAnimation(self):
         return self._animgr.stop()
 
 
+    def PauseAnimation(self):
+        return self._animgr.pause()
+
+
     @property
-    def AnimationRunning(self):
-        return self._animgr.running
+    def AnimationState(self):
+        return self._state
 
 
 
@@ -609,26 +667,26 @@ class DeviceManagerAPI(object):
     def _publish_device(self, device):
         devapi = DeviceAPI(device)
 
-        path = DeviceAPI._get_bus_path(device)
+        path = DeviceAPI.get_bus_path(device)
 
         self._devs[path] = []
         self._devs[path].append(self._bus.register_object(path, devapi, None))
 
-        if device.fx_manager is not None:
+        if hasattr(device, 'fx_manager') and device.fx_manager is not None:
             self._devs[path].append(self._bus.register_object( \
                 path, FXManagerAPI(device), None))
 
-        if device.animation_manager is not None:
+        if hasattr(device, 'animation_manager') and device.animation_manager is not None:
             self._devs[path].append(self._bus.register_object( \
                 path, AnimationManagerAPI(device, self._bus, path), None))
 
-        if device.led_manager is not None:
+        if hasattr(device, 'led_manager') and device.led_manager is not None:
             self._devs[path].append(self._bus.register_object( \
                 path, LEDManagerAPI(device), None))
 
 
     def _unpublish_device(self, device):
-        path = DeviceAPI._get_bus_path(device)
+        path = DeviceAPI.get_bus_path(device)
 
         if path in self._devs:
             for obj in self._devs[path]:
@@ -648,7 +706,7 @@ class DeviceManagerAPI(object):
         else:
             return
 
-        self.DevicesChanged(action, DeviceAPI._get_bus_path(device))
+        self.DevicesChanged(action, DeviceAPI.get_bus_path(device))
 
 
     def run(self):

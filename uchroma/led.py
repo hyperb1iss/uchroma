@@ -4,7 +4,7 @@ from traitlets import Bool, Float, HasTraits, observe
 
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
 from uchroma.types import BaseCommand
-from uchroma.util import scale_brightness, to_color
+from uchroma.util import scale_brightness, Signal, to_color
 
 from grapefruit import Color
 
@@ -155,7 +155,9 @@ class LEDManager(object):
     def __init__(self, driver):
         self._driver = driver
         self._leds = {}
-        self._observers = []
+
+        self.led_changed = Signal()
+
 
     @property
     def supported_leds(self):
@@ -181,15 +183,4 @@ class LEDManager(object):
 
 
     def _led_changed(self, change):
-        for observer in self._observers:
-            observer(change.owner)
-
-
-    def add_observer(self, observer):
-        if observer not in self._observers:
-            self._observers.append(observer)
-
-
-    def remove_observer(self, observer):
-        if observer in self._observers:
-            self._observers.remove(observer)
+        self.led_changed.fire(change.owner)

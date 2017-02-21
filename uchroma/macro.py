@@ -3,6 +3,7 @@ import asyncio
 from evdev.uinput import UInput
 
 from uchroma.input import InputQueue
+from uchroma.util import ensure_future
 
 
 class MacroDevice(object):
@@ -41,7 +42,7 @@ class MacroDevice(object):
         self._queue.attach()
         self._driver.input_manager.grab(True)
 
-        self._task = asyncio.ensure_future(self._listen())
+        self._task = ensure_future(self._listen())
         self._running = True
 
 
@@ -54,5 +55,5 @@ class MacroDevice(object):
         self._task.cancel()
 
         self._driver.input_manager.grab(False)
-        self._queue.detach()
+        ensure_future(self._queue.detach())
 

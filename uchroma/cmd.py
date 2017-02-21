@@ -5,8 +5,9 @@ Various helper functions that are used across the library.
 import logging
 import sys
 
-from argcomplete import autocomplete
 from argparse import ArgumentParser
+
+from argcomplete import autocomplete
 
 from uchroma.client import UChromaClient
 from uchroma.dbus_utils import dbus_prepare, snake_to_camel

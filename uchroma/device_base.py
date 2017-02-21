@@ -1,3 +1,4 @@
+import asyncio
 import re
 
 import hidapi
@@ -10,7 +11,7 @@ from uchroma.hardware import Hardware, Quirks
 from uchroma.prefs import PreferenceManager
 from uchroma.report import RazerReport
 from uchroma.types import BaseCommand
-from uchroma.util import RepeatingTimer, get_logger
+from uchroma.util import get_logger, RepeatingTimer, Signal
 from uchroma.version import __version__
 
 
@@ -52,8 +53,9 @@ class BaseUChromaDevice(object):
 
         self._last_cmd_time = None
 
+        self.power_state_changed = Signal()
+
         self._prefs = PreferenceManager().get(self.serial_number)
-        self._power_callbacks = []
 
         self._input_manager = None
         if input_devices is not None:
@@ -66,9 +68,10 @@ class BaseUChromaDevice(object):
         self._fx_manager = None
 
 
+    @asyncio.coroutine
     def shutdown(self):
         if self.animation_manager is not None:
-            self.animation_manager.stop(shutdown=True)
+            yield from self.animation_manager.shutdown()
 
         self.close(force=True)
 
@@ -497,24 +500,6 @@ class BaseUChromaDevice(object):
         Reset effects and other configuration to defaults
         """
         return True
-
-
-    def add_power_callback(self, callback):
-        """
-        Add a power callback
-
-        :param callback: function which accepts suspend state and brightness
-        """
-        if callback not in self._power_callbacks:
-            self._power_callbacks.append(callback)
-
-
-    def remove_power_callback(self, callback):
-        """
-        Removes a power callback
-        """
-        if callback in self._power_callbacks:
-            self._power_callbacks.remove(callback)
 
 
     def restore_prefs(self):

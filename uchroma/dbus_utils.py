@@ -90,6 +90,13 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
             obj = obj.name
             sig = 's'
 
+        elif isinstance(obj, np.ndarray):
+            dtype = obj.dtype.kind
+            if dtype == 'f':
+                dtype = 'd'
+            sig = 'a' * obj.ndim + dtype
+            obj = obj.tolist()
+
         elif isinstance(obj, tuple):
             tmp = []
             sig = '('
