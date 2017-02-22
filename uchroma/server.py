@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 import asyncio
 import atexit
@@ -58,6 +56,13 @@ class UChromaServer(object):
 
 
     def run(self):
+        try:
+            self._run()
+        except KeyboardInterrupt:
+            pass
+
+
+    def _run(self):
         dm = UChromaDeviceManager()
         dm.callbacks.append(self._dm_callback)
 
@@ -98,10 +103,5 @@ class UChromaServer(object):
             pass
 
 
-if __name__ == '__main__':
-    try:
-        UChromaServer().run()
-
-    except KeyboardInterrupt:
-        pass
-
+def run_server():
+    UChromaServer().run()

@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 
 from argcomplete import autocomplete
 
-from uchroma.client import UChromaClient
+from uchroma.dbus_client import UChromaClient
 from uchroma.dbus_utils import dbus_prepare, snake_to_camel
 from uchroma.version import __version__
 

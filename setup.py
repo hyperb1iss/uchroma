@@ -55,7 +55,12 @@ setup(name='uchroma',
       license='LGPL',
       packages=['uchroma', 'uchroma.fxlib'],
       ext_modules = cythonize('uchroma/crc.pyx'),
-      scripts=['scripts/uchroma', 'scripts/uchromad'],
+      entry_points={
+          'console_scripts': [
+              'uchroma = uchroma.client:run_client',
+              'uchromad = uchroma.server:run_server'
+          ]
+      },
       install_requires=['argcomplete', 'colorlog', 'evdev', 'frozendict', 'gbulb', 'grapefruit',
                         'hidapi', 'hsluv', 'numpy', 'pydbus', 'pyudev', 'ruamel.yaml',
                         'scikit-image', 'traitlets', 'wrapt'],

@@ -1,4 +1,3 @@
-from .client import UChromaClient
 from .color import ColorScheme, ColorPair, ColorUtils
 from .device_manager import UChromaDeviceManager
 from .device import UChromaDevice
