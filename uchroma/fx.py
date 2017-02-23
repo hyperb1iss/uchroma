@@ -110,10 +110,8 @@ class FXManager(HasTraits):
         if self.current_fx[0] == fx_name:
             return self.current_fx[1]
 
-        fx = self._fxmod.create_fx(fx_name)
-        if fx is not None:
-            self.current_fx = (fx_name, fx)
-        return fx
+        return self._fxmod.create_fx(fx_name)
+
 
     def disable(self) -> bool:
         if 'disable' in self.available_fx:
@@ -125,6 +123,8 @@ class FXManager(HasTraits):
         # need to do this as a callback if an animation
         # is shutting down
         if fx.apply():
+            if fx_name != self.current_fx[0]:
+                self.current_fx = (fx_name, fx)
             if fx_name == CUSTOM:
                 return True
 
@@ -146,7 +146,6 @@ class FXManager(HasTraits):
                 if fx.has_trait(k):
                     setattr(fx, k, v)
 
-            self._logger.debug("activate fx: %s traits: %s", fx_name, fx._trait_values)
             if self._driver.is_animating:
                 self._driver.animation_manager.stop( \
                         cb=functools.partial(self._activate, fx_name, fx))

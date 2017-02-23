@@ -354,6 +354,7 @@ class FXManagerAPI(object):
 
 
     def _fx_changed(self, change):
+        self._logger.info("Effects changed: %s", change)
         self._current_fx = (change.new[0].lower(),
                             dbus_prepare(change.new[1]._trait_values, variant=True)[0])
         self.PropertiesChanged('org.chemlab.UChroma.FXManager',

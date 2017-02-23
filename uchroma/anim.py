@@ -140,9 +140,9 @@ class AnimationLoop(HasTraits):
 
         new = len(change.new)
 
-        if old == 0 and new > 0:
+        if old == 0 and new > 0 and not self.running:
             self.start()
-        elif new == 0 and old > 0:
+        elif new == 0 and old > 0 and self.running:
             self.stop()
 
 
@@ -277,10 +277,6 @@ class AnimationLoop(HasTraits):
             # FIXME: Use "async with" on Python 3.6+
             yield from tick.tick()
 
-        self._logger.info("AnimationLoop is exiting..")
-
-        yield from asyncio.gather(*[layer.task for layer in self.layers])
-
 
     def _renderer_done(self, future):
         """
@@ -401,24 +397,23 @@ class AnimationLoop(HasTraits):
 
         self.running = False
 
-        with self.hold_trait_notifications():
+        for layer in self.layers[::-1]:
+            yield from self.remove_layer(layer)
 
-            for layer in self.layers[::-1]:
-                yield from self.remove_layer(layer)
+        if self._anim_task is not None and not self._anim_task.done():
+            self._anim_task.cancel()
+            yield from asyncio.wait([self._anim_task], return_when=futures.ALL_COMPLETED)
 
-            if self._anim_task is not None and not self._anim_task.done():
-                self._anim_task.cancel()
-                yield from asyncio.gather(self._anim_task)
-
-            self._logger.info("AnimationLoop stopped")
+        self._logger.info("AnimationLoop stopped")
 
 
-    def stop(self):
+    def stop(self, cb=None):
         if not self.running:
             return False
 
-        ensure_future(self._stop())
-
+        task = ensure_future(self._stop())
+        if cb is not None:
+            task.add_done_callback(cb)
         return True
 
 
@@ -615,11 +610,9 @@ class AnimationManager(HasTraits):
 
     def stop(self, cb=None):
         if self._loop is not None:
-            task = ensure_future(self._loop.clear_layers())
-            if cb is not None:
-                task.add_done_callback(cb)
+            return self._loop.stop(cb=cb)
 
-        return True
+        return False
 
 
     @asyncio.coroutine
