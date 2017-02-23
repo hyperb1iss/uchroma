@@ -37,7 +37,6 @@ class FXModule(object):
     def __init__(self, driver):
         self._driver = driver
         self._available_fx = frozendict(self._load_fx())
-        self._user_args = frozendict(self._load_traits())
 
 
     def _load_fx(self) -> dict:
@@ -51,21 +50,9 @@ class FXModule(object):
         return fx
 
 
-    def _load_traits(self) -> dict:
-        args = {}
-        for k, v in self._available_fx.items():
-            args[k] = v.class_traits()
-        return args
-
-
     @property
     def available_fx(self):
-        return tuple(self._available_fx.keys())
-
-
-    @property
-    def user_args(self):
-        return self._user_args
+        return self._available_fx
 
 
     def create_fx(self, fx_name) -> BaseFX:
@@ -109,12 +96,7 @@ class FXManager(HasTraits):
 
     @property
     def available_fx(self):
-        return tuple(self._fxmod.available_fx)
-
-
-    @property
-    def user_args(self):
-        return self._fxmod.user_args
+        return self._fxmod.available_fx
 
 
     def get_fx(self, fx_name) -> BaseFX:
@@ -128,8 +110,10 @@ class FXManager(HasTraits):
         if self.current_fx[0] == fx_name:
             return self.current_fx[1]
 
-        return self._fxmod.create_fx(fx_name)
-
+        fx = self._fxmod.create_fx(fx_name)
+        if fx is not None:
+            self.current_fx = (fx_name, fx)
+        return fx
 
     def disable(self) -> bool:
         if 'disable' in self.available_fx:
@@ -141,17 +125,15 @@ class FXManager(HasTraits):
         # need to do this as a callback if an animation
         # is shutting down
         if fx.apply():
-            if fx_name != CUSTOM or (fx_name == CUSTOM and self.current_fx[0] != CUSTOM):
-                self.current_fx = (fx_name, fx)
-
             if fx_name == CUSTOM:
-                return
+                return True
 
             self._driver.preferences.fx = fx_name
             argsdict = get_args_dict(fx)
             if len(argsdict) == 0:
                 argsdict = None
             self._driver.preferences.fx_args = argsdict
+        return True
 
 
     def activate(self, fx_name, **kwargs) -> bool:

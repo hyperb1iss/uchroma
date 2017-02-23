@@ -1,13 +1,13 @@
 # pylint: disable=protected-access, invalid-name, no-member
 import enum
 import importlib
-import inspect
 import sys
 
-from traitlets import CaselessStrEnum, Container, Dict, Enum, Instance, Int, HasTraits, \
+from typing import Iterable
+
+from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, HasTraits, \
         List, TraitType, Undefined, UseEnum
 from frozendict import frozendict
-from grapefruit import Color
 
 from uchroma.util import ArgsDict, camel_to_snake, to_color
 
@@ -41,7 +41,7 @@ class ColorSchemeTrait(List):
     """
     info_text = 'A list of colors to use, in HTML string format'
 
-    def __init__(self, trait=ColorTrait, default_value=(),
+    def __init__(self, trait=ColorTrait(), default_value=(),
                  minlen=0, maxlen=sys.maxsize, **kwargs):
         super(ColorSchemeTrait, self).__init__(trait=trait, default_value=default_value,
                                                minlen=minlen, maxlen=maxlen, **kwargs)
@@ -109,48 +109,49 @@ def trait_as_dict(trait) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like
     """
-    tdict = {k: v for k, v in vars(trait).items() if not k.startswith('__')}
-    for key in list(tdict.keys()):
-        if key.startswith('_'):
-            tdict[key[1:]] = tdict.pop(key)
+    cls = trait.__class__
+    tdict = {}
 
-    params = inspect.signature(trait.__class__).parameters
-    tdict = {k: v for k, v in tdict.items() if k in params and params[k].default != v}
+    for k, v in vars(trait).items():
+        if k.startswith('__') or k == 'this_class':
+            continue
+        if hasattr(cls, k) and getattr(cls, k) == v:
+            continue
+        if isinstance(v, Iterable) and len(v) == 0:
+            continue
 
-    if 'klass' in tdict:
-        klass = tdict.pop('klass')
-        tdict['klass'] = '%s.%s' % (klass.__module__, klass.__name__)
-
-    if 'enum_class' in tdict:
-        klass = tdict.pop('enum_class')
-        tdict['enum_class'] = '%s.%s' % (klass.__module__, klass.__name__)
-
-    if 'trait' in tdict:
-        tdict['trait'] = trait_as_dict(tdict.pop('trait'))
-
-    ttype = trait.__class__
+        if k.startswith('_'):
+            tdict[k[1:]] = v
+        else:
+            tdict[k] = v
 
     if isinstance(trait, UseEnum):
-        ttype = CaselessStrEnum
+        cls = CaselessStrEnum
         tdict['values'] = tuple(trait.enum_class.__members__.keys())
+        if 'enum_class' in tdict:
+            del tdict['enum_class']
 
-    tdict['__class__'] = (ttype.__module__, ttype.__name__)
+    for k, v in tdict.items():
+        if isinstance(v, TraitType):
+            tdict[k] = trait_as_dict(v)
+        if isinstance(v, enum.Enum):
+            tdict[k] = v.name
+        if isinstance(v, type):
+            tdict[k] = '%s.%s' % (v.__module__, v.__name__)
 
-    if isinstance(trait.default_value, enum.Enum):
-        tdict['default_value'] = trait.default_value.name
-
+    tdict['__class__'] = (cls.__module__, cls.__name__)
     return tdict
 
 
-def class_traits_as_dict(obj):
+def class_traits_as_dict(obj, values=None):
     cls_dt = {}
-    traits = {}
     if type(obj) == type and hasattr(obj, 'class_traits'):
         traits = obj.class_traits()
     elif isinstance(obj, dict):
         traits = obj
     elif isinstance(obj, HasTraits):
         traits = obj.traits()
+        values = obj._trait_values
     else:
         raise TypeError("Object does not support traits")
 
@@ -158,6 +159,8 @@ def class_traits_as_dict(obj):
         dt = trait_as_dict(v)
         if dt is None:
             continue
+        if values is not None and k in values:
+            dt['__value__'] = values[k]
         cls_dt[k] = dt
     return cls_dt
 
@@ -181,10 +184,20 @@ def dict_as_trait(obj):
     if 'trait' in tobj:
         tobj['trait'] = dict_as_trait(tobj.pop('trait'))
 
+    metadata = {}
+    if 'metadata' in tobj:
+        metadata.update(tobj.pop('metadata'))
+
     if issubclass(cls, Enum):
         trait = cls(tobj.pop('values'), **tobj)
     else:
         trait = cls(**tobj)
+
+    for k in list(metadata.keys()):
+        if k in ('name', 'default_args', 'default_kwargs'):
+            setattr(trait, k, metadata.pop(k))
+
+    trait.metadata = metadata
 
     return trait
 
@@ -194,13 +207,23 @@ def dict_as_class_traits(obj: dict):
         raise TypeError("Object must be a dict (was: %s)" % obj)
 
     traits = {}
+    values = {}
     for k, v in obj.items():
+        if '__value__' in v:
+            values[k] = v.pop('__value__')
+
         trait = dict_as_trait(v)
         if trait is None:
             continue
         traits[k] = trait
 
-    return traits
+    cls = HasTraits()
+    cls.add_traits(**traits)
+
+    for k, v in values.items():
+        setattr(cls, k, v)
+
+    return cls
 
 
 def get_args_dict(obj, incl_all=False):
@@ -215,6 +238,9 @@ def get_args_dict(obj, incl_all=False):
 
 def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
 
+    if isinstance(traits, HasTraits):
+        traits = traits.traits()
+
     for key, trait in traits.items():
         if not isinstance(trait, TraitType):
             if isinstance(trait, dict):
@@ -222,13 +248,7 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
             else:
                 raise TypeError("A dict or instance of HasTraits is required (was: %s)" % trait)
 
-        if trait.get_metadata('hidden'):
-            continue
-
-        if trait.read_only:
-            continue
-
-        if hasattr(trait, 'write_once') and trait.write_once:
+        if trait.get_metadata('config') is not True:
             continue
 
         argname = '--%s' % key
@@ -248,7 +268,7 @@ def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
             parser.add_argument(argname, type=argtype, help=trait.info_text)
 
 
-def apply_from_argparse(args, traits=None, target=None) -> dict:
+def apply_from_argparse(args, traits=None, target: HasTraits=None) -> dict:
     """
     Applies arguments added via add_traits_to_argparse to
     a target object which implements HasTraits. If a target
@@ -262,6 +282,9 @@ def apply_from_argparse(args, traits=None, target=None) -> dict:
     """
     # apply the traits to an empty object, which will run
     # the validators on the client
+    if isinstance(traits, HasTraits):
+        traits = traits.traits()
+
     traits = traits.copy()
     for k, v in traits.items():
         if not isinstance(v, TraitType):
@@ -282,6 +305,9 @@ def apply_from_argparse(args, traits=None, target=None) -> dict:
 
     # apply the argparse flags to the target object
     for key in intersect:
+        if target.traits()[key].get_metadata('config') is not True:
+            raise ValueError("Trait is not marked as configurable: %s" % key)
+
         setattr(target, key, getattr(args, key))
 
     # if all validators passed, return a dict of the changed args

@@ -22,9 +22,11 @@ class Plasma(Renderer):
                         'Steve Kondik', 'v1.0')
 
     # configurable traits
-    color_scheme = ColorSchemeTrait(minlen=2, default_value=[*ColorScheme.Qap.value])
-    preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Qap)
-    gradient_length = Int(default_value=360)
+    color_scheme = ColorSchemeTrait(minlen=2, \
+            default_value=[*ColorScheme.Qap.value]).tag(config=True)
+    preset = ColorPresetTrait(ColorScheme, \
+            default_value=ColorScheme.Qap).tag(config=True)
+    gradient_length = Int(default_value=360, min=0).tag(config=True)
 
 
     def __init__(self, *args, **kwargs):

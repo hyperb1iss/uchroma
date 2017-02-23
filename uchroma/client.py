@@ -12,7 +12,7 @@ from traitlets import Undefined
 from uchroma import __version__
 from uchroma.cmd import UChromaConsoleUtil
 from uchroma.dbus_utils import dbus_prepare
-from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_class_traits
+from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_class_traits, HasTraits
 from uchroma.util import ArgsDict, max_keylen
 
 
@@ -21,7 +21,7 @@ PYTHON_ARGCOMPLETE_OK = 1
 
 RemoteTraits = NamedTuple('RemoteTraits', [('name', str),
                                            ('description', str),
-                                           ('traits', dict)])
+                                           ('traits', HasTraits)])
 
 def ellipsize(line: str, length: int=80):
     if not isinstance(line, str):
@@ -53,7 +53,7 @@ class AbstractCommand(object):
 
     @classmethod
     def show_traits(cls, traits, indent=0):
-        s_traits = sorted(OrderedDict(traits).items())
+        s_traits = sorted(OrderedDict(traits.traits()).items())
         for name, trait in s_traits:
             if name in ('description', 'hidden', 'background_color', 'blend_mode', 'opacity'):
                 continue
@@ -296,11 +296,11 @@ class FXCommand(AbstractCommand):
         self._fx = OrderedDict()
         for name, t_dict in sorted(self.driver.AvailableFX.items()):
             traits = dict_as_class_traits(t_dict)
-            if 'hidden' in traits and traits['hidden'].default_value:
+            if hasattr(traits, 'hidden') and traits.hidden:
                 continue
 
             self._fx[name] = RemoteTraits(name, \
-                traits['description'].default_value, traits)
+                traits.description, traits)
 
         return self._fx
 

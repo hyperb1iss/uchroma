@@ -13,7 +13,8 @@ from grapefruit import Color
 import numpy as np
 
 from uchroma.renderer import RendererMeta
-from uchroma.traits import ColorTrait, ColorSchemeTrait, ColorPresetTrait, trait_as_dict
+from uchroma.traits import class_traits_as_dict, ColorTrait, \
+        ColorSchemeTrait, ColorPresetTrait, trait_as_dict
 from uchroma.util import get_logger, snake_to_camel
 
 
@@ -75,13 +76,13 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
             obj, sig = dbus_prepare(trait_as_dict(obj), variant=True)
 
         elif isinstance(obj, HasTraits):
-            obj, sig = dbus_prepare(obj._trait_values, variant=True)
+            obj, sig = dbus_prepare(class_traits_as_dict(obj), variant=True)
 
         elif hasattr(obj, '_asdict') and hasattr(obj, '_field_types'):
             # typing.NamedTuple
             obj, sig = dbus_prepare(obj._asdict(), variant=True)
 
-        elif isinstance(obj, enum.EnumMeta):
+        elif isinstance(obj, type) and issubclass(obj, enum.Enum):
             # top level enum, tuple of string keys
             obj = tuple(obj.__members__.keys())
             sig = '(%s)' % ('s' * len(obj))
@@ -110,8 +111,12 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
                     continue
                 sig += r_sig
                 tmp.append(r_obj)
-            sig += ')'
-            obj = tuple(tmp)
+            if len(tmp) > 0:
+                sig += ')'
+                obj = tuple(tmp)
+            else:
+                sig = ''
+                obj = None
 
         elif isinstance(obj, list):
             tmp = []
@@ -240,38 +245,14 @@ class DescriptorBuilder(object):
                 continue
 
             sig = None
-            if isinstance(trait, Unicode):
-                sig = 's'
-            elif isinstance(trait, Int):
-                if trait.min is None or trait.min < 0:
-                    sig = 'i'
-                else:
-                    sig = 'u'
-            elif isinstance(trait, Float):
-                sig = 'd'
-            elif isinstance(trait, Bool):
-                sig = 'b'
-            elif isinstance(trait, ColorTrait):
-                sig = 's'
-            elif isinstance(trait, ColorSchemeTrait):
-                sig = 'as'
-            elif isinstance(trait, ColorPresetTrait):
-                sig = 's'
-            elif isinstance(trait, RendererMeta):
-                sig = 'a{ss}'
-            elif isinstance(trait, Enum):
-                sig = 's'
+            if hasattr(self._obj, name):
+                sig = dbus_prepare(getattr(self._obj, name))[1]
 
             write_once = False
             if hasattr(trait, 'write_once'):
                 write_once = trait.write_once
 
             self.add_property(snake_to_camel(name), sig, not (trait.read_only or write_once))
-
-
-    def with_user_args(self, method_name):
-        self.add_method(method_name, ArgSpec('out', 'traits', 'a{sa{sv}}'))
-        return self
 
 
     def build(self) -> str:

@@ -27,11 +27,12 @@ class Ripple(Renderer):
                         'Steve Kondik', '1.0')
 
     # configurable traits
-    ripple_width = Int(default_value=DEFAULT_WIDTH, min=1, max=5)
-    speed = Int(default_value=DEFAULT_SPEED, min=1, max=9)
-    preset = ColorPresetTrait(ColorScheme, default_value=None)
-    random = Bool(True)
-    color = ColorTrait()
+    ripple_width = Int(default_value=DEFAULT_WIDTH, min=1, max=5).tag(config=True)
+    speed = Int(default_value=DEFAULT_SPEED, min=1, max=9).tag(config=True)
+    preset = ColorPresetTrait(ColorScheme, default_value=None).tag(config=True)
+    random = Bool(True).tag(config=True)
+    color = ColorTrait().tag(config=True)
+
 
     def __init__(self, *args, **kwargs):
 

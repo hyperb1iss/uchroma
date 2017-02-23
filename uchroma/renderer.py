@@ -31,15 +31,15 @@ class Renderer(HasTraits):
     # traits
     meta = RendererMeta('_unknown_', 'Unimplemented', 'Unknown', '0')
 
-    fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS)
-    blend_mode = Unicode()
-    opacity = Float(min=0.0, max=1.0, default_value=1.0)
-    background_color = ColorTrait()
+    fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS).tag(config=True)
+    blend_mode = Unicode().tag(config=True)
+    opacity = Float(min=0.0, max=1.0, default_value=1.0).tag(config=True)
+    background_color = ColorTrait().tag(config=True)
 
     height = WriteOnceInt()
     width = WriteOnceInt()
-    zindex = Int(default_value=-1).tag(config=False)
-    running = Bool(False).tag(config=False)
+    zindex = Int(default_value=-1)
+    running = Bool(False)
 
 
     def __init__(self, driver, *args, **kwargs):

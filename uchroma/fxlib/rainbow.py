@@ -15,8 +15,8 @@ class Rainbow(Renderer):
     meta = RendererMeta('Rainflow', 'Simple flowing colors', 'Steve Kondik', '1.0')
 
     # configurable traits
-    speed = Int(default_value=DEFAULT_SPEED, min=0, max=20)
-    stagger = Int(default_value=4, min=0, max=100)
+    speed = Int(default_value=DEFAULT_SPEED, min=0, max=20).tag(config=True)
+    stagger = Int(default_value=4, min=0, max=100).tag(config=True)
 
 
     def __init__(self, *args, **kwargs):

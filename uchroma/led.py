@@ -42,10 +42,13 @@ class LEDMode(Enum):
 
 class LED(HasTraits):
     led_type = WriteOnceUseEnumCaseless(enum_class=LEDType)
-    state = Bool(default_value=False, allow_none=False).tag(hidden=True)
-    color = ColorTrait(default_value='green', allow_none=False)
-    mode = UseEnumCaseless(enum_class=LEDMode, default_value=LEDMode.STATIC, allow_none=False)
-    brightness = Float(min=0.0, max=100.0, default_value=0.0, allow_none=False)
+    state = Bool(default_value=False, allow_none=False)
+
+    color = ColorTrait(default_value='green', allow_none=False).tag(config=True)
+    mode = UseEnumCaseless(enum_class=LEDMode, default_value=LEDMode.STATIC,
+                           allow_none=False).tag(config=True)
+    brightness = Float(min=0.0, max=100.0, default_value=0.0,
+                       allow_none=False).tag(config=True)
 
     """
     Control individual LEDs which may be present on a device

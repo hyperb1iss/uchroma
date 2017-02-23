@@ -288,7 +288,7 @@ class LEDManagerAPI(object):
     def AvailableLEDs(self):
         leds = {}
         for led in self._driver.led_manager.supported_leds:
-            leds[led.name.lower()] = self._driver.led_manager.get(led).class_traits()
+            leds[led.name.lower()] = self._driver.led_manager.get(led).traits()
 
         return dbus_prepare(leds)[0]
 
@@ -299,7 +299,7 @@ class LEDManagerAPI(object):
             self._logger.error("Unknown LED type: %s", name)
             return {}
 
-        return dbus_prepare(self._driver.led_manager.get(ledtype))[0]
+        return dbus_prepare(self._driver.led_manager.get(ledtype)._trait_values)[0]
 
 
     def SetLED(self, name: str, properties: dict) -> bool:
@@ -326,25 +326,15 @@ class FXManagerAPI(object):
     """
         <node>
           <interface name='org.chemlab.UChroma.FXManager'>
-            <method name='GetCurrentFX'>
-              <arg direction='out' type='s' name='name' />
-              <arg direction='out' type='a{sv}' name='args' />
-            </method>
-
-            <method name='HasFX'>
-              <arg direction='in' type='s' name='name' />
-              <arg direction='out' type='b' name='result' />
-            </method>
-
             <method name='SetFX'>
               <arg direction='in' type='s' name='name' />
               <arg direction='in' type='a{sv}' name='args' />
               <arg direction='out' type='b' name='status' />
             </method>
 
-            <signal name='FXChanged'>
-              <arg direction='out' type='s' name='name' />
-            </signal>
+            <property name='CurrentFX' type='(sa{sv})' access='read'>
+                 <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
+            </property>
 
             <property name='AvailableFX' type='a{sa{sa{sv}}}' access='read' />
           </interface>
@@ -353,54 +343,47 @@ class FXManagerAPI(object):
 
     def __init__(self, driver):
         self._driver = driver
+        self._fx_manager = driver.fx_manager
         self._logger = driver.logger
+
         self._current_fx = None
-        self._current_fx_args = OrderedDict()
+        self._available_fx = dbus_prepare({k: v.class_traits() \
+                for k, v in self._fx_manager.available_fx.items()})[0]
+
+        self._fx_manager.observe(self._fx_changed, names=['current_fx'])
+
+
+    def _fx_changed(self, change):
+        self._current_fx = (change.new[0].lower(),
+                            dbus_prepare(change.new[1]._trait_values, variant=True)[0])
+        self.PropertiesChanged('org.chemlab.UChroma.FXManager',
+                               {'CurrentFX': self.CurrentFX}, [])
 
 
     @property
     def AvailableFX(self):
-        avail = {}
-        user_args = self._driver.fx_manager.user_args
-
-        for fx in self._driver.fx_manager.available_fx:
-            avail[fx] = user_args[fx]
-
-        return dbus_prepare(avail)[0]
+        return self._available_fx
 
 
-    def HasFX(self, name: str) -> bool:
-        return self._driver.has_fx(name)
-
-
-    def GetCurrentFX(self):
+    @property
+    def CurrentFX(self):
         """
         Get the currently active FX and arguments
         """
         if self._current_fx is None:
             return ('disable', {})
 
-        return (self._current_fx.lower(), self._current_fx_args)
+        return self._current_fx
 
 
     def SetFX(self, name: str, args: dict) -> bool:
         """
         Set the desired FX, with options as a dict.
         """
-        if not self._driver.has_fx(name):
-            return False
-
-        if self._driver.fx_manager.activate(name, **args):
-            self._current_fx = name
-            self._current_fx_args = args
-            self.FXChanged(name)
-            return True
-
-        return False
+        return self._fx_manager.activate(name, **args)
 
 
-    FXChanged = signal()
-
+    PropertiesChanged = signal()
 
 
 class LayerAPI(TraitsPropertiesMixin, object):
@@ -499,15 +482,7 @@ class LayerAPI(TraitsPropertiesMixin, object):
                                         self._delegate.__class__.__name__))
         builder.add_property('Key', 's')
 
-        return builder.with_user_args('GetUserArgs').build()
-
-
-    def GetUserArgs(self):
-        argsdict = {}
-        traits = self._delegate.traits()
-        for k, v in traits.items():
-            argsdict[snake_to_camel(k)] = dbus_prepare(v)[0]
-        return argsdict
+        return builder.build()
 
 
 class AnimationManagerAPI(object):
@@ -580,7 +555,7 @@ class AnimationManagerAPI(object):
 
     def _state_changed(self, state):
         self._state = state
-
+        self._logger.debug("_state_changed: %s", state)
         self.PropertiesChanged('org.chemlab.UChroma.AnimationManager',
                                {'AnimationState': self.AnimationState}, [])
 
