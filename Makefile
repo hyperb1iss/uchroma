@@ -55,3 +55,6 @@ debs:
 	debuild -i -us -uc -b
 
 all: install docs
+
+up:
+	python3 setup.py install --user
