@@ -89,7 +89,7 @@ class UChromaDeviceManager(object):
     @asyncio.coroutine
     def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
         # delay for udev setup
-        asyncio.sleep(0.2)
+        yield from asyncio.sleep(0.2)
 
         for callback in self._callbacks:
             yield from callback(action, device)

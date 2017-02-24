@@ -400,15 +400,15 @@ class LayerAPI(TraitsPropertiesMixin, object):
         self._zindex = layer.zindex
         self._handle = None
 
-        self._delegate.observe(self._z_changed, names=['zindex'])
-        self._delegate.observe(self._state_changed, names=['running'])
-
         self.__class__.dbus = None
 
         self.layer_stopped = Signal()
 
         if layer.running:
             self.register()
+
+        self._delegate.observe(self._z_changed, names=['zindex'])
+        self._delegate.observe(self._state_changed, names=['running'])
 
         if self._logger.isEnabledFor(logging.DEBUG):
             self._logger.debug('Layer node created: %s', self.__class__.dbus)
@@ -624,8 +624,9 @@ class DeviceManagerAPI(object):
          </node>
     """
 
-    def __init__(self, device_manager):
+    def __init__(self, device_manager, logger):
         self._dm = device_manager
+        self._logger = logger
         self._bus = None
         self._dm.callbacks.append(self._dm_callback)
         self._devs = OrderedDict()
@@ -672,9 +673,11 @@ class DeviceManagerAPI(object):
 
     @asyncio.coroutine
     def _dm_callback(self, action, device):
+        self._logger.info('%s: %s', action, device)
 
         if action == 'add':
             self._publish_device(device)
+            device.restore_prefs()
 
         elif action == 'remove':
             self._unpublish_device(device)

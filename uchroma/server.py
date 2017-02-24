@@ -43,13 +43,6 @@ class UChromaServer(object):
             self._loop.set_debug(True)
 
 
-    @asyncio.coroutine
-    def _dm_callback(self, action: str, device: BaseUChromaDevice):
-        self._logger.info('%s: %s', action, device)
-        if action == 'add':
-            device.restore_prefs()
-
-
     def _shutdown_callback(self):
         self._logger.info("Shutting down")
         self._loop.stop()
@@ -64,18 +57,17 @@ class UChromaServer(object):
 
     def _run(self):
         dm = UChromaDeviceManager()
-        dm.callbacks.append(self._dm_callback)
 
         atexit.register(UChromaServer.exit, self._loop)
 
-        dbus = DeviceManagerAPI(dm)
+        dbus = DeviceManagerAPI(dm, self._logger)
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             self._loop.add_signal_handler(sig, self._shutdown_callback)
 
         try:
-            ensure_future(dm.monitor_start(), loop=self._loop)
             dbus.run()
+            ensure_future(dm.monitor_start(), loop=self._loop)
 
             self._loop.run_forever()
 
