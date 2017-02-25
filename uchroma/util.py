@@ -10,16 +10,14 @@ import re
 import struct
 import time
 import typing
-import weakref
 
 from collections import Iterable, OrderedDict
 from threading import Timer
 
 import colorlog
-import wrapt
 from grapefruit import Color
 from numpy import interp
-from wrapt import synchronized
+from wrapt import decorator, synchronized
 
 
 # Trace log levels
@@ -45,7 +43,7 @@ def _autocast_decorator(type_hint, fix_arg_func):
 
     :return: decorator
     """
-    @wrapt.decorator
+    @decorator
     def wrapper(wrapped, instance, args, kwargs):
         hinted_args = names = None
         cache_key = '%s-%s-%s' % (wrapped.__class__.__name__,
@@ -91,44 +89,6 @@ def camel_to_snake(name: str) -> str:
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-class MagicalEnum(object):
-    """
-    Mixin which adds "magical" capabilities to Enums
-
-    Right now this is just a type conversion decorator.
-    """
-
-    @classmethod
-    def enumarg(cls):
-        """
-        Decorator to look up enums by string value if necessary.
-        If placed on a method and it is called with a string
-        instead of an enum instance, the string will be uppercased
-        and the corresponding value from the enum will be passed
-        into the method instead of the string.
-
-        Useful for situations where an external client like a D-Bus
-        API would be calling the method.
-
-        Example:
-
-        @FX.enumarg()
-        def frobozzle(self, fx: FX, speed, color1=None, color2=None)
-        """
-        def fix_enum_arg(arg):
-            if arg is None:
-                return None
-            if isinstance(arg, cls):
-                return arg
-            if isinstance(arg, str):
-                if arg.upper() not in cls.__members__:
-                    return None
-                return cls[arg.upper()]
-            raise TypeError("Can't convert %s (%s) to %s" % (arg, type(arg), cls))
-
-        return _autocast_decorator(cls, fix_enum_arg)
 
 
 LOGGERS = {}

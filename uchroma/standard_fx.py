@@ -10,8 +10,6 @@ from uchroma.hardware import Hardware, Quirks
 from uchroma.led import LEDType
 from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
 from uchroma.types import BaseCommand
-from uchroma.util import MagicalEnum
-
 
 
 class FX(Enum):
@@ -64,7 +62,7 @@ class ExtendedFX(Enum):
 
 # Modes for the Wave effect
 # The "chase" modes add a circular spin around the trackpad (if supported)
-class Direction(MagicalEnum, Enum):
+class Direction(Enum):
     """
     Enumeration of directions and arguments for some animated effects
     which pan across the device. The "chase" variants are only available

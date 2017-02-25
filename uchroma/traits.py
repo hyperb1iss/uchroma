@@ -18,7 +18,7 @@ class ColorTrait(TraitType):
     A traitlet which encapsulates a grapefruit.Color and performs
     type coercion as needed.
     """
-    info_text = "A color in HTML string format (#8080ff, 'red', etc)"
+    info_text = "a color"
     allow_none = True
     default_value = 'black'
 
@@ -39,7 +39,7 @@ class ColorSchemeTrait(List):
     """
     A list of ColorTraits which comprise a scheme
     """
-    info_text = 'A list of colors to use, in HTML string format'
+    info_text = 'a list of colors'
 
     def __init__(self, trait=ColorTrait(), default_value=(),
                  minlen=0, maxlen=sys.maxsize, **kwargs):
@@ -52,7 +52,7 @@ class ColorPresetTrait(UseEnum):
     A trait which represents a group of color schemes defined
     as a Python Enum.
     """
-    info_text = 'A predefined color scheme'
+    info_text = 'a predefined color scheme'
 
     def __init__(self, enum_class, default_value=None, **kwargs):
         super(ColorPresetTrait, self).__init__(enum_class, default_value=default_value, **kwargs)

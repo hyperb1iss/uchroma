@@ -11,7 +11,7 @@ from grapefruit import Color
 from hsluv import hsluv_to_rgb, rgb_to_hsluv
 from skimage.util import dtype
 
-from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, MagicalEnum, to_color, to_rgb
+from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, to_color, to_rgb
 
 
 class ColorScheme(Enum):
@@ -29,7 +29,7 @@ class ColorScheme(Enum):
         return ColorUtils.gradient(length, *self.value)
 
 
-class ColorPair(MagicalEnum, Enum):
+class ColorPair(Enum):
     """
     Predefined color pairs
     """
@@ -273,6 +273,28 @@ class ColorUtils(object):
                 yield to_rgb(value)
             else:
                 yield value
+
+
+    @staticmethod
+    @colorarg
+    def luminance(color: ColorType) -> float:
+        rgb = color.rgb
+        vals = []
+        for c in rgb:
+            if c <= 0.03928:
+                c /= 12.92
+            else:
+                c = math.pow((c + 0.055) / 1.055, 2.4)
+            vals.append(c)
+        L = 0.2126 * vals[0] + 0.7152 * vals[1] + 0.0722 * vals[2]
+        return L
+
+
+    @staticmethod
+    @colorarg
+    def inverse(color: ColorType) -> float:
+        rgb = color.rgb
+        return Color.NewFromRgb(1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2])
 
 
     @staticmethod
