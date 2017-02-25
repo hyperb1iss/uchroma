@@ -19,6 +19,7 @@ import colorlog
 import wrapt
 from grapefruit import Color
 from numpy import interp
+from wrapt import synchronized
 
 
 # Trace log levels
@@ -130,13 +131,21 @@ class MagicalEnum(object):
         return _autocast_decorator(cls, fix_enum_arg)
 
 
+LOGGERS = {}
+
+@synchronized
 def get_logger(tag):
-    handler = colorlog.StreamHandler()
-    handler.setFormatter(colorlog.ColoredFormatter( \
-        ' %(log_color)s%(name)s/%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s'))
-    logger = logging.getLogger(tag)
-    logger.addHandler(handler)
-    return logger
+    if tag not in LOGGERS:
+        handler = colorlog.StreamHandler()
+        handler.setFormatter(colorlog.ColoredFormatter( \
+            ' %(log_color)s%(name)s/%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s'))
+        logger = logging.getLogger(tag)
+        logger.addHandler(handler)
+
+        LOGGERS[tag] = logger
+
+    return LOGGERS[tag]
+
 
 def max_keylen(d) -> int:
     """
