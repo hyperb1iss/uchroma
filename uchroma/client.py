@@ -1,40 +1,54 @@
 # pylint: disable=protected-access, invalid-name
 import re
+import shutil
 import sys
 
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import NamedTuple
 
-from argcomplete import autocomplete
+from colr import Colr, color, strip_codes
 from traitlets import Undefined
+from argcomplete import autocomplete
 
 from uchroma import __version__
 from uchroma.cmd import UChromaConsoleUtil
+from uchroma.color import ColorUtils
 from uchroma.dbus_utils import dbus_prepare
-from uchroma.traits import add_traits_to_argparse, apply_from_argparse, dict_as_class_traits, HasTraits
-from uchroma.util import ArgsDict, max_keylen
+from uchroma.traits import add_traits_to_argparse, apply_from_argparse, \
+        dict_as_class_traits, HasTraits
+from uchroma.util import ArgsDict, camel_to_snake, max_keylen, to_color
 
 
 PYTHON_ARGCOMPLETE_OK = 1
 
+ENTER = u'\033(0'
+EXIT = u'\033(B'
+CHAR_HORIZ = u'\x71'
+CHAR_VERT = ENTER + u'\x78' + EXIT
+CHAR_CROSS = u'\x6e'
 
 RemoteTraits = NamedTuple('RemoteTraits', [('name', str),
                                            ('description', str),
+                                           ('author', str),
+                                           ('version', str),
                                            ('traits', HasTraits)])
 
-def ellipsize(line: str, length: int=80):
-    if not isinstance(line, str):
-        line = repr(line)
 
-    if len(line) < length:
-        return line
-    return '%s(...)' % line[:length]
+def color_block(*values):
+    output = Colr('')
+    for value in values:
+        col = to_color(value)
+        output = output.center(9, text=col.html,
+                               fore=ColorUtils.inverse(col).intTuple,
+                               back=col.intTuple)
+    return str(output)
 
 
 class AbstractCommand(object):
     def __init__(self, parent):
         self._parent = parent
+        self.width = shutil.get_terminal_size((80, 20)).columns - 5
 
 
     @property
@@ -51,18 +65,47 @@ class AbstractCommand(object):
         self._parent.set_property(target, name, value)
 
 
-    @classmethod
-    def show_traits(cls, traits, indent=0):
-        s_traits = sorted(OrderedDict(traits.traits()).items())
+    def ellipsize(self, line: str, offset: int=0):
+        if not isinstance(line, str):
+            line = repr(line)
+
+        length = self.width - 5 - offset
+        if len(strip_codes(line)) < length:
+            return line
+        return '%s(...)' % line[:length]
+
+
+    def columns(self, key_width, key, value):
+        print(' %s %s %s' % (Colr(key).rjust(key_width), CHAR_VERT,
+                             self.ellipsize(value, offset=key_width)))
+
+
+    def seperator(self, key_width):
+        print(' %s%s%s' % (ENTER + (CHAR_HORIZ * (key_width + 1)), \
+                CHAR_CROSS, (CHAR_HORIZ * (self.width - key_width)) + EXIT))
+
+
+    def show_traits(self, traits, values=None, indent=0):
+        trait_data = traits.traits()
+
+        if values is not None:
+            trait_data = {k: v for k, v in trait_data.items() if k in values}
+
+        count = v_count = 0
+        s_traits = sorted(OrderedDict(trait_data).items())
         for name, trait in s_traits:
-            if name in ('description', 'hidden', 'background_color', 'blend_mode', 'opacity'):
+            if trait.get_metadata('config') is not True:
                 continue
 
-            if trait.read_only or (hasattr(trait, 'write_once') and trait.write_once):
-                continue
+            value = None
+            if values is not None:
+                value = values.get(name)
 
             trait_type = re.sub(r'Trait$', '', trait.__class__.__name__).lower()
             desc = 'No description available'
+
+            if trait_type == 'unicode':
+                trait_type = 'string'
 
             if trait_type == 'caselessstrenum':
                 trait_type = 'choice'
@@ -79,32 +122,92 @@ class AbstractCommand(object):
                 constraints.append('min length: %s' % trait._minlen)
             if hasattr(trait, '_maxlen') and trait._maxlen != sys.maxsize:
                 constraints.append('max length: %s' % trait._maxlen)
-            if hasattr(trait, 'default_value') and trait.default_value is not Undefined:
+            if hasattr(trait, 'default_value') and trait.default_value is not None \
+                    and trait.default_value is not '' and trait.default_value is not Undefined:
                 constraints.append('default: %s' % trait.default_value)
 
             constraint_str = ''
             if len(constraints) > 0:
-                constraint_str = '[' + (', '.join(constraints)) + ']'
+                constraint_str = ', '.join(constraints)
 
-            print('%*s| "%s" (%s): %s %s' % (indent, '', name, trait_type, desc, constraint_str))
+            if count == 0:
+                self.seperator(indent)
+
+            if values is not None and len(values) > 0:
+                if v_count > 0 and count > 0:
+                    self.seperator(indent)
+                v_count += 1
+
+                if trait_type == 'color':
+                    value = color_block(value)
+                elif trait_type == 'colorscheme':
+                    value = color_block(*value)
+
+                self.columns(indent, color(name, style='bright'), value)
+                self.columns(indent, '(%s)' % trait_type, desc)
+
+                self.columns(indent, '', constraint_str)
+            else:
+                if len(constraint_str) > 0:
+                    arginfo = ': '.join([trait_type, constraint_str])
+                else:
+                    arginfo = trait_type
+
+                self.columns(indent, name, arginfo)
+
+            count += 1
 
 
-    @classmethod
-    def list_objects(cls, objects, aliases=None):
+    def show_meta(self, trait_data, indent):
+        meta = ArgsDict({k: v for k, v in trait_data._asdict().items() \
+                if k not in 'traits'})
+        if len(meta) < 3:
+            return
+
+        self.seperator(indent)
+
+        for k, v in sorted(meta.items()):
+            self.columns(indent, color(k, style='bright'), v)
+
+
+    def list_objects(self, objects, values=None,
+                     aliases=None, show_all: bool=False,
+                     keylen=None):
+
         if aliases is None:
             keys = objects.keys()
         else:
             keys = [aliases.get(k, k) for k in objects.keys()]
 
-        keylen = max_keylen(keys)
+        if keylen is None:
+            keys = list(keys)
+            for v in objects.values():
+                keys.extend(v.traits.trait_names())
+            if values is not None:
+                for v in values.values():
+                    keys.extend(v.keys())
+            keylen = max_keylen(keys) + 1
 
         for name, trait_data in objects.items():
+            if not show_all and values is not None and name not in values:
+                continue
+
             dname = name
             if aliases is not None and name in aliases:
                 dname = aliases[name]
 
-            print(' %*s | %s' % (keylen, dname, trait_data.description))
-            cls.show_traits(trait_data.traits, indent=keylen + 2)
+            desc = trait_data.description
+
+            vals = None
+            if values is not None and name in values:
+                vals = values[name]
+
+            self.columns(keylen, color(dname, style='bright'),
+                         color(desc, style='bright'))
+
+            self.show_meta(trait_data, indent=keylen)
+
+            self.show_traits(trait_data.traits, vals, indent=keylen)
             print('\n')
 
 
@@ -149,6 +252,11 @@ class AbstractCommand(object):
 
 
 class DumpCommand(AbstractCommand):
+    def __init__(self, parent, dumpables):
+        super(DumpCommand, self).__init__(parent)
+        self._dumpables = dumpables
+
+
     def add_parser(self, sub):
         parser = sub.add_parser('dump', help='Dump device info')
         parser.add_argument("-w", "--wide", action="store_true",
@@ -160,37 +268,30 @@ class DumpCommand(AbstractCommand):
     def parse(self, args):
         result = self.driver.GetAll('org.chemlab.UChroma.Device')
         keylen = max_keylen(result)
-        props = sorted(OrderedDict(result).items())
+        props = OrderedDict(sorted({camel_to_snake(k): v for k, v in result.items()}.items()))
 
-        layerargs = []
-        if hasattr(self.driver, 'CurrentRenderers'):
-            num_renderers = len(self.driver.CurrentRenderers)
-            if num_renderers > 0:
-                for layer_idx in range(0, num_renderers):
-                    layer = self.client.get_layer(self.driver, layer_idx)
-                    layerargs.append(ArgsDict(sorted( \
-                        layer.GetAll('org.chemlab.UChroma.Layer').items())))
-                    keylen = max(keylen, max_keylen(layerargs))
+        for dumpable in self._dumpables:
+            for v in dumpable.current_state.values():
+                kk = max_keylen(v.keys())
+                if kk > keylen:
+                    keylen = kk
 
+        print('\n Device properties:\n')
 
-        print('\nDevice properties:\n')
-        for k, v in props:
-            if not args.wide:
-                v = ellipsize(v)
-            print(' %*s |  %s' % (keylen, k, v))
+        device_index = "device-%s" % props.pop('device_index')
+        device_name = props.pop('name')
 
-        if len(layerargs) > 0:
-            print('\n\nAnimation renderer state:\n')
-            for layer in layerargs:
-                print(' %*s |  %s' % \
-                    (keylen, ('Layer %d' % int(layer.get('Zindex'))), layer.get('Key')))
-                print(' %s' % ('-' * (keylen + 80)))
+        self.columns(keylen, color(device_index, style='bright'),
+                     color(device_name, style='bright'))
+        self.seperator(keylen)
 
-                for k, v in layer.items():
-                    if k not in ('Zindex', 'Key'):
-                        print(' %*s |  %s' % (keylen, k, v))
+        for k, v in props.items():
+            self.columns(keylen, color(k, style='bright'), v)
 
-                print('\n')
+        print('\n')
+
+        for dumpable in self._dumpables:
+            dumpable.dump(keylen=keylen)
 
 
 class BrightnessCommand(AbstractCommand):
@@ -237,14 +338,28 @@ class LEDCommand(AbstractCommand):
         for name, t_dict in sorted(self.driver.AvailableLEDs.items()):
             traits = dict_as_class_traits(t_dict)
             self._leds[name] = RemoteTraits(name.lower(), \
-                    "LED: %s" % name.title(), traits)
+                    "LED: %s" % name.title(), None, None, traits)
 
         return self._leds
 
 
+    @property
+    def current_state(self):
+        state = OrderedDict()
+        for led_name in self.available_leds:
+            state[led_name] = OrderedDict(sorted(self.driver.GetLED(led_name).items()))
+        return state
+
+
+    def dump(self, keylen):
+        if len(self.current_state) > 0:
+            print("\n Current LED state:\n")
+            self.list_objects(self.available_leds, self.current_state, keylen=keylen)
+
+
     def _list(self, args):
-        print("\nStandalone LED control:\n")
-        self.list_objects(self.available_leds)
+        print("\n Standalone LED control:\n")
+        self.list_objects(self.available_leds, self.current_state, show_all=True)
 
 
     def parse(self, args):
@@ -300,14 +415,29 @@ class FXCommand(AbstractCommand):
                 continue
 
             self._fx[name] = RemoteTraits(name, \
-                traits.description, traits)
+                traits.description, None, None, traits)
 
         return self._fx
 
 
+    @property
+    def current_state(self) -> dict:
+        name, props = self.driver.CurrentFX
+        return {name: OrderedDict(sorted(props.items()))}
+
+
+    def dump(self, keylen):
+        if len(self.current_state) > 0:
+            if len(self.current_state) == 1 and \
+                    list(self.current_state.keys())[0] in ('disable', 'custom_frame'):
+                return
+            print("\n Current built-in FX state:\n")
+            self.list_objects(self.available_fx, self.current_state, keylen=keylen)
+
+
     def _list(self, args):
-        print('\nBuilt-in effects and arguments:\n')
-        self.list_objects(self.available_fx)
+        print('\n Built-in effects and arguments:\n')
+        self.list_objects(self.available_fx, self.current_state, show_all=True)
 
 
     def parse(self, args):
@@ -400,8 +530,11 @@ class AnimationCommand(AbstractCommand):
                                  key=lambda k_v: k_v[1]['meta']['display_name']))
         exploded = OrderedDict()
         for name, t_anim in sar.items():
-            rt = RemoteTraits(t_anim['meta']['display_name'],
-                              t_anim['meta']['description'],
+            meta = t_anim['meta']
+            rt = RemoteTraits(meta['display_name'],
+                              meta['description'],
+                              meta['author'],
+                              meta['version'],
                               dict_as_class_traits(t_anim['traits']))
             exploded[name] = rt
             self._aliases[name] = rt.name.replace(' ', '_').lower()
@@ -410,9 +543,32 @@ class AnimationCommand(AbstractCommand):
         return self._renderer_info
 
 
+    @property
+    def current_state(self) -> dict:
+        layers = OrderedDict()
+        if hasattr(self.driver, 'CurrentRenderers'):
+            num_renderers = len(self.driver.CurrentRenderers)
+            if num_renderers > 0:
+                for layer_idx in range(0, num_renderers):
+                    layer = self.client.get_layer(self.driver, layer_idx)
+                    props = layer.GetAll('org.chemlab.UChroma.Layer')
+                    layers[props['Key']] = ArgsDict(sorted({camel_to_snake(k): v \
+                            for k, v in props.items()}.items()))
+
+        return layers
+
+
+    def dump(self, keylen):
+        if len(self.current_state) > 0:
+            print("\n Current animation renderer state:\n")
+            self.list_objects(self.renderer_info, self.current_state,
+                              aliases=self._aliases, keylen=keylen)
+
+
     def _list(self, args):
-        print('\nAvailable renderers and arguments:\n')
-        self.list_objects(self.renderer_info, aliases=self._aliases)
+        print('\n Available renderers and arguments:\n')
+        self.list_objects(self.renderer_info, values=self.current_state,
+                          aliases=self._aliases, show_all=True)
 
 
     def _pause(self, args):
@@ -528,7 +684,12 @@ class UChromaTool(UChromaConsoleUtil):
         if hasattr(driver, 'AvailableRenderers'):
             cmds.append(AnimationCommand(self))
 
-        cmds.append(DumpCommand(self))
+        dumpables = []
+        for cmd in cmds:
+            if hasattr(cmd, 'dump'):
+                dumpables.append(cmd)
+
+        cmds.append(DumpCommand(self, dumpables))
 
         for cmd in cmds:
             cmd.add_parser(sub)
@@ -536,3 +697,7 @@ class UChromaTool(UChromaConsoleUtil):
 
 def run_client():
     UChromaTool().run()
+
+
+if __name__ == '__main__':
+    run_client()

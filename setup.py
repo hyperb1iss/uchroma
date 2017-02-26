@@ -61,8 +61,9 @@ setup(name='uchroma',
               'uchromad = uchroma.server:run_server'
           ]
       },
-      install_requires=['argcomplete', 'colorlog', 'evdev', 'frozendict', 'gbulb', 'grapefruit',
-                        'hidapi', 'hsluv', 'numpy', 'pydbus', 'pyudev', 'ruamel.yaml',
+      install_requires=['argcomplete', 'colorlog', 'colr', 'evdev',
+                        'frozendict', 'gbulb', 'grapefruit', 'hidapi',
+                        'hsluv', 'numpy', 'pydbus', 'pyudev', 'ruamel.yaml',
                         'scikit-image', 'traitlets', 'wrapt'],
       cmdclass={'hwdb': HWDBGenerator},
       keywords='razer chroma uchroma driver keyboard mouse',
