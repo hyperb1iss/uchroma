@@ -85,30 +85,6 @@ class Mode(Enum):
     DUAL = 2
 
 
-class MultiModeFX(BaseFX):
-
-    colors = ColorSchemeTrait(minlen=0, maxlen=2).tag(config=True)
-    speed = Int(default_value=1, min=1, max=4).tag(config=True)
-
-
-    @abstractmethod
-    def apply(self) -> bool:
-        return False
-
-
-    def _apply(self, effect) -> bool:
-        mode = Mode(len(self.colors))
-        args = [mode]
-
-        if self.speed is not None:
-            args.append(self.speed)
-
-        for color in self.colors:
-            args.append(color)
-
-        return self._fxmod.set_effect(effect, *args)
-
-
 class StandardFX(FXModule):
     """
     Manages device lighting effects
@@ -314,8 +290,10 @@ class StandardFX(FXModule):
 
 
 
-    class StarlightFX(MultiModeFX):
+    class StarlightFX(BaseFX):
         description = Unicode('Keys sparkle with color')
+        colors = ColorSchemeTrait(minlen=0, maxlen=2).tag(config=True)
+        speed = Int(default_value=1, min=1, max=4).tag(config=True)
 
         def apply(self) -> bool:
             """
@@ -331,11 +309,13 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return self._apply(FX.STARLIGHT)
+            return self._fxmod.set_effect(FX.STARLIGHT, Mode(len(self.colors)),
+                                          self.speed, *self.colors)
 
 
-    class BreatheFX(MultiModeFX):
+    class BreatheFX(BaseFX):
         description = Unicode('Colors pulse in and out')
+        colors = ColorSchemeTrait(minlen=0, maxlen=2).tag(config=True)
 
         def apply(self) -> bool:
             """
@@ -350,7 +330,7 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return self._apply(FX.BREATHE)
+            return self._fxmod.set_effect(FX.BREATHE, Mode(len(self.colors)), *self.colors)
 
 
     class CustomFrameFX(BaseFX):
