@@ -48,7 +48,6 @@ class ExtendedFX(Enum):
     These effects use a different command structure than the standard
     effects. Should not normally be used as part of the API.
 
-    FIXME: This functionality is incomplete and untested
     """
     DISABLE = 0x00
     STATIC = 0x01
@@ -94,7 +93,6 @@ class StandardFX(FXModule):
         """
         Commands used to apply effects
 
-        FIXME: Provide a way to determine the current effect
         """
         SET_EFFECT = (0x03, 0x0A, None)
         SET_EFFECT_EXTENDED = (0x0F, 0x02, None)

@@ -12,7 +12,6 @@ import time
 import typing
 
 from collections import OrderedDict
-from threading import Timer
 
 import colorlog
 from numpy import interp
@@ -348,52 +347,6 @@ class Singleton(type):
         except AttributeError:
             cls.__instance = super(Singleton, cls).__call__(*args, **kwargs)
             return cls.__instance
-
-
-class RepeatingTimer(object):
-    """
-    FIXME: Get rid of this. Holding the device open should
-    be done using a context manager
-    """
-    def __init__(self, interval, func, *args, **kwargs):
-        self._interval = interval
-        self._func = func
-        self._args = args
-        self._kwargs = kwargs
-
-        self._timer = None
-        self._running = False
-        self._finished = False
-
-    def _callback(self):
-        self._func(*self._args, **self._kwargs)
-        self._running = False
-
-    def cancel(self):
-        self._timer.cancel()
-        self._running = False
-
-    def start(self):
-        if self._finished:
-            raise ValueError('Timer has been shut down')
-
-        if self._timer is not None:
-            self._timer.cancel()
-        self._timer = Timer(self._interval, self._callback)
-        self._timer.daemon = True
-        self._timer.start()
-        self._running = True
-
-    @property
-    def is_running(self):
-        return self._running
-
-    @property
-    def is_finished(self):
-        return self._finished
-
-    def set_defaults(self):
-        self._running = False
 
 
 class Ticker(object):

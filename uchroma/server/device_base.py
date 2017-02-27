@@ -5,7 +5,7 @@ import hidapi
 
 from wrapt import synchronized
 
-from uchroma.util import ensure_future, get_logger, RepeatingTimer, Signal
+from uchroma.util import ensure_future, get_logger, Signal
 from uchroma.version import __version__
 
 from .anim import AnimationManager
@@ -47,9 +47,6 @@ class BaseUChromaDevice(object):
         self._serial_number = None
         self._firmware_version = None
 
-        self._defer_close = hardware.has_matrix
-        self._close_timer = RepeatingTimer(5.0, self.close, True)
-
         self._offline = False
 
         self._last_cmd_time = None
@@ -81,18 +78,12 @@ class BaseUChromaDevice(object):
             if hasattr(self, '_input_manager') and self._input_manager is not None:
                 yield from self._input_manager.shutdown()
 
-        self.close(force=True)
+        self.close()
 
 
-    def _close(self, force: bool=False):
-        if self._defer_close:
-            if not force:
-                if self.animation_manager is not None and self.is_animating:
-                    return
-
-                self._close_timer.start()
-                return
-            self._close_timer.cancel()
+    def close(self, force: bool=False):
+        if self.animation_manager is not None and self.is_animating:
+            return
 
         if hasattr(self, '_dev') and self._dev is not None:
             try:
@@ -113,17 +104,6 @@ class BaseUChromaDevice(object):
         if self.fx_manager is None:
             return False
         return fx_type in self.fx_manager.available_fx
-
-
-    @synchronized
-    def close(self, force: bool=False):
-        """
-        Close this device
-
-        Not strictly necessary to call this unless the device was opened with
-        the defer_close flag.
-        """
-        self._close(force)
 
 
     @property
@@ -227,26 +207,6 @@ class BaseUChromaDevice(object):
         return report
 
 
-    @synchronized
-    @property
-    def defer_close(self) -> bool:
-        """
-        True if we want to keep the device open
-        """
-        return self._defer_close
-
-
-    @synchronized
-    @defer_close.setter
-    def defer_close(self, defer: bool):
-        """
-        True if we want to keep the device open
-        """
-        self._defer_close = defer
-        if not defer:
-            self._close(True)
-
-
     def _get_timeout_cb(self):
         """
         Getter for report timeout handler
@@ -265,9 +225,7 @@ class BaseUChromaDevice(object):
 
         Transaction id is only necessary for specialized commands or hardware.
 
-        The connection to the device will be automatically closed by default. If
-        many commands will be sent rapidly (like when using a Frame to do animations),
-        set the defer_close flag to True and close it manually when finished.
+        The connection to the device will be automatically closed by default.
 
         :param command: The command to run
 
@@ -300,7 +258,7 @@ class BaseUChromaDevice(object):
             if self._ensure_open():
                 return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
         finally:
-            self._close()
+            self.close()
 
         return False
 
@@ -313,9 +271,7 @@ class BaseUChromaDevice(object):
         Executes the given command with the provided list of arguments.
         Transaction id is only necessary for specialized commands or hardware.
 
-        The connection to the device will be automatically closed by default. If
-        many commands will be sent rapidly (like when using a Frame to do animations),
-        set the defer_close flag to True and close it manually when finished.
+        The connection to the device will be automatically closed by default.
 
         :param command: The command to run
         :param args: The list of arguments to call the command with
