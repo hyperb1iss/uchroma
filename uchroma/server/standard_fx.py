@@ -367,9 +367,6 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            if not self._driver.has_matrix:
-                return False
-
             frame = self._driver.frame_control
 
             layer = frame.create_layer()

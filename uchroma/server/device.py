@@ -49,13 +49,11 @@ class UChromaDevice(BaseUChromaDevice):
         """
         Gets the Frame object for creating custom effects on this device
 
-        NOTE: This API is a work-in-progress and subject to change
-
         :param base_color: Background color for the Frame (defaults to black)
 
         :return: The Frame interface
         """
-        if not self.has_matrix:
+        if self.width == 0 or self.height == 0:
             return None
 
         if self._frame_control is None:
@@ -169,7 +167,7 @@ class UChromaDevice(BaseUChromaDevice):
 
         :return: True if successful
         """
-        if self.has_matrix:
+        if self._frame_control is not None:
             self.frame_control.background_color = None
             self.frame_control.reset()
 

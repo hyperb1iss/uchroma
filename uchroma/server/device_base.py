@@ -60,10 +60,12 @@ class BaseUChromaDevice(object):
             self._input_manager = InputManager(self, input_devices)
 
         self._animation_manager = None
-        if self.has_matrix:
+        if self.width > 0 and self.height > 0:
             self._animation_manager = AnimationManager(self)
 
         self._fx_manager = None
+
+        self._ref_count = 0
 
 
     @asyncio.coroutine
@@ -83,6 +85,9 @@ class BaseUChromaDevice(object):
 
     def close(self, force: bool=False):
         if self.animation_manager is not None and self.is_animating:
+            return
+
+        if self._ref_count > 0:
             return
 
         if hasattr(self, '_dev') and self._dev is not None:
@@ -445,7 +450,7 @@ class BaseUChromaDevice(object):
         """
         Gets the width of the key matrix (if applicable)
         """
-        if not self.has_matrix:
+        if self.hardware.dimensions is None:
             return 0
 
         return self.hardware.dimensions.x
@@ -456,7 +461,7 @@ class BaseUChromaDevice(object):
         """
         Gets the height of the key matrix (if applicable)
         """
-        if not self.has_matrix:
+        if self.hardware.dimensions is None:
             return 0
 
         return self.hardware.dimensions.y
@@ -522,11 +527,13 @@ class BaseUChromaDevice(object):
 
 
     def __enter__(self):
+        self._ref_count += 1
         return self
 
 
     def __exit__(self, ex_type, ex_value, traceback):
-        ensure_future(self.shutdown())
+        self._ref_count -= 1
+        self.close()
 
 
     def __del__(self):
