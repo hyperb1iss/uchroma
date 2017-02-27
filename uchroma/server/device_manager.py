@@ -8,15 +8,16 @@ import hidapi
 from pyudev import Context, Monitor, MonitorObserver
 from pyudev._os import pipe
 
-from uchroma.device import UChromaDevice
-from uchroma.device_base import BaseUChromaDevice
-from uchroma.hardware import Hardware, Quirks, RAZER_VENDOR_ID
-from uchroma.headset import UChromaHeadset
-from uchroma.keyboard import UChromaKeyboard
-from uchroma.keypad import UChromaKeypad
-from uchroma.laptop import UChromaLaptop
-from uchroma.mouse import UChromaMouse, UChromaWirelessMouse
-from uchroma.util import ensure_future, get_logger, Signal
+from uchroma.util import ensure_future, get_logger, Singleton, Signal
+
+from .device import UChromaDevice
+from .device_base import BaseUChromaDevice
+from .hardware import Hardware, Quirks, RAZER_VENDOR_ID
+from .headset import UChromaHeadset
+from .keyboard import UChromaKeyboard
+from .keypad import UChromaKeypad
+from .laptop import UChromaLaptop
+from .mouse import UChromaMouse, UChromaWirelessMouse
 
 
 class AsyncMonitorObserver(object):
@@ -53,7 +54,7 @@ class AsyncMonitorObserver(object):
         self._executor.shutdown()
 
 
-class UChromaDeviceManager(object):
+class UChromaDeviceManager(metaclass=Singleton):
     """
     Enumerates HID devices which can be managed by uChroma
 

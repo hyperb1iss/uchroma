@@ -1,8 +1,8 @@
 import hidapi
 
-from uchroma.keyboard import UChromaKeyboard
-from uchroma.hardware import Hardware
-from uchroma.macro import MacroDevice
+from .keyboard import UChromaKeyboard
+from .hardware import Hardware
+from .macro import MacroDevice
 
 
 class UChromaKeypad(UChromaKeyboard):

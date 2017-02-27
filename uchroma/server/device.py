@@ -1,12 +1,13 @@
 import hidapi
 
-from uchroma.device_base import BaseUChromaDevice
-from uchroma.frame import Frame
-from uchroma.fx import FXManager
-from uchroma.hardware import Hardware, Quirks
-from uchroma.led import LED, LEDManager, LEDType
-from uchroma.standard_fx import StandardFX
 from uchroma.util import ValueAnimator
+
+from .device_base import BaseUChromaDevice
+from .frame import Frame
+from .fx import FXManager
+from .hardware import Hardware, Quirks
+from .led import LED, LEDManager, LEDType
+from .standard_fx import StandardFX
 
 
 class UChromaDevice(BaseUChromaDevice):

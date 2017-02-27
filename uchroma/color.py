@@ -2,8 +2,10 @@
 import itertools
 import math
 import random
+import re
 
 from enum import Enum
+from typing import Iterable, List, Union
 
 import numpy as np
 
@@ -11,10 +13,21 @@ from grapefruit import Color
 from hsluv import hsluv_to_rgb, rgb_to_hsluv
 from skimage.util import dtype
 
-from uchroma.util import colorarg, ColorType, lerp, lerp_degrees, to_color, to_rgb
+from uchroma.util import autocast_decorator, clamp, lerp, lerp_degrees
+
+
+# Type hint for decorated color arguments
+ColorType = Union[Color, str, Iterable[int], Iterable[float], None]
+ColorList = List[ColorType]
 
 
 class ColorScheme(Enum):
+    """
+    Predefined color schemes
+
+    TODO: Implement support for fetching from ColourLovers
+    """
+
     Emma = ('#320d6d', '#ffbfb7', '#ffd447', '#700353', '#4c1c00')
     Best = ('#247ba0', '#70c1b3', '#b2dbbf', '#f3ffbd', '#ff1654')
     Variety = ('#db5461', '#ffd9ce', '#593c8f', '#8ef9f3', '#171738')
@@ -26,7 +39,14 @@ class ColorScheme(Enum):
     Rainbow = ('red', 'yellow', 'lime', 'aqua', 'blue', 'magenta')
 
     def gradient(self, length: int=360) -> list:
-        return ColorUtils.gradient(length, *self.value)
+        """
+        Interpolate this ColorScheme to a gradient of the
+        specified length.
+
+        :param length: Final length of the gradient
+        :return: List of all colors in the gradient
+        """
+        return ColorUtils.gradient(length, *tuple(self.value))
 
 
 class ColorPair(Enum):
@@ -48,9 +68,129 @@ class ColorPair(Enum):
 
     @classmethod
     def get(cls, name):
+        """
+        Get a ColorPair by name
+
+        TODO: Implement support for ColourLovers
+
+        :param name: Name of the item to get as a string
+        :return: Enumerated value of the color pair
+        """
         if name is None or name.upper() not in cls.__members__:
             return None
         return cls[name.upper()]
+
+
+def rgb_from_tuple(arg: tuple) -> Color:
+    """
+    Convert a 3-tuple of ints or floats to a Grapefruit color
+
+    :param arg: The RGB tuple to convert
+    :return: The Color object
+    """
+    if len(arg) >= 3:
+        if arg[0] is None:
+            return Color.NewFromRgb(0, 0, 0)
+        if all(isinstance(n, int) for n in arg):
+            return Color.NewFromRgb(*Color.IntTupleToRgb(arg))
+        if all(isinstance(n, float) for n in arg):
+            return Color.NewFromRgb(*arg)
+
+    raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
+
+
+def rgb_to_int_tuple(arg: tuple) -> tuple:
+    """
+    Convert/sanitize a 3-tuple of ints or floats
+
+    :param arg: Tuple of RGB values
+
+    :return: Tuple of RGB ints
+    """
+    if len(arg) >= 3:
+
+        return tuple([clamp(round(x), 0, 255) for x in arg[:3]])
+
+    raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
+
+
+COLOR_TUPLE_STR = re.compile(r'\((.*, .*, .*, .*)\)')
+
+def to_color(*color_args) -> Color:
+    """
+    Convert various color representations to grapefruit.Color
+
+    Handles RGB triplets, hexcodes, and html color names.
+
+    :return: The color
+    """
+    colors = []
+    for arg in color_args:
+        value = None
+        if arg is not None:
+            if isinstance(arg, Color):
+                value = arg
+            elif isinstance(arg, str):
+                if arg != '':
+                    # grapefruit's default str() spews a string repr of a tuple
+                    strtuple = COLOR_TUPLE_STR.match(arg)
+                    if strtuple:
+                        value = Color.NewFromRgb(*[float(x) \
+                                for x in strtuple.group(1).split(', ')])
+                    else:
+                        value = Color.NewFromHtml(arg)
+            elif isinstance(arg, Iterable):
+                value = rgb_from_tuple(arg)
+            else:
+                raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+        colors.append(value)
+
+    if len(colors) == 0:
+        return None
+    if len(colors) == 1:
+        return colors[0]
+
+    return colors
+
+
+def to_rgb(arg) -> tuple:
+    """
+    Convert various representations to RGB tuples
+
+    :return: An RGB int tuple
+    """
+    if arg is None:
+        return (0, 0, 0)
+    if isinstance(arg, Color):
+        return arg.intTuple[:3]
+    if isinstance(arg, str):
+        return Color.NewFromHtml(arg).intTuple[:3]
+    if isinstance(arg, tuple) or isinstance(arg, list):
+        if arg[0] is None:
+            return (0, 0, 0)
+
+        if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
+                or isinstance(arg[0], str) or isinstance(arg[0], Color):
+            return [to_rgb(item) for item in arg]
+        return rgb_to_int_tuple(arg)
+
+    raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+
+
+"""
+Decorator to parse various color representations
+
+Invokes to_color on any arguments listed in decls. This will cause
+the listed arguments to be resolved to grapefruit.Color objects from
+the various different representations that might be in use.
+
+Example:
+
+@colorarg
+def frobizzle(self, speed, color1: ColorType=None, color2: ColorType=None)
+"""
+colorarg = autocast_decorator(ColorType, to_color)
+
 
 
 class ColorUtils(object):
@@ -73,7 +213,14 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def hue_gradient(start, length):
+    def hue_gradient(start: float=0.0, length: int=360) -> list:
+        """
+        Generate a gradient which spans all hues
+
+        :param start: starting hue
+        :param length: number of colors which should be produced
+        :return: list of colors
+        """
         step = 360 / length
         return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
 
@@ -138,7 +285,21 @@ class ColorUtils(object):
 
 
     @staticmethod
-    def color_generator(gradient: list, randomize: bool=False, alternate: bool=False, rgb: bool=False):
+    def color_generator(gradient: list, randomize: bool=False,
+                        alternate: bool=False, rgb: bool=False):
+        """
+        Create a generator which returns colors from the given gradient,
+        optionally randomizing, or moving across the gradient in alternating
+        directions.
+
+        :param gradient: a list of colors
+        :param randomize: true if colors should be chosen randomly instead of
+                          sequentially
+        :param alternate: true if two iterators should move sequentially
+                          thru the gradient in opposite directions
+        :param rgb: true if RGB int tuples should be returned
+        :return: generator
+        """
         grad = gradient[:]
 
         if not randomize:
@@ -278,6 +439,13 @@ class ColorUtils(object):
     @staticmethod
     @colorarg
     def luminance(color: ColorType) -> float:
+        """
+        Calculate the relative luminance (as defined by WCAG 2.0) of
+        the given color.
+
+        :param color: a color
+        :return: the calculated relative luminance between 0.0 and 10
+        """
         rgb = color.rgb
         vals = []
         for c in rgb:
@@ -292,9 +460,34 @@ class ColorUtils(object):
 
     @staticmethod
     @colorarg
+    def contrast_ratio(color1: ColorType, color2: ColorType) -> float:
+        """
+        Calculate the contrast ratio (as defined by WCAG 2.0) between
+        two colors. If the two colors have the same relative luminance,
+        the result is 1.0. For black/white, the result is 21.0.
+
+        :param color1: a color
+        :param color2: a color
+        :return: the calculated contrast ratio
+        """
+        ratio = (0.05 + ColorUtils.luminance(color1)) / \
+                (0.05 + ColorUtils.luminance(color2))
+        if ratio < 1:
+            return 1 / ratio
+        return ratio
+
+
+    @staticmethod
+    @colorarg
     def inverse(color: ColorType) -> float:
+        """
+        Get the RGB inverse of this color (1 - component)
+
+        :param color: a color
+        :return: Inverse of the given color
+        """
         rgb = color.rgb
-        return Color.NewFromRgb(1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2])
+        return Color.NewFromRgb(1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2], color.alpha)
 
 
     @staticmethod

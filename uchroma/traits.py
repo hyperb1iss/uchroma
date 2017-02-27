@@ -3,13 +3,15 @@ import enum
 import importlib
 import sys
 
+from argparse import ArgumentParser
 from typing import Iterable
 
 from traitlets import CaselessStrEnum, Container, Dict, Enum, Int, HasTraits, \
         List, TraitType, Undefined, UseEnum
 from frozendict import frozendict
 
-from uchroma.util import ArgsDict, camel_to_snake, to_color
+from uchroma.color import to_color
+from uchroma.util import ArgsDict
 
 
 
@@ -60,25 +62,42 @@ class ColorPresetTrait(UseEnum):
 
 
 class WriteOnceMixin(object):
+    """
+    Mixin for traits which cannot be changed after an initial
+    value has been set.
+    """
     write_once = True
 
     def validate(self, obj, value):
-        if self.name not in obj._trait_values or obj._trait_values[self.name] == self.default_value:
+        if self.name not in obj._trait_values or \
+                obj._trait_values[self.name] == self.default_value:
             return super().validate(obj, value)
+
         self.error(obj, value)
 
 
 class WriteOnceInt(WriteOnceMixin, Int):
+    """
+    Subclass of Int which may only be written once
+    """
     pass
 
 
 class FrozenDict(WriteOnceMixin, Dict):
-
+    """
+    Subclass of Dict which converts the value to a frozendict on
+    the first setting.
+    """
     def validate(self, obj, value):
         return frozendict(super().validate(obj, value))
 
 
 class UseEnumCaseless(UseEnum):
+    """
+    Subclass of UseEnum which allows selection of values using
+    case insensitive strings
+    """
+
     def select_by_name(self, value, default=Undefined):
         if value.startswith(self.name_prefix):
             # -- SUPPORT SCOPED-NAMES, like: "Color.red" => "red"
@@ -92,10 +111,19 @@ class UseEnumCaseless(UseEnum):
 
 
 class WriteOnceUseEnumCaseless(WriteOnceMixin, UseEnumCaseless):
+    """
+    Subclass of UseEnumCaseless which may only be written once.
+    """
     pass
 
 
-def is_trait_writable(trait) -> bool:
+def is_trait_writable(trait: TraitType) -> bool:
+    """
+    Test if a trait is writable
+
+    :param trait: the trait to be tested
+    :return: True if the trait is writable
+    """
     if trait.read_only:
         return False
 
@@ -105,9 +133,12 @@ def is_trait_writable(trait) -> bool:
     return True
 
 
-def trait_as_dict(trait) -> dict:
+def trait_as_dict(trait: TraitType) -> dict:
     """
     Convert a trait to a dict for sending over D-Bus or the like
+
+    :param trait: the trait to be converted
+    :return: dict representing this trait
     """
     cls = trait.__class__
     tdict = {}
@@ -143,9 +174,20 @@ def trait_as_dict(trait) -> dict:
     return tdict
 
 
-def class_traits_as_dict(obj, values=None):
+def class_traits_as_dict(obj: HasTraits, values: dict=None) -> dict:
+    """
+    Create a dict which represents all traits of the given object.
+    This dict itself can be inspected in a generic API, or it
+    may be converted back to a (stub) instance of HasTraits. This
+    facilitates the sending of configurable object properties over
+    an interface such as D-Bus.
+
+    :param obj: an instance of HasTraits
+    :param value: optional dict of trait values (pulled from obj by default)
+    :return: dict representing all traits in obj
+    """
     cls_dt = {}
-    if type(obj) == type and hasattr(obj, 'class_traits'):
+    if isinstance(obj, type) and hasattr(obj, 'class_traits'):
         traits = obj.class_traits()
     elif isinstance(obj, dict):
         traits = obj
@@ -165,7 +207,7 @@ def class_traits_as_dict(obj, values=None):
     return cls_dt
 
 
-def dict_as_trait(obj):
+def dict_as_trait(obj: dict) -> TraitType:
     """
     Create a trait from a dict (trait_as_dict).
     """
@@ -202,7 +244,14 @@ def dict_as_trait(obj):
     return trait
 
 
-def dict_as_class_traits(obj: dict):
+def dict_as_class_traits(obj: dict) -> HasTraits:
+    """
+    Convert a dict of unpacked traits to a HasTraits instance.
+    Useful for remote parameter inspection and validation.
+
+    :param obj: dict of unpacked traits
+    :return: the stub HasTraits instance
+    """
     if not isinstance(obj, dict):
         raise TypeError("Object must be a dict (was: %s)" % obj)
 
@@ -226,7 +275,14 @@ def dict_as_class_traits(obj: dict):
     return cls
 
 
-def get_args_dict(obj, incl_all=False):
+def get_args_dict(obj: HasTraits, incl_all=False):
+    """
+    Return a dict of user-configurable traits for an object
+
+    :param obj: an instance of HasTraits
+    :param incl_all: If all items should be included, regardless of RO status
+    :return: dict of arguments
+    """
     argsdict = ArgsDict()
     for k in sorted(obj._trait_values.keys()):
         v = obj._trait_values[k]
@@ -236,18 +292,16 @@ def get_args_dict(obj, incl_all=False):
     return argsdict
 
 
-def add_traits_to_argparse(traits: dict, parser, prefix: str=None):
+def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser,
+                           prefix: str=None):
+    """
+    Add all traits from the given object to the argparse context.
 
-    if isinstance(traits, HasTraits):
-        traits = traits.traits()
-
-    for key, trait in traits.items():
-        if not isinstance(trait, TraitType):
-            if isinstance(trait, dict):
-                trait = dict_as_trait(trait)
-            else:
-                raise TypeError("A dict or instance of HasTraits is required (was: %s)" % trait)
-
+    :param obj: an instance of HasTraits
+    :param parser: argparse parser
+    :param prefix: string to prefix keys with
+    """
+    for key, trait in obj.traits().items():
         if trait.get_metadata('config') is not True:
             continue
 
@@ -316,43 +370,3 @@ def apply_from_argparse(args, traits=None, target: HasTraits=None) -> dict:
         changed[key] = target._trait_values[key]
 
     return changed
-
-
-class TraitsPropertiesMixin(object):
-    def __init__(self, *args, **kwargs):
-        super(TraitsPropertiesMixin, self).__init__(*args, **kwargs)
-
-
-    def get_user_args(self) -> dict:
-        return self._delegate
-
-
-    def __getattribute__(self, name):
-        # Intercept everything and delegate to the device class by converting
-        # names between the D-Bus conventions to Python conventions.
-        prop_name = camel_to_snake(name)
-        if prop_name != name and self._delegate.has_trait(prop_name):
-            value = getattr(self._delegate, prop_name)
-            trait = self._delegate.traits()[prop_name]
-            if isinstance(trait, UseEnum):
-                return value.name.title()
-            if isinstance(trait, ColorSchemeTrait):
-                return [x.html for x in value]
-            if isinstance(trait, ColorTrait):
-                if value is None or value is Undefined:
-                    return ''
-                return value.html
-            if isinstance(trait, tuple) and hasattr(trait, '_asdict'):
-                return trait._asdict()
-            return value
-
-        return super(TraitsPropertiesMixin, self).__getattribute__(name)
-
-
-    def __setattr__(self, name, value):
-        prop_name = camel_to_snake(name)
-        if prop_name != name and self._delegate.has_trait(prop_name):
-            return self._delegate.set_trait(prop_name, value)
-
-        return super(TraitsPropertiesMixin, self).__setattr__(name, value)
-

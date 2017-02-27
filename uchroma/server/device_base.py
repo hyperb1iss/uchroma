@@ -5,14 +5,15 @@ import hidapi
 
 from wrapt import synchronized
 
-from uchroma.anim import AnimationManager
-from uchroma.input import InputManager
-from uchroma.hardware import Hardware, Quirks
-from uchroma.prefs import PreferenceManager
-from uchroma.report import RazerReport
-from uchroma.types import BaseCommand
-from uchroma.util import get_logger, RepeatingTimer, Signal
+from uchroma.util import ensure_future, get_logger, RepeatingTimer, Signal
 from uchroma.version import __version__
+
+from .anim import AnimationManager
+from .input import InputManager
+from .hardware import Hardware, Quirks
+from .prefs import PreferenceManager
+from .report import RazerReport
+from .types import BaseCommand
 
 
 class BaseUChromaDevice(object):
@@ -70,8 +71,15 @@ class BaseUChromaDevice(object):
 
     @asyncio.coroutine
     def shutdown(self):
-        if self.animation_manager is not None:
-            yield from self.animation_manager.shutdown()
+        """
+        Shuts down all services associated with the device and closes the HID instance.
+        """
+        if asyncio.get_event_loop().is_running():
+            if hasattr(self, '_animation_manager') and self.animation_manager is not None:
+                yield from self.animation_manager.shutdown()
+
+            if hasattr(self, '_input_manager') and self._input_manager is not None:
+                yield from self._input_manager.shutdown()
 
         self.close(force=True)
 
@@ -95,7 +103,13 @@ class BaseUChromaDevice(object):
             self._dev = None
 
 
-    def has_fx(self, fx_type) -> bool:
+    def has_fx(self, fx_type: str) -> bool:
+        """
+        Test if the device supports a particular built-in effect
+
+        :param fx_type: the effect to test
+        :return: true if the effect is supported
+        """
         if self.fx_manager is None:
             return False
         return fx_type in self.fx_manager.available_fx
@@ -114,6 +128,9 @@ class BaseUChromaDevice(object):
 
     @property
     def animation_manager(self):
+        """
+        Animation manager for this device
+        """
         if hasattr(self, '_animation_manager'):
             return self._animation_manager
         return None
@@ -121,6 +138,9 @@ class BaseUChromaDevice(object):
 
     @property
     def is_animating(self):
+        """
+        True if an animation is currently running
+        """
         if self.animation_manager is not None:
             return self.animation_manager.running
         return False
@@ -128,16 +148,25 @@ class BaseUChromaDevice(object):
 
     @property
     def fx_manager(self):
+        """
+        Built-in effects manager for this device
+        """
         return self._fx_manager
 
 
     @property
     def input_manager(self):
+        """
+        Input manager service for this device
+        """
         return self._input_manager
 
 
     @property
     def input_devices(self):
+        """
+        Input devices associated with this instance
+        """
         if self._input_manager is None:
             return None
         return self._input_manager.input_devices
@@ -145,11 +174,17 @@ class BaseUChromaDevice(object):
 
     @property
     def hid(self):
+        """
+        The lower-layer hidapi device
+        """
         return self._dev
 
 
     @property
     def last_cmd_time(self):
+        """
+        Timestamp of the last command sent to the hardware, used for delay enforcement
+        """
         return self._last_cmd_time
 
 
@@ -171,7 +206,9 @@ class BaseUChromaDevice(object):
 
     def get_report(self, command_class: int, command_id: int, data_size: int,
                    *args, transaction_id: None, remaining_packets: int=0x00) -> RazerReport:
-
+        """
+        Create and initialize a new RazerReport on this device
+        """
         if transaction_id is None:
             if self.has_quirk(Quirks.TRANSACTION_CODE_3F):
                 transaction_id = 0x3F
@@ -252,6 +289,13 @@ class BaseUChromaDevice(object):
 
     @synchronized
     def run_report(self, report: RazerReport, delay: float=None) -> bool:
+        """
+        Runs a previously initialized RazerReport on the device
+
+        :param report: the report to run
+        :param delay: custom delay to enforce between commands
+        :return: True if successful
+        """
         try:
             if self._ensure_open():
                 return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
@@ -285,17 +329,6 @@ class BaseUChromaDevice(object):
                                  remaining_packets=remaining_packets)
 
         return self.run_report(report, delay=delay)
-
-
-
-    def add_input_callback(self, callback):
-        if self._input_manager is not None:
-            self._input_manager.add_callback(callback)
-
-
-    def remove_input_callback(self, callback):
-        if self._input_manager is not None:
-            self._input_manager.remove_callback(callback)
 
 
     def _decode_serial(self, value: bytes) -> str:
@@ -397,6 +430,9 @@ class BaseUChromaDevice(object):
 
     @property
     def key(self) -> str:
+        """
+        Unique key which identifies this device to the device manager
+        """
         return '%04x:%04x.%02d' % (self.vendor_id, self.product_id, self.device_index)
 
 
@@ -487,11 +523,17 @@ class BaseUChromaDevice(object):
 
     @property
     def key_mapping(self):
+        """
+        The mapping between keycodes and lighting matrix coordinates
+        """
         return self.hardware.key_mapping
 
 
     @property
     def preferences(self):
+        """
+        Saved preferences for this device
+        """
         return self._prefs
 
 
@@ -507,8 +549,8 @@ class BaseUChromaDevice(object):
         Restore saved preferences
         """
         with self.preferences.observers_paused():
-            if hasattr(self, "brightness") and self.preferences.brightness is not None:
-                self.brightness = self.preferences.brightness
+            if hasattr(self, 'brightness') and self.preferences.brightness is not None:
+                setattr(self, 'brightness', self.preferences.brightness)
 
             if self.fx_manager is not None:
                 self.fx_manager.restore_prefs(self.preferences)
@@ -528,10 +570,7 @@ class BaseUChromaDevice(object):
 
 
     def __exit__(self, ex_type, ex_value, traceback):
-        self._defer_close = False
-        self._close(True)
-        if hasattr(self, '_input_manager') and self._input_manager is not None:
-            self._input_manager.shutdown()
+        ensure_future(self.shutdown())
 
 
     def __del__(self):

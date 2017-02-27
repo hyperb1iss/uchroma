@@ -1,9 +1,10 @@
 import hidapi
 
-from uchroma.keyboard import UChromaKeyboard
-from uchroma.hardware import Hardware
-from uchroma.types import BaseCommand
 from uchroma.util import scale_brightness
+
+from .keyboard import UChromaKeyboard
+from .hardware import Hardware
+from .types import BaseCommand
 
 
 class UChromaLaptop(UChromaKeyboard):

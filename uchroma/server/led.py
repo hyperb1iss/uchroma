@@ -2,9 +2,11 @@ from enum import Enum
 
 from traitlets import Bool, Float, HasTraits, observe
 
+from uchroma.color import to_color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
-from uchroma.types import BaseCommand
-from uchroma.util import scale_brightness, Signal, to_color
+from uchroma.util import scale_brightness, Signal
+
+from .types import BaseCommand
 
 from grapefruit import Color
 

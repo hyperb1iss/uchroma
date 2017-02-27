@@ -1,18 +1,19 @@
 # pylint: disable=unused-argument, protected-access, invalid-name
 import asyncio
 import importlib
-import types
 
 from collections import OrderedDict
 from concurrent import futures
+from types import ModuleType
 from typing import NamedTuple
 
 from traitlets import Bool, HasTraits, List, observe
 
-from uchroma.frame import Frame
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
-from uchroma.traits import FrozenDict, get_args_dict, is_trait_writable
+from uchroma.traits import FrozenDict, get_args_dict
 from uchroma.util import ensure_future, Signal, Ticker, LOG_TRACE
+
+from .frame import Frame
 
 
 class LayerHolder(HasTraits):
@@ -429,7 +430,7 @@ class AnimationLoop(HasTraits):
             self._pause_event.set()
 
 
-RendererInfo = NamedTuple('RendererInfo', [('module', types.ModuleType),
+RendererInfo = NamedTuple('RendererInfo', [('module', ModuleType),
                                            ('clazz', type),
                                            ('key', str),
                                            ('meta', RendererMeta),
@@ -618,7 +619,8 @@ class AnimationManager(HasTraits):
     @asyncio.coroutine
     def shutdown(self):
         """
-        Stop and remove all renderers
+        Shuts down the animation service, waiting for all layers to
+        finish work. This is a coroutine.
         """
         self._shutting_down = True
 
@@ -629,6 +631,9 @@ class AnimationManager(HasTraits):
 
 
     def restore_prefs(self, prefs):
+        """
+        Restore active layers from preferences
+        """
         self._logger.debug('Restoring layers: %s', prefs.layers)
 
         if prefs.layers is not None and len(prefs.layers) > 0:
@@ -644,11 +649,17 @@ class AnimationManager(HasTraits):
 
     @property
     def renderer_info(self):
+        """
+        The list of all discovered renderers
+        """
         return self._renderer_info
 
 
     @property
     def running(self):
+        """
+        True if an animation is currently running
+        """
         return self._loop is not None and self._loop.running
 
 

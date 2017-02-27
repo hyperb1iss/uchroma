@@ -2,7 +2,7 @@ import asyncio
 
 from evdev.uinput import UInput
 
-from uchroma.input import InputQueue
+from uchroma.input_queue import InputQueue
 from uchroma.util import ensure_future
 
 
@@ -18,9 +18,8 @@ class MacroDevice(object):
 
         self._macro_keys = driver.hardware.macro_keys
 
-        self._uinput = UInput.from_device(driver.input_manager.input_devices[0], \
-            name='UChroma Virtual Macro Device %d' % driver.device_index)
-        self._queue = InputQueue(driver)
+        self._uinput = None
+        self._queue = None
 
         self._task = None
         self._running = False
@@ -38,6 +37,10 @@ class MacroDevice(object):
     def start(self):
         if self._running:
             return
+
+        self._uinput = UInput.from_device(driver.input_manager.input_devices[0], \
+            name='UChroma Virtual Macro Device %d' % driver.device_index)
+        self._queue = InputQueue(driver)
 
         self._queue.attach()
         self._driver.input_manager.grab(True)

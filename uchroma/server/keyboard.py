@@ -1,9 +1,9 @@
 import hidapi
 
-from uchroma.device import UChromaDevice
-from uchroma.fixups import KeyboardFixup
-from uchroma.hardware import Hardware
-from uchroma.types import BaseCommand
+from .device import UChromaDevice
+from .fixups import KeyboardFixup
+from .hardware import Hardware
+from .types import BaseCommand
 
 
 class UChromaKeyboard(UChromaDevice, KeyboardFixup):

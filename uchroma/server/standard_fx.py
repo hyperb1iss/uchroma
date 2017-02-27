@@ -5,11 +5,12 @@ from enum import Enum
 from traitlets import Bool, Int, Unicode
 
 from uchroma.color import ColorUtils
-from uchroma.fx import BaseFX, FXModule
-from uchroma.hardware import Hardware, Quirks
-from uchroma.led import LEDType
 from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
-from uchroma.types import BaseCommand
+
+from .fx import BaseFX, FXModule
+from .hardware import Hardware, Quirks
+from .led import LEDType
+from .types import BaseCommand
 
 
 class FX(Enum):
@@ -181,7 +182,8 @@ class StandardFX(FXModule):
 
     class WaveFX(BaseFX):
         description = Unicode('Waves of color')
-        direction = UseEnumCaseless(enum_class=Direction, default_value=Direction.RIGHT).tag(config=True)
+        direction = UseEnumCaseless(enum_class=Direction, \
+                default_value=Direction.RIGHT).tag(config=True)
         trackpad_effect = Bool(default_value=False).tag(config=True)
 
         def apply(self) -> bool:
@@ -237,7 +239,8 @@ class StandardFX(FXModule):
         color = ColorTrait(default_value='green').tag(config=True)
         base_color = ColorTrait().tag(config=True)
         speed = Int(default_value=15, min=1, max=30).tag(config=True)
-        direction = UseEnumCaseless(enum_class=Direction, default_value=Direction.RIGHT).tag(config=True)
+        direction = UseEnumCaseless(enum_class=Direction, \
+                default_value=Direction.RIGHT).tag(config=True)
 
         def apply(self) -> bool:
             """

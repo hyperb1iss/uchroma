@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, too-many-arguments
 import math
 
 import numpy as np
@@ -6,10 +6,15 @@ from grapefruit import Color
 from skimage import draw
 
 from uchroma.blending import BlendOp
-from uchroma.util import clamp, colorarg, ColorType, get_logger, to_color
+from uchroma.color import colorarg, ColorType, to_color
+from uchroma.util import clamp, get_logger
 
 
 class Layer(object):
+    """
+    Provides utilities and constructs for drawing a single layer of a
+    custom display frame. Layers may be stacked and composited together.
+    """
 
     def __init__(self, width: int, height: int, logger=None):
         self._width = width

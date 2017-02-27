@@ -6,8 +6,7 @@ from typing import NamedTuple
 
 from traitlets import Bool, HasTraits, Float, Int, observe, Unicode
 
-from uchroma.input import InputQueue
-from uchroma.frame import Frame
+from uchroma.input_queue import InputQueue
 from uchroma.layer import Layer
 from uchroma.traits import ColorTrait, WriteOnceInt
 from uchroma.util import Ticker, get_logger
@@ -69,7 +68,7 @@ class Renderer(HasTraits):
         self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, change.new))
 
 
-    def init(self, frame: Frame) -> bool:
+    def init(self, frame) -> bool:
         """
         Invoked by AnimationLoop when the effect is activated. At this
         point, the traits will have been set. An implementation
@@ -82,7 +81,7 @@ class Renderer(HasTraits):
         return False
 
 
-    def finish(self, frame: Frame):
+    def finish(self, frame ):
         """
         Invoked by AnimationLoop when the effect is deactivated.
         An implementation should perform cleanup tasks here.

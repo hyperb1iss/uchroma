@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name, pointless-string-statement, no-member, unsubscriptable-object
+# pylint: disable=invalid-name, no-member, attribute-defined-outside-init, bad-builtin
 """
 Various helper functions that are used across the library.
 """
@@ -11,11 +11,10 @@ import struct
 import time
 import typing
 
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from threading import Timer
 
 import colorlog
-from grapefruit import Color
 from numpy import interp
 from wrapt import decorator, synchronized
 
@@ -25,14 +24,9 @@ LOG_TRACE = 5
 LOG_PROTOCOL_TRACE = 4
 
 
-# Type hint for decorated color arguments
-ColorType = typing.Union[Color, str, typing.Iterable[int], typing.Iterable[float], None]
-ColorList = typing.List[ColorType]
-
-
 AUTOCAST_CACHE = {}
 
-def _autocast_decorator(type_hint, fix_arg_func):
+def autocast_decorator(type_hint, fix_arg_func):
     """
     Decorator which will invoke fix_arg_func for any
     arguments annotated with type_hint. The decorated
@@ -95,6 +89,12 @@ LOGGERS = {}
 
 @synchronized
 def get_logger(tag):
+    """
+    Get the global logger instance for the given tag
+
+    :param tag: the log tag
+    :return: the logger instance
+    """
     if tag not in LOGGERS:
         handler = colorlog.StreamHandler()
         handler.setFormatter(colorlog.ColoredFormatter( \
@@ -112,127 +112,6 @@ def max_keylen(d) -> int:
     Get the length of the longest key
     """
     return max(map(len, d))
-
-
-class ArgsDict(OrderedDict):
-    def __init__(self, *args, **kwargs):
-        super(ArgsDict, self).__init__(*args, **kwargs)
-        empty_keys = []
-        for k, v in self.items():
-            if v is None:
-                empty_keys.append(k)
-        for empty_key in empty_keys:
-            self.pop(empty_key)
-
-
-def rgb_from_tuple(arg: tuple) -> Color:
-    """
-    Convert a 3-tuple of ints or floats to a Grapefruit color
-
-    :param arg: The RGB tuple to convert
-    :return: The Color object
-    """
-    if len(arg) >= 3:
-        if arg[0] is None:
-            return Color.NewFromRgb(0, 0, 0)
-        if all(isinstance(n, int) for n in arg):
-            return Color.NewFromRgb(*Color.IntTupleToRgb(arg))
-        if all(isinstance(n, float) for n in arg):
-            return Color.NewFromRgb(*arg)
-
-    raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
-
-
-def rgb_to_int_tuple(arg: tuple) -> tuple:
-    """
-    Convert/sanitize a 3-tuple of ints or floats
-
-    :param arg: Tuple of RGB values
-
-    :return: Tuple of RGB ints
-    """
-    if len(arg) >= 3:
-
-        return tuple([clamp(round(x), 0, 255) for x in arg[:3]])
-
-    raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
-
-
-COLOR_TUPLE_STR = re.compile(r'\((.*, .*, .*, .*)\)')
-
-def to_color(*color_args) -> Color:
-    """
-    Convert various color representations to grapefruit.Color
-
-    Handles RGB triplets, hexcodes, and html color names.
-
-    :return: The color
-    """
-    colors = []
-    for arg in color_args:
-        value = None
-        if arg is not None:
-            if isinstance(arg, Color):
-                value = arg
-            elif isinstance(arg, str):
-                if arg != '':
-                    # grapefruit's default str() spews a string repr of a tuple
-                    strtuple = COLOR_TUPLE_STR.match(arg)
-                    if strtuple:
-                        value = Color.NewFromRgb(*[float(x) for x in strtuple.group(1).split(', ')])
-                    else:
-                        value = Color.NewFromHtml(arg)
-            elif isinstance(arg, Iterable):
-                value = rgb_from_tuple(arg)
-            else:
-                raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
-        colors.append(value)
-
-    if len(colors) == 0:
-        return None
-    if len(colors) == 1:
-        return colors[0]
-
-    return colors
-
-
-def to_rgb(arg) -> tuple:
-    """
-    Convert various representations to RGB tuples
-
-    :return: An RGB int tuple
-    """
-    if arg is None:
-        return (0, 0, 0)
-    if isinstance(arg, Color):
-        return arg.intTuple[:3]
-    if isinstance(arg, str):
-        return Color.NewFromHtml(arg).intTuple[:3]
-    if isinstance(arg, tuple) or isinstance(arg, list):
-        if arg[0] is None:
-            return (0, 0, 0)
-
-        if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
-                or isinstance(arg[0], str) or isinstance(arg[0], Color):
-            return [to_rgb(item) for item in arg]
-        return rgb_to_int_tuple(arg)
-
-    raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
-
-
-"""
-Decorator to parse various color representations
-
-Invokes to_color on any arguments listed in decls. This will cause
-the listed arguments to be resolved to grapefruit.Color objects from
-the various different representations that might be in use.
-
-Example:
-
-@colorarg
-def frobizzle(self, speed, color1: ColorType=None, color2: ColorType=None)
-"""
-colorarg = _autocast_decorator(ColorType, to_color)
 
 
 def clamp(value, min_, max_):
@@ -413,16 +292,48 @@ def ensure_future(coro, loop=None):
     return fut
 
 
+class ArgsDict(OrderedDict):
+    """
+    Extension of OrderedDict which does not allow empty keys
+
+    FIXME: Get rid of this
+    """
+    def __init__(self, *args, **kwargs):
+        super(ArgsDict, self).__init__(*args, **kwargs)
+        empty_keys = []
+        for k, v in self.items():
+            if v is None:
+                empty_keys.append(k)
+        for empty_key in empty_keys:
+            self.pop(empty_key)
+
+
 class Signal(object):
+    """
+    A simple signalling construct.
+
+    Listeners may connect() to this signal, and their handlers will
+    be invoked when fire() is called.
+    """
     def __init__(self):
         self._handlers = set()
 
 
     def connect(self, handler):
+        """
+        Connect a handler to this signal
+
+        :param handler: Function to invoke when the signal fires
+        """
         self._handlers.add(handler)
 
 
     def fire(self, *args):
+        """
+        Fire the signal, invoking all connected handlers
+
+        :params args: Arguments to call handlers with
+        """
         for handler in self._handlers:
             handler(*args)
 
@@ -440,6 +351,10 @@ class Singleton(type):
 
 
 class RepeatingTimer(object):
+    """
+    FIXME: Get rid of this. Holding the device open should
+    be done using a context manager
+    """
     def __init__(self, interval, func, *args, **kwargs):
         self._interval = interval
         self._func = func
@@ -516,6 +431,9 @@ class Ticker(object):
 
     @asyncio.coroutine
     def tick(self):
+        """
+        Sleep until the next tick
+        """
         yield from asyncio.sleep(self._next_tick)
 
 
@@ -532,6 +450,9 @@ class Ticker(object):
 
     @property
     def interval(self):
+        """
+        The interval between ticks
+        """
         return self._interval
 
 

@@ -1,6 +1,6 @@
 import os
 
-from uchroma.hardware import Hardware, KeyMapping, Point, PointList
+from uchroma.server.hardware import Hardware, KeyMapping, Point, PointList
 
 
 def test_config_loaded():

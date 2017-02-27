@@ -6,9 +6,10 @@ import numpy as np
 
 from uchroma.blending import blend
 from uchroma.color import ColorUtils
-from uchroma.hardware import Quirks
 from uchroma.layer import Layer
-from uchroma.types import BaseCommand
+
+from .hardware import Quirks
+from .types import BaseCommand
 
 
 class Frame(object):

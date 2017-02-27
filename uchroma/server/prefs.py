@@ -9,8 +9,9 @@ import ruamel.yaml as yaml
 
 from grapefruit import Color
 
-from uchroma.config import Configuration
 from uchroma.util import Singleton
+
+from .config import Configuration
 
 
 CONFDIR = os.path.join(os.path.expanduser('~'), '.config', 'uchroma')

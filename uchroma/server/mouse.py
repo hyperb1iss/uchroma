@@ -5,12 +5,14 @@ import hidapi
 
 from grapefruit import Color
 
-from uchroma.device import UChromaDevice
-from uchroma.device_base import BaseCommand
-from uchroma.hardware import Hardware
-from uchroma.led import LEDType
-from uchroma.report import Status
-from uchroma.util import clamp, scale, scale_brightness, to_color
+from uchroma.color import to_color
+from uchroma.util import clamp, scale, scale_brightness
+
+from .device import UChromaDevice
+from .device_base import BaseCommand
+from .hardware import Hardware
+from .led import LEDType
+from .report import Status
 
 
 class PollingRate(Enum):

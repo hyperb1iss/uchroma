@@ -8,9 +8,8 @@ from typing import NamedTuple
 
 import ruamel.yaml as yaml
 
-from uchroma.config import Configuration, FlowSequence, LowerCaseSeq, \
-        represent_flow_seq
-from uchroma.led import LEDType
+from .config import Configuration, FlowSequence, LowerCaseSeq, represent_flow_seq
+from .led import LEDType
 
 
 RAZER_VENDOR_ID = 0x1532

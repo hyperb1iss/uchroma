@@ -3,15 +3,15 @@
 Various helper functions that are used across the library.
 """
 import logging
-import sys
 
 from argparse import ArgumentParser
 
 from argcomplete import autocomplete
 
-from uchroma.dbus_client import UChromaClient
 from uchroma.dbus_utils import dbus_prepare, snake_to_camel
 from uchroma.version import __version__
+
+from .dbus_client import UChromaClient
 
 
 class UChromaConsoleUtil(object):
@@ -21,10 +21,13 @@ class UChromaConsoleUtil(object):
     def __init__(self):
         self._parser = ArgumentParser(description=self.description, add_help=False)
 
-        self._parser.add_argument('-v', '--version', action='version', version='self.version')
-        self._parser.add_argument('-g', '--debug', action='store_true', help="Enable debug output")
+        self._parser.add_argument('-v', '--version', action='version', version=self.version)
+        self._parser.add_argument('-g', '--debug', action='store_true',
+                                  help="Enable debug output")
         self._parser.add_argument('-d', '--device', type=str,
                                   help="Select target device name or index")
+        self._parser.add_argument('-l', '--list', action='store_true',
+                                  help="List available devices")
 
         self._args, self._unparsed = self._parser.parse_known_args()
 
@@ -32,6 +35,10 @@ class UChromaConsoleUtil(object):
             logging.getLogger().setLevel(logging.DEBUG)
 
         self._client = UChromaClient()
+
+        if self._args.list:
+            self._list_devices(self._args)
+            self._parser.exit()
 
         sub = self._parser.add_subparsers(title='Subcommands')
 
@@ -67,12 +74,11 @@ class UChromaConsoleUtil(object):
 
     @property
     def version(self):
-        return 'uChroma-%s' % __version__
+        return 'uchroma-%s' % __version__
 
 
     def _add_subparsers(self, sub):
-        list_devs = sub.add_parser('list', help='List devices')
-        list_devs.set_defaults(func=self._list_devices, parser=list_devs)
+        pass
 
 
     def get_driver(self):
@@ -87,6 +93,7 @@ class UChromaConsoleUtil(object):
             if len(dev_paths) == 1:
                 driver = self._client.get_device(dev_paths[0])
             else:
+                self._list_devices(self._args)
                 self._parser.error("Multiple devices found, select one with --device")
 
         return driver

@@ -1,4 +1,4 @@
-# pylint: disable=no-member,protected-access
+# pylint: disable=no-member,protected-access, too-many-nested-blocks
 import os
 import sys
 import tempfile

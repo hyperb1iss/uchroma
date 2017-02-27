@@ -12,12 +12,13 @@ from traitlets import Undefined
 from argcomplete import autocomplete
 
 from uchroma import __version__
-from uchroma.cmd import UChromaConsoleUtil
-from uchroma.color import ColorUtils
+from uchroma.color import ColorUtils, to_color
 from uchroma.dbus_utils import dbus_prepare
 from uchroma.traits import add_traits_to_argparse, apply_from_argparse, \
         dict_as_class_traits, HasTraits
-from uchroma.util import ArgsDict, camel_to_snake, max_keylen, to_color
+from uchroma.util import ArgsDict, camel_to_snake, max_keylen
+
+from .cmd import UChromaConsoleUtil
 
 
 PYTHON_ARGCOMPLETE_OK = 1
@@ -272,6 +273,8 @@ class DumpCommand(AbstractCommand):
 
         for dumpable in self._dumpables:
             for v in dumpable.current_state.values():
+                if len(v.keys()) == 0:
+                    continue
                 kk = max_keylen(v.keys())
                 if kk > keylen:
                     keylen = kk
@@ -307,7 +310,7 @@ class BrightnessCommand(AbstractCommand):
 
     def parse(self, args):
         if args.level is None:
-            args.parser.exit(message='%f' % self.driver.Brightness)
+            args.parser.exit(message='%f\n' % self.driver.Brightness)
 
         if args.level < 0 or args.level > 100:
             args.parser.error('Brightness must be between 0 and 100')

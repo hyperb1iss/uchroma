@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,protected-access
 
 """
 D-Bus interfaces
@@ -21,11 +21,12 @@ from pydbus.generic import signal
 
 from grapefruit import Color
 
-from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder
-from uchroma.input import InputQueue
-from uchroma.led import LEDType
-from uchroma.traits import TraitsPropertiesMixin
+from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder, \
+        TraitsPropertiesMixin
+from uchroma.input_queue import InputQueue
 from uchroma.util import camel_to_snake, ensure_future, snake_to_camel, Signal
+
+from uchroma.server.led import LEDType
 
 
 def dev_mode_enabled():
@@ -633,6 +634,9 @@ class DeviceManagerAPI(object):
 
 
     def GetDevices(self):
+        """
+        Get the list of object paths associated with discovered devices
+        """
         if self._dm.devices is None:
             return []
         return tuple(self._devs.keys())
@@ -689,6 +693,9 @@ class DeviceManagerAPI(object):
 
 
     def run(self):
+        """
+        Publish the service
+        """
         self._bus = SessionBus()
         self._bus.publish('org.chemlab.UChroma', self)
 

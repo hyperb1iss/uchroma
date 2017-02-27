@@ -1,159 +1,10 @@
-# pylint: disable=no-member, invalid-name, unexpected-keyword-arg, no-value-for-parameter
+# pylint: disable=too-many-function-args, invalid-name, too-many-instance-attributes
 import asyncio
-import functools
 import time
 
-from concurrent import futures
 from typing import NamedTuple
 
-import evdev
-
-from uchroma.hardware import PointList
-from uchroma.util import clamp, ensure_future, LOG_TRACE
-
-
-class InputManager(object):
-
-    def __init__(self, driver, input_devices: list):
-
-        self._driver = driver
-        self._input_devices = input_devices
-        self._event_devices = []
-        self._event_callbacks = []
-
-        self._logger = driver.logger
-
-        self._opened = False
-        self._closing = False
-
-        self._tasks = []
-
-
-    @asyncio.coroutine
-    def _evdev_callback(self, device):
-        while self._opened:
-            try:
-                events = yield from device.async_read()
-                if not self._opened:
-                    return
-
-                for event in events:
-                    if event.type == evdev.ecodes.EV_KEY:
-                        ev = evdev.categorize(event)
-
-                        for callback in self._event_callbacks:
-                            yield from callback(ev)
-
-                if not self._opened:
-                    return
-
-            except (OSError, IOError) as err:
-                self._logger.exception("Event device error", exc_info=err)
-                break
-
-
-    def _evdev_close(self, event_device, future):
-        self._logger.info('Closing event device %s', event_device)
-
-
-    def _open_input_devices(self):
-        if self._opened:
-            return
-
-        for input_device in self._input_devices:
-            try:
-                event_device = evdev.InputDevice(input_device)
-                self._event_devices.append(event_device)
-
-                task = ensure_future(self._evdev_callback(event_device))
-                task.add_done_callback(functools.partial(self._evdev_close, event_device))
-                self._tasks.append(task)
-
-                self._logger.info('Opened event device %s', event_device)
-
-            except Exception as err:
-                self._logger.exception("Failed to open device: %s", input_device, exc_info=err)
-
-        if len(self._event_devices) > 0:
-            self._opened = True
-
-        return False
-
-
-    @asyncio.coroutine
-    def _close_input_devices(self):
-        if not hasattr(self, '_opened') or not self._opened:
-            return
-
-        self._opened = False
-
-        for event_device in self._event_devices:
-            asyncio.get_event_loop().remove_reader(event_device.fileno())
-            event_device.close()
-
-        tasks = []
-        for task in self._tasks:
-            if not task.done():
-                task.cancel()
-                tasks.append(task)
-
-        yield from asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
-        self._event_devices.clear()
-
-
-    def add_callback(self, callback):
-        if callback in self._event_callbacks:
-            return
-
-        self._event_callbacks.append(callback)
-        if len(self._event_callbacks) == 1:
-            self._open_input_devices()
-
-
-    @asyncio.coroutine
-    def remove_callback(self, callback):
-        if callback not in self._event_callbacks:
-            return
-
-        self._event_callbacks.remove(callback)
-
-        if len(self._event_callbacks) == 0:
-            yield from self._close_input_devices()
-
-
-    def shutdown(self):
-        for callback in self._event_callbacks:
-            ensure_future(self.remove_callback(callback))
-
-
-    def grab(self, excl: bool):
-        """
-        Get exclusive access to the device
-
-        WARNING: Calling this on your primary input device might
-        cause you a bad day (or at least a reboot)! Use with devices
-        (like keypads) where we don't want other apps to see actual
-        scancodes.
-
-        :param excl: True to gain exclusive access, False to release
-        """
-        if not self._opened:
-            return
-
-        for event_device in self._event_devices:
-            if excl:
-                event_device.grab()
-            else:
-                event_device.ungrab()
-
-
-    @property
-    def input_devices(self):
-        return self._input_devices
-
-
-    def __del__(self):
-        self.shutdown()
+from uchroma.util import clamp, LOG_TRACE
 
 
 _KeyInputEvent = NamedTuple('KeyInputEvent', \
@@ -162,23 +13,41 @@ _KeyInputEvent = NamedTuple('KeyInputEvent', \
      ('keycode', str),
      ('scancode', str),
      ('keystate', int),
-     ('coords', PointList),
+     ('coords', list),
      ('data', dict)])
 
 
 class KeyInputEvent(_KeyInputEvent, object):
+    """
+    Container of all values of a keyboard input event
+    with optional expiration time.
+    """
 
     @property
     def time_remaining(self) -> float:
+        """
+        The number of seconds until this event expires
+        """
         return max(0.0, self.expire_time - time.time())
 
     @property
     def percent_complete(self) -> float:
+        """
+        Percentage of elapsed time until this event expires
+        """
         duration = self.expire_time - self.timestamp
         return clamp(self.time_remaining / duration, 0.0, 1.0)
 
 
 class InputQueue(object):
+    """
+    Asynchronous input event queue
+
+    After calling attach(), users of this class may await get_events()
+    until a new event is produced from the keyboard. If an expiration time
+    is set, events will not be purged until the time has lapsed-
+    subsequents yield/await on get_events will return all active events.
+    """
 
     KEY_UP = 1
     KEY_DOWN = 2
@@ -229,6 +98,11 @@ class InputQueue(object):
 
     @asyncio.coroutine
     def get_events(self):
+        """
+        Get all active (new and unexpired) events from the queue.
+
+        This is a coroutine, and will yield until new data is available.
+        """
         if not self._attached:
             self._logger.error("InputQueue is not attached!")
             return None
@@ -264,6 +138,9 @@ class InputQueue(object):
 
 
     def get_events_nowait(self):
+        """
+        Version of get_events which returns immediately
+        """
         return self._events[:]
 
 
@@ -288,10 +165,10 @@ class InputQueue(object):
         if self._key_mapping is not None:
             coords = self._key_mapping.get(ev.keycode, None)
 
-        event = KeyInputEvent(timestamp=ev.event.timestamp(),
-                              expire_time=ev.event.timestamp() + self._expire_time,
-                              keycode=ev.keycode, scancode=ev.scancode,
-                              keystate=ev.keystate, coords=coords, data={})
+        event = KeyInputEvent(ev.event.timestamp(),
+                              ev.event.timestamp() + self._expire_time,
+                              ev.keycode, ev.scancode,
+                              ev.keystate, coords, {})
 
         if self._logger.isEnabledFor(LOG_TRACE):
             self._logger.debug('Input event: %s', event)

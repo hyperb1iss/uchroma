@@ -6,7 +6,7 @@ Fixups are mixins which adjust input/output data in some form.
 import numpy as np
 from numpy import array
 
-from uchroma.hardware import Hardware
+from .hardware import Hardware
 
 
 class KeyboardFixup(object):

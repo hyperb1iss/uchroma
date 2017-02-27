@@ -3,14 +3,16 @@ import hidapi
 
 from wrapt import synchronized
 
-from uchroma.byte_args import ByteArgs
-from uchroma.device_base import BaseUChromaDevice
-from uchroma.fx import BaseFX, FXManager, FXModule
-from uchroma.hardware import Hardware
+from uchroma.color import to_color, to_rgb
 from uchroma.traits import ColorSchemeTrait, ColorTrait
-from uchroma.types import BaseCommand
 from uchroma.util import smart_delay, set_bits, scale_brightness, \
-    test_bit, to_byte, to_color, to_rgb, LOG_PROTOCOL_TRACE
+    test_bit, to_byte, LOG_PROTOCOL_TRACE
+
+from .byte_args import ByteArgs
+from .device_base import BaseUChromaDevice
+from .fx import BaseFX, FXManager, FXModule
+from .hardware import Hardware
+from .types import BaseCommand
 
 
 # Output report 4, input report 5

@@ -53,12 +53,12 @@ setup(name='uchroma',
       author_email='shade@chemlab.org',
       platform='Linux',
       license='LGPL',
-      packages=['uchroma', 'uchroma.fxlib'],
-      ext_modules = cythonize('uchroma/crc.pyx'),
+      packages=['uchroma', 'uchroma.fxlib', 'uchroma.client', 'uchroma.server'],
+      ext_modules = cythonize('uchroma/server/crc.pyx'),
       entry_points={
           'console_scripts': [
-              'uchroma = uchroma.client:run_client',
-              'uchromad = uchroma.server:run_server'
+              'uchroma = uchroma.client.client:run_client',
+              'uchromad = uchroma.server.server:run_server'
           ]
       },
       install_requires=['argcomplete', 'colorlog', 'colr', 'evdev',

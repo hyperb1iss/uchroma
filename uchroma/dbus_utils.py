@@ -5,17 +5,16 @@ from collections import OrderedDict
 from typing import NamedTuple
 
 from gi.repository.GLib import Variant
-from traitlets import HasTraits, Int, Float, Unicode, Bool, TraitType
+from traitlets import HasTraits, TraitType, Undefined, UseEnum
 
 from frozendict import frozendict
 from grapefruit import Color
 
 import numpy as np
 
-from uchroma.renderer import RendererMeta
 from uchroma.traits import class_traits_as_dict, ColorTrait, \
-        ColorSchemeTrait, ColorPresetTrait, trait_as_dict
-from uchroma.util import get_logger, snake_to_camel
+        ColorSchemeTrait, trait_as_dict
+from uchroma.util import camel_to_snake, get_logger, snake_to_camel
 
 
 ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str)])
@@ -294,3 +293,39 @@ class DescriptorBuilder(object):
         val += "  </interface>\n</node>"
 
         return val
+
+
+class TraitsPropertiesMixin(object):
+    def __init__(self, *args, **kwargs):
+        super(TraitsPropertiesMixin, self).__init__(*args, **kwargs)
+
+
+    def __getattribute__(self, name):
+        # Intercept everything and delegate to the device class by converting
+        # names between the D-Bus conventions to Python conventions.
+        prop_name = camel_to_snake(name)
+        if prop_name != name and self._delegate.has_trait(prop_name):
+            value = getattr(self._delegate, prop_name)
+            trait = self._delegate.traits()[prop_name]
+            if isinstance(trait, UseEnum):
+                return value.name.title()
+            if isinstance(trait, ColorSchemeTrait):
+                return [x.html for x in value]
+            if isinstance(trait, ColorTrait):
+                if value is None or value is Undefined:
+                    return ''
+                return value.html
+            if isinstance(trait, tuple) and hasattr(trait, '_asdict'):
+                return trait._asdict()
+            return value
+
+        return super(TraitsPropertiesMixin, self).__getattribute__(name)
+
+
+    def __setattr__(self, name, value):
+        prop_name = camel_to_snake(name)
+        if prop_name != name and self._delegate.has_trait(prop_name):
+            return self._delegate.set_trait(prop_name, value)
+
+        return super(TraitsPropertiesMixin, self).__setattr__(name, value)
+

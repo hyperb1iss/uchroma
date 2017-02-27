@@ -8,10 +8,10 @@ from concurrent import futures
 
 import gbulb
 
-from uchroma.dbus import DeviceManagerAPI
-from uchroma.device_base import BaseUChromaDevice
-from uchroma.device_manager import UChromaDeviceManager
 from uchroma.util import ensure_future, get_logger, LOG_PROTOCOL_TRACE, LOG_TRACE
+
+from .dbus import DeviceManagerAPI
+from .device_manager import UChromaDeviceManager
 
 
 class UChromaServer(object):
