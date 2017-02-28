@@ -68,19 +68,24 @@ class InputQueue(object):
         self._keystates = InputQueue.KEY_DOWN
 
 
-    def attach(self):
+    def attach(self) -> bool:
         """
         Start listening for input events
+
+        :return: True if successful
         """
         if self._attached:
-            return
+            return True
 
         if self._input_manager is None:
             raise ValueError('Input events are not supported on this device')
 
-        self._input_manager.add_callback(self._input_callback)
+        if not self._input_manager.add_callback(self._input_callback):
+            return False
+
         self._attached = True
         self._logger.debug("InputQueue attached")
+        return True
 
 
     @asyncio.coroutine

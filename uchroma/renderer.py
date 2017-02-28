@@ -144,10 +144,8 @@ class Renderer(HasTraits):
         a single item. Otherwise a list of all unexpired events
         is returned.
         """
-        if not self.has_key_input:
+        if not self.has_key_input or not self._input_queue.attach():
             raise ValueError('Input events are not supported for this device')
-
-        self._input_queue.attach()
 
         events = yield from self._input_queue.get_events()
         return events

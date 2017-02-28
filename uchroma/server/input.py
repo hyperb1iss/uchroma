@@ -59,7 +59,7 @@ class InputManager(object):
 
     def _open_input_devices(self):
         if self._opened:
-            return
+            return True
 
         for input_device in self._input_devices:
             try:
@@ -78,7 +78,7 @@ class InputManager(object):
         if len(self._event_devices) > 0:
             self._opened = True
 
-        return False
+        return self._opened
 
 
     @asyncio.coroutine
@@ -102,19 +102,23 @@ class InputManager(object):
         self._event_devices.clear()
 
 
-    def add_callback(self, callback):
+    def add_callback(self, callback) -> bool:
         """
         Add a new callback (coroutine) which will fire when new
         input events are received.
 
         :param callback: coroutine to add
+        :return: True if successful
         """
         if callback in self._event_callbacks:
-            return
+            return True
+
+        if not self._opened:
+            if not self._open_input_devices():
+                return False
 
         self._event_callbacks.append(callback)
-        if len(self._event_callbacks) == 1:
-            self._open_input_devices()
+        return True
 
 
     @asyncio.coroutine
