@@ -3,8 +3,6 @@ import re
 
 import hidapi
 
-from wrapt import synchronized
-
 from uchroma.util import ensure_future, get_logger, Signal
 from uchroma.version import __version__
 
@@ -53,7 +51,7 @@ class BaseUChromaDevice(object):
 
         self.power_state_changed = Signal()
 
-        self._prefs = PreferenceManager().get(self.serial_number)
+        self._prefs = None
 
         self._input_manager = None
         if input_devices is not None:
@@ -84,11 +82,12 @@ class BaseUChromaDevice(object):
 
 
     def close(self, force: bool=False):
-        if self.animation_manager is not None and self.is_animating:
-            return
+        if not force:
+            if self.animation_manager is not None and self.is_animating:
+                return
 
-        if self._ref_count > 0:
-            return
+            if self._ref_count > 0:
+                return
 
         if hasattr(self, '_dev') and self._dev is not None:
             try:
@@ -250,7 +249,6 @@ class BaseUChromaDevice(object):
         return result
 
 
-    @synchronized
     def run_report(self, report: RazerReport, delay: float=None) -> bool:
         """
         Runs a previously initialized RazerReport on the device
@@ -495,6 +493,8 @@ class BaseUChromaDevice(object):
         """
         Saved preferences for this device
         """
+        if self._prefs is None:
+            self._prefs = PreferenceManager().get(self.serial_number)
         return self._prefs
 
 
@@ -532,9 +532,10 @@ class BaseUChromaDevice(object):
 
 
     def __exit__(self, ex_type, ex_value, traceback):
-        self._ref_count -= 1
+        if hasattr(self, '_ref_count'):
+            self._ref_count -= 1
         self.close()
 
 
     def __del__(self):
-        self.__exit__(None, None, None)
+        self.close(force=True)
