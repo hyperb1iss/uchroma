@@ -147,8 +147,8 @@ class Hardware(BaseHardware):
 
 
     @classmethod
-    def _get_device(cls, product_id: int, hw_type) -> 'Hardware':
-        if product_id is None or hw_type is None:
+    def get_type(cls, hw_type) -> 'Hardware':
+        if hw_type is None:
             return None
 
         config_path = os.path.join(os.path.dirname(__file__), 'data')
@@ -156,6 +156,16 @@ class Hardware(BaseHardware):
 
         config = cls.load_yaml(yaml_path)
         assert config is not None
+
+        return config
+
+
+    @classmethod
+    def _get_device(cls, product_id: int, hw_type) -> 'Hardware':
+        if product_id is None:
+            return None
+
+        config = cls.get_type(hw_type)
 
         result = config.search('product_id', product_id)
         if result is None or len(result) == 0:

@@ -5,13 +5,16 @@ import tempfile
 
 from collections import Iterable, OrderedDict, Sequence
 from contextlib import contextmanager
+from itertools import chain
 
 from enum import Enum
 
 import ruamel.yaml as yaml
 
+from uchroma.util import ArgsDict
 
-class Configuration(Sequence, object):
+
+class Configuration(object):
     """
     Configuration hierarchy
 
@@ -101,8 +104,10 @@ class Configuration(Sequence, object):
     __repr__ = __str__
 
 
-    def __len__(self):
-        return len(self.__slots__)
+    def __iter__(self):
+        if self._children is not None and len(self._children) > 0:
+            return chain.from_iterable(self.flatten())
+        return iter((self,))
 
 
     @contextmanager
@@ -131,7 +136,7 @@ class Configuration(Sequence, object):
 
 
     @property
-    def children(self) -> str:
+    def children(self) -> tuple:
         """
         Children which inherit properties of this instance
         """
@@ -229,7 +234,7 @@ class Configuration(Sequence, object):
         :return: The list of hardware objects
         """
         flat = []
-        if self.children is not None and len(self.children) > 0:
+        if self.children is not None and isinstance(self.children, tuple) and len(self.children) > 0:
             flat.extend([child.flatten() for child in self.children])
         else:
             tmp = {}
@@ -237,7 +242,7 @@ class Configuration(Sequence, object):
                 if field not in ['parent', '_children']:
                     tmp[field] = self.get(field)
             return self.__class__(**tmp)
-        return flat
+        return tuple(flat)
 
 
     def _asdict(self) -> OrderedDict:
@@ -255,7 +260,7 @@ class Configuration(Sequence, object):
 
         fields = tuple([x for x in self.__slots__ if x not in ['parent', '_children']])
 
-        odict = OrderedDict([x for x in zip(fields, self) if x[1] is not None])
+        odict = ArgsDict({x: getattr(self, x) for x in fields})
 
         if self._children is not None:
             if deep:

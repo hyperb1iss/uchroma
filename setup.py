@@ -3,10 +3,11 @@ import re
 
 from pydoc import locate
 
-from setuptools import setup
+from setuptools import setup, Extension
 from setuptools.command.install import install
 
 from Cython.Build import cythonize
+from Cython.Distutils import build_ext
 
 RAZER_VENDOR_ID = 0x1532
 
@@ -28,15 +29,15 @@ class HWDBGenerator(install):
 
     @staticmethod
     def generate():
-        model = locate('uchroma.models.Model')
-        assert model is not None
+        hw = locate('uchroma.server.Hardware')
+        assert hw is not None
 
         hwdb = ""
-        for model_type in model.Type:
-            for mod in model_type.value:
+        for hw_type in hw.Type:
+            for model in hw.get_type(hw_type):
                 hwdb += ('uchroma:usb:v%04Xp%04X*\n'
                          ' UCHROMA_DEVICE=%s\n\n'
-                         % (RAZER_VENDOR_ID, mod.value[0], model_type.name.lower()))
+                         % (model.vendor_id, model.product_id, model.type.name.lower()))
 
         return hwdb
 
@@ -45,16 +46,18 @@ class HWDBGenerator(install):
         print(HWDBGenerator.generate())
 
 
+extensions = [
+    Extension('uchroma.server.crc', ['uchroma/server/crc.pyx'])]
+
 setup(name='uchroma',
       version=get_version(),
       description='Color control for Razer Chroma peripherals',
       url='https://github.com/cyanogen/uchroma',
       author='Steve Kondik',
       author_email='shade@chemlab.org',
-      platform='Linux',
       license='LGPL',
       packages=['uchroma', 'uchroma.fxlib', 'uchroma.client', 'uchroma.server'],
-      ext_modules = cythonize('uchroma/server/crc.pyx'),
+      ext_modules = extensions,
       entry_points={
           'console_scripts': [
               'uchroma = uchroma.client.client:run_client',
@@ -65,11 +68,12 @@ setup(name='uchroma',
                         'frozendict', 'gbulb', 'grapefruit', 'hidapi',
                         'hsluv', 'numpy', 'pydbus', 'pyudev', 'ruamel.yaml',
                         'scikit-image', 'traitlets', 'wrapt'],
-      cmdclass={'hwdb': HWDBGenerator},
+      cmdclass={'hwdb': HWDBGenerator, 'build_ext': build_ext},
       keywords='razer chroma uchroma driver keyboard mouse',
       include_package_data=True,
       setup_requires=['pytest-runner'],
       tests_require=['pytest'],
+      zip_safe=False,
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',
