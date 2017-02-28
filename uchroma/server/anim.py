@@ -129,7 +129,7 @@ class AnimationLoop(HasTraits):
         self._pause_event.set()
 
         self._logger = frame._driver.logger
-
+        self._error = False
         self.layers_changed = Signal()
 
 
@@ -228,6 +228,7 @@ class AnimationLoop(HasTraits):
                 self._dequeue_nowait(r_idx)
 
 
+    @asyncio.coroutine
     def _commit_layers(self):
         """
         Merge layers from all renderers and commit to the hardware
@@ -239,8 +240,14 @@ class AnimationLoop(HasTraits):
                 sorted(self.layers, key=lambda z: z.zindex) \
                 if layer is not None and layer.active_buf is not None]
 
-        if len(active_bufs) > 0:
-            self._frame.commit(active_bufs)
+        try:
+            if len(active_bufs) > 0:
+                self._frame.commit(active_bufs)
+
+        except (OSError, IOError):
+            self._error = True
+            yield from self._stop()
+
 
 
     @asyncio.coroutine
@@ -273,7 +280,7 @@ class AnimationLoop(HasTraits):
                     break
 
                 # compose and display the frame
-                self._commit_layers()
+                yield from self._commit_layers()
 
             # FIXME: Use "async with" on Python 3.6+
             yield from tick.tick()
@@ -284,6 +291,7 @@ class AnimationLoop(HasTraits):
         Invoked when the renderer exits
         """
         self._logger.info("AnimationLoop is cleaning up")
+        self._stop()
 
         self._anim_task = None
 
@@ -320,7 +328,7 @@ class AnimationLoop(HasTraits):
             if self.running:
                 layer.start()
 
-            self.layers_changed.fire('add', zindex, layer.renderer)
+            self.layers_changed.fire('add', zindex, layer.renderer, error=self._error)
 
             self._logger.info("Layer created, renderer=%s zindex=%d",
                               layer.renderer, zindex)
@@ -346,7 +354,7 @@ class AnimationLoop(HasTraits):
                 del tmp[zindex]
                 self._update_z(tmp)
 
-                self.layers_changed.fire('remove', zindex, layer_id)
+                self.layers_changed.fire('remove', zindex, layer_id, error=self._error)
 
                 self._logger.info("Layer %d removed", zindex)
 
@@ -378,6 +386,7 @@ class AnimationLoop(HasTraits):
             self._logger.error("No renderers were configured")
             return False
 
+        self._error = False
         self.running = True
 
         self._anim_task = ensure_future(self._animate())
@@ -450,6 +459,7 @@ class AnimationManager(HasTraits):
         self._driver = driver
         self._loop = None
         self._logger = driver.logger
+        self._error = False
 
         self.layers_changed = Signal()
         self.state_changed = Signal()
@@ -475,13 +485,17 @@ class AnimationManager(HasTraits):
 
 
     def _loop_running_changed(self, change):
-        self._driver.reset()
+        try:
+            self._driver.reset()
+        except (OSError, IOError):
+            self._error = True
         self._state_changed(change)
 
 
-    def _loop_layers_changed(self, *args):
+    def _loop_layers_changed(self, *args, error=False):
         self.layers_changed.fire(*args)
-        self._update_prefs()
+        if not error:
+            self._update_prefs()
 
 
     def _power_state_changed(self, brightness, suspended):

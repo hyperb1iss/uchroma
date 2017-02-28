@@ -33,6 +33,42 @@ def dev_mode_enabled():
     return os.environ.get('UCHROMA_DEV') is not None
 
 
+class ManagedService(object):
+    def __init__(self, parent, *args, **kwargs):
+        super(ManagedService, self).__init__(*args, **kwargs)
+
+        self._driver = parent.driver
+        self._logger = parent.driver.logger
+        self._path = parent.bus_path
+        self._bus = parent.bus
+        self._handle = None
+
+        parent.publish_changed.connect(self._publish_changed)
+
+        if parent._handle is not None:
+            self._publish_changed(True)
+
+
+    def publish(self):
+        if self._handle is None:
+            self._handle = self._bus.register_object(self._path, self, None)
+
+
+    def unpublish(self):
+        if self._handle is not None:
+            self._handle.unregister()
+            self._handle = None
+            return True
+        return False
+
+
+    def _publish_changed(self, published):
+        if published:
+            self.publish()
+        else:
+            self.unpublish()
+
+
 class DeviceAPI(object):
     """
     D-Bus API for device properties and common hardware features.
@@ -70,13 +106,18 @@ class DeviceAPI(object):
                       'dock_charge_color': 's'}
 
 
-    def __init__(self, driver):
+    def __init__(self, driver, bus):
         self._driver = driver
+        self._bus = bus
         self._logger = driver.logger
         self.__class__.dbus = self._get_descriptor()
         self._signal_input = False
         self._input_task = None
         self._input_queue = None
+        self._services = []
+        self._handle = None
+
+        self.publish_changed = Signal()
 
         if self._logger.isEnabledFor(logging.DEBUG):
             self._logger.debug('Device API attached: %s', self.__class__.dbus)
@@ -101,14 +142,52 @@ class DeviceAPI(object):
             return super(DeviceAPI, self).__getattribute__(name)
 
 
-    @staticmethod
-    def get_bus_path(driver):
+    @property
+    def bus_path(self):
         """
         Get the bus path for all services related to this device.
         """
         return '/org/chemlab/UChroma/%s/%04x_%04x_%02d' % \
-            (driver.device_type.value, driver.vendor_id,
-             driver.product_id, driver.device_index)
+            (self._driver.device_type.value, self._driver.vendor_id,
+             self._driver.product_id, self._driver.device_index)
+
+
+    @property
+    def bus(self):
+        return self._bus
+
+
+    @property
+    def driver(self):
+        return self._driver
+
+
+    def publish(self):
+        if self._handle is not None:
+            return
+
+        self._handle = self._bus.register_object(self.bus_path, self, None)
+
+        if hasattr(self.driver, 'fx_manager') and self.driver.fx_manager is not None:
+            self._services.append(FXManagerAPI(self))
+
+        if hasattr(self.driver, 'animation_manager') and self.driver.animation_manager is not None:
+            self._services.append(AnimationManagerAPI(self))
+
+        if hasattr(self.driver, 'led_manager') and self.driver.led_manager is not None:
+            self._services.append(LEDManagerAPI(self))
+
+        self.publish_changed.fire(True)
+
+
+    def unpublish(self):
+        if self._handle is None:
+            return
+
+        self.publish_changed.fire(False)
+
+        self._handle.unregister()
+        self._handle = None
 
 
     @asyncio.coroutine
@@ -158,14 +237,6 @@ class DeviceAPI(object):
     @property
     def FrameDebugOpts(self) -> dict:
         return dbus_prepare(self._driver.frame_control.debug_opts, variant=True)[0]
-
-
-    @property
-    def bus_path(self):
-        """
-        The bus path of this device.
-        """
-        return DeviceAPI.get_bus_path(self)
 
 
     PropertiesChanged = signal()
@@ -251,7 +322,7 @@ class DeviceAPI(object):
         return builder.build()
 
 
-class LEDManagerAPI(object):
+class LEDManagerAPI(ManagedService):
     """
         <node>
           <interface name='org.chemlab.UChroma.LEDManager'>
@@ -275,9 +346,9 @@ class LEDManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver):
-        self._driver = driver
-        self._logger = driver.logger
+    def __init__(self, parent):
+        super(LEDManagerAPI, self).__init__(parent)
+
         self._driver.led_manager.led_changed.connect(self._led_changed)
 
 
@@ -323,7 +394,7 @@ class LEDManagerAPI(object):
     LEDChanged = signal()
 
 
-class FXManagerAPI(object):
+class FXManagerAPI(ManagedService):
     """
         <node>
           <interface name='org.chemlab.UChroma.FXManager'>
@@ -342,10 +413,10 @@ class FXManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver):
-        self._driver = driver
-        self._fx_manager = driver.fx_manager
-        self._logger = driver.logger
+    def __init__(self, parent):
+        super(FXManagerAPI, self).__init__(parent)
+
+        self._fx_manager = self._driver.fx_manager
 
         self._current_fx = None
         self._available_fx = dbus_prepare({k: v.class_traits() \
@@ -388,46 +459,37 @@ class FXManagerAPI(object):
     PropertiesChanged = signal()
 
 
-class LayerAPI(TraitsPropertiesMixin, object):
+class LayerAPI(TraitsPropertiesMixin, ManagedService):
 
-    def __init__(self, layer, bus, path, logger, *args, **kwargs):
-        super(LayerAPI, self).__init__(*args, **kwargs)
-
-        self._logger = logger
+    def __init__(self, parent, layer, *args, **kwargs):
         self._delegate = layer
-        self._bus = bus
-        self._path = path
-
         self._zindex = layer.zindex
-        self._handle = None
+
+        super(LayerAPI, self).__init__(parent, *args, **kwargs)
 
         self.__class__.dbus = None
 
         self.layer_stopped = Signal()
 
-        if layer.running:
-            self.register()
-
         self._delegate.observe(self._z_changed, names=['zindex'])
         self._delegate.observe(self._state_changed, names=['running'])
 
-        if self._logger.isEnabledFor(logging.DEBUG):
-            self._logger.debug('Layer node created: %s', self.__class__.dbus)
+        self._logger.debug('Layer node created: %s', self.__class__.dbus)
 
 
     def _z_changed(self, change):
         if change.old != change.new:
-            self.register()
+            self.publish()
 
 
     def _state_changed(self, change):
         if change.old != change.new:
             if change.new:
-                self.register()
+                self.publish()
             elif self._handle != None:
                 self._logger.info("Layer stopped zindex=%d (%s)",
                                   self._zindex, self._delegate.meta)
-                self.unregister()
+                self.unpublish()
                 self.layer_stopped.fire(self)
 
 
@@ -451,8 +513,11 @@ class LayerAPI(TraitsPropertiesMixin, object):
         return self._zindex
 
 
-    def register(self):
-        self.unregister()
+    def publish(self):
+        if not self._delegate.running:
+            return
+
+        self.unpublish()
 
         self.__class__.dbus = self._get_descriptor()
 
@@ -461,10 +526,8 @@ class LayerAPI(TraitsPropertiesMixin, object):
         self._logger.info("Registered layer API: %s", self.layer_path)
 
 
-    def unregister(self):
-        if self._handle is not None:
-            self._handle.unregister()
-            self._handle = None
+    def unpublish(self):
+        if super().unpublish():
             self._logger.info("Unregisted layer API: %s", self.layer_path)
 
 
@@ -487,7 +550,7 @@ class LayerAPI(TraitsPropertiesMixin, object):
         return builder.build()
 
 
-class AnimationManagerAPI(object):
+class AnimationManagerAPI(ManagedService):
     """
         <node>
           <interface name='org.chemlab.UChroma.AnimationManager'>
@@ -524,13 +587,14 @@ class AnimationManagerAPI(object):
         </node>
     """
 
-    def __init__(self, driver, bus, path):
-        assert driver.animation_manager is not None, 'Animations not supported for this device'
-        self._driver = driver
-        self._bus = bus
-        self._path = path
-        self._logger = driver.logger
-        self._animgr = driver.animation_manager
+    def __init__(self, parent):
+        super(AnimationManagerAPI, self).__init__(parent)
+
+        assert self._driver.animation_manager is not None, \
+                'Animations not supported for this device'
+
+        self._parent = parent
+        self._animgr = self._driver.animation_manager
         self._layers = []
         self._state = None
 
@@ -548,7 +612,7 @@ class AnimationManagerAPI(object):
 
     def _layers_changed(self, action, zindex=None, layer=None):
         if action == 'add':
-            layerapi = LayerAPI(layer, self._bus, self._path, self._logger)
+            layerapi = LayerAPI(self._parent, layer)
             layerapi.layer_stopped.connect(self._layer_stopped)
             self._layers.append(layerapi)
 
@@ -639,57 +703,48 @@ class DeviceManagerAPI(object):
         """
         if self._dm.devices is None:
             return []
-        return tuple(self._devs.keys())
+        return tuple([x.bus_path for x in self._devs.values()])
 
 
     DevicesChanged = signal()
 
 
     def _publish_device(self, device):
-        devapi = DeviceAPI(device)
+        devapi = DeviceAPI(device, self._bus)
+        devapi.publish()
 
-        path = DeviceAPI.get_bus_path(device)
+        self._devs[device.key] = devapi
 
-        self._devs[path] = []
-        self._devs[path].append(self._bus.register_object(path, devapi, None))
-
-        if hasattr(device, 'fx_manager') and device.fx_manager is not None:
-            self._devs[path].append(self._bus.register_object( \
-                path, FXManagerAPI(device), None))
-
-        if hasattr(device, 'animation_manager') and device.animation_manager is not None:
-            self._devs[path].append(self._bus.register_object( \
-                path, AnimationManagerAPI(device, self._bus, path), None))
-
-        if hasattr(device, 'led_manager') and device.led_manager is not None:
-            self._devs[path].append(self._bus.register_object( \
-                path, LEDManagerAPI(device), None))
+        return devapi.bus_path
 
 
     def _unpublish_device(self, device):
-        path = DeviceAPI.get_bus_path(device)
+        devapi = self._devs.pop(device.key, None)
+        if devapi is not None:
+            devapi.unpublish()
+            return devapi.bus_path
 
-        if path in self._devs:
-            for obj in self._devs[path]:
-                obj.unregister()
-            self._devs.pop(path)
+        return None
 
 
     @asyncio.coroutine
     def _dm_callback(self, action, device):
         self._logger.info('%s: %s', action, device)
 
+        path = None
+
         if action == 'add':
-            self._publish_device(device)
+            path = self._publish_device(device)
             device.restore_prefs()
 
         elif action == 'remove':
-            self._unpublish_device(device)
+            path = self._unpublish_device(device)
 
         else:
             return
 
-        self.DevicesChanged(action, DeviceAPI.get_bus_path(device))
+        if path is not None:
+            self.DevicesChanged(action, path)
 
 
     def run(self):

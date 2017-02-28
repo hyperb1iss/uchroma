@@ -174,10 +174,9 @@ class RazerReport(object):
 
                 retry_count -= 1
 
-            except OSError as err:
-                self._logger.exception("Exception while sending a feature report", exc_info=err)
+            except (OSError, IOError):
                 self._status = Status.OSERROR
-                return False
+                raise
 
         return False
 

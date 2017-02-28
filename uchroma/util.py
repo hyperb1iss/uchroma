@@ -327,14 +327,14 @@ class Signal(object):
         self._handlers.add(handler)
 
 
-    def fire(self, *args):
+    def fire(self, *args, **kwargs):
         """
         Fire the signal, invoking all connected handlers
 
         :params args: Arguments to call handlers with
         """
         for handler in self._handlers:
-            handler(*args)
+            handler(*args, **kwargs)
 
 
 class Singleton(type):
