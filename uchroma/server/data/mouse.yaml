@@ -24,7 +24,7 @@ children:
   product_id: 0x0043
 
 - !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame]
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame, rainbow]
   children:
 
   - !device-config

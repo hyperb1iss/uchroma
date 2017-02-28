@@ -133,7 +133,8 @@ class UChromaDeviceManager(metaclass=Singleton):
                                    Hardware.Type.LAPTOP):
                 if devinfo.interface_number != 2:
                     continue
-            elif hardware.type == Hardware.Type.MOUSEPAD:
+            elif hardware.type in (Hardware.Type.MOUSE,
+                                   Hardware.Type.MOUSEPAD):
                 if devinfo.interface_number != 1:
                     continue
             else:
