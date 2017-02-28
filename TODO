@@ -3,12 +3,10 @@ Various things that need done:
 MUST:
 
  * Actually do a release
- * D-Bus API and service
  * Metadata system for effect module discovery to allow external plugins easily
  * GNOME frontend
  * Key customization and macro bindings
  * Zone support (constrain effects to keyboard, media keys, touchpad, etc)
- * Animation parameter support for the commandline tool
  * A "generic" key-to-matrix mapping for other keyboards besides the Blade Pro
  * Screensaver / DPMS monitoring
 
@@ -24,13 +22,7 @@ WISHLIST:
 Neverending items:
 
  * More docs
- * Finish "extended matrix" support- I don't have any test hardware though!
  * Testing on more hardware!
- * Get rid of hardcoding of interface numbers and read the report descriptors
- * Fix the key used in the devices dict, it will break if multiple devices with the same
-   model id are connected
- * Add more features to the commandline tool
- * Test coverage!
  * Developer needs additional beer! (PayPal: shade@chemlab.org)
  * All the things!
 
