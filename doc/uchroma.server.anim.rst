@@ -1,7 +1,7 @@
-uchroma.device_base module
+uchroma.server.anim module
 ==========================
 
-.. automodule:: uchroma.device_base
+.. automodule:: uchroma.server.anim
     :members:
     :undoc-members:
     :show-inheritance:

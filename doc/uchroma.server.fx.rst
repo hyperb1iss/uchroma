@@ -1,7 +1,7 @@
-uchroma.byte_args module
+uchroma.server.fx module
 ========================
 
-.. automodule:: uchroma.byte_args
+.. automodule:: uchroma.server.fx
     :members:
     :undoc-members:
     :show-inheritance:

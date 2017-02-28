@@ -1,7 +1,7 @@
-uchroma.report module
+uchroma.traits module
 =====================
 
-.. automodule:: uchroma.report
+.. automodule:: uchroma.traits
     :members:
     :undoc-members:
     :show-inheritance:

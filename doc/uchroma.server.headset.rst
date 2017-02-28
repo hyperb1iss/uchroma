@@ -1,7 +1,7 @@
-uchroma.device_manager module
+uchroma.server.headset module
 =============================
 
-.. automodule:: uchroma.device_manager
+.. automodule:: uchroma.server.headset
     :members:
     :undoc-members:
     :show-inheritance:

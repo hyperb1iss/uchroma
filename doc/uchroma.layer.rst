@@ -1,7 +1,7 @@
-uchroma.frame module
+uchroma.layer module
 ====================
 
-.. automodule:: uchroma.frame
+.. automodule:: uchroma.layer
     :members:
     :undoc-members:
     :show-inheritance:

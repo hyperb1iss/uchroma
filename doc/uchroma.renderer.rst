@@ -1,7 +1,7 @@
-uchroma.keyboard module
+uchroma.renderer module
 =======================
 
-.. automodule:: uchroma.keyboard
+.. automodule:: uchroma.renderer
     :members:
     :undoc-members:
     :show-inheritance:

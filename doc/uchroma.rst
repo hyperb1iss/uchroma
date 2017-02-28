@@ -6,24 +6,27 @@ uchroma package
     :undoc-members:
     :show-inheritance:
 
+Subpackages
+-----------
+
+.. toctree::
+
+    uchroma.client
+    uchroma.fxlib
+    uchroma.server
+
 Submodules
 ----------
 
 .. toctree::
 
-   uchroma.byte_args
+   uchroma.blending
    uchroma.color
-   uchroma.device
-   uchroma.device_base
-   uchroma.device_manager
-   uchroma.frame
-   uchroma.fx
-   uchroma.headset
-   uchroma.keyboard
-   uchroma.led
-   uchroma.models
-   uchroma.mouse
-   uchroma.report
+   uchroma.dbus_utils
+   uchroma.input_queue
+   uchroma.layer
+   uchroma.renderer
+   uchroma.traits
    uchroma.util
    uchroma.version
 
