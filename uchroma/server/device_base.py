@@ -347,7 +347,7 @@ class BaseUChromaDevice(object):
             if version is None:
                 self._firmware_version = '(unknown)'
             else:
-                self._firmware_version = 'v%d.%d' % (version[0], version[1])
+                self._firmware_version = 'v%d.%d' % (int(version[0]), int(version[1]))
 
         return self._firmware_version
 

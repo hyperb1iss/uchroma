@@ -146,8 +146,7 @@ class KrakenFX(FXModule):
 
             :return True if successful:
             """
-            args = []
-            args.append(self.colors)
+            args = [self.colors]
 
             bits = EffectBits()
             bits.on = True

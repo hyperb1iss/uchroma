@@ -126,12 +126,10 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
                 if item is None and is_variant:
                     continue
                 r_obj, r_sig = dbus_prepare(item, variant=is_variant)
-                if r_obj is None and is_variant:
+                if r_obj is None:
                     continue
-                if is_variant:
-                    tmp.append(r_sig, r_obj)
-                else:
-                    tmp.append(r_obj)
+
+                tmp.append(r_obj)
 
             if is_variant:
                 sig += 'v'

@@ -100,7 +100,7 @@ class Renderer(HasTraits):
         input is needed), then the implementation should yield until
         ready.
 
-        :param frame: The current empty frame to be drawn
+        :param layer: Layer to draw
         :param timestamp: The timestamp of this frame
 
         :return: True if the frame has been drawn
