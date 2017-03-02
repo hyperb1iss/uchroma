@@ -12,6 +12,7 @@ from uchroma.util import ensure_future, get_logger, LOG_PROTOCOL_TRACE, LOG_TRAC
 
 from .dbus import DeviceManagerAPI
 from .device_manager import UChromaDeviceManager
+from .screensaver import ScreenSaverWatcher
 
 
 class UChromaServer(object):
@@ -61,12 +62,15 @@ class UChromaServer(object):
         atexit.register(UChromaServer.exit, self._loop)
 
         dbus = DeviceManagerAPI(dm, self._logger)
+        screensaver = ScreenSaverWatcher()
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             self._loop.add_signal_handler(sig, self._shutdown_callback)
 
         try:
             dbus.run()
+            screensaver.start()
+
             ensure_future(dm.monitor_start(), loop=self._loop)
 
             self._loop.run_forever()
@@ -77,6 +81,8 @@ class UChromaServer(object):
         finally:
             for sig in (signal.SIGTERM, signal.SIGINT):
                 self._loop.remove_signal_handler(sig)
+
+            screensaver.stop()
 
             self._loop.run_until_complete(asyncio.wait( \
                     [dm.close_devices(), dm.monitor_stop()],
