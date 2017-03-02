@@ -9,7 +9,7 @@ import numpy as np
 from uchroma.util import LOG_PROTOCOL_TRACE, smart_delay
 
 from .byte_args import ByteArgs
-from .crc import fast_crc
+from ._crc import fast_crc
 
 
 # response codes

@@ -9,6 +9,8 @@ from uchroma.blending import BlendOp
 from uchroma.color import colorarg, ColorType, to_color
 from uchroma.util import clamp, get_logger
 
+from uchroma._layer import color_to_np, set_color
+
 
 class Layer(object):
     """
@@ -165,9 +167,9 @@ class Layer(object):
 
         :return: This layer instance
         """
-        Layer._set_color(
+        set_color(
             self.matrix, (np.array([row,] * len(color)), np.arange(col, col + len(color))),
-            Layer._color_to_np(*color))
+            color_to_np(*color))
 
         return self
 
@@ -187,7 +189,7 @@ class Layer(object):
     def _draw(self, rr, cc, color, alpha):
         if rr is None or rr.ndim == 0:
             return
-        Layer._set_color(self.matrix, (rr, cc), Layer._color_to_np(color), alpha)
+        set_color(self.matrix, (rr, cc), color_to_np(color), alpha)
 
 
     @colorarg
@@ -262,58 +264,3 @@ class Layer(object):
         self._draw(rr, cc, color, aa)
 
         return self
-
-
-    @staticmethod
-    def _color_to_np(*colors: ColorType):
-        return np.array([tuple(x) for x in colors], dtype=np.float)
-
-
-    # a few methods pulled from skimage-dev for blending support
-    # remove these when 1.9 is released
-
-    @staticmethod
-    def _coords_inside_image(rr, cc, shape, val=None):
-        mask = (rr >= 0) & (rr < shape[0]) & (cc >= 0) & (cc < shape[1])
-        if val is None:
-            return rr[mask], cc[mask]
-        else:
-            return rr[mask], cc[mask], val[mask]
-
-
-    @staticmethod
-    def _set_color(img, coords, color, alpha=1):
-        rr, cc = coords
-
-        if img.ndim == 2:
-            img = img[..., np.newaxis]
-
-        color = np.array(color, ndmin=1, copy=False)
-
-        if img.shape[-1] != color.shape[-1]:
-            raise ValueError('Color shape ({}) must match last '
-                             'image dimension ({}). color=({})'.format( \
-                                     color.shape[0], img.shape[-1], color))
-
-        if np.isscalar(alpha):
-            alpha = np.ones_like(rr) * alpha
-
-        rr, cc, alpha = Layer._coords_inside_image(rr, cc, img.shape, val=alpha)
-
-        color = color * alpha[..., np.newaxis]
-
-        if np.all(img[rr, cc] == 0):
-            img[rr, cc] = color
-        else:
-
-            src_alpha = color[..., -1][..., np.newaxis]
-            src_rgb = color[..., :-1]
-
-            dst_alpha = img[rr, cc][..., -1][..., np.newaxis] * 0.75
-            dst_rgb = img[rr, cc][..., :-1]
-
-            out_alpha = src_alpha + dst_alpha * (1 - src_alpha)
-            out_rgb = (src_rgb * src_alpha + dst_rgb *dst_alpha * (1- src_alpha)) / out_alpha
-
-            img[rr, cc] = np.clip(np.hstack([out_rgb, out_alpha]), a_min=0, a_max=1)
-

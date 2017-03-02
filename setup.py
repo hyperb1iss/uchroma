@@ -47,7 +47,9 @@ class HWDBGenerator(install):
 
 
 extensions = [
-    Extension('uchroma.server.crc', ['uchroma/server/crc.pyx'])]
+    Extension('uchroma.server._crc', ['uchroma/server/_crc.pyx']),
+    Extension('uchroma._layer', ['uchroma/_layer.pyx']),
+    Extension('uchroma.fxlib._plasma', ['uchroma/fxlib/_plasma.pyx'], extra_compile_args=['-O3'])]
 
 setup(name='uchroma',
       version=get_version(),
@@ -58,6 +60,7 @@ setup(name='uchroma',
       license='LGPL',
       packages=['uchroma', 'uchroma.fxlib', 'uchroma.client', 'uchroma.server'],
       ext_modules = extensions,
+      extra_compile_args=['-O3'],
       entry_points={
           'console_scripts': [
               'uchroma = uchroma.client.client:run_client',
