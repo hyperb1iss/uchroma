@@ -12,15 +12,15 @@ install_library: purge_pycache
 	python3 setup.py install --root=$(DESTDIR)
 
 install_udev:
-	install -m 644 -v -D udev/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
+	install -m 644 -v -D install/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
 	$(eval HWDB := $(shell mktemp))
 	python3 setup.py -q hwdb > $(HWDB)
 	install -m 644 -v -D $(HWDB) $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
 	@rm -v -f $(HWDB)
 
 install_service:
-	install -m 644 -v -D systemd/org.chemlab.UChroma.service $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
-	install -m 644 -v -D systemd/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
+	install -m 644 -v -D install/org.chemlab.UChroma.service $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
+	install -m 644 -v -D install/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 
 uninstall_library:
 	$(eval UCPATH := $(shell find $(DESTDIR)/usr/local/lib/python3* -maxdepth 2 -name "uchroma"))
