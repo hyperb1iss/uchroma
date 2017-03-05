@@ -97,11 +97,6 @@ class RazerReport(object):
             self._crc = crc
 
 
-    def _ensure_open(self):
-        if self._driver.hid is None:
-            raise ValueError('No valid HID device!')
-
-
     def _hexdump(self, data, tag=""):
         if self._logger.isEnabledFor(LOG_PROTOCOL_TRACE):
             self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
@@ -137,46 +132,46 @@ class RazerReport(object):
 
         retry_count = 3
 
-        while retry_count > 0:
-            try:
-                self._ensure_open()
-                req = self._pack_request()
-                self._hexdump(req, '--> ')
-                if self._remaining_packets == 0:
+        with self._driver.device_open():
+            while retry_count > 0:
+                try:
+                    req = self._pack_request()
+                    self._hexdump(req, '--> ')
+                    if self._remaining_packets == 0:
+                        self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
+                                                                 self._remaining_packets)
+                    self._driver.hid.send_feature_report(req, self.REQ_REPORT_ID)
+                    if self._remaining_packets > 0:
+                        return True
+
                     self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
                                                              self._remaining_packets)
-                self._driver.hid.send_feature_report(req, self.REQ_REPORT_ID)
-                if self._remaining_packets > 0:
-                    return True
+                    resp = self._driver.hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
+                    self._hexdump(resp, '<-- ')
+                    if self._unpack_response(resp):
+                        if timeout_cb is not None:
+                            timeout_cb(self.status, None)
+                        return True
 
-                self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
-                                                         self._remaining_packets)
-                resp = self._driver.hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-                self._hexdump(resp, '<-- ')
-                if self._unpack_response(resp):
-                    if timeout_cb is not None:
-                        timeout_cb(self.status, None)
-                    return True
+                    if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
+                        self._logger.error("Command failed with status %s",
+                                           self.status.name)
+                        return False
 
-                if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
-                    self._logger.error("Command failed with status %s",
-                                       self.status.name)
-                    return False
+                    if timeout_cb is not None and self.status == Status.TIMEOUT:
+                        timeout_cb(self.status, self.result)
+                        return False
 
-                if timeout_cb is not None and self.status == Status.TIMEOUT:
-                    timeout_cb(self.status, self.result)
-                    return False
+                    self._logger.warning("Retrying request due to status %s (%d)",
+                                         self.status.name, retry_count)
 
-                self._logger.warning("Retrying request due to status %s (%d)",
-                                     self.status.name, retry_count)
+                    time.sleep(0.1)
 
-                time.sleep(0.1)
+                    retry_count -= 1
 
-                retry_count -= 1
-
-            except (OSError, IOError):
-                self._status = Status.OSERROR
-                raise
+                except (OSError, IOError):
+                    self._status = Status.OSERROR
+                    raise
 
         return False
 

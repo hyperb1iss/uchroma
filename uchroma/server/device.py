@@ -1,7 +1,5 @@
 import hidapi
 
-from uchroma.util import ValueAnimator
-
 from .device_base import BaseUChromaDevice
 from .frame import Frame
 from .fx import FXManager
@@ -26,9 +24,6 @@ class UChromaDevice(BaseUChromaDevice):
         self._led_manager = LEDManager(self)
 
         self._frame_control = None
-
-        self._brightness_animator = ValueAnimator(self._brightness_callback)
-        self._suspended = False
 
 
     def get_led(self, led_type: LEDType) -> LED:
@@ -62,7 +57,7 @@ class UChromaDevice(BaseUChromaDevice):
         return self._frame_control
 
 
-    def _set_brightness(self, level: float):
+    def _set_brightness(self, level: float) -> bool:
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
             self.get_led(LEDType.SCROLL_WHEEL).brightness = level
 
@@ -71,6 +66,8 @@ class UChromaDevice(BaseUChromaDevice):
 
         else:
             self.get_led(LEDType.BACKLIGHT).brightness = level
+
+        return True
 
 
     def _get_brightness(self) -> float:
@@ -81,74 +78,6 @@ class UChromaDevice(BaseUChromaDevice):
             return self.get_led(LEDType.LOGO).brightness
 
         return self.get_led(LEDType.BACKLIGHT).brightness
-
-
-    @property
-    def suspended(self):
-        """
-        The power state of the device, true if suspended
-        """
-        return self._suspended
-
-
-    def suspend(self):
-        """
-        Suspend the device
-
-        Performs any actions necessary to suspend the device. By default,
-        the current brightness level is saved and set to zero.
-        """
-        if self._suspended:
-            return
-
-        self.preferences.brightness = self.brightness
-        self._brightness_animator.animate(self.brightness, 0)
-        self._suspended = True
-
-
-    def resume(self):
-        """
-        Resume the device
-
-        Performs any actions necessary to resume the device. By default,
-        the saved brightness level is restored.
-        """
-        if not self._suspended:
-            return
-
-        self._suspended = False
-        self.brightness = self.preferences.brightness
-
-
-    @property
-    def brightness(self):
-        """
-        The current brightness level of the device lighting
-        """
-        if self._suspended:
-            return self.preferences.brightness
-
-        return self._get_brightness()
-
-
-    def _brightness_callback(self, level):
-        self._set_brightness(level)
-
-        suspended = self.suspended and level == 0
-        self.power_state_changed.fire(level, suspended)
-
-
-    @brightness.setter
-    def brightness(self, level: float):
-        """
-        Set the brightness level of the main device lighting
-
-        :param level: Brightness level, 0-100
-        """
-        if not self._suspended:
-            self._brightness_animator.animate(self.brightness, level)
-
-        self.preferences.brightness = level
 
 
     @property

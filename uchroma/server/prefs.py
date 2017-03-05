@@ -76,7 +76,7 @@ class PreferenceManager(metaclass=Singleton):
         if result is None or len(result) == 0:
             result = Preferences(parent=self._root, serial=serial)
 
-        if len(result) == 1:
+        if isinstance(result, list) and len(result) > 0:
             return result[0]
 
         return result

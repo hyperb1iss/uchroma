@@ -448,13 +448,13 @@ class ValueAnimator(object):
         while current != end:
             with tick:
                 current = clamp(current + step, min(start, end), max(start, end))
-                self._callback(current)
+                yield from self._callback(current)
                 yield from tick.tick()
 
         self._task = None
 
 
-    def animate(self, start: float, end: float):
+    def animate(self, start: float, end: float, done_cb=None):
         """
         Executes the given callback over the period of max_time
         at the given FPS, to animate from start to end.
@@ -467,8 +467,7 @@ class ValueAnimator(object):
             if self._task is not None:
                 self._task.cancel()
             self._task = ensure_future(self._animate(start, end))
+            if done_cb is not None:
+                self._task.add_done_callback(done_cb)
         else:
             self._callback(end)
-
-
-

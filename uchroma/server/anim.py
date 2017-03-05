@@ -328,10 +328,11 @@ class AnimationLoop(HasTraits):
             if self.running:
                 layer.start()
 
-            self.layers_changed.fire('add', zindex, layer.renderer, error=self._error)
+        self._logger.info("Layer created, renderer=%s zindex=%d",
+                          layer.renderer, zindex)
 
-            self._logger.info("Layer created, renderer=%s zindex=%d",
-                              layer.renderer, zindex)
+        self.layers_changed.fire('add', zindex, layer.renderer, error=self._error)
+
         return True
 
 

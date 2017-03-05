@@ -474,9 +474,6 @@ class LayerAPI(TraitsPropertiesMixin, ManagedService):
         self._delegate.observe(self._z_changed, names=['zindex'])
         self._delegate.observe(self._state_changed, names=['running'])
 
-        self._logger.debug('Layer node created: %s', self.__class__.dbus)
-
-
     def _z_changed(self, change):
         if change.old != change.new:
             self.publish()
@@ -524,6 +521,8 @@ class LayerAPI(TraitsPropertiesMixin, ManagedService):
         self._zindex = self._delegate.zindex
         self._handle = self._bus.register_object(self.layer_path, self, None)
         self._logger.info("Registered layer API: %s", self.layer_path)
+        self._logger.debug('%s', self.__class__.dbus)
+
 
 
     def unpublish(self):

@@ -1,9 +1,14 @@
 import asyncio
+import functools
 import re
 
-import hidapi
+from concurrent import futures
+from contextlib import contextmanager
 
-from uchroma.util import ensure_future, get_logger, Signal
+import hidapi
+from wrapt import synchronized
+
+from uchroma.util import ensure_future, get_logger, Signal, ValueAnimator
 from uchroma.version import __version__
 
 from .anim import AnimationManager
@@ -44,14 +49,13 @@ class BaseUChromaDevice(object):
         self._dev = None
         self._serial_number = None
         self._firmware_version = None
+        self._last_cmd_time = None
+        self._prefs = None
 
         self._offline = False
-
-        self._last_cmd_time = None
+        self._suspended = False
 
         self.power_state_changed = Signal()
-
-        self._prefs = None
 
         self._input_manager = None
         if input_devices is not None:
@@ -61,9 +65,12 @@ class BaseUChromaDevice(object):
         if self.width > 0 and self.height > 0:
             self._animation_manager = AnimationManager(self)
 
+        self._brightness_animator = ValueAnimator(self._update_brightness)
+
         self._fx_manager = None
 
         self._ref_count = 0
+        self._executor = futures.ThreadPoolExecutor(max_workers=1)
 
 
     @asyncio.coroutine
@@ -78,7 +85,7 @@ class BaseUChromaDevice(object):
             if hasattr(self, '_input_manager') and self._input_manager is not None:
                 yield from self._input_manager.shutdown()
 
-        self.close()
+        self.close(True)
 
 
     def close(self, force: bool=False):
@@ -177,6 +184,93 @@ class BaseUChromaDevice(object):
         self._last_cmd_time = last_cmd_time
 
 
+    def _set_brightness(self, level: float) -> bool:
+        return False
+
+
+    def _get_brightness(self) -> float:
+        return 0.0
+
+
+    @asyncio.coroutine
+    def _update_brightness(self, level):
+        yield from ensure_future(asyncio.get_event_loop().run_in_executor( \
+                self._executor, functools.partial(self._set_brightness, level)))
+
+        suspended = self.suspended and level == 0
+        self.power_state_changed.fire(level, suspended)
+
+
+    @property
+    def suspended(self):
+        """
+        The power state of the device, true if suspended
+        """
+        return self._suspended
+
+
+    def suspend(self, fast=False):
+        """
+        Suspend the device
+
+        Performs any actions necessary to suspend the device. By default,
+        the current brightness level is saved and set to zero.
+        """
+        if self._suspended:
+            return
+
+        self.preferences.brightness = self.brightness
+        if fast:
+            self._set_brightness(0)
+        else:
+            if self._device_open():
+                self._brightness_animator.animate(self.brightness, 0,
+                                                  done_cb=self._done_cb)
+
+        self._suspended = True
+
+
+    def resume(self):
+        """
+        Resume the device
+
+        Performs any actions necessary to resume the device. By default,
+        the saved brightness level is restored.
+        """
+        if not self._suspended:
+            return
+
+        self._suspended = False
+        self.brightness = self.preferences.brightness
+
+
+    @property
+    def brightness(self):
+        """
+        The current brightness level of the device lighting
+        """
+        if self._suspended:
+            return self.preferences.brightness
+
+        return self._get_brightness()
+
+
+
+    @brightness.setter
+    def brightness(self, level: float):
+        """
+        Set the brightness level of the main device lighting
+
+        :param level: Brightness level, 0-100
+        """
+        if not self._suspended:
+            if self._device_open():
+                self._brightness_animator.animate(self.brightness, level,
+                                                  done_cb=self._done_cb)
+
+        self.preferences.brightness = level
+
+
     def _ensure_open(self) -> bool:
         try:
             if self._dev is None:
@@ -249,6 +343,7 @@ class BaseUChromaDevice(object):
         return result
 
 
+    @synchronized
     def run_report(self, report: RazerReport, delay: float=None) -> bool:
         """
         Runs a previously initialized RazerReport on the device
@@ -257,13 +352,8 @@ class BaseUChromaDevice(object):
         :param delay: custom delay to enforce between commands
         :return: True if successful
         """
-        try:
-            if self._ensure_open():
-                return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
-        finally:
-            self.close()
-
-        return False
+        with self.device_open():
+            return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
 
 
     def run_command(self, command: BaseCommand, *args, transaction_id: int=0xFF,
@@ -526,15 +616,27 @@ class BaseUChromaDevice(object):
              self.product_id, self.device_index)
 
 
-    def __enter__(self):
+    def _device_open(self):
         self._ref_count += 1
-        return self
+        return self._ensure_open()
 
 
-    def __exit__(self, ex_type, ex_value, traceback):
-        if hasattr(self, '_ref_count'):
-            self._ref_count -= 1
+    def _device_close(self):
+        self._ref_count -= 1
         self.close()
+
+
+    def _done_cb(self, future):
+        self._device_close()
+
+
+    @contextmanager
+    def device_open(self):
+        try:
+            if self._device_open():
+                yield
+        finally:
+            self._device_close()
 
 
     def __del__(self):
