@@ -3,13 +3,18 @@ import re
 
 from pydoc import locate
 
-from setuptools import setup, Extension
+from setuptools import command, setup, Extension
 from setuptools.command.install import install
-
-from Cython.Build import cythonize
-from Cython.Distutils import build_ext
+from setuptools.dist import Distribution
 
 RAZER_VENDOR_ID = 0x1532
+
+
+# Make sure Cython is installed first
+Distribution(dict(setup_requires=['cython>=0.24']))
+
+from Cython.Distutils import build_ext
+from Cython.Build import cythonize
 
 
 def get_version():
@@ -47,9 +52,9 @@ class HWDBGenerator(install):
 
 
 extensions = [
-    Extension('uchroma.server._crc', ['uchroma/server/_crc.pyx']),
-    Extension('uchroma._layer', ['uchroma/_layer.pyx']),
-    Extension('uchroma.fxlib._plasma', ['uchroma/fxlib/_plasma.pyx'], extra_compile_args=['-O3'])]
+    Extension('uchroma.server._crc', ['uchroma/server/_crc.pyx'], include_dirs=['.']),
+    Extension('uchroma._layer', ['uchroma/_layer.pyx'], include_dirs=['.']),
+    Extension('uchroma.fxlib._plasma', ['uchroma/fxlib/_plasma.pyx'], include_dirs=['.'], extra_compile_args=['-O3'])]
 
 setup(name='uchroma',
       version=get_version(),
@@ -58,9 +63,9 @@ setup(name='uchroma',
       author='Steve Kondik',
       author_email='shade@chemlab.org',
       license='LGPL',
+      platform='Linux',
       packages=['uchroma', 'uchroma.fxlib', 'uchroma.client', 'uchroma.server'],
-      ext_modules = extensions,
-      extra_compile_args=['-O3'],
+      ext_modules = cythonize(extensions),
       entry_points={
           'console_scripts': [
               'uchroma = uchroma.client.client:run_client',
@@ -74,7 +79,7 @@ setup(name='uchroma',
       cmdclass={'hwdb': HWDBGenerator, 'build_ext': build_ext},
       keywords='razer chroma uchroma driver keyboard mouse',
       include_package_data=True,
-      setup_requires=['pytest-runner'],
+      setup_requires=['setuptools>=18.0', 'pytest-runner'],
       tests_require=['pytest'],
       zip_safe=False,
       classifiers=[

@@ -2,18 +2,46 @@ Source: uchroma
 Section: misc
 Priority: optional
 Maintainer: Steve Kondik <shade@chemlab.org>
-Build-Depends: debhelper (>=9),dh-python,python3-all,python3-setuptools
+Build-Depends: cython3,
+        debhelper (>=9),
+        dh-python,
+        python3-all,
+        python3-argcomplete,
+        python3-cffi,
+        python3-colorlog,
+        python3-colr,
+        python3-dev,
+        python3-evdev (>= 0.6.4),
+        python3-frozendict,
+        python3-gbulb,
+        python3-gi,
+        python3-grapefruit,
+        python3-hidapi,
+        python3-hsluv,
+        python3-numpy,
+        python3-pydbus,
+        python3-pytest-runner,
+        python3-pyudev,
+        python3-ruamel.yaml,
+        python3-setuptools,
+        python3-sphinx,
+        python3-sphinx-autodoc-annotation,
+        python3-skimage,
+        python3-traitlets,
+        python3-wrapt
 Standards-Version: 3.9.8
 Homepage: https://github.com/cyanogen/uchroma
 X-Python3-Version: >= 3.2
 Vcs-Git: git://github.com/cyanogen/uchroma.git
 Vcs-Browser: https://github.com/cyanogen/uchroma
 
-Package: python3-uchroma
+Package: uchroma
 Section: misc
-Architecture: all
-Depends: python3,
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends},
+         python3,
          python3-argcomplete,
+         python3-cffi,
          python3-colorlog,
          python3-colr,
          python3-evdev (>= 0.6.4),
@@ -30,11 +58,11 @@ Depends: python3,
          python3-skimage,
          python3-traitlets,
          python3-wrapt
-Description: Razer Chroma peripheral interface library (Python 3)
- A library which enables control of color schemes and effects on
- the Razer Chroma line of peripherals.
+Description: Razer Chroma peripheral manager
+ An advanced driver for the Razer Chroma line of peripherals.
+ Supports lighting effects, custom animations, and more.
  .
- This package installs the library for Python 3.
+ This package installs the driver and libraries for Python 3.
 
 Package: python3-uchroma-doc
 Section: doc

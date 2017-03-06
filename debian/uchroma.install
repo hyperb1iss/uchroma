@@ -1,0 +1,2 @@
+install/uchromad.service /usr/lib/systemd/user/
+install/org.chemlab.UChroma.service /usr/share/dbus-1/services/

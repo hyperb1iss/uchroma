@@ -5,11 +5,15 @@
 
 export PYBUILD_NAME=uchroma
 export DH_OPTIONS
+export http_proxy=127.0.0.1:9
+export https_proxy=127.0.0.1:9
+export PYTHONIOENCODING=utf-8
 
 %:
 	dh $@  --with-python3,sphinxdoc --buildsystem=pybuild
 
 override_dh_installdocs:
+	python3 setup.py build_ext --inplace
 	python3 setup.py build_sphinx -b html \
 		--build-dir $(CURDIR)/debian/python3-uchroma-doc/usr/share/doc/python3-uchroma-doc
 	dh_installdocs
@@ -20,14 +24,16 @@ override_dh_clean:
 	rm -rf uchroma/__pycache__
 
 override_dh_install:
+	python3 setup.py build_ext --inplace
 	python3 setup.py install --install-layout=deb \
-		--root $(CURDIR)/debian/python3-uchroma
-	mkdir -p $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d
-	python3 setup.py -q hwdb > $(CURDIR)/debian/python3-uchroma/lib/udev/hwdb.d/70-uchroma.hwdb
-	rm -rf $(CURDIR)/debian/python*-uchroma/usr/lib/python*/dist-packages/uchroma/__pycache__
+		--root $(CURDIR)/debian/uchroma
+	mkdir -p $(CURDIR)/debian/uchroma/lib/udev/hwdb.d
+	python3 setup.py -q hwdb > $(CURDIR)/debian/uchroma/lib/udev/hwdb.d/70-uchroma.hwdb
+	rm -rf $(CURDIR)/debian/uchroma/usr/lib/python*/dist-packages/uchroma/__pycache__
+	rm -rf $(CURDIR)/debian/uchroma/usr/lib/python*/dist-packages/uchroma/*/__pycache__
 	rm -rf $(CURDIR)/debian/python*-uchroma/usr/lib/python3.*
 
 override_dh_installudev:
-	cp $(CURDIR)/udev/70-uchroma.rules $(CURDIR)/debian/python3-uchroma.uchroma.udev
+	cp $(CURDIR)/install/70-uchroma.rules $(CURDIR)/debian/uchroma.uchroma.udev
 	dh_installudev --name=uchroma --priority 70
 

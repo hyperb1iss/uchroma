@@ -11,7 +11,10 @@ clean: purge_pycache
 install_library: purge_pycache
 	python3 setup.py install --root=$(DESTDIR)
 
-install_udev:
+cython_inplace:
+	python3 setup.py build_ext --inplace
+
+install_udev: cython_inplace
 	install -m 644 -v -D install/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
 	$(eval HWDB := $(shell mktemp))
 	python3 setup.py -q hwdb > $(HWDB)
@@ -41,7 +44,7 @@ uninstall_service:
 sphinx_clean:
 	@rm -f doc/uchroma.*
 
-sphinx: sphinx_clean
+sphinx: sphinx_clean cython_inplace
 	sphinx-apidoc -o doc -M -f -e .
 
 docs: sphinx
@@ -51,8 +54,21 @@ install: install_library install_udev install_service
 
 uninstall: uninstall_library uninstall_udev install_service
 
-debs:
+dist:
+	python3 setup.py sdist --dist-dir=../ --formats=xztar
+
+dist_orig: dist
+	rename -f 's/uchroma-(.*)\.tar\.xz/uchroma_$$1\.orig\.tar\.xz/' ../*
+
+debs: dist_orig
 	debuild -i -us -uc -b
+
+deb-src: dist_orig
+	rename -f 's/uchroma-(.*)\.tar\.xz/uchroma_$$1\.orig\.tar\.xz/' ../*
+	debuild -S -i -I
+
+test:
+	pytest
 
 all: install docs
 

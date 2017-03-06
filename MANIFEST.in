@@ -1,1 +1,14 @@
 include uchroma/server/data/*.yaml
+include LICENSE
+include Makefile
+include MANIFEST.in
+include README.md
+include TODO
+include debian/*
+include doc/*
+include install/*
+include scripts/*
+include tests/*
+include uchroma/*.pyx
+include uchroma/*/*.pyx
+

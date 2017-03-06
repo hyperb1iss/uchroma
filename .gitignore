@@ -1,3 +1,4 @@
+*.c
 *.log
 *.substvars
 *.swo
