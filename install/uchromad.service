@@ -5,3 +5,6 @@ Description=UChroma Device Management Service
 Type=dbus
 BusName=org.chemlab.UChroma
 ExecStart=/usr/bin/uchromad
+
+[Install]
+WantedBy=default.target
