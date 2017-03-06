@@ -1,0 +1,859 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.dbus &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.server.dbus</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=invalid-name,protected-access</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">D-Bus interfaces</span>
+
+<span class="sd">These interfaces are designed to exist as a separate layer</span>
+<span class="sd">and do not contain recursive dependencies with the lower</span>
+<span class="sd">layers. UI clients should be designed to use these interfaces</span>
+<span class="sd">rather than interacting with the hardware directly.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+
+<span class="kn">from</span> <span class="nn">pydbus</span> <span class="k">import</span> <span class="n">SessionBus</span>
+<span class="kn">from</span> <span class="nn">pydbus.generic</span> <span class="k">import</span> <span class="n">signal</span>
+
+<span class="kn">from</span> <span class="nn">grapefruit</span> <span class="k">import</span> <span class="n">Color</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.dbus_utils</span> <span class="k">import</span> <span class="n">ArgSpec</span><span class="p">,</span> <span class="n">dbus_prepare</span><span class="p">,</span> <span class="n">DescriptorBuilder</span><span class="p">,</span> \
+        <span class="n">TraitsPropertiesMixin</span>
+<span class="kn">from</span> <span class="nn">uchroma.input_queue</span> <span class="k">import</span> <span class="n">InputQueue</span>
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">camel_to_snake</span><span class="p">,</span> <span class="n">ensure_future</span><span class="p">,</span> <span class="n">snake_to_camel</span><span class="p">,</span> <span class="n">Signal</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.server.led</span> <span class="k">import</span> <span class="n">LEDType</span>
+
+
+<div class="viewcode-block" id="dev_mode_enabled"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.dev_mode_enabled">[docs]</a><span class="k">def</span> <span class="nf">dev_mode_enabled</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;UCHROMA_DEV&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="ManagedService"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.ManagedService">[docs]</a><span class="k">class</span> <span class="nc">ManagedService</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ManagedService</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">driver</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">bus_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">bus</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">parent</span><span class="o">.</span><span class="n">publish_changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_publish_changed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">parent</span><span class="o">.</span><span class="n">_handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_publish_changed</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ManagedService.publish"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.ManagedService.publish">[docs]</a>    <span class="k">def</span> <span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ManagedService.unpublish"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.ManagedService.unpublish">[docs]</a>    <span class="k">def</span> <span class="nf">unpublish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">unregister</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_publish_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">published</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">published</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">publish</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unpublish</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DeviceAPI"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceAPI">[docs]</a><span class="k">class</span> <span class="nc">DeviceAPI</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    D-Bus API for device properties and common hardware features.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">dev_mode_enabled</span><span class="p">():</span>
+        <span class="n">InputEvent</span> <span class="o">=</span> <span class="n">signal</span><span class="p">()</span>
+
+
+    <span class="n">_PROPERTIES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="s1">&#39;d&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;bus_path&#39;</span><span class="p">:</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;device_index&#39;</span><span class="p">:</span> <span class="s1">&#39;u&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;device_type&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;driver_version&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;firmware_version&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;has_matrix&#39;</span><span class="p">:</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;is_charging&#39;</span><span class="p">:</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;is_wireless&#39;</span><span class="p">:</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;manufacturer&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;product_id&#39;</span><span class="p">:</span> <span class="s1">&#39;u&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;revision&#39;</span><span class="p">:</span> <span class="s1">&#39;u&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;serial_number&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;key_mapping&#39;</span><span class="p">:</span> <span class="s1">&#39;a</span><span class="si">{saau}</span><span class="s1">&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;sys_path&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;vendor_id&#39;</span><span class="p">:</span> <span class="s1">&#39;u&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;zones&#39;</span><span class="p">:</span> <span class="s1">&#39;as&#39;</span><span class="p">}</span>
+
+
+    <span class="n">_RW_PROPERTIES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;polling_rate&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">,</span>
+                      <span class="s1">&#39;dpi&#39;</span><span class="p">:</span> <span class="s1">&#39;a(ii)&#39;</span><span class="p">,</span>
+                      <span class="s1">&#39;dock_charge_color&#39;</span><span class="p">:</span> <span class="s1">&#39;s&#39;</span><span class="p">}</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">driver</span><span class="p">,</span> <span class="n">bus</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span> <span class="o">=</span> <span class="n">driver</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="o">=</span> <span class="n">bus</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">driver</span><span class="o">.</span><span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">dbus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_descriptor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_signal_input</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_task</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_services</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">publish_changed</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Device API attached: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">dbus</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="c1"># Intercept everything and delegate to the device class by converting</span>
+        <span class="c1"># names between the D-Bus conventions to Python conventions.</span>
+        <span class="n">prop_name</span> <span class="o">=</span> <span class="n">camel_to_snake</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">prop_name</span> <span class="ow">in</span> <span class="n">DeviceAPI</span><span class="o">.</span><span class="n">_PROPERTIES</span> <span class="ow">or</span> <span class="n">prop_name</span> <span class="ow">in</span> <span class="n">DeviceAPI</span><span class="o">.</span><span class="n">_RW_PROPERTIES</span><span class="p">)</span> \
+                <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="n">prop_name</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="n">prop_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Color</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">html</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Enum</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">value</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">DeviceAPI</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bus_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the bus path for all services related to this device.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;/org/chemlab/UChroma/</span><span class="si">%s</span><span class="s1">/</span><span class="si">%04x</span><span class="s1">_</span><span class="si">%04x</span><span class="s1">_</span><span class="si">%02d</span><span class="s1">&#39;</span> <span class="o">%</span> \
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">device_type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">vendor_id</span><span class="p">,</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">product_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">device_index</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">driver</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span>
+
+
+<div class="viewcode-block" id="DeviceAPI.publish"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceAPI.publish">[docs]</a>    <span class="k">def</span> <span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bus_path</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">,</span> <span class="s1">&#39;fx_manager&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">fx_manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FXManagerAPI</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">,</span> <span class="s1">&#39;animation_manager&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">animation_manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AnimationManagerAPI</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">,</span> <span class="s1">&#39;led_manager&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">led_manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_services</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LEDManagerAPI</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">publish_changed</span><span class="o">.</span><span class="n">fire</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeviceAPI.unpublish"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceAPI.unpublish">[docs]</a>    <span class="k">def</span> <span class="nf">unpublish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">publish_changed</span><span class="o">.</span><span class="n">fire</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="o">.</span><span class="n">unregister</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">_dev_mode_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_signal_input</span><span class="p">:</span>
+            <span class="n">event</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">get_events</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">event</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">InputEvent</span><span class="p">(</span><span class="n">dbus_prepare</span><span class="p">(</span><span class="n">event</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">SupportedLeds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">supported_leds</span><span class="p">]</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">InputSignalEnabled</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Enabling input signalling will fire D-Bus signals when keyboard</span>
+<span class="sd">        input is received. This is used by the tooling and bringup</span>
+<span class="sd">        utilities. Developer mode must be enabled in order for this</span>
+<span class="sd">        to be available on the bus due to potential security issues.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_signal_input</span>
+
+
+    <span class="nd">@InputSignalEnabled</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">InputSignalEnabled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">dev_mode_enabled</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_signal_input</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="n">state</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="n">InputQueue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">attach</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_task</span> <span class="o">=</span> <span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dev_mode_input</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">detach</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_signal_input</span> <span class="o">=</span> <span class="n">state</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">FrameDebugOpts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">dbus_prepare</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">frame_control</span><span class="o">.</span><span class="n">debug_opts</span><span class="p">,</span> <span class="n">variant</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+
+    <span class="n">PropertiesChanged</span> <span class="o">=</span> <span class="n">signal</span><span class="p">()</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Brightness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The current brightness level</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">brightness</span>
+
+
+    <span class="nd">@Brightness</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">Brightness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the brightness level of the device lighting.</span>
+<span class="sd">        0.0 - 100.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mf">100.0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">brightness</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">brightness</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">brightness</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">PropertiesChanged</span><span class="p">(</span><span class="s1">&#39;org.chemlab.UChroma.Device&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Brightness&#39;</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span> <span class="p">[])</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">Suspended</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        True if the device is suspended</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">suspended</span>
+
+
+    <span class="nd">@Suspended</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">Suspended</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the suspended state of the device</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">suspended</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="n">current</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">suspend</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">current</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">suspended</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">PropertiesChanged</span><span class="p">(</span><span class="s1">&#39;org.chemlab.UChroma.Device&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Suspended&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">Suspended</span><span class="p">},</span> <span class="p">[])</span>
+
+
+<div class="viewcode-block" id="DeviceAPI.Reset"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceAPI.Reset">[docs]</a>    <span class="k">def</span> <span class="nf">Reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">DescriptorBuilder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;org.chemlab.UChroma.Device&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">sig</span> <span class="ow">in</span> <span class="n">DeviceAPI</span><span class="o">.</span><span class="n">_PROPERTIES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+                <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">sig</span> <span class="ow">in</span> <span class="n">DeviceAPI</span><span class="o">.</span><span class="n">_RW_PROPERTIES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+                <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">):</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="s1">&#39;brightness&#39;</span><span class="p">,</span> <span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="s1">&#39;suspend&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="s1">&#39;resume&#39;</span><span class="p">):</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="s1">&#39;suspended&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">builder</span><span class="o">.</span><span class="n">add_method</span><span class="p">(</span><span class="s1">&#39;reset&#39;</span><span class="p">)</span>
+
+        <span class="c1"># tooling support, requires dev mode enabled</span>
+        <span class="k">if</span> <span class="n">dev_mode_enabled</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">input_manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="s1">&#39;frame_debug_opts&#39;</span><span class="p">,</span> <span class="s1">&#39;a</span><span class="si">{sv}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="s1">&#39;input_signal_enabled&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">add_signal</span><span class="p">(</span><span class="s1">&#39;input_event&#39;</span><span class="p">,</span> <span class="n">ArgSpec</span><span class="p">(</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="s1">&#39;a</span><span class="si">{sv}</span><span class="s1">&#39;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="n">build</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="LEDManagerAPI"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LEDManagerAPI">[docs]</a><span class="k">class</span> <span class="nc">LEDManagerAPI</span><span class="p">(</span><span class="n">ManagedService</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;node&gt;</span>
+<span class="sd">          &lt;interface name=&#39;org.chemlab.UChroma.LEDManager&#39;&gt;</span>
+<span class="sd">            &lt;property name=&#39;AvailableLEDs&#39; type=&#39;a{sa{sa{sv}}}&#39; access=&#39;read&#39; /&gt;</span>
+
+<span class="sd">            &lt;method name=&#39;GetLED&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;s&#39; name=&#39;led&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;a{sv}&#39; name=&#39;properties&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;method name=&#39;SetLED&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;s&#39; name=&#39;led&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;a{sv}&#39; name=&#39;properties&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;b&#39; name=&#39;status&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;signal name=&#39;LEDChanged&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;s&#39; name=&#39;led&#39; /&gt;</span>
+<span class="sd">            &lt;/signal&gt;</span>
+<span class="sd">          &lt;/interface&gt;</span>
+<span class="sd">        &lt;/node&gt;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">LEDManagerAPI</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">led_manager</span><span class="o">.</span><span class="n">led_changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_led_changed</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_led_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">led</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LEDChanged</span><span class="p">(</span><span class="n">led</span><span class="o">.</span><span class="n">led_type</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">AvailableLEDs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">leds</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">led</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">led_manager</span><span class="o">.</span><span class="n">supported_leds</span><span class="p">:</span>
+            <span class="n">leds</span><span class="p">[</span><span class="n">led</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">led_manager</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">led</span><span class="p">)</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">dbus_prepare</span><span class="p">(</span><span class="n">leds</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="LEDManagerAPI.GetLED"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LEDManagerAPI.GetLED">[docs]</a>    <span class="k">def</span> <span class="nf">GetLED</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">ledtype</span> <span class="o">=</span> <span class="n">LEDType</span><span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="n">ledtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unknown LED type: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="k">return</span> <span class="n">dbus_prepare</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">led_manager</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ledtype</span><span class="p">)</span><span class="o">.</span><span class="n">_trait_values</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="LEDManagerAPI.SetLED"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LEDManagerAPI.SetLED">[docs]</a>    <span class="k">def</span> <span class="nf">SetLED</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">ledtype</span> <span class="o">=</span> <span class="n">LEDType</span><span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="n">ledtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unknown LED type: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">led</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">led_manager</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ledtype</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">led</span><span class="o">.</span><span class="n">hold_trait_notifications</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Set LED property [</span><span class="si">%s</span><span class="s1">]: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">ledtype</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">properties</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">led</span><span class="o">.</span><span class="n">has_trait</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="n">led</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="n">LEDChanged</span> <span class="o">=</span> <span class="n">signal</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="FXManagerAPI"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.FXManagerAPI">[docs]</a><span class="k">class</span> <span class="nc">FXManagerAPI</span><span class="p">(</span><span class="n">ManagedService</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;node&gt;</span>
+<span class="sd">          &lt;interface name=&#39;org.chemlab.UChroma.FXManager&#39;&gt;</span>
+<span class="sd">            &lt;method name=&#39;SetFX&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;s&#39; name=&#39;name&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;a{sv}&#39; name=&#39;args&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;b&#39; name=&#39;status&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;property name=&#39;CurrentFX&#39; type=&#39;(sa{sv})&#39; access=&#39;read&#39;&gt;</span>
+<span class="sd">                 &lt;annotation name=&#39;org.freedesktop.DBus.Property.EmitsChangedSignal&#39; value=&#39;true&#39; /&gt;</span>
+<span class="sd">            &lt;/property&gt;</span>
+
+<span class="sd">            &lt;property name=&#39;AvailableFX&#39; type=&#39;a{sa{sa{sv}}}&#39; access=&#39;read&#39; /&gt;</span>
+<span class="sd">          &lt;/interface&gt;</span>
+<span class="sd">        &lt;/node&gt;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FXManagerAPI</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fx_manager</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">fx_manager</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_fx</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_available_fx</span> <span class="o">=</span> <span class="n">dbus_prepare</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">class_traits</span><span class="p">()</span> \
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fx_manager</span><span class="o">.</span><span class="n">available_fx</span><span class="o">.</span><span class="n">items</span><span class="p">()})[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fx_manager</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fx_changed</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;current_fx&#39;</span><span class="p">])</span>
+
+
+    <span class="k">def</span> <span class="nf">_fx_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Effects changed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">change</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_fx</span> <span class="o">=</span> <span class="p">(</span><span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span>
+                            <span class="n">dbus_prepare</span><span class="p">(</span><span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_trait_values</span><span class="p">,</span> <span class="n">variant</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PropertiesChanged</span><span class="p">(</span><span class="s1">&#39;org.chemlab.UChroma.FXManager&#39;</span><span class="p">,</span>
+                               <span class="p">{</span><span class="s1">&#39;CurrentFX&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">CurrentFX</span><span class="p">},</span> <span class="p">[])</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">AvailableFX</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_available_fx</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">CurrentFX</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the currently active FX and arguments</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_fx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;disable&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_fx</span>
+
+
+<div class="viewcode-block" id="FXManagerAPI.SetFX"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.FXManagerAPI.SetFX">[docs]</a>    <span class="k">def</span> <span class="nf">SetFX</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the desired FX, with options as a dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fx_manager</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">)</span></div>
+
+
+    <span class="n">PropertiesChanged</span> <span class="o">=</span> <span class="n">signal</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="LayerAPI"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LayerAPI">[docs]</a><span class="k">class</span> <span class="nc">LayerAPI</span><span class="p">(</span><span class="n">TraitsPropertiesMixin</span><span class="p">,</span> <span class="n">ManagedService</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zindex</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">zindex</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">LayerAPI</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">dbus</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer_stopped</span> <span class="o">=</span> <span class="n">Signal</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_z_changed</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;zindex&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state_changed</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;running&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">_z_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">change</span><span class="o">.</span><span class="n">old</span> <span class="o">!=</span> <span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">publish</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_state_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">change</span><span class="o">.</span><span class="n">old</span> <span class="o">!=</span> <span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">publish</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Layer stopped zindex=</span><span class="si">%d</span><span class="s2"> (</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+                                  <span class="bp">self</span><span class="o">.</span><span class="n">_zindex</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">unpublish</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">layer_stopped</span><span class="o">.</span><span class="n">fire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="LayerAPI.get_layer_path"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LayerAPI.get_layer_path">[docs]</a>    <span class="k">def</span> <span class="nf">get_layer_path</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">zindex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/layer/</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">zindex</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">layer_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">LayerAPI</span><span class="o">.</span><span class="n">get_layer_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zindex</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">layer_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">layer_zindex</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zindex</span>
+
+
+<div class="viewcode-block" id="LayerAPI.publish"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LayerAPI.publish">[docs]</a>    <span class="k">def</span> <span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">unpublish</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">dbus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_descriptor</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zindex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">zindex</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">register_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layer_path</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Registered layer API: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">layer_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">dbus</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="LayerAPI.unpublish"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.LayerAPI.unpublish">[docs]</a>    <span class="k">def</span> <span class="nf">unpublish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">unpublish</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Unregisted layer API: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">layer_path</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">exclude</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;blend_mode&#39;</span><span class="p">,</span> <span class="s1">&#39;opacity&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">zindex</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">exclude</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;background_color&#39;</span><span class="p">,)</span>
+
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">DescriptorBuilder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="p">,</span> <span class="s1">&#39;org.chemlab.UChroma.Layer&#39;</span><span class="p">,</span> <span class="n">exclude</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">_asdict</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">attrib</span> <span class="o">=</span> <span class="n">snake_to_camel</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrib</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+            <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="n">attrib</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">)</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Key&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">_delegate</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="n">builder</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="s1">&#39;Key&#39;</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="n">build</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="AnimationManagerAPI"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.AnimationManagerAPI">[docs]</a><span class="k">class</span> <span class="nc">AnimationManagerAPI</span><span class="p">(</span><span class="n">ManagedService</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;node&gt;</span>
+<span class="sd">          &lt;interface name=&#39;org.chemlab.UChroma.AnimationManager&#39;&gt;</span>
+<span class="sd">            &lt;method name=&#39;AddRenderer&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;s&#39; name=&#39;name&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;i&#39; name=&#39;zindex&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;a{sv}&#39; name=&#39;traits&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;o&#39; name=&#39;layer&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;method name=&#39;RemoveRenderer&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;in&#39; type=&#39;i&#39; name=&#39;zindex&#39; /&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;b&#39; name=&#39;status&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;method name=&#39;PauseAnimation&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;b&#39; name=&#39;paused&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;method name=&#39;StopAnimation&#39;&gt;</span>
+<span class="sd">              &lt;arg direction=&#39;out&#39; type=&#39;b&#39; name=&#39;status&#39; /&gt;</span>
+<span class="sd">            &lt;/method&gt;</span>
+
+<span class="sd">            &lt;property name=&#39;AvailableRenderers&#39; type=&#39;a{sa{sv}}&#39; access=&#39;read&#39; /&gt;</span>
+
+<span class="sd">            &lt;property name=&#39;CurrentRenderers&#39; type=&#39;a(so)&#39; access=&#39;read&#39;&gt;</span>
+<span class="sd">              &lt;annotation name=&#39;org.freedesktop.DBus.Property.EmitsChangedSignal&#39; value=&#39;true&#39; /&gt;</span>
+<span class="sd">            &lt;/property&gt;</span>
+
+<span class="sd">           &lt;property name=&#39;AnimationState&#39; type=&#39;s&#39; access=&#39;read&#39;&gt;</span>
+<span class="sd">              &lt;annotation name=&#39;org.freedesktop.DBus.Property.EmitsChangedSignal&#39; value=&#39;true&#39; /&gt;</span>
+<span class="sd">            &lt;/property&gt;</span>
+<span class="sd">          &lt;/interface&gt;</span>
+<span class="sd">        &lt;/node&gt;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AnimationManagerAPI</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">animation_manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> \
+                <span class="s1">&#39;Animations not supported for this device&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">parent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">animation_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># manually notify, startup order isn&#39;t guaranteed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">layers_changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layers_changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">state_changed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state_changed</span><span class="p">)</span>
+
+
+    <span class="n">PropertiesChanged</span> <span class="o">=</span> <span class="n">signal</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_layer_stopped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">layer</span><span class="p">)]</span>
+
+
+    <span class="k">def</span> <span class="nf">_layers_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">zindex</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;add&#39;</span><span class="p">:</span>
+            <span class="n">layerapi</span> <span class="o">=</span> <span class="n">LayerAPI</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="p">,</span> <span class="n">layer</span><span class="p">)</span>
+            <span class="n">layerapi</span><span class="o">.</span><span class="n">layer_stopped</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layer_stopped</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">layerapi</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">PropertiesChanged</span><span class="p">(</span><span class="s1">&#39;org.chemlab.UChroma.AnimationManager&#39;</span><span class="p">,</span>
+                               <span class="p">{</span><span class="s1">&#39;CurrentRenderers&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">CurrentRenderers</span><span class="p">},</span> <span class="p">[])</span>
+
+    <span class="k">def</span> <span class="nf">_state_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;_state_changed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PropertiesChanged</span><span class="p">(</span><span class="s1">&#39;org.chemlab.UChroma.AnimationManager&#39;</span><span class="p">,</span>
+                               <span class="p">{</span><span class="s1">&#39;AnimationState&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">AnimationState</span><span class="p">},</span> <span class="p">[])</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">CurrentRenderers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">([(</span><span class="n">x</span><span class="o">.</span><span class="n">layer_type</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">layer_path</span><span class="p">)</span> \
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">z</span><span class="o">.</span><span class="n">layer_zindex</span><span class="p">)])</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">AvailableRenderers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">avail</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">infos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">renderer_info</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">infos</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">avail</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dbus_prepare</span><span class="p">({</span><span class="s1">&#39;meta&#39;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="s1">&#39;traits&#39;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">traits</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">avail</span>
+
+
+<div class="viewcode-block" id="AnimationManagerAPI.AddRenderer"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.AnimationManagerAPI.AddRenderer">[docs]</a>    <span class="k">def</span> <span class="nf">AddRenderer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">zindex</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">traits</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;AddRenderer: name=</span><span class="si">%s</span><span class="s1"> zindex=</span><span class="si">%d</span><span class="s1"> traits=</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span>
+                           <span class="n">name</span><span class="p">,</span> <span class="n">zindex</span><span class="p">,</span> <span class="n">traits</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">zindex</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">zindex</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">add_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">traits</span><span class="o">=</span><span class="n">traits</span><span class="p">,</span> <span class="n">zindex</span><span class="o">=</span><span class="n">zindex</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">z</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LayerAPI</span><span class="o">.</span><span class="n">get_layer_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="AnimationManagerAPI.RemoveRenderer"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.AnimationManagerAPI.RemoveRenderer">[docs]</a>    <span class="k">def</span> <span class="nf">RemoveRenderer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zindex</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">remove_renderer</span><span class="p">(</span><span class="n">zindex</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AnimationManagerAPI.StopAnimation"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.AnimationManagerAPI.StopAnimation">[docs]</a>    <span class="k">def</span> <span class="nf">StopAnimation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="AnimationManagerAPI.PauseAnimation"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.AnimationManagerAPI.PauseAnimation">[docs]</a>    <span class="k">def</span> <span class="nf">PauseAnimation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_animgr</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">AnimationState</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span></div>
+
+
+
+<div class="viewcode-block" id="DeviceManagerAPI"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceManagerAPI">[docs]</a><span class="k">class</span> <span class="nc">DeviceManagerAPI</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &lt;node&gt;</span>
+<span class="sd">          &lt;interface name=&#39;org.chemlab.UChroma.DeviceManager&#39;&gt;</span>
+<span class="sd">             &lt;method name=&#39;GetDevices&#39;&gt;</span>
+<span class="sd">               &lt;arg direction=&#39;out&#39; type=&#39;ao&#39; /&gt;</span>
+<span class="sd">             &lt;/method&gt;</span>
+
+<span class="sd">             &lt;signal name=&#39;DevicesChanged&#39;&gt;</span>
+<span class="sd">               &lt;arg direction=&#39;out&#39; type=&#39;s&#39; name=&#39;action&#39; /&gt;</span>
+<span class="sd">               &lt;arg direction=&#39;out&#39; type=&#39;o&#39; name=&#39;device&#39; /&gt;</span>
+<span class="sd">             &lt;/signal&gt;</span>
+<span class="sd">           &lt;/interface&gt;</span>
+<span class="sd">         &lt;/node&gt;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_manager</span><span class="p">,</span> <span class="n">logger</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dm</span> <span class="o">=</span> <span class="n">device_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dm</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dm_callback</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_devs</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="DeviceManagerAPI.GetDevices"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceManagerAPI.GetDevices">[docs]</a>    <span class="k">def</span> <span class="nf">GetDevices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the list of object paths associated with discovered devices</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dm</span><span class="o">.</span><span class="n">devices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">bus_path</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_devs</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span></div>
+
+
+    <span class="n">DevicesChanged</span> <span class="o">=</span> <span class="n">signal</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_publish_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="n">devapi</span> <span class="o">=</span> <span class="n">DeviceAPI</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="p">)</span>
+        <span class="n">devapi</span><span class="o">.</span><span class="n">publish</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_devs</span><span class="p">[</span><span class="n">device</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">devapi</span>
+
+        <span class="k">return</span> <span class="n">devapi</span><span class="o">.</span><span class="n">bus_path</span>
+
+
+    <span class="k">def</span> <span class="nf">_unpublish_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="n">devapi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_devs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">devapi</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">devapi</span><span class="o">.</span><span class="n">unpublish</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">devapi</span><span class="o">.</span><span class="n">bus_path</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">_dm_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;add&#39;</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_publish_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">device</span><span class="o">.</span><span class="n">restore_prefs</span><span class="p">()</span>
+
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;remove&#39;</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unpublish_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">DevicesChanged</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DeviceManagerAPI.run"><a class="viewcode-back" href="../../../uchroma.server.dbus.html#uchroma.server.dbus.DeviceManagerAPI.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Publish the service</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="o">=</span> <span class="n">SessionBus</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="s1">&#39;org.chemlab.UChroma&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

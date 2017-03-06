@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.device module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.server.device_base module" href="uchroma.server.device_base.html" />
+    <link rel="prev" title="uchroma.server.dbus module" href="uchroma.server.dbus.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.dbus.html" title="uchroma.server.dbus module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.server.device_base.html" title="uchroma.server.device_base module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.server.device">
+<span id="uchroma-server-device-module"></span><h1>uchroma.server.device module<a class="headerlink" href="#module-uchroma.server.device" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.server.device.UChromaDevice">
+<em class="property">class </em><code class="descclassname">uchroma.server.device.</code><code class="descname">UChromaDevice</code><span class="sig-paren">(</span><em>hardware: uchroma.server.hardware.Hardware</em>, <em>devinfo: hidapi.DeviceInfo</em>, <em>devindex: int</em>, <em>sys_path: str</em>, <em>input_devices=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/device.html#UChromaDevice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.device.UChromaDevice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.device_base.html#uchroma.server.device_base.BaseUChromaDevice" title="uchroma.server.device_base.BaseUChromaDevice"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.device_base.BaseUChromaDevice</span></code></a></p>
+<p>Class encapsulating all functionality available on standard Chroma devices</p>
+<dl class="attribute">
+<dt id="uchroma.server.device.UChromaDevice.frame_control">
+<code class="descname">frame_control</code><a class="headerlink" href="#uchroma.server.device.UChromaDevice.frame_control" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the Frame object for creating custom effects on this device</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>base_color</strong> &#8211; Background color for the Frame (defaults to black)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The Frame interface</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.device.UChromaDevice.get_led">
+<code class="descname">get_led</code><span class="sig-paren">(</span><em>led_type: uchroma.server.led.LEDType</em><span class="sig-paren">)</span> &#x2192; uchroma.server.led.LED<a class="reference internal" href="_modules/uchroma/server/device.html#UChromaDevice.get_led"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.device.UChromaDevice.get_led" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetches the requested LED interface on this device</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="uchroma.server.led.html#uchroma.server.led.LED" title="uchroma.server.led.LED"><code class="xref py py-class docutils literal"><span class="pre">LED</span></code></a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>led_type</strong> (<a class="reference internal" href="uchroma.server.led.html#uchroma.server.led.LEDType" title="uchroma.server.led.LEDType"><code class="xref py py-class docutils literal"><span class="pre">LEDType</span></code></a>) &#8211; The LED type to fetch</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The LED interface, if available</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.device.UChromaDevice.led_manager">
+<code class="descname">led_manager</code><a class="headerlink" href="#uchroma.server.device.UChromaDevice.led_manager" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.device.UChromaDevice.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/device.html#UChromaDevice.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.device.UChromaDevice.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clear all effects and custom frame</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.device.UChromaDevice.supported_leds">
+<code class="descname">supported_leds</code><a class="headerlink" href="#uchroma.server.device.UChromaDevice.supported_leds" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.server.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.dbus.html" title="uchroma.server.dbus module"
+              >previous</a> |
+            <a href="uchroma.server.device_base.html" title="uchroma.server.device_base module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.server.device.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

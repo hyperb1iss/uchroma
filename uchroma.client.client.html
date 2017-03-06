@@ -1,0 +1,379 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.client.client module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.client.cmd module" href="uchroma.client.cmd.html" />
+    <link rel="prev" title="uchroma.client package" href="uchroma.client.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.client.html" title="uchroma.client package"
+             accesskey="P">previous</a> |
+          <a href="uchroma.client.cmd.html" title="uchroma.client.cmd module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.client.client">
+<span id="uchroma-client-client-module"></span><h1>uchroma.client.client module<a class="headerlink" href="#module-uchroma.client.client" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.client.client.AbstractCommand">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">AbstractCommand</code><span class="sig-paren">(</span><em>parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.add_parser">
+<code class="descname">add_parser</code><span class="sig-paren">(</span><em>parser</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.add_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.add_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="uchroma.client.client.AbstractCommand.add_traits_parser">
+<em class="property">classmethod </em><code class="descname">add_traits_parser</code><span class="sig-paren">(</span><em>parser</em>, <em>name</em>, <em>remote_traits</em>, <em>callback</em>, <em>help_text: str = None</em>, <em>aliases=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.add_traits_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.add_traits_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.AbstractCommand.client">
+<code class="descname">client</code><a class="headerlink" href="#uchroma.client.client.AbstractCommand.client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.columns">
+<code class="descname">columns</code><span class="sig-paren">(</span><em>key_width</em>, <em>key</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.columns"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.columns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.AbstractCommand.driver">
+<code class="descname">driver</code><a class="headerlink" href="#uchroma.client.client.AbstractCommand.driver" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.ellipsize">
+<code class="descname">ellipsize</code><span class="sig-paren">(</span><em>line: str</em>, <em>offset: int = 0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.ellipsize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.ellipsize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.list_objects">
+<code class="descname">list_objects</code><span class="sig-paren">(</span><em>objects</em>, <em>values=None</em>, <em>aliases=None</em>, <em>show_all: bool = False</em>, <em>keylen=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.list_objects"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.list_objects" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.parse">
+<code class="descname">parse</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.parse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.parse_traits">
+<code class="descname">parse_traits</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.parse_traits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.parse_traits" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.seperator">
+<code class="descname">seperator</code><span class="sig-paren">(</span><em>key_width</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.seperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.seperator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.set_property">
+<code class="descname">set_property</code><span class="sig-paren">(</span><em>target</em>, <em>name</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.set_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.set_property" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.show_meta">
+<code class="descname">show_meta</code><span class="sig-paren">(</span><em>trait_data</em>, <em>indent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.show_meta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.show_meta" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AbstractCommand.show_traits">
+<code class="descname">show_traits</code><span class="sig-paren">(</span><em>traits</em>, <em>values=None</em>, <em>indent=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AbstractCommand.show_traits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AbstractCommand.show_traits" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.AnimationCommand">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">AnimationCommand</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AnimationCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AnimationCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.client.client.AbstractCommand" title="uchroma.client.client.AbstractCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.client.client.AbstractCommand</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.client.client.AnimationCommand.add_parser">
+<code class="descname">add_parser</code><span class="sig-paren">(</span><em>sub</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AnimationCommand.add_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AnimationCommand.add_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.AnimationCommand.current_state">
+<code class="descname">current_state</code><a class="headerlink" href="#uchroma.client.client.AnimationCommand.current_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AnimationCommand.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>keylen</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AnimationCommand.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AnimationCommand.dump" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.AnimationCommand.parse">
+<code class="descname">parse</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#AnimationCommand.parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.AnimationCommand.parse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.AnimationCommand.renderer_info">
+<code class="descname">renderer_info</code><a class="headerlink" href="#uchroma.client.client.AnimationCommand.renderer_info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.BrightnessCommand">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">BrightnessCommand</code><span class="sig-paren">(</span><em>parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#BrightnessCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.BrightnessCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.client.client.AbstractCommand" title="uchroma.client.client.AbstractCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.client.client.AbstractCommand</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.client.client.BrightnessCommand.add_parser">
+<code class="descname">add_parser</code><span class="sig-paren">(</span><em>sub</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#BrightnessCommand.add_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.BrightnessCommand.add_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.BrightnessCommand.parse">
+<code class="descname">parse</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#BrightnessCommand.parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.BrightnessCommand.parse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.DumpCommand">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">DumpCommand</code><span class="sig-paren">(</span><em>parent</em>, <em>dumpables</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#DumpCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.DumpCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.client.client.AbstractCommand" title="uchroma.client.client.AbstractCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.client.client.AbstractCommand</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.client.client.DumpCommand.add_parser">
+<code class="descname">add_parser</code><span class="sig-paren">(</span><em>sub</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#DumpCommand.add_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.DumpCommand.add_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.DumpCommand.parse">
+<code class="descname">parse</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#DumpCommand.parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.DumpCommand.parse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.FXCommand">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">FXCommand</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#FXCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.FXCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.client.client.AbstractCommand" title="uchroma.client.client.AbstractCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.client.client.AbstractCommand</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.client.client.FXCommand.add_parser">
+<code class="descname">add_parser</code><span class="sig-paren">(</span><em>sub</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#FXCommand.add_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.FXCommand.add_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.FXCommand.available_fx">
+<code class="descname">available_fx</code><a class="headerlink" href="#uchroma.client.client.FXCommand.available_fx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.FXCommand.current_state">
+<code class="descname">current_state</code><a class="headerlink" href="#uchroma.client.client.FXCommand.current_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.FXCommand.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>keylen</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#FXCommand.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.FXCommand.dump" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.FXCommand.parse">
+<code class="descname">parse</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#FXCommand.parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.FXCommand.parse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.LEDCommand">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">LEDCommand</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#LEDCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.LEDCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.client.client.AbstractCommand" title="uchroma.client.client.AbstractCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.client.client.AbstractCommand</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.client.client.LEDCommand.add_parser">
+<code class="descname">add_parser</code><span class="sig-paren">(</span><em>sub</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#LEDCommand.add_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.LEDCommand.add_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.LEDCommand.available_leds">
+<code class="descname">available_leds</code><a class="headerlink" href="#uchroma.client.client.LEDCommand.available_leds" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.LEDCommand.current_state">
+<code class="descname">current_state</code><a class="headerlink" href="#uchroma.client.client.LEDCommand.current_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.LEDCommand.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>keylen</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#LEDCommand.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.LEDCommand.dump" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.client.client.LEDCommand.parse">
+<code class="descname">parse</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#LEDCommand.parse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.LEDCommand.parse" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.RemoteTraits">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">RemoteTraits</code><span class="sig-paren">(</span><em>name</em>, <em>description</em>, <em>author</em>, <em>version</em>, <em>traits</em><span class="sig-paren">)</span><a class="headerlink" href="#uchroma.client.client.RemoteTraits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#tuple" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></a></p>
+<dl class="attribute">
+<dt id="uchroma.client.client.RemoteTraits.author">
+<code class="descname">author</code><a class="headerlink" href="#uchroma.client.client.RemoteTraits.author" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.RemoteTraits.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.client.client.RemoteTraits.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.RemoteTraits.name">
+<code class="descname">name</code><a class="headerlink" href="#uchroma.client.client.RemoteTraits.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.RemoteTraits.traits">
+<code class="descname">traits</code><a class="headerlink" href="#uchroma.client.client.RemoteTraits.traits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.client.client.RemoteTraits.version">
+<code class="descname">version</code><a class="headerlink" href="#uchroma.client.client.RemoteTraits.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.client.client.UChromaTool">
+<em class="property">class </em><code class="descclassname">uchroma.client.client.</code><code class="descname">UChromaTool</code><a class="reference internal" href="_modules/uchroma/client/client.html#UChromaTool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.UChromaTool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.client.cmd.html#uchroma.client.cmd.UChromaConsoleUtil" title="uchroma.client.cmd.UChromaConsoleUtil"><code class="xref py py-class docutils literal"><span class="pre">uchroma.client.cmd.UChromaConsoleUtil</span></code></a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="uchroma.client.client.color_block">
+<code class="descclassname">uchroma.client.client.</code><code class="descname">color_block</code><span class="sig-paren">(</span><em>*values</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#color_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.color_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="uchroma.client.client.run_client">
+<code class="descclassname">uchroma.client.client.</code><code class="descname">run_client</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/client/client.html#run_client"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.client.client.run_client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.client.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.client.html" title="uchroma.client package"
+              >previous</a> |
+            <a href="uchroma.client.cmd.html" title="uchroma.client.cmd module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.client.client.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

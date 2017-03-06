@@ -1,0 +1,315 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.renderer module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.traits module" href="uchroma.traits.html" />
+    <link rel="prev" title="uchroma.layer module" href="uchroma.layer.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.layer.html" title="uchroma.layer module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.traits.html" title="uchroma.traits module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.renderer">
+<span id="uchroma-renderer-module"></span><h1>uchroma.renderer module<a class="headerlink" href="#module-uchroma.renderer" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.renderer.Renderer">
+<em class="property">class </em><code class="descclassname">uchroma.renderer.</code><code class="descname">Renderer</code><span class="sig-paren">(</span><em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/renderer.html#Renderer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.renderer.Renderer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">traitlets.traitlets.HasTraits</span></code></p>
+<p>Base class for custom effects renderers.</p>
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.background_color">
+<code class="descname">background_color</code><a class="headerlink" href="#uchroma.renderer.Renderer.background_color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.blend_mode">
+<code class="descname">blend_mode</code><a class="headerlink" href="#uchroma.renderer.Renderer.blend_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.renderer.Renderer.draw">
+<code class="descname">draw</code><span class="sig-paren">(</span><em>layer: uchroma.layer.Layer</em>, <em>timestamp: float</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/renderer.html#Renderer.draw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.renderer.Renderer.draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Coroutine called by AnimationLoop when a new frame needs
+to be drawn. If nothing should be drawn (such as if keyboard
+input is needed), then the implementation should yield until
+ready.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>layer</strong> (<a class="reference internal" href="uchroma.layer.html#uchroma.layer.Layer" title="uchroma.layer.Layer"><code class="xref py py-class docutils literal"><span class="pre">Layer</span></code></a>) &#8211; Layer to draw</li>
+<li><strong>timestamp</strong> (<code class="docutils literal"><span class="pre">float</span></code>) &#8211; The timestamp of this frame</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if the frame has been drawn</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.renderer.Renderer.finish">
+<code class="descname">finish</code><span class="sig-paren">(</span><em>frame</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/renderer.html#Renderer.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.renderer.Renderer.finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoked by AnimationLoop when the effect is deactivated.
+An implementation should perform cleanup tasks here.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>frame</strong> &#8211; The frame instance being shut down</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.fps">
+<code class="descname">fps</code><a class="headerlink" href="#uchroma.renderer.Renderer.fps" title="Permalink to this definition">¶</a></dt>
+<dd><p>A float trait.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.renderer.Renderer.get_input_events">
+<code class="descname">get_input_events</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/renderer.html#Renderer.get_input_events"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.renderer.Renderer.get_input_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets input events, yielding until at least one event is
+available. If expiration is not enabled, this returns
+a single item. Otherwise a list of all unexpired events
+is returned.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.has_key_input">
+<code class="descname">has_key_input</code><a class="headerlink" href="#uchroma.renderer.Renderer.has_key_input" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the device is capable of producing key events</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.height">
+<code class="descname">height</code><a class="headerlink" href="#uchroma.renderer.Renderer.height" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclass of Int which may only be written once</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.renderer.Renderer.init">
+<code class="descname">init</code><span class="sig-paren">(</span><em>frame</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/renderer.html#Renderer.init"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.renderer.Renderer.init" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invoked by AnimationLoop when the effect is activated. At this
+point, the traits will have been set. An implementation
+should perform any final setup here.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal"><span class="pre">bool</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>frame</strong> &#8211; The frame instance being configured</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if the renderer was configured</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.key_expire_time">
+<code class="descname">key_expire_time</code><a class="headerlink" href="#uchroma.renderer.Renderer.key_expire_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the duration (in seconds) that key events will remain
+available.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.logger">
+<code class="descname">logger</code><a class="headerlink" href="#uchroma.renderer.Renderer.logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>The logger for this instance</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.meta">
+<code class="descname">meta</code><em class="property"> = RendererMeta(display_name='_unknown_', description='Unimplemented', author='Unknown', version='0')</em><a class="headerlink" href="#uchroma.renderer.Renderer.meta" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.opacity">
+<code class="descname">opacity</code><a class="headerlink" href="#uchroma.renderer.Renderer.opacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>A float trait.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.running">
+<code class="descname">running</code><a class="headerlink" href="#uchroma.renderer.Renderer.running" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean (True, False) trait.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.width">
+<code class="descname">width</code><a class="headerlink" href="#uchroma.renderer.Renderer.width" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclass of Int which may only be written once</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.Renderer.zindex">
+<code class="descname">zindex</code><a class="headerlink" href="#uchroma.renderer.Renderer.zindex" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.renderer.RendererMeta">
+<em class="property">class </em><code class="descclassname">uchroma.renderer.</code><code class="descname">RendererMeta</code><span class="sig-paren">(</span><em>display_name</em>, <em>description</em>, <em>author</em>, <em>version</em><span class="sig-paren">)</span><a class="headerlink" href="#uchroma.renderer.RendererMeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#tuple" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></a></p>
+<dl class="attribute">
+<dt id="uchroma.renderer.RendererMeta.author">
+<code class="descname">author</code><a class="headerlink" href="#uchroma.renderer.RendererMeta.author" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.RendererMeta.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.renderer.RendererMeta.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.RendererMeta.display_name">
+<code class="descname">display_name</code><a class="headerlink" href="#uchroma.renderer.RendererMeta.display_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.renderer.RendererMeta.version">
+<code class="descname">version</code><a class="headerlink" href="#uchroma.renderer.RendererMeta.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.blending.html">uchroma.blending module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.color.html">uchroma.color module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.dbus_utils.html">uchroma.dbus_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.input_queue.html">uchroma.input_queue module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.layer.html">uchroma.layer module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">uchroma.renderer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.traits.html">uchroma.traits module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.util.html">uchroma.util module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.version.html">uchroma.version module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.layer.html" title="uchroma.layer module"
+              >previous</a> |
+            <a href="uchroma.traits.html" title="uchroma.traits module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.renderer.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

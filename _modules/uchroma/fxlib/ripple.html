@@ -1,0 +1,266 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.fxlib.ripple &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.fxlib.ripple</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=invalid-name</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+
+<span class="kn">from</span> <span class="nn">traitlets</span> <span class="k">import</span> <span class="n">Bool</span><span class="p">,</span> <span class="n">Int</span><span class="p">,</span> <span class="n">observe</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.color</span> <span class="k">import</span> <span class="n">ColorScheme</span><span class="p">,</span> <span class="n">ColorUtils</span>
+<span class="kn">from</span> <span class="nn">uchroma.renderer</span> <span class="k">import</span> <span class="n">Renderer</span><span class="p">,</span> <span class="n">RendererMeta</span>
+<span class="kn">from</span> <span class="nn">uchroma.traits</span> <span class="k">import</span> <span class="n">ColorPresetTrait</span><span class="p">,</span> <span class="n">ColorTrait</span>
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">clamp</span>
+
+
+<span class="n">DEFAULT_SPEED</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">DEFAULT_WIDTH</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="n">EXPIRE_TIME_FACTOR</span> <span class="o">=</span> <span class="mf">0.15</span>
+
+<span class="n">COLOR_KEY</span> <span class="o">=</span> <span class="s1">&#39;ripple_color&#39;</span>
+<span class="n">SCHEME_KEY</span> <span class="o">=</span> <span class="s1">&#39;color_scheme&#39;</span>
+
+
+<div class="viewcode-block" id="Ripple"><a class="viewcode-back" href="../../../uchroma.fxlib.ripple.html#uchroma.fxlib.ripple.Ripple">[docs]</a><span class="k">class</span> <span class="nc">Ripple</span><span class="p">(</span><span class="n">Renderer</span><span class="p">):</span>
+
+    <span class="c1"># meta</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">RendererMeta</span><span class="p">(</span><span class="s1">&#39;Ripples&#39;</span><span class="p">,</span> <span class="s1">&#39;Ripples of color when keys are pressed&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;Steve Kondik&#39;</span><span class="p">,</span> <span class="s1">&#39;1.0&#39;</span><span class="p">)</span>
+
+    <span class="c1"># configurable traits</span>
+    <span class="n">ripple_width</span> <span class="o">=</span> <span class="n">Int</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="n">DEFAULT_WIDTH</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">speed</span> <span class="o">=</span> <span class="n">Int</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="n">DEFAULT_SPEED</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">preset</span> <span class="o">=</span> <span class="n">ColorPresetTrait</span><span class="p">(</span><span class="n">ColorScheme</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">random</span> <span class="o">=</span> <span class="n">Bool</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">color</span> <span class="o">=</span> <span class="n">ColorTrait</span><span class="p">()</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">Ripple</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_generator</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">rainbow_generator</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_distance</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key_expire_time</span> <span class="o">=</span> <span class="n">DEFAULT_SPEED</span> <span class="o">*</span> <span class="n">EXPIRE_TIME_FACTOR</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fps</span> <span class="o">=</span> <span class="mi">30</span>
+
+
+    <span class="nd">@observe</span><span class="p">(</span><span class="s1">&#39;speed&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_set_speed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key_expire_time</span> <span class="o">=</span> <span class="n">change</span><span class="o">.</span><span class="n">new</span> <span class="o">*</span> <span class="n">EXPIRE_TIME_FACTOR</span>
+
+
+    <span class="k">def</span> <span class="nf">_process_events</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">events</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">COLOR_KEY</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">COLOR_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_generator</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_ease</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">clamp</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">n</span><span class="o">**</span><span class="mi">5</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span><span class="o">**</span><span class="mi">5</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_draw_circles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ripple_width</span>
+        <span class="k">if</span> <span class="n">COLOR_KEY</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">coords</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No coordinates available: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">SCHEME_KEY</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">SCHEME_KEY</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">COLOR_KEY</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">colors</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">color_scheme</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">base_color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="n">width</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="n">color</span><span class="p">]</span>
+            <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">SCHEME_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="n">colors</span>
+
+        <span class="k">for</span> <span class="n">circle_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">radius</span> <span class="o">-</span> <span class="n">circle_num</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">rad</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">-</span> <span class="n">circle_num</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">Ripple</span><span class="o">.</span><span class="n">_ease</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">rad</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_distance</span><span class="p">))</span>
+            <span class="n">cc</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">colors</span><span class="p">[</span><span class="n">circle_num</span><span class="p">]</span><span class="o">.</span><span class="n">rgb</span><span class="p">,</span> <span class="n">colors</span><span class="p">[</span><span class="n">circle_num</span><span class="p">]</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">coords</span><span class="p">:</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">ellipse</span><span class="p">(</span><span class="n">coord</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">coord</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">rad</span> <span class="o">/</span> <span class="mf">1.33</span><span class="p">,</span> <span class="n">rad</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">cc</span><span class="p">)</span>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+<div class="viewcode-block" id="Ripple.draw"><a class="viewcode-back" href="../../../uchroma.fxlib.ripple.html#uchroma.fxlib.ripple.Ripple.draw">[docs]</a>    <span class="k">def</span> <span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Draw the next layer</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Yield until the queue becomes active</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input_events</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process_events</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+
+            <span class="c1"># paint circles in descending timestamp order (oldest first)</span>
+            <span class="n">events</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">operator</span><span class="o">.</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">event</span><span class="o">.</span><span class="n">percent_complete</span>
+                <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+                    <span class="n">radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_distance</span> <span class="o">*</span> <span class="n">distance</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_draw_circles</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+    <span class="nd">@observe</span><span class="p">(</span><span class="s1">&#39;preset&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">,</span> <span class="s1">&#39;background_color&#39;</span><span class="p">,</span> <span class="s1">&#39;random&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_update_colors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">change</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">hold_trait_notifications</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">change</span><span class="o">.</span><span class="n">new</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="n">change</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;preset&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">random</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_generator</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">color_generator</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">change</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;random&#39;</span> <span class="ow">and</span> <span class="n">change</span><span class="o">.</span><span class="n">new</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">preset</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_generator</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">rainbow_generator</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">preset</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">random</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">base_color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">background_color</span>
+                <span class="k">if</span> <span class="n">base_color</span> <span class="o">==</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="n">base_color</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_generator</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">scheme_generator</span><span class="p">(</span>
+                    <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">,</span> <span class="n">base_color</span><span class="o">=</span><span class="n">base_color</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Ripple.init"><a class="viewcode-back" href="../../../uchroma.fxlib.ripple.html#uchroma.fxlib.ripple.Ripple.init">[docs]</a>    <span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_key_input</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_distance</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

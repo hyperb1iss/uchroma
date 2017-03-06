@@ -1,0 +1,974 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.standard_fx module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.server.types module" href="uchroma.server.types.html" />
+    <link rel="prev" title="uchroma.server.server module" href="uchroma.server.server.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.server.html" title="uchroma.server.server module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.server.types.html" title="uchroma.server.types module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.server.standard_fx">
+<span id="uchroma-server-standard-fx-module"></span><h1>uchroma.server.standard_fx module<a class="headerlink" href="#module-uchroma.server.standard_fx" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.server.standard_fx.Direction">
+<em class="property">class </em><code class="descclassname">uchroma.server.standard_fx.</code><code class="descname">Direction</code><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#Direction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.Direction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/enum.html#enum.Enum" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">enum.Enum</span></code></a></p>
+<p>Enumeration of directions and arguments for some animated effects
+which pan across the device. The &#8220;chase&#8221; variants are only available
+on devices with an illuminated trackpad such as the Blade Pro, and
+produce a rotating animation around the trackpad.</p>
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.Direction.LEFT">
+<code class="descname">LEFT</code><em class="property"> = 2</em><a class="headerlink" href="#uchroma.server.standard_fx.Direction.LEFT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.Direction.RIGHT">
+<code class="descname">RIGHT</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.server.standard_fx.Direction.RIGHT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.ExtendedFX">
+<em class="property">class </em><code class="descclassname">uchroma.server.standard_fx.</code><code class="descname">ExtendedFX</code><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#ExtendedFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/enum.html#enum.Enum" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">enum.Enum</span></code></a></p>
+<p>Enumeration of &#8220;extended&#8221; effect types and command identifiers</p>
+<p>These effects use a different command structure than the standard
+effects. Should not normally be used as part of the API.</p>
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.BREATHE">
+<code class="descname">BREATHE</code><em class="property"> = 2</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.BREATHE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.CUSTOM_FRAME">
+<code class="descname">CUSTOM_FRAME</code><em class="property"> = 8</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.CUSTOM_FRAME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.DISABLE">
+<code class="descname">DISABLE</code><em class="property"> = 0</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.DISABLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.REACTIVE">
+<code class="descname">REACTIVE</code><em class="property"> = 5</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.REACTIVE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.SPECTRUM">
+<code class="descname">SPECTRUM</code><em class="property"> = 3</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.SPECTRUM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.STARLIGHT">
+<code class="descname">STARLIGHT</code><em class="property"> = 7</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.STARLIGHT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.STATIC">
+<code class="descname">STATIC</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.STATIC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.ExtendedFX.WAVE">
+<code class="descname">WAVE</code><em class="property"> = 4</em><a class="headerlink" href="#uchroma.server.standard_fx.ExtendedFX.WAVE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.FX">
+<em class="property">class </em><code class="descclassname">uchroma.server.standard_fx.</code><code class="descname">FX</code><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#FX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.FX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/enum.html#enum.Enum" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">enum.Enum</span></code></a></p>
+<p>All known lighting effects.</p>
+<p>Not all effects are available on all devices.</p>
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.ALIGNMENT">
+<code class="descname">ALIGNMENT</code><em class="property"> = 254</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.ALIGNMENT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.BREATHE">
+<code class="descname">BREATHE</code><em class="property"> = 3</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.BREATHE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.CIRCLE">
+<code class="descname">CIRCLE</code><em class="property"> = 13</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.CIRCLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.CUSTOM_FRAME">
+<code class="descname">CUSTOM_FRAME</code><em class="property"> = 5</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.CUSTOM_FRAME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.DISABLE">
+<code class="descname">DISABLE</code><em class="property"> = 0</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.DISABLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.FIRE">
+<code class="descname">FIRE</code><em class="property"> = 18</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.FIRE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.GRADIENT">
+<code class="descname">GRADIENT</code><em class="property"> = 10</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.GRADIENT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.HIGHLIGHT">
+<code class="descname">HIGHLIGHT</code><em class="property"> = 16</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.HIGHLIGHT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.MORPH">
+<code class="descname">MORPH</code><em class="property"> = 17</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.MORPH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.RAINBOW">
+<code class="descname">RAINBOW</code><em class="property"> = 255</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.RAINBOW" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.REACTIVE">
+<code class="descname">REACTIVE</code><em class="property"> = 2</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.REACTIVE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.RIPPLE">
+<code class="descname">RIPPLE</code><em class="property"> = 20</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.RIPPLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.RIPPLE_SOLID">
+<code class="descname">RIPPLE_SOLID</code><em class="property"> = 19</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.RIPPLE_SOLID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.SPECTRUM">
+<code class="descname">SPECTRUM</code><em class="property"> = 4</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.SPECTRUM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.SPECTRUM_BLADE">
+<code class="descname">SPECTRUM_BLADE</code><em class="property"> = 28</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.SPECTRUM_BLADE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.STARLIGHT">
+<code class="descname">STARLIGHT</code><em class="property"> = 25</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.STARLIGHT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.STATIC">
+<code class="descname">STATIC</code><em class="property"> = 6</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.STATIC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.SWEEP">
+<code class="descname">SWEEP</code><em class="property"> = 12</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.SWEEP" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.FX.WAVE">
+<code class="descname">WAVE</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.server.standard_fx.FX.WAVE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.Mode">
+<em class="property">class </em><code class="descclassname">uchroma.server.standard_fx.</code><code class="descname">Mode</code><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#Mode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.Mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/enum.html#enum.Enum" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">enum.Enum</span></code></a></p>
+<p>Enumeration of modes and arguments for some animated effects which
+accept a variable number of colors.</p>
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.Mode.DUAL">
+<code class="descname">DUAL</code><em class="property"> = 2</em><a class="headerlink" href="#uchroma.server.standard_fx.Mode.DUAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.Mode.RANDOM">
+<code class="descname">RANDOM</code><em class="property"> = 0</em><a class="headerlink" href="#uchroma.server.standard_fx.Mode.RANDOM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.Mode.SINGLE">
+<code class="descname">SINGLE</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.server.standard_fx.Mode.SINGLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX">
+<em class="property">class </em><code class="descclassname">uchroma.server.standard_fx.</code><code class="descname">StandardFX</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.FXModule" title="uchroma.server.fx.FXModule"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.FXModule</span></code></a></p>
+<p>Manages device lighting effects</p>
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.AlignmentFX">
+<em class="property">class </em><code class="descname">AlignmentFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.AlignmentFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.AlignmentFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.AlignmentFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.AlignmentFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.AlignmentFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.AlignmentFX.cur_col">
+<code class="descname">cur_col</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.AlignmentFX.cur_col" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.AlignmentFX.cur_row">
+<code class="descname">cur_row</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.AlignmentFX.cur_row" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.AlignmentFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.AlignmentFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.AlignmentFX.hidden">
+<code class="descname">hidden</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.AlignmentFX.hidden" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean (True, False) trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.BreatheFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">BreatheFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.BreatheFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.BreatheFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.BreatheFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.BreatheFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.BreatheFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Activate the &#8220;breathe&#8221; effect. Colors pulse in and out.</p>
+<p>This effect allows up to two (optional) colors. If no colors are
+specified, random colors will be used.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color1</strong> &#8211; First color</li>
+<li><strong>color2</strong> &#8211; Second color</li>
+<li><strong>preset</strong> &#8211; Predefined color pair, invalid when color1/color2 is supplied</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if successful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.BreatheFX.colors">
+<code class="descname">colors</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.BreatheFX.colors" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of ColorTraits which comprise a scheme</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.BreatheFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.BreatheFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.Command">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">Command</code><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.Command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.Command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.types.html#uchroma.server.types.BaseCommand" title="uchroma.server.types.BaseCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.types.BaseCommand</span></code></a></p>
+<p>Commands used to apply effects</p>
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.Command.SET_EFFECT">
+<code class="descname">SET_EFFECT</code><em class="property"> = (3, 10, None)</em><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.Command.SET_EFFECT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.Command.SET_EFFECT_EXTENDED">
+<code class="descname">SET_EFFECT_EXTENDED</code><em class="property"> = (15, 2, None)</em><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.Command.SET_EFFECT_EXTENDED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.CustomFrameFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">CustomFrameFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.CustomFrameFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.CustomFrameFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.CustomFrameFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.CustomFrameFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.CustomFrameFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Activate the custom frame currently in the device memory</p>
+<p>Called by the Frame class when commit() is called.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.CustomFrameFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.CustomFrameFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.CustomFrameFX.hidden">
+<code class="descname">hidden</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.CustomFrameFX.hidden" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean (True, False) trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.DisableFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">DisableFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.DisableFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.DisableFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.DisableFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.DisableFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.DisableFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disables all running effects</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.DisableFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.DisableFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.FireFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">FireFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.FireFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.FireFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.FireFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.FireFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.FireFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Animated fire!</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color</strong> &#8211; Color scheme of the fire</li>
+<li><strong>speed</strong> &#8211; Speed of the fire</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if successful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.FireFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.FireFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.FireFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.FireFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.FireFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.FireFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.MorphFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">MorphFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.MorphFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.MorphFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.MorphFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.MorphFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.MorphFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>A &#8220;morphing&#8221; color effect when keys are pressed</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color</strong> &#8211; The color when keys are pressed (defaults to magenta)</li>
+<li><strong>base_color</strong> &#8211; The base color for the effect (defaults to blue)</li>
+<li><strong>speed</strong> &#8211; Speed of the sweep</li>
+<li><strong>preset</strong> &#8211; Predefined color pair to use. Invalid with color/base_color.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if successful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.MorphFX.base_color">
+<code class="descname">base_color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.MorphFX.base_color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.MorphFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.MorphFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.MorphFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.MorphFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.MorphFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.MorphFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.RainbowFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">RainbowFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.RainbowFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RainbowFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.RainbowFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.RainbowFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RainbowFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show a rainbow of colors across the device</p>
+<p>Uses the Frame interface. Will change when device characteristics
+are implemented.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RainbowFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RainbowFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RainbowFX.length">
+<code class="descname">length</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RainbowFX.length" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RainbowFX.stagger">
+<code class="descname">stagger</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RainbowFX.stagger" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.ReactiveFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">ReactiveFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.ReactiveFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.ReactiveFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.ReactiveFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.ReactiveFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.ReactiveFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lights up keys when they are pressed</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color</strong> &#8211; Color of lighting when keys are pressed</li>
+<li><strong>speed</strong> &#8211; Speed (1-4) at which the keys should fade out</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if successful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.ReactiveFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.ReactiveFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.ReactiveFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.ReactiveFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.ReactiveFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.ReactiveFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">RippleFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.RippleFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.RippleFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleSolidFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">RippleSolidFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.RippleSolidFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleSolidFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleSolidFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.RippleSolidFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleSolidFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleSolidFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleSolidFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleSolidFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleSolidFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.RippleSolidFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.RippleSolidFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.SpectrumFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">SpectrumFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.SpectrumFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SpectrumFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.SpectrumFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.SpectrumFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SpectrumFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Slowly cycles lighting thru all colors of the spectrum</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.SpectrumFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SpectrumFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.StarlightFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">StarlightFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.StarlightFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StarlightFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.StarlightFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.StarlightFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StarlightFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Activate the &#8220;starlight&#8221; effect. Colors sparkle across the device.</p>
+<p>This effect allows up to two (optional) colors. If no colors are
+specified, random colors will be used.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color1</strong> &#8211; First color</li>
+<li><strong>color2</strong> &#8211; Second color</li>
+<li><strong>speed</strong> &#8211; Speed of the effect</li>
+<li><strong>preset</strong> &#8211; Predefined color pair, invalid when color1/color2 is supplied</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if successful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.StarlightFX.colors">
+<code class="descname">colors</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StarlightFX.colors" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of ColorTraits which comprise a scheme</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.StarlightFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StarlightFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.StarlightFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StarlightFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.StaticFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">StaticFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.StaticFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StaticFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.StaticFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.StaticFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StaticFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets lighting to a static color</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal"><span class="pre">bool</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>color</strong> &#8211; The color to apply</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.StaticFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StaticFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.StaticFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.StaticFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">SweepFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.SweepFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.SweepFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produces colors which sweep across the device</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">bool</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color</strong> &#8211; The color to sweep with (defaults to light blue)</li>
+<li><strong>base_color</strong> &#8211; The base color for the effect (defaults to black)</li>
+<li><strong>direction</strong> &#8211; The direction for the sweep</li>
+<li><strong>speed</strong> &#8211; Speed of the sweep</li>
+<li><strong>preset</strong> &#8211; Predefined color pair to use. Invalid with color/base_color.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True if successful</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX.base_color">
+<code class="descname">base_color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX.base_color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX.color">
+<code class="descname">color</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX.direction">
+<code class="descname">direction</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX.direction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclass of UseEnum which allows selection of values using
+case insensitive strings</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.SweepFX.speed">
+<code class="descname">speed</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.SweepFX.speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>An int trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.standard_fx.StandardFX.WaveFX">
+<em class="property">class </em><code class="descclassname">StandardFX.</code><code class="descname">WaveFX</code><span class="sig-paren">(</span><em>fxmod</em>, <em>driver</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.WaveFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.WaveFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.fx.html#uchroma.server.fx.BaseFX" title="uchroma.server.fx.BaseFX"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.fx.BaseFX</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.WaveFX.apply">
+<code class="descname">apply</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.WaveFX.apply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.WaveFX.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Activates the &#8220;wave&#8221; effect</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal"><span class="pre">bool</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>direction</strong> &#8211; Optional direction for the effect, defaults to right</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.WaveFX.description">
+<code class="descname">description</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.WaveFX.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A trait for unicode strings.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.WaveFX.direction">
+<code class="descname">direction</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.WaveFX.direction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclass of UseEnum which allows selection of values using
+case insensitive strings</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.standard_fx.StandardFX.WaveFX.trackpad_effect">
+<code class="descname">trackpad_effect</code><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.WaveFX.trackpad_effect" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean (True, False) trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.standard_fx.StandardFX.set_effect">
+<code class="descclassname">StandardFX.</code><code class="descname">set_effect</code><span class="sig-paren">(</span><em>effect: enum.Enum</em>, <em>*args</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/standard_fx.html#StandardFX.set_effect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.standard_fx.StandardFX.set_effect" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.server.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.server.html" title="uchroma.server.server module"
+              >previous</a> |
+            <a href="uchroma.server.types.html" title="uchroma.server.types module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.server.standard_fx.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

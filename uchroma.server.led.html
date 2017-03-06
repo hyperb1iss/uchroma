@@ -1,0 +1,330 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.led module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.server.macro module" href="uchroma.server.macro.html" />
+    <link rel="prev" title="uchroma.server.laptop module" href="uchroma.server.laptop.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.laptop.html" title="uchroma.server.laptop module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.server.macro.html" title="uchroma.server.macro module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.server.led">
+<span id="uchroma-server-led-module"></span><h1>uchroma.server.led module<a class="headerlink" href="#module-uchroma.server.led" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.server.led.LED">
+<em class="property">class </em><code class="descclassname">uchroma.server.led.</code><code class="descname">LED</code><span class="sig-paren">(</span><em>driver</em>, <em>led_type: uchroma.server.led.LEDType</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/led.html#LED"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.led.LED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">traitlets.traitlets.HasTraits</span></code></p>
+<dl class="class">
+<dt id="uchroma.server.led.LED.Command">
+<em class="property">class </em><code class="descname">Command</code><a class="reference internal" href="_modules/uchroma/server/led.html#LED.Command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.led.LED.Command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.types.html#uchroma.server.types.BaseCommand" title="uchroma.server.types.BaseCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.types.BaseCommand</span></code></a></p>
+<p>Commands used by this class</p>
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.GET_LED_BRIGHTNESS">
+<code class="descname">GET_LED_BRIGHTNESS</code><em class="property"> = (3, 131, 3)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.GET_LED_BRIGHTNESS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.GET_LED_COLOR">
+<code class="descname">GET_LED_COLOR</code><em class="property"> = (3, 129, 5)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.GET_LED_COLOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.GET_LED_MODE">
+<code class="descname">GET_LED_MODE</code><em class="property"> = (3, 130, 3)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.GET_LED_MODE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.GET_LED_STATE">
+<code class="descname">GET_LED_STATE</code><em class="property"> = (3, 128, 3)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.GET_LED_STATE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.SET_LED_BRIGHTNESS">
+<code class="descname">SET_LED_BRIGHTNESS</code><em class="property"> = (3, 3, 3)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.SET_LED_BRIGHTNESS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.SET_LED_COLOR">
+<code class="descname">SET_LED_COLOR</code><em class="property"> = (3, 1, 5)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.SET_LED_COLOR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.SET_LED_MODE">
+<code class="descname">SET_LED_MODE</code><em class="property"> = (3, 2, 3)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.SET_LED_MODE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.Command.SET_LED_STATE">
+<code class="descname">SET_LED_STATE</code><em class="property"> = (3, 0, 3)</em><a class="headerlink" href="#uchroma.server.led.LED.Command.SET_LED_STATE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.brightness">
+<code class="descclassname">LED.</code><code class="descname">brightness</code><a class="headerlink" href="#uchroma.server.led.LED.brightness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Control individual LEDs which may be present on a device</p>
+<p>This class should not need to be instantiated directly, the
+correct singleton instance is obtained by calling the
+get_led() method of UChromaDevice.</p>
+<p>The API does not yet support listing the LED types actually
+available on a device.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.color">
+<code class="descclassname">LED.</code><code class="descname">color</code><a class="headerlink" href="#uchroma.server.led.LED.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>A traitlet which encapsulates a grapefruit.Color and performs
+type coercion as needed.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.led_type">
+<code class="descclassname">LED.</code><code class="descname">led_type</code><a class="headerlink" href="#uchroma.server.led.LED.led_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclass of UseEnumCaseless which may only be written once.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.mode">
+<code class="descclassname">LED.</code><code class="descname">mode</code><a class="headerlink" href="#uchroma.server.led.LED.mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclass of UseEnum which allows selection of values using
+case insensitive strings</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LED.state">
+<code class="descclassname">LED.</code><code class="descname">state</code><a class="headerlink" href="#uchroma.server.led.LED.state" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean (True, False) trait.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.led.LEDManager">
+<em class="property">class </em><code class="descclassname">uchroma.server.led.</code><code class="descname">LEDManager</code><span class="sig-paren">(</span><em>driver</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/led.html#LEDManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.led.LEDManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.led.LEDManager.get">
+<code class="descname">get</code><span class="sig-paren">(</span><em>led_type: uchroma.server.led.LEDType</em><span class="sig-paren">)</span> &#x2192; uchroma.server.led.LED<a class="reference internal" href="_modules/uchroma/server/led.html#LEDManager.get"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.led.LEDManager.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetches the requested LED interface on this device</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#uchroma.server.led.LED" title="uchroma.server.led.LED"><code class="xref py py-class docutils literal"><span class="pre">LED</span></code></a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>led_type</strong> (<a class="reference internal" href="#uchroma.server.led.LEDType" title="uchroma.server.led.LEDType"><code class="xref py py-class docutils literal"><span class="pre">LEDType</span></code></a>) &#8211; The LED type to fetch</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The LED interface, if available</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDManager.supported_leds">
+<code class="descname">supported_leds</code><a class="headerlink" href="#uchroma.server.led.LEDManager.supported_leds" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.led.LEDMode">
+<em class="property">class </em><code class="descclassname">uchroma.server.led.</code><code class="descname">LEDMode</code><a class="reference internal" href="_modules/uchroma/server/led.html#LEDMode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.led.LEDMode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/enum.html#enum.Enum" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">enum.Enum</span></code></a></p>
+<p>Enumeration of LED effect modes</p>
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDMode.BLINK">
+<code class="descname">BLINK</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.server.led.LEDMode.BLINK" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDMode.PULSE">
+<code class="descname">PULSE</code><em class="property"> = 2</em><a class="headerlink" href="#uchroma.server.led.LEDMode.PULSE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDMode.SPECTRUM">
+<code class="descname">SPECTRUM</code><em class="property"> = 4</em><a class="headerlink" href="#uchroma.server.led.LEDMode.SPECTRUM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDMode.STATIC">
+<code class="descname">STATIC</code><em class="property"> = 0</em><a class="headerlink" href="#uchroma.server.led.LEDMode.STATIC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.led.LEDType">
+<em class="property">class </em><code class="descclassname">uchroma.server.led.</code><code class="descname">LEDType</code><a class="reference internal" href="_modules/uchroma/server/led.html#LEDType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.led.LEDType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/enum.html#enum.Enum" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">enum.Enum</span></code></a></p>
+<p>Enumeration of LED types</p>
+<p>All types not available on all devices.</p>
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.BACKLIGHT">
+<code class="descname">BACKLIGHT</code><em class="property"> = 5</em><a class="headerlink" href="#uchroma.server.led.LEDType.BACKLIGHT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.BATTERY">
+<code class="descname">BATTERY</code><em class="property"> = 3</em><a class="headerlink" href="#uchroma.server.led.LEDType.BATTERY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.GAME">
+<code class="descname">GAME</code><em class="property"> = 8</em><a class="headerlink" href="#uchroma.server.led.LEDType.GAME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.LOGO">
+<code class="descname">LOGO</code><em class="property"> = 4</em><a class="headerlink" href="#uchroma.server.led.LEDType.LOGO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.MACRO">
+<code class="descname">MACRO</code><em class="property"> = 7</em><a class="headerlink" href="#uchroma.server.led.LEDType.MACRO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.PROFILE_BLUE">
+<code class="descname">PROFILE_BLUE</code><em class="property"> = 13</em><a class="headerlink" href="#uchroma.server.led.LEDType.PROFILE_BLUE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.PROFILE_GREEN">
+<code class="descname">PROFILE_GREEN</code><em class="property"> = 12</em><a class="headerlink" href="#uchroma.server.led.LEDType.PROFILE_GREEN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.PROFILE_RED">
+<code class="descname">PROFILE_RED</code><em class="property"> = 14</em><a class="headerlink" href="#uchroma.server.led.LEDType.PROFILE_RED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.led.LEDType.SCROLL_WHEEL">
+<code class="descname">SCROLL_WHEEL</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.server.led.LEDType.SCROLL_WHEEL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.server.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.laptop.html" title="uchroma.server.laptop module"
+              >previous</a> |
+            <a href="uchroma.server.macro.html" title="uchroma.server.macro module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.server.led.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

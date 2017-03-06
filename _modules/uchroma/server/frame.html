@@ -1,0 +1,335 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.frame &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.server.frame</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=invalid-name, too-many-arguments, no-member</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.blending</span> <span class="k">import</span> <span class="n">blend</span>
+<span class="kn">from</span> <span class="nn">uchroma.color</span> <span class="k">import</span> <span class="n">ColorUtils</span>
+<span class="kn">from</span> <span class="nn">uchroma.layer</span> <span class="k">import</span> <span class="n">Layer</span>
+
+<span class="kn">from</span> <span class="nn">.hardware</span> <span class="k">import</span> <span class="n">Quirks</span>
+<span class="kn">from</span> <span class="nn">.types</span> <span class="k">import</span> <span class="n">BaseCommand</span>
+
+
+<div class="viewcode-block" id="Frame"><a class="viewcode-back" href="../../../uchroma.server.frame.html#uchroma.server.frame.Frame">[docs]</a><span class="k">class</span> <span class="nc">Frame</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A simple framebuffer for creating custom effects.</span>
+
+<span class="sd">    Internally represented by a 2D numpy array of</span>
+<span class="sd">    Grapefruit Color objects. Individual pixels of</span>
+<span class="sd">    the framebuffer should be set to the desired colors</span>
+<span class="sd">    and will be sent to the hardware atomically when commit() is</span>
+<span class="sd">    called. The buffer is then (optionally) cleared with the</span>
+<span class="sd">    base color (black/off by default) so the next frame can</span>
+<span class="sd">    be drawn without jank or flicker (double-buffering).</span>
+
+<span class="sd">    NOTE: This API is not yet complete and may change as</span>
+<span class="sd">    support for multiple device layouts and animations</span>
+<span class="sd">    is introduced in a future release.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">MAX_WIDTH</span> <span class="o">=</span> <span class="mi">24</span>
+    <span class="n">DEFAULT_FRAME_ID</span> <span class="o">=</span> <span class="mh">0xFF</span>
+
+<div class="viewcode-block" id="Frame.Command"><a class="viewcode-back" href="../../../uchroma.server.frame.html#uchroma.server.frame.Frame.Command">[docs]</a>    <span class="k">class</span> <span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Enumeration of raw hardware command data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">SET_FRAME_DATA_MATRIX</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x03</span><span class="p">,</span> <span class="mh">0x0B</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">SET_FRAME_DATA_SINGLE</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x03</span><span class="p">,</span> <span class="mh">0x0C</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">driver</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span> <span class="o">=</span> <span class="n">driver</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_width</span> <span class="o">=</span> <span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_height</span> <span class="o">=</span> <span class="n">height</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">driver</span><span class="o">.</span><span class="n">logger</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_debug_opts</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<div class="viewcode-block" id="Frame.create_layer"><a class="viewcode-back" href="../../../uchroma.server.frame.html#uchroma.server.frame.Frame.create_layer">[docs]</a>    <span class="k">def</span> <span class="nf">create_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Layer</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new layer which can be used for</span>
+<span class="sd">        creating custom effects and animations.</span>
+<span class="sd">        Multiple layers can be composited together for</span>
+<span class="sd">        advanced effects or stacked animations. Currently</span>
+<span class="sd">        only layers which match the physical size of the</span>
+<span class="sd">        lighting matrix are supported.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Layer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">device_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the current device name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">name</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">width</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The width of this Frame in pixels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">height</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The height of this Frame in pixels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">debug_opts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Dict of arbitrary values for internal use. This is</span>
+<span class="sd">        currently only used by the device bringup tool.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_debug_opts</span>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Frame.compose"><a class="viewcode-back" href="../../../uchroma.server.frame.html#uchroma.server.frame.Frame.compose">[docs]</a>    <span class="k">def</span> <span class="nf">compose</span><span class="p">(</span><span class="n">layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Render a list of Layers into an RGB image</span>
+
+<span class="sd">        The layer matrices are populated with RGBA tuples and must</span>
+<span class="sd">        be blended according to z-order (using the blend mode specified</span>
+<span class="sd">        by each layer) then alpha-composited into a single RGB image</span>
+<span class="sd">        before sending to the hardware. If the background color is</span>
+<span class="sd">        set on a layer, it is only honored if it is the base layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">matrix</span>
+
+            <span class="c1"># blend all the layers by z-order</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">l_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)):</span>
+                    <span class="n">layer</span> <span class="o">=</span> <span class="n">layers</span><span class="p">[</span><span class="n">l_idx</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">layer</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">layer</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">out</span> <span class="o">=</span> <span class="n">blend</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">layer</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span> <span class="n">layer</span><span class="o">.</span><span class="n">blend_mode</span><span class="p">,</span> <span class="n">layer</span><span class="o">.</span><span class="n">opacity</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">rgba2rgb</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">bg_color</span><span class="o">=</span><span class="n">layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">background_color</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_set_frame_data_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">,</span> <span class="n">Frame</span><span class="o">.</span><span class="n">MAX_WIDTH</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">Frame</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_FRAME_DATA_SINGLE</span><span class="p">,</span>
+                                 <span class="mi">0</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">img</span><span class="p">[</span><span class="mi">0</span><span class="p">][:</span><span class="n">width</span><span class="p">]</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(),</span>
+                                 <span class="n">transaction_id</span><span class="o">=</span><span class="mh">0x80</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_frame_data_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remaining_packets</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_report</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tid</span> <span class="o">=</span> <span class="mh">0xFF</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">has_quirk</span><span class="p">(</span><span class="n">Quirks</span><span class="o">.</span><span class="n">CUSTOM_FRAME_80</span><span class="p">):</span>
+                <span class="n">tid</span> <span class="o">=</span> <span class="mh">0x80</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_report</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">get_report</span><span class="p">(</span> \
+                <span class="o">*</span><span class="n">Frame</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_FRAME_DATA_MATRIX</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">transaction_id</span><span class="o">=</span><span class="n">tid</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">put_all</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report</span><span class="o">.</span><span class="n">remaining_packets</span> <span class="o">=</span> <span class="n">remaining_packets</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_report</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_frame_data_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_width</span>
+        <span class="n">multi</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1">#perform two updates if we exceeded 24 columns</span>
+        <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="n">Frame</span><span class="o">.</span><span class="n">MAX_WIDTH</span><span class="p">:</span>
+            <span class="n">multi</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="s1">&#39;align_key_matrix&#39;</span><span class="p">):</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">align_key_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span><span class="p">):</span>
+            <span class="n">rowdata</span> <span class="o">=</span> <span class="n">img</span><span class="p">[</span><span class="n">row</span><span class="p">]</span>
+
+            <span class="n">start_col</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="p">,</span> <span class="s1">&#39;get_row_offset&#39;</span><span class="p">):</span>
+                <span class="n">start_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">get_row_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+
+            <span class="n">remaining</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span> <span class="o">-</span> <span class="n">row</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">multi</span><span class="p">:</span>
+                <span class="n">remaining</span> <span class="o">=</span> <span class="p">(</span><span class="n">remaining</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="n">data</span> <span class="o">=</span> <span class="n">rowdata</span><span class="p">[:</span><span class="n">width</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">run_report</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_frame_data_report</span><span class="p">(</span><span class="n">remaining</span><span class="p">,</span> \
+                <span class="n">frame_id</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">start_col</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">multi</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">rowdata</span><span class="p">[</span><span class="n">width</span><span class="p">:]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">run_report</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_frame_data_report</span><span class="p">(</span><span class="n">remaining</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> \
+                    <span class="n">frame_id</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">width</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_frame_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">frame_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame_id</span> <span class="o">=</span> <span class="n">Frame</span><span class="o">.</span><span class="n">DEFAULT_FRAME_ID</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_height</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_frame_data_single</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_frame_data_matrix</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_custom_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">fx_manager</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="s1">&#39;custom_frame&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Frame.commit"><a class="viewcode-back" href="../../../uchroma.server.frame.html#uchroma.server.frame.Frame.commit">[docs]</a>    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layers</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Frame&#39;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Display this frame and prepare for the next frame</span>
+
+<span class="sd">        Atomically sends this frame to the hardware and displays it.</span>
+<span class="sd">        The buffer is then cleared by default and the next frame</span>
+<span class="sd">        can be drawn.</span>
+
+<span class="sd">        :param clear: True if the buffer should be cleared after commit</span>
+<span class="sd">        :param frame_id: Internal frame identifier</span>
+
+<span class="sd">        :return: This Frame instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">Frame</span><span class="o">.</span><span class="n">compose</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_frame_data</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_custom_frame</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="Frame.reset"><a class="viewcode-back" href="../../../uchroma.server.frame.html#uchroma.server.frame.Frame.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame_id</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Frame&#39;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Clear the frame on the hardware.</span>
+
+<span class="sd">        :return: This frame instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commit</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">create_layer</span><span class="p">()],</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.fixups &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.server.fixups</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=invalid-name, no-member</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Fixups are mixins which adjust input/output data in some form.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">array</span>
+
+<span class="kn">from</span> <span class="nn">.hardware</span> <span class="k">import</span> <span class="n">Hardware</span>
+
+
+<div class="viewcode-block" id="KeyboardFixup"><a class="viewcode-back" href="../../../uchroma.server.fixups.html#uchroma.server.fixups.KeyboardFixup">[docs]</a><span class="k">class</span> <span class="nc">KeyboardFixup</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fixup which adjusts key coordinates in order to achieve a linear matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">KeyboardFixup</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alignment_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hardware</span><span class="o">.</span><span class="n">key_fixup_mapping</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_row_offsets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hardware</span><span class="o">.</span><span class="n">key_row_offsets</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_insert</span><span class="p">(</span><span class="n">rowdata</span><span class="p">:</span> <span class="n">array</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">array</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Inserts a &quot;spacer&quot; into the output row, effectively sliding right.</span>
+
+<span class="sd">        :param rowdata: The current data for the current row</span>
+<span class="sd">        :param col: The column number where the empty cell should be inserted</span>
+
+<span class="sd">        :return: The updated row data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">rowdata</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_delete</span><span class="p">(</span><span class="n">rowdata</span><span class="p">:</span> <span class="n">array</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">array</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deletes a cell from the output row, effectively sliding left.</span>
+
+<span class="sd">        :param rowdata: The current data for the current row</span>
+<span class="sd">        :param col: The column number where a cell should be removed</span>
+
+<span class="sd">        :return: The updated row data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">rowdata</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_copy</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">array</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">array</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Copy a cell from the source to the destination, effectively moving a key.</span>
+
+<span class="sd">        :param matrix: The original input frame</span>
+<span class="sd">        :param src: Source position, tuple of (row, column)</span>
+<span class="sd">        :param dst: Destination position, tuple of (row, column)</span>
+
+<span class="sd">        :return: The updated row data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">src_row</span><span class="p">,</span> <span class="n">src_col</span> <span class="o">=</span> <span class="n">src</span>
+        <span class="n">dst_row</span><span class="p">,</span> <span class="n">dst_col</span> <span class="o">=</span> <span class="n">dst</span>
+        <span class="n">matrix</span><span class="p">[</span><span class="n">dst_row</span><span class="p">][</span><span class="n">dst_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">src_row</span><span class="p">][</span><span class="n">src_col</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">matrix</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_update_debug_info</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">debug_position</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+                           <span class="n">in_data</span><span class="p">:</span> <span class="n">array</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">out_data</span><span class="p">:</span> <span class="n">array</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Used by the alignment utility.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">debug_position</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">debug_position</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">debug_position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">in_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">frame</span><span class="o">.</span><span class="n">debug_opts</span><span class="p">[</span><span class="s1">&#39;in_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">in_data</span><span class="p">[</span><span class="n">row</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">out_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">frame</span><span class="o">.</span><span class="n">debug_opts</span><span class="p">[</span><span class="s1">&#39;out_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">out_data</span><span class="p">[</span><span class="n">row</span><span class="p">])</span>
+
+
+    <span class="k">def</span> <span class="nf">_align_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">matrix</span><span class="p">:</span> <span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">array</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply the alignment map to the given matrix, performing</span>
+<span class="sd">        inserts, deletes, and copies (in this order).</span>
+
+<span class="sd">        :param matrix: The input matrix</span>
+
+<span class="sd">        :return: The updated matrix</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">skip_fixups</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">debug_opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;skip_fixups&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">debug_position</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">debug_opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;debug_position&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="n">KeyboardFixup</span><span class="o">.</span><span class="n">_update_debug_info</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">debug_position</span><span class="p">,</span> <span class="n">in_data</span><span class="o">=</span><span class="n">matrix</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alignment_map</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">skip_fixups</span><span class="p">:</span>
+
+            <span class="n">inserts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alignment_map</span><span class="o">.</span><span class="n">insert</span>
+            <span class="k">if</span> <span class="n">inserts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">insert</span> <span class="ow">in</span> <span class="n">inserts</span><span class="p">:</span>
+                    <span class="n">rr</span><span class="p">,</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">insert</span>
+                    <span class="n">matrix</span><span class="p">[</span><span class="n">rr</span><span class="p">]</span> <span class="o">=</span> <span class="n">KeyboardFixup</span><span class="o">.</span><span class="n">_insert</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">rr</span><span class="p">],</span> <span class="n">cc</span><span class="p">)</span>
+
+            <span class="n">deletes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alignment_map</span><span class="o">.</span><span class="n">delete</span>
+            <span class="k">if</span> <span class="n">deletes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">delete</span> <span class="ow">in</span> <span class="n">deletes</span><span class="p">:</span>
+                    <span class="n">rr</span><span class="p">,</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">delete</span>
+                    <span class="n">matrix</span><span class="p">[</span><span class="n">rr</span><span class="p">]</span> <span class="o">=</span> <span class="n">KeyboardFixup</span><span class="o">.</span><span class="n">_delete</span><span class="p">(</span><span class="n">matrix</span><span class="p">[</span><span class="n">rr</span><span class="p">],</span> <span class="n">cc</span><span class="p">)</span>
+
+            <span class="n">copies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alignment_map</span><span class="o">.</span><span class="n">copy</span>
+            <span class="k">if</span> <span class="n">copies</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">copy</span> <span class="ow">in</span> <span class="n">copies</span><span class="p">:</span>
+                    <span class="n">src</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">copy</span>
+                    <span class="n">matrix</span> <span class="o">=</span> <span class="n">KeyboardFixup</span><span class="o">.</span><span class="n">_copy</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+
+        <span class="n">KeyboardFixup</span><span class="o">.</span><span class="n">_update_debug_info</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">debug_position</span><span class="p">,</span> <span class="n">out_data</span><span class="o">=</span><span class="n">matrix</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">matrix</span>
+
+
+<div class="viewcode-block" id="KeyboardFixup.get_row_offset"><a class="viewcode-back" href="../../../uchroma.server.fixups.html#uchroma.server.fixups.KeyboardFixup.get_row_offset">[docs]</a>    <span class="k">def</span> <span class="nf">get_row_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the offset for the given row. This effectively pads the entire</span>
+<span class="sd">        row to the right by the given offset.</span>
+
+<span class="sd">        :param row: The current row</span>
+
+<span class="sd">        :return: Column offset for the given row</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_row_offsets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">frame</span><span class="o">.</span><span class="n">debug_opts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;skip_fixups&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_row_offsets</span><span class="p">[</span><span class="n">row</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="KeyboardFixup.align_key_matrix"><a class="viewcode-back" href="../../../uchroma.server.fixups.html#uchroma.server.fixups.KeyboardFixup.align_key_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">align_key_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">matrix</span><span class="p">:</span> <span class="n">array</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">array</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform alignment of the matrix. Columns may be inserted,</span>
+<span class="sd">        deleted, or copied from other locations.</span>
+
+<span class="sd">        :param matrix: The input data matrix</span>
+
+<span class="sd">        :return: The aligned matrix</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_align_matrix</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">matrix</span><span class="p">)</span></div></div>
+
+
+
+<span class="n">BLADE_PRO_KEY_ALIGNMENT_MAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;insert&#39;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s1">&#39;delete&#39;</span><span class="p">:</span> <span class="p">[],</span>
+    <span class="s1">&#39;copy&#39;</span><span class="p">:</span> <span class="p">[((</span><span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">)),</span>   <span class="c1"># right alt misaligned under spacebar</span>
+             <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">22</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">22</span><span class="p">)),</span>  <span class="c1"># wheel is backwards and under trackpad</span>
+             <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">21</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">22</span><span class="p">))]</span>
+<span class="p">}</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.traits &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.traits</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=protected-access, invalid-name, no-member</span>
+<span class="kn">import</span> <span class="nn">enum</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">ArgumentParser</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Iterable</span>
+
+<span class="kn">from</span> <span class="nn">traitlets</span> <span class="k">import</span> <span class="n">CaselessStrEnum</span><span class="p">,</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">Int</span><span class="p">,</span> <span class="n">HasTraits</span><span class="p">,</span> \
+        <span class="n">List</span><span class="p">,</span> <span class="n">TraitType</span><span class="p">,</span> <span class="n">Undefined</span><span class="p">,</span> <span class="n">UseEnum</span>
+<span class="kn">from</span> <span class="nn">frozendict</span> <span class="k">import</span> <span class="n">frozendict</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.color</span> <span class="k">import</span> <span class="n">to_color</span>
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">ArgsDict</span>
+
+
+
+<div class="viewcode-block" id="ColorTrait"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.ColorTrait">[docs]</a><span class="k">class</span> <span class="nc">ColorTrait</span><span class="p">(</span><span class="n">TraitType</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A traitlet which encapsulates a grapefruit.Color and performs</span>
+<span class="sd">    type coercion as needed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">info_text</span> <span class="o">=</span> <span class="s2">&quot;a color&quot;</span>
+    <span class="n">allow_none</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">default_value</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ColorTrait</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ColorTrait.validate"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.ColorTrait.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">to_color</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span></div></div>
+
+
+
+<div class="viewcode-block" id="ColorSchemeTrait"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.ColorSchemeTrait">[docs]</a><span class="k">class</span> <span class="nc">ColorSchemeTrait</span><span class="p">(</span><span class="n">List</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A list of ColorTraits which comprise a scheme</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">info_text</span> <span class="o">=</span> <span class="s1">&#39;a list of colors&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trait</span><span class="o">=</span><span class="n">ColorTrait</span><span class="p">(),</span> <span class="n">default_value</span><span class="o">=</span><span class="p">(),</span>
+                 <span class="n">minlen</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ColorSchemeTrait</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">trait</span><span class="o">=</span><span class="n">trait</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="n">default_value</span><span class="p">,</span>
+                                               <span class="n">minlen</span><span class="o">=</span><span class="n">minlen</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="n">maxlen</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColorPresetTrait"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.ColorPresetTrait">[docs]</a><span class="k">class</span> <span class="nc">ColorPresetTrait</span><span class="p">(</span><span class="n">UseEnum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A trait which represents a group of color schemes defined</span>
+<span class="sd">    as a Python Enum.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">info_text</span> <span class="o">=</span> <span class="s1">&#39;a predefined color scheme&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enum_class</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ColorPresetTrait</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">enum_class</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="n">default_value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="WriteOnceMixin"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.WriteOnceMixin">[docs]</a><span class="k">class</span> <span class="nc">WriteOnceMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Mixin for traits which cannot be changed after an initial</span>
+<span class="sd">    value has been set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">write_once</span> <span class="o">=</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="WriteOnceMixin.validate"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.WriteOnceMixin.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">_trait_values</span> <span class="ow">or</span> \
+                <span class="n">obj</span><span class="o">.</span><span class="n">_trait_values</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="WriteOnceInt"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.WriteOnceInt">[docs]</a><span class="k">class</span> <span class="nc">WriteOnceInt</span><span class="p">(</span><span class="n">WriteOnceMixin</span><span class="p">,</span> <span class="n">Int</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subclass of Int which may only be written once</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="FrozenDict"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.FrozenDict">[docs]</a><span class="k">class</span> <span class="nc">FrozenDict</span><span class="p">(</span><span class="n">WriteOnceMixin</span><span class="p">,</span> <span class="n">Dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subclass of Dict which converts the value to a frozendict on</span>
+<span class="sd">    the first setting.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="FrozenDict.validate"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.FrozenDict.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">frozendict</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="UseEnumCaseless"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.UseEnumCaseless">[docs]</a><span class="k">class</span> <span class="nc">UseEnumCaseless</span><span class="p">(</span><span class="n">UseEnum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subclass of UseEnum which allows selection of values using</span>
+<span class="sd">    case insensitive strings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="UseEnumCaseless.select_by_name"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.UseEnumCaseless.select_by_name">[docs]</a>    <span class="k">def</span> <span class="nf">select_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">Undefined</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_prefix</span><span class="p">):</span>
+            <span class="c1"># -- SUPPORT SCOPED-NAMES, like: &quot;Color.red&quot; =&gt; &quot;red&quot;</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_prefix</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">enum_class</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Undefined</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">enum_class</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enum_class</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="n">idx</span><span class="p">]]</span></div></div>
+
+
+<div class="viewcode-block" id="WriteOnceUseEnumCaseless"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.WriteOnceUseEnumCaseless">[docs]</a><span class="k">class</span> <span class="nc">WriteOnceUseEnumCaseless</span><span class="p">(</span><span class="n">WriteOnceMixin</span><span class="p">,</span> <span class="n">UseEnumCaseless</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subclass of UseEnumCaseless which may only be written once.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="is_trait_writable"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.is_trait_writable">[docs]</a><span class="k">def</span> <span class="nf">is_trait_writable</span><span class="p">(</span><span class="n">trait</span><span class="p">:</span> <span class="n">TraitType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test if a trait is writable</span>
+
+<span class="sd">    :param trait: the trait to be tested</span>
+<span class="sd">    :return: True if the trait is writable</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">trait</span><span class="o">.</span><span class="n">read_only</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trait</span><span class="p">,</span> <span class="s1">&#39;write_once&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">trait</span><span class="o">.</span><span class="n">write_once</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="trait_as_dict"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.trait_as_dict">[docs]</a><span class="k">def</span> <span class="nf">trait_as_dict</span><span class="p">(</span><span class="n">trait</span><span class="p">:</span> <span class="n">TraitType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a trait to a dict for sending over D-Bus or the like</span>
+
+<span class="sd">    :param trait: the trait to be converted</span>
+<span class="sd">    :return: dict representing this trait</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">cls</span> <span class="o">=</span> <span class="n">trait</span><span class="o">.</span><span class="vm">__class__</span>
+    <span class="n">tdict</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="n">trait</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;__&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s1">&#39;this_class&#39;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="o">==</span> <span class="n">v</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">):</span>
+            <span class="n">tdict</span><span class="p">[</span><span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tdict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trait</span><span class="p">,</span> <span class="n">UseEnum</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">CaselessStrEnum</span>
+        <span class="n">tdict</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">trait</span><span class="o">.</span><span class="n">enum_class</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">if</span> <span class="s1">&#39;enum_class&#39;</span> <span class="ow">in</span> <span class="n">tdict</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">tdict</span><span class="p">[</span><span class="s1">&#39;enum_class&#39;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">tdict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">TraitType</span><span class="p">):</span>
+            <span class="n">tdict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">trait_as_dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+            <span class="n">tdict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="n">tdict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="n">tdict</span><span class="p">[</span><span class="s1">&#39;__class__&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tdict</span></div>
+
+
+<div class="viewcode-block" id="class_traits_as_dict"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.class_traits_as_dict">[docs]</a><span class="k">def</span> <span class="nf">class_traits_as_dict</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">HasTraits</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a dict which represents all traits of the given object.</span>
+<span class="sd">    This dict itself can be inspected in a generic API, or it</span>
+<span class="sd">    may be converted back to a (stub) instance of HasTraits. This</span>
+<span class="sd">    facilitates the sending of configurable object properties over</span>
+<span class="sd">    an interface such as D-Bus.</span>
+
+<span class="sd">    :param obj: an instance of HasTraits</span>
+<span class="sd">    :param value: optional dict of trait values (pulled from obj by default)</span>
+<span class="sd">    :return: dict representing all traits in obj</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cls_dt</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;class_traits&#39;</span><span class="p">):</span>
+        <span class="n">traits</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">class_traits</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">traits</span> <span class="o">=</span> <span class="n">obj</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">HasTraits</span><span class="p">):</span>
+        <span class="n">traits</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">_trait_values</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Object does not support traits&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">traits</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">trait_as_dict</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">dt</span><span class="p">[</span><span class="s1">&#39;__value__&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">cls_dt</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dt</span>
+    <span class="k">return</span> <span class="n">cls_dt</span></div>
+
+
+<div class="viewcode-block" id="dict_as_trait"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.dict_as_trait">[docs]</a><span class="k">def</span> <span class="nf">dict_as_trait</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TraitType</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a trait from a dict (trait_as_dict).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s1">&#39;__class__&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No module and class attribute present&quot;</span><span class="p">)</span>
+
+    <span class="n">tobj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">module_name</span><span class="p">,</span> <span class="n">trait_class</span> <span class="o">=</span> <span class="n">tobj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;__class__&#39;</span><span class="p">)</span>
+
+    <span class="n">module</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">trait_class</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Unknown class: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">trait_class</span><span class="p">)</span>
+    <span class="bp">cls</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">trait_class</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s1">&#39;trait&#39;</span> <span class="ow">in</span> <span class="n">tobj</span><span class="p">:</span>
+        <span class="n">tobj</span><span class="p">[</span><span class="s1">&#39;trait&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dict_as_trait</span><span class="p">(</span><span class="n">tobj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;trait&#39;</span><span class="p">))</span>
+
+    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="s1">&#39;metadata&#39;</span> <span class="ow">in</span> <span class="n">tobj</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">tobj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;metadata&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+        <span class="n">trait</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">tobj</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;values&#39;</span><span class="p">),</span> <span class="o">**</span><span class="n">tobj</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">trait</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">tobj</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;default_args&#39;</span><span class="p">,</span> <span class="s1">&#39;default_kwargs&#39;</span><span class="p">):</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">trait</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">metadata</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+
+    <span class="n">trait</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">metadata</span>
+
+    <span class="k">return</span> <span class="n">trait</span></div>
+
+
+<div class="viewcode-block" id="dict_as_class_traits"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.dict_as_class_traits">[docs]</a><span class="k">def</span> <span class="nf">dict_as_class_traits</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HasTraits</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a dict of unpacked traits to a HasTraits instance.</span>
+<span class="sd">    Useful for remote parameter inspection and validation.</span>
+
+<span class="sd">    :param obj: dict of unpacked traits</span>
+<span class="sd">    :return: the stub HasTraits instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Object must be a dict (was: </span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="n">obj</span><span class="p">)</span>
+
+    <span class="n">traits</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="s1">&#39;__value__&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+            <span class="n">values</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;__value__&#39;</span><span class="p">)</span>
+
+        <span class="n">trait</span> <span class="o">=</span> <span class="n">dict_as_trait</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trait</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">traits</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">trait</span>
+
+    <span class="bp">cls</span> <span class="o">=</span> <span class="n">HasTraits</span><span class="p">()</span>
+    <span class="bp">cls</span><span class="o">.</span><span class="n">add_traits</span><span class="p">(</span><span class="o">**</span><span class="n">traits</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">cls</span></div>
+
+
+<div class="viewcode-block" id="get_args_dict"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.get_args_dict">[docs]</a><span class="k">def</span> <span class="nf">get_args_dict</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">HasTraits</span><span class="p">,</span> <span class="n">incl_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a dict of user-configurable traits for an object</span>
+
+<span class="sd">    :param obj: an instance of HasTraits</span>
+<span class="sd">    :param incl_all: If all items should be included, regardless of RO status</span>
+<span class="sd">    :return: dict of arguments</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">argsdict</span> <span class="o">=</span> <span class="n">ArgsDict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">_trait_values</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">_trait_values</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">trait</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">traits</span><span class="p">()[</span><span class="n">k</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">incl_all</span> <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="n">trait</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">(</span><span class="s1">&#39;hidden&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_trait_writable</span><span class="p">(</span><span class="n">trait</span><span class="p">)):</span>
+            <span class="n">argsdict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="k">return</span> <span class="n">argsdict</span></div>
+
+
+<div class="viewcode-block" id="add_traits_to_argparse"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.add_traits_to_argparse">[docs]</a><span class="k">def</span> <span class="nf">add_traits_to_argparse</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">HasTraits</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">ArgumentParser</span><span class="p">,</span>
+                           <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add all traits from the given object to the argparse context.</span>
+
+<span class="sd">    :param obj: an instance of HasTraits</span>
+<span class="sd">    :param parser: argparse parser</span>
+<span class="sd">    :param prefix: string to prefix keys with</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">trait</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">trait</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">(</span><span class="s1">&#39;config&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">argname</span> <span class="o">=</span> <span class="s1">&#39;--</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">key</span>
+        <span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">argname</span> <span class="o">=</span> <span class="s1">&#39;--</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trait</span><span class="p">,</span> <span class="n">Container</span><span class="p">):</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="n">argname</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">trait</span><span class="o">.</span><span class="n">info_text</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trait</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="n">argname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+                                <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">trait</span><span class="o">.</span><span class="n">values</span><span class="p">],</span>
+                                <span class="n">help</span><span class="o">=</span><span class="n">trait</span><span class="o">.</span><span class="n">info_text</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">argtype</span> <span class="o">=</span> <span class="nb">str</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trait</span><span class="p">,</span> <span class="s1">&#39;default_value&#39;</span><span class="p">):</span>
+                <span class="n">argtype</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">trait</span><span class="o">.</span><span class="n">default_value</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="n">argname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">argtype</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">trait</span><span class="o">.</span><span class="n">info_text</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="apply_from_argparse"><a class="viewcode-back" href="../../uchroma.traits.html#uchroma.fxlib.plasma.apply_from_argparse">[docs]</a><span class="k">def</span> <span class="nf">apply_from_argparse</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">traits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">HasTraits</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies arguments added via add_traits_to_argparse to</span>
+<span class="sd">    a target object which implements HasTraits. If a target</span>
+<span class="sd">    is not known, a dict of traits may be passed instead.</span>
+<span class="sd">    Will throw TraitError if validation fails.</span>
+
+<span class="sd">    :param args: Parsed args from argparse</span>
+<span class="sd">    :param traits: Dictionary of traits (optional)</span>
+<span class="sd">    :param target: Target object (optional)</span>
+<span class="sd">    :return: Dict of the arguments which actually changed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># apply the traits to an empty object, which will run</span>
+    <span class="c1"># the validators on the client</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">traits</span><span class="p">,</span> <span class="n">HasTraits</span><span class="p">):</span>
+        <span class="n">traits</span> <span class="o">=</span> <span class="n">traits</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span>
+
+    <span class="n">traits</span> <span class="o">=</span> <span class="n">traits</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">traits</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">TraitType</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">k</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">dict_as_trait</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;A dict or trait object must be supplied&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">traits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Either traits or target must be specified&quot;</span><span class="p">)</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">HasTraits</span><span class="p">()</span>
+        <span class="n">target</span><span class="o">.</span><span class="n">add_traits</span><span class="p">(</span><span class="o">**</span><span class="n">traits</span><span class="p">)</span>
+
+    <span class="c1"># determine what should actually be changed</span>
+    <span class="n">argkeys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">intersect</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">argkeys</span><span class="p">))</span>
+
+    <span class="c1"># apply the argparse flags to the target object</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">intersect</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">traits</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">(</span><span class="s1">&#39;config&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Trait is not marked as configurable: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span>
+
+    <span class="c1"># if all validators passed, return a dict of the changed args</span>
+    <span class="n">changed</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">intersect</span><span class="p">:</span>
+        <span class="n">changed</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">_trait_values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">changed</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

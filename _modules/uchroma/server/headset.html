@@ -1,0 +1,584 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.headset &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.server.headset</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=protected-access</span>
+<span class="kn">import</span> <span class="nn">hidapi</span>
+
+<span class="kn">from</span> <span class="nn">traitlets</span> <span class="k">import</span> <span class="n">Unicode</span>
+<span class="kn">from</span> <span class="nn">wrapt</span> <span class="k">import</span> <span class="n">synchronized</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.color</span> <span class="k">import</span> <span class="n">to_color</span><span class="p">,</span> <span class="n">to_rgb</span>
+<span class="kn">from</span> <span class="nn">uchroma.traits</span> <span class="k">import</span> <span class="n">ColorSchemeTrait</span><span class="p">,</span> <span class="n">ColorTrait</span>
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">smart_delay</span><span class="p">,</span> <span class="n">set_bits</span><span class="p">,</span> <span class="n">scale_brightness</span><span class="p">,</span> \
+    <span class="n">test_bit</span><span class="p">,</span> <span class="n">to_byte</span><span class="p">,</span> <span class="n">LOG_PROTOCOL_TRACE</span>
+
+<span class="kn">from</span> <span class="nn">.byte_args</span> <span class="k">import</span> <span class="n">ByteArgs</span>
+<span class="kn">from</span> <span class="nn">.device_base</span> <span class="k">import</span> <span class="n">BaseUChromaDevice</span>
+<span class="kn">from</span> <span class="nn">.fx</span> <span class="k">import</span> <span class="n">BaseFX</span><span class="p">,</span> <span class="n">FXManager</span><span class="p">,</span> <span class="n">FXModule</span>
+<span class="kn">from</span> <span class="nn">.hardware</span> <span class="k">import</span> <span class="n">Hardware</span>
+<span class="kn">from</span> <span class="nn">.types</span> <span class="k">import</span> <span class="n">BaseCommand</span>
+
+
+<span class="c1"># Output report 4, input report 5</span>
+<span class="n">REPORT_ID_OUT</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">REPORT_ID_IN</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">REPORT_LENGTH_OUT</span> <span class="o">=</span> <span class="mi">37</span>
+<span class="n">REPORT_LENGTH_IN</span> <span class="o">=</span> <span class="mi">33</span>
+
+<span class="c1"># Sleep time 25ms</span>
+<span class="n">DELAY_TIME</span> <span class="o">=</span> <span class="mf">0.025</span>
+
+<span class="c1"># Destination for requests</span>
+<span class="n">READ_RAM</span> <span class="o">=</span> <span class="mh">0x00</span>
+<span class="n">READ_EEPROM</span> <span class="o">=</span> <span class="mh">0x20</span>
+<span class="n">WRITE_RAM</span> <span class="o">=</span> <span class="mh">0x40</span>
+
+<span class="c1"># EEPROM</span>
+<span class="n">ADDR_FIRMWARE_VERSION</span> <span class="o">=</span> <span class="mh">0x0030</span>
+<span class="n">ADDR_SERIAL_NUMBER</span> <span class="o">=</span> <span class="mh">0x7f00</span>
+
+<span class="c1"># RAM</span>
+<span class="n">ADDR_KYLIE_LED_MODE</span> <span class="o">=</span> <span class="mh">0x172D</span>
+<span class="n">ADDR_KYLIE_BREATHING1_START</span> <span class="o">=</span> <span class="mh">0x1741</span>
+<span class="n">ADDR_KYLIE_BREATHING2_START</span> <span class="o">=</span> <span class="mh">0x1745</span>
+<span class="n">ADDR_KYLIE_BREATHING3_START</span> <span class="o">=</span> <span class="mh">0x174D</span>
+
+<span class="n">ADDR_RAINIE_LED_MODE</span> <span class="o">=</span> <span class="mh">0x1008</span>
+<span class="n">ADDR_RAINIE_BREATHING1_START</span> <span class="o">=</span> <span class="mh">0x15DE</span>
+
+
+<div class="viewcode-block" id="EffectBits"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.EffectBits">[docs]</a><span class="k">class</span> <span class="nc">EffectBits</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The effect mode on this hardware is represented by a single</span>
+<span class="sd">    integer. This class assists with managing the bits of</span>
+<span class="sd">    this value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">on</span> <span class="o">=</span> <span class="n">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">breathe_single</span> <span class="o">=</span> <span class="n">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sync</span> <span class="o">=</span> <span class="n">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">breathe_double</span> <span class="o">=</span> <span class="n">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">breathe_triple</span> <span class="o">=</span> <span class="n">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the state as an integer</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">set_bits</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">breathe_single</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">sync</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">breathe_double</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">breathe_triple</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">color_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the number of colors currently in use</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">breathe_triple</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">3</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">breathe_double</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">2</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">breathe_single</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="KrakenFX"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX">[docs]</a><span class="k">class</span> <span class="nc">KrakenFX</span><span class="p">(</span><span class="n">FXModule</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">KrakenFX</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="KrakenFX.DisableFX"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.DisableFX">[docs]</a>    <span class="k">class</span> <span class="nc">DisableFX</span><span class="p">(</span><span class="n">BaseFX</span><span class="p">):</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">(</span><span class="s1">&#39;Disable all effects&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KrakenFX.DisableFX.apply"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.DisableFX.apply">[docs]</a>        <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Disable all effects</span>
+
+<span class="sd">            :return: True if successful</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="n">EffectBits</span><span class="p">()</span>
+            <span class="n">bits</span><span class="o">.</span><span class="n">spectrum</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">_set_led_mode</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="KrakenFX.SpectrumFX"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.SpectrumFX">[docs]</a>    <span class="k">class</span> <span class="nc">SpectrumFX</span><span class="p">(</span><span class="n">BaseFX</span><span class="p">):</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">(</span><span class="s1">&#39;Cycle thru all colors of the spectrum&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KrakenFX.SpectrumFX.apply"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.SpectrumFX.apply">[docs]</a>        <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Cycle thru all colors of the spectrum</span>
+
+<span class="sd">            :return: True if successful</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="n">EffectBits</span><span class="p">()</span>
+            <span class="n">bits</span><span class="o">.</span><span class="n">on</span> <span class="o">=</span> <span class="n">bits</span><span class="o">.</span><span class="n">spectrum</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">_set_led_mode</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="KrakenFX.StaticFX"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.StaticFX">[docs]</a>    <span class="k">class</span> <span class="nc">StaticFX</span><span class="p">(</span><span class="n">BaseFX</span><span class="p">):</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">(</span><span class="s2">&quot;Static color&quot;</span><span class="p">)</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">ColorTrait</span><span class="p">(</span><span class="n">default_value</span><span class="o">=</span><span class="s1">&#39;green&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KrakenFX.StaticFX.apply"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.StaticFX.apply">[docs]</a>        <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Sets lighting to a static color</span>
+
+<span class="sd">            :param color: The color to apply</span>
+
+<span class="sd">            :return: True if successful</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="n">EffectBits</span><span class="p">()</span>
+            <span class="n">bits</span><span class="o">.</span><span class="n">on</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">_set_rgb</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">_set_led_mode</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">False</span></div></div>
+
+
+<div class="viewcode-block" id="KrakenFX.BreatheFX"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.BreatheFX">[docs]</a>    <span class="k">class</span> <span class="nc">BreatheFX</span><span class="p">(</span><span class="n">BaseFX</span><span class="p">):</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">(</span><span class="s1">&#39;Colors pulse in and out&#39;</span><span class="p">)</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">ColorSchemeTrait</span><span class="p">(</span><span class="n">minlen</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="s1">&#39;blue&#39;</span><span class="p">))</span>
+
+<div class="viewcode-block" id="KrakenFX.BreatheFX.apply"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.KrakenFX.BreatheFX.apply">[docs]</a>        <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Breathing color effect. Accepts up to three colors on v2 hardware</span>
+
+<span class="sd">            :param color1: Primary color</span>
+<span class="sd">            :param color2: Secondary color</span>
+<span class="sd">            :param color3: Tertiary color</span>
+<span class="sd">            :param preset: Predefinied color pair</span>
+
+<span class="sd">            :return True if successful:</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">]</span>
+
+            <span class="n">bits</span> <span class="o">=</span> <span class="n">EffectBits</span><span class="p">()</span>
+            <span class="n">bits</span><span class="o">.</span><span class="n">on</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">bits</span><span class="o">.</span><span class="n">sync</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">bits</span><span class="o">.</span><span class="n">breathe_triple</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">bits</span><span class="o">.</span><span class="n">breathe_double</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">bits</span><span class="o">.</span><span class="n">breathe_single</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">_set_rgb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driver</span><span class="o">.</span><span class="n">_set_led_mode</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">False</span></div></div></div>
+
+
+
+<div class="viewcode-block" id="UChromaHeadset"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.UChromaHeadset">[docs]</a><span class="k">class</span> <span class="nc">UChromaHeadset</span><span class="p">(</span><span class="n">BaseUChromaDevice</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Additional functionality for Chroma Headsets</span>
+<span class="sd">    The protocol on these devices is different than</span>
+<span class="sd">    the rest of the Chroma line.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="UChromaHeadset.Command"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.UChromaHeadset.Command">[docs]</a>    <span class="k">class</span> <span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Commands used for headset features</span>
+
+<span class="sd">        0: Destination</span>
+<span class="sd">        1: Length</span>
+<span class="sd">        2-3: Address</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">GET_SERIAL</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_EEPROM</span><span class="p">,</span> <span class="mh">0x16</span><span class="p">,</span> <span class="n">ADDR_SERIAL_NUMBER</span><span class="p">)</span>
+        <span class="n">GET_FIRMWARE_VERSION</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_EEPROM</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">,</span> <span class="n">ADDR_FIRMWARE_VERSION</span><span class="p">)</span>
+
+        <span class="n">KYLIE_GET_LED_MODE</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_RAM</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="n">ADDR_KYLIE_LED_MODE</span><span class="p">)</span>
+        <span class="n">KYLIE_SET_LED_MODE</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="n">ADDR_KYLIE_LED_MODE</span><span class="p">)</span>
+
+        <span class="n">KYLIE_GET_RGB_1</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_RAM</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="n">ADDR_KYLIE_BREATHING1_START</span><span class="p">)</span>
+        <span class="n">KYLIE_GET_RGB_2</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_RAM</span><span class="p">,</span> <span class="mh">0x08</span><span class="p">,</span> <span class="n">ADDR_KYLIE_BREATHING2_START</span><span class="p">)</span>
+        <span class="n">KYLIE_GET_RGB_3</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_RAM</span><span class="p">,</span> <span class="mh">0x0C</span><span class="p">,</span> <span class="n">ADDR_KYLIE_BREATHING3_START</span><span class="p">)</span>
+        <span class="n">KYLIE_SET_RGB_1</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="n">ADDR_KYLIE_BREATHING1_START</span><span class="p">)</span>
+        <span class="n">KYLIE_SET_RGB_2</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x08</span><span class="p">,</span> <span class="n">ADDR_KYLIE_BREATHING2_START</span><span class="p">)</span>
+        <span class="n">KYLIE_SET_RGB_3</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x0C</span><span class="p">,</span> <span class="n">ADDR_KYLIE_BREATHING3_START</span><span class="p">)</span>
+
+        <span class="n">RAINIE_GET_LED_MODE</span> <span class="o">=</span> <span class="p">(</span><span class="n">READ_RAM</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="n">ADDR_RAINIE_LED_MODE</span><span class="p">)</span>
+        <span class="n">RAINIE_SET_LED_MODE</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="n">ADDR_RAINIE_LED_MODE</span><span class="p">)</span>
+
+        <span class="n">RAINIE_GET_RGB</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="n">ADDR_RAINIE_BREATHING1_START</span><span class="p">)</span>
+        <span class="n">RAINIE_SET_RGB</span> <span class="o">=</span> <span class="p">(</span><span class="n">WRITE_RAM</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="n">ADDR_RAINIE_BREATHING1_START</span><span class="p">)</span>
+
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">address</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_destination</span> <span class="o">=</span> <span class="n">destination</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_length</span> <span class="o">=</span> <span class="n">length</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_address</span> <span class="o">=</span> <span class="n">address</span>
+
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">destination</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_destination</span>
+
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_length</span>
+
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">address</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_address</span></div>
+
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hardware</span><span class="p">:</span> <span class="n">Hardware</span><span class="p">,</span> <span class="n">devinfo</span><span class="p">:</span> <span class="n">hidapi</span><span class="o">.</span><span class="n">DeviceInfo</span><span class="p">,</span>
+                 <span class="n">devindex</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sys_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">UChromaHeadset</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">hardware</span><span class="p">,</span> <span class="n">devinfo</span><span class="p">,</span> <span class="n">devindex</span><span class="p">,</span>
+                                             <span class="n">sys_path</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_cmd_time</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hardware</span><span class="o">.</span><span class="n">revision</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_led</span> <span class="o">=</span> <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">RAINIE_GET_LED_MODE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_led</span> <span class="o">=</span> <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">RAINIE_SET_LED_MODE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_rgb</span> <span class="o">=</span> <span class="p">[</span><span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">RAINIE_GET_RGB</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_rgb</span> <span class="o">=</span> <span class="p">[</span><span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">RAINIE_SET_RGB</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">hardware</span><span class="o">.</span><span class="n">revision</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_led</span> <span class="o">=</span> <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_GET_LED_MODE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_led</span> <span class="o">=</span> <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_SET_LED_MODE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_rgb</span> <span class="o">=</span> <span class="p">[</span><span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_GET_RGB_1</span><span class="p">,</span>
+                                 <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_GET_RGB_2</span><span class="p">,</span>
+                                 <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_GET_RGB_3</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_rgb</span> <span class="o">=</span> <span class="p">[</span><span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_SET_RGB_1</span><span class="p">,</span>
+                                 <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_SET_RGB_2</span><span class="p">,</span>
+                                 <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">KYLIE_SET_RGB_3</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Incompatible model (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hardware</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fx_manager</span> <span class="o">=</span> <span class="n">FXManager</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">KrakenFX</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rgb</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_pack_request</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="n">BaseCommand</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">ByteArgs</span><span class="p">(</span><span class="n">REPORT_LENGTH_OUT</span><span class="p">)</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">destination</span><span class="p">)</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>
+        <span class="n">req</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="n">packing</span><span class="o">=</span><span class="s1">&#39;&gt;H&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">req</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">req</span><span class="o">.</span><span class="n">data</span>
+
+
+    <span class="k">def</span> <span class="nf">_hexdump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">LOG_PROTOCOL_TRACE</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%02x</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">data</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">_run_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="n">BaseCommand</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">_pack_request</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hexdump</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;--&gt; &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_cmd_time</span> <span class="o">=</span> <span class="n">smart_delay</span><span class="p">(</span><span class="n">DELAY_TIME</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_cmd_time</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">report_id</span><span class="o">=</span><span class="n">to_byte</span><span class="p">(</span><span class="n">REPORT_ID_OUT</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">IOError</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;Caught exception running command&#39;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="n">err</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+    <span class="nd">@synchronized</span>
+<div class="viewcode-block" id="UChromaHeadset.run_command"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.UChromaHeadset.run_command">[docs]</a>    <span class="k">def</span> <span class="nf">run_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="n">BaseCommand</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run a command against the Kraken hardware</span>
+
+<span class="sd">        :param command: The command tuple</span>
+<span class="sd">        :param args: Argument list (varargs)</span>
+
+<span class="sd">        :return: True if successful</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_command</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span></div>
+
+
+    <span class="nd">@synchronized</span>
+<div class="viewcode-block" id="UChromaHeadset.run_with_result"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.UChromaHeadset.run_with_result">[docs]</a>    <span class="k">def</span> <span class="nf">run_with_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="n">BaseCommand</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run a command against the Kraken hardware and fetch the result</span>
+
+<span class="sd">        :param command: The command tuple</span>
+<span class="sd">        :param args: Argument list (varargs)</span>
+
+<span class="sd">        :return: Raw response bytes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_command</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_cmd_time</span> <span class="o">=</span> <span class="n">smart_delay</span><span class="p">(</span><span class="n">DELAY_TIME</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_cmd_time</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">REPORT_LENGTH_IN</span><span class="p">,</span> <span class="n">timeout_ms</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_hexdump</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="s1">&#39;&lt;-- &#39;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">resp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">resp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+
+                <span class="k">assert</span> <span class="n">resp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">REPORT_ID_IN</span><span class="p">,</span> \
+                    <span class="s1">&#39;Inbound report should have id </span><span class="si">%02x</span><span class="s1"> (was </span><span class="si">%02x</span><span class="s1">)&#39;</span> <span class="o">%</span> \
+                    <span class="p">(</span><span class="n">REPORT_ID_IN</span><span class="p">,</span> <span class="n">resp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+                <span class="k">return</span> <span class="n">resp</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">command</span><span class="o">.</span><span class="n">length</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">IOError</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;Caught exception running command&#39;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="n">err</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_serial_number</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the serial number from the hardware directly</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decode_serial</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_SERIAL</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_firmware_version</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the firmware version from the hardware directly</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaHeadset</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_FIRMWARE_VERSION</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_led_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;UChromaHeadset.EffectBits&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_led</span><span class="p">)</span>
+                <span class="n">bits</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">bits</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">=</span> <span class="n">EffectBits</span><span class="p">(</span><span class="n">bits</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_led_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bits</span><span class="p">:</span> <span class="n">EffectBits</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_led</span><span class="p">,</span> <span class="n">bits</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">status</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">=</span> <span class="n">bits</span>
+
+        <span class="k">return</span> <span class="n">status</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_rgb</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_led_mode</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_rgb</span><span class="p">[</span><span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">it</span><span class="p">,</span> <span class="n">it</span><span class="p">,</span> <span class="n">it</span><span class="p">)))</span>
+
+            <span class="k">return</span> <span class="p">[</span><span class="n">to_color</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_rgb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">colors</span><span class="p">,</span> <span class="n">brightness</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;RGB group out of range&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># only allow what the hardware permits</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_rgb</span><span class="p">)]</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">brightness</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">brightness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_brightness</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">brightness</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                    <span class="n">brightness</span> <span class="o">=</span> <span class="mf">80.0</span>
+
+            <span class="n">brightness</span> <span class="o">=</span> <span class="n">scale_brightness</span><span class="p">(</span><span class="n">brightness</span><span class="p">)</span>
+
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">:</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_color</span><span class="p">(</span><span class="n">color</span><span class="p">))</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">brightness</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_rgb</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="UChromaHeadset.get_current_effect"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.UChromaHeadset.get_current_effect">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_effect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EffectBits</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the current effects configuration</span>
+
+<span class="sd">        :return: EffectBits populated from the hardware</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_led_mode</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="UChromaHeadset.get_current_colors"><a class="viewcode-back" href="../../../uchroma.server.headset.html#uchroma.server.headset.UChromaHeadset.get_current_colors">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_colors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the colors currently in use</span>
+
+<span class="sd">        :return: List of RGB tuples</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_rgb</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">to_rgb</span><span class="p">(</span><span class="n">color</span><span class="p">)</span> <span class="k">for</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_brightness</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The current brightness level</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_led_mode</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">bits</span><span class="o">.</span><span class="n">on</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="mf">100.0</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="mf">0.0</span>
+
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_rgb</span><span class="p">[</span><span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+
+            <span class="k">return</span> <span class="n">scale_brightness</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="kc">True</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_brightness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">brightness</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the brightness level</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_open</span><span class="p">():</span>
+            <span class="n">bits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_led_mode</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_get_rgb</span><span class="p">[</span><span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="n">level</span> <span class="o">=</span> <span class="n">scale_brightness</span><span class="p">(</span><span class="n">brightness</span><span class="p">)</span>
+
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">bits</span><span class="o">.</span><span class="n">color_count</span><span class="p">):</span>
+                <span class="n">data</span><span class="p">[(</span><span class="n">num</span> <span class="o">*</span> <span class="mi">4</span><span class="p">)</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">level</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmd_set_rgb</span><span class="p">[</span><span class="n">bits</span><span class="o">.</span><span class="n">color_count</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

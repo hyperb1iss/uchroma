@@ -1,0 +1,352 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.anim module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.server.byte_args module" href="uchroma.server.byte_args.html" />
+    <link rel="prev" title="uchroma.server package" href="uchroma.server.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.html" title="uchroma.server package"
+             accesskey="P">previous</a> |
+          <a href="uchroma.server.byte_args.html" title="uchroma.server.byte_args module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.server.anim">
+<span id="uchroma-server-anim-module"></span><h1>uchroma.server.anim module<a class="headerlink" href="#module-uchroma.server.anim" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.server.anim.AnimationLoop">
+<em class="property">class </em><code class="descclassname">uchroma.server.anim.</code><code class="descname">AnimationLoop</code><span class="sig-paren">(</span><em>frame: uchroma.server.frame.Frame</em>, <em>default_blend_mode: str = None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">traitlets.traitlets.HasTraits</span></code></p>
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationLoop.add_layer">
+<code class="descname">add_layer</code><span class="sig-paren">(</span><em>renderer: uchroma.renderer.Renderer</em>, <em>zindex: int = None</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop.add_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.add_layer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationLoop.clear_layers">
+<code class="descname">clear_layers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop.clear_layers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.clear_layers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.AnimationLoop.layers">
+<code class="descname">layers</code><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.layers" title="Permalink to this definition">¶</a></dt>
+<dd><p>An instance of a Python list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationLoop.pause">
+<code class="descname">pause</code><span class="sig-paren">(</span><em>paused</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop.pause"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.pause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationLoop.remove_layer">
+<code class="descname">remove_layer</code><span class="sig-paren">(</span><em>layer_like</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop.remove_layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.remove_layer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.AnimationLoop.running">
+<code class="descname">running</code><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.running" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collects the output of one or more Renderers and displays the
+composited image.</p>
+<p>The loop is a fully asynchronous design, and renderers may independently
+block or yield buffers at different rates. Each renderer has a pair of
+asyncio.Queue objects and will put buffers onto the &#8220;active&#8221; queue when
+their draw cycle is completed. The loop yields on these queues until
+at least one buffer is available. All new buffers are placed on the
+&#8220;active&#8221; list and the previous buffers are returned to the respective
+renderer on the &#8220;avail&#8221; queue. If a renderer doesn&#8217;t produce any output
+during the round, the current buffer is kept. The active list is finally
+composed and sent to the hardware.</p>
+<p>The design of this loop intends to be as CPU-efficient as possible and
+does not wake up spuriously or otherwise consume cycles while inactive.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationLoop.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the AnimationLoop</p>
+<p>Initializes the renderers, zeros the buffers, and starts the loop.</p>
+<p>Requires an active asyncio event loop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if the loop was started</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationLoop.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><em>cb=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationLoop.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationLoop.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.anim.AnimationManager">
+<em class="property">class </em><code class="descclassname">uchroma.server.anim.</code><code class="descname">AnimationManager</code><span class="sig-paren">(</span><em>driver</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">traitlets.traitlets.HasTraits</span></code></p>
+<p>Configures and manages animations of one or more renderers</p>
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationManager.add_renderer">
+<code class="descname">add_renderer</code><span class="sig-paren">(</span><em>name</em>, <em>traits: dict</em>, <em>zindex: int = None</em><span class="sig-paren">)</span> &#x2192; int<a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager.add_renderer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager.add_renderer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a renderer which will produce a layer of this animation.
+Any number of renderers may be added and the output will be
+composited together. The z-order of the layers corresponds to
+the order renderers were added, with the first producing the
+base layer and the last producing the topmost layer.</p>
+<p>Renderers may be loaded from any valid Python package, the
+default is &#8220;uchroma.fxlib&#8221;.</p>
+<p>The loop must not be running when this is called.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal"><span class="pre">int</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>renderer</strong> &#8211; Key name of a discovered renderer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Z-position of the new renderer or -1 on error</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationManager.pause">
+<code class="descname">pause</code><span class="sig-paren">(</span><em>state=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager.pause"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager.pause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.AnimationManager.paused">
+<code class="descname">paused</code><a class="headerlink" href="#uchroma.server.anim.AnimationManager.paused" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean (True, False) trait.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationManager.remove_renderer">
+<code class="descname">remove_renderer</code><span class="sig-paren">(</span><em>zindex: int</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager.remove_renderer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager.remove_renderer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.AnimationManager.renderer_info">
+<code class="descname">renderer_info</code><a class="headerlink" href="#uchroma.server.anim.AnimationManager.renderer_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of all discovered renderers</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationManager.restore_prefs">
+<code class="descname">restore_prefs</code><span class="sig-paren">(</span><em>prefs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager.restore_prefs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager.restore_prefs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore active layers from preferences</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.AnimationManager.running">
+<code class="descname">running</code><a class="headerlink" href="#uchroma.server.anim.AnimationManager.running" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if an animation is currently running</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationManager.shutdown">
+<code class="descname">shutdown</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager.shutdown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager.shutdown" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuts down the animation service, waiting for all layers to
+finish work. This is a coroutine.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.AnimationManager.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><em>cb=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#AnimationManager.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.AnimationManager.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.anim.LayerHolder">
+<em class="property">class </em><code class="descclassname">uchroma.server.anim.</code><code class="descname">LayerHolder</code><span class="sig-paren">(</span><em>renderer: uchroma.renderer.Renderer</em>, <em>frame: uchroma.server.frame.Frame</em>, <em>blend_mode=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#LayerHolder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.LayerHolder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">traitlets.traitlets.HasTraits</span></code></p>
+<dl class="attribute">
+<dt id="uchroma.server.anim.LayerHolder.renderer">
+<code class="descname">renderer</code><a class="headerlink" href="#uchroma.server.anim.LayerHolder.renderer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.LayerHolder.start">
+<code class="descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#LayerHolder.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.LayerHolder.start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.anim.LayerHolder.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/anim.html#LayerHolder.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.anim.LayerHolder.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.LayerHolder.trait_values">
+<code class="descname">trait_values</code><a class="headerlink" href="#uchroma.server.anim.LayerHolder.trait_values" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.LayerHolder.type_string">
+<code class="descname">type_string</code><a class="headerlink" href="#uchroma.server.anim.LayerHolder.type_string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.LayerHolder.zindex">
+<code class="descname">zindex</code><a class="headerlink" href="#uchroma.server.anim.LayerHolder.zindex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.anim.RendererInfo">
+<em class="property">class </em><code class="descclassname">uchroma.server.anim.</code><code class="descname">RendererInfo</code><span class="sig-paren">(</span><em>module</em>, <em>clazz</em>, <em>key</em>, <em>meta</em>, <em>traits</em><span class="sig-paren">)</span><a class="headerlink" href="#uchroma.server.anim.RendererInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#tuple" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></a></p>
+<dl class="attribute">
+<dt id="uchroma.server.anim.RendererInfo.clazz">
+<code class="descname">clazz</code><a class="headerlink" href="#uchroma.server.anim.RendererInfo.clazz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.RendererInfo.key">
+<code class="descname">key</code><a class="headerlink" href="#uchroma.server.anim.RendererInfo.key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.RendererInfo.meta">
+<code class="descname">meta</code><a class="headerlink" href="#uchroma.server.anim.RendererInfo.meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.RendererInfo.module">
+<code class="descname">module</code><a class="headerlink" href="#uchroma.server.anim.RendererInfo.module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.anim.RendererInfo.traits">
+<code class="descname">traits</code><a class="headerlink" href="#uchroma.server.anim.RendererInfo.traits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.server.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.html" title="uchroma.server package"
+              >previous</a> |
+            <a href="uchroma.server.byte_args.html" title="uchroma.server.byte_args module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.server.anim.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

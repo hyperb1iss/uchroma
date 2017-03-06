@@ -1,0 +1,644 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.color &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.color</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=invalid-name, no-member</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">grapefruit</span> <span class="k">import</span> <span class="n">Color</span>
+<span class="kn">from</span> <span class="nn">hsluv</span> <span class="k">import</span> <span class="n">hsluv_to_rgb</span><span class="p">,</span> <span class="n">rgb_to_hsluv</span>
+<span class="kn">from</span> <span class="nn">skimage.util</span> <span class="k">import</span> <span class="n">dtype</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">autocast_decorator</span><span class="p">,</span> <span class="n">clamp</span><span class="p">,</span> <span class="n">lerp</span><span class="p">,</span> <span class="n">lerp_degrees</span>
+
+
+<span class="c1"># Type hint for decorated color arguments</span>
+<span class="n">ColorType</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">Color</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">ColorList</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span><span class="n">ColorType</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="ColorScheme"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorScheme">[docs]</a><span class="k">class</span> <span class="nc">ColorScheme</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Predefined color schemes</span>
+
+<span class="sd">    TODO: Implement support for fetching from ColourLovers</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">Emma</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#320d6d&#39;</span><span class="p">,</span> <span class="s1">&#39;#ffbfb7&#39;</span><span class="p">,</span> <span class="s1">&#39;#ffd447&#39;</span><span class="p">,</span> <span class="s1">&#39;#700353&#39;</span><span class="p">,</span> <span class="s1">&#39;#4c1c00&#39;</span><span class="p">)</span>
+    <span class="n">Best</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#247ba0&#39;</span><span class="p">,</span> <span class="s1">&#39;#70c1b3&#39;</span><span class="p">,</span> <span class="s1">&#39;#b2dbbf&#39;</span><span class="p">,</span> <span class="s1">&#39;#f3ffbd&#39;</span><span class="p">,</span> <span class="s1">&#39;#ff1654&#39;</span><span class="p">)</span>
+    <span class="n">Variety</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#db5461&#39;</span><span class="p">,</span> <span class="s1">&#39;#ffd9ce&#39;</span><span class="p">,</span> <span class="s1">&#39;#593c8f&#39;</span><span class="p">,</span> <span class="s1">&#39;#8ef9f3&#39;</span><span class="p">,</span> <span class="s1">&#39;#171738&#39;</span><span class="p">)</span>
+    <span class="n">Redd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#d7263d&#39;</span><span class="p">,</span> <span class="s1">&#39;#f46036&#39;</span><span class="p">,</span> <span class="s1">&#39;#2e294e&#39;</span><span class="p">,</span> <span class="s1">&#39;#1b998b&#39;</span><span class="p">,</span> <span class="s1">&#39;#c5d86d&#39;</span><span class="p">)</span>
+    <span class="n">Bluticas</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#006ba6&#39;</span><span class="p">,</span> <span class="s1">&#39;#0496ff&#39;</span><span class="p">,</span> <span class="s1">&#39;#ffbc42&#39;</span><span class="p">,</span> <span class="s1">&#39;#d81159&#39;</span><span class="p">,</span> <span class="s1">&#39;#8f2d56&#39;</span><span class="p">)</span>
+    <span class="n">Newer</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#0d0630&#39;</span><span class="p">,</span> <span class="s1">&#39;#18314f&#39;</span><span class="p">,</span> <span class="s1">&#39;#384e77&#39;</span><span class="p">,</span> <span class="s1">&#39;#8bbeb2&#39;</span><span class="p">,</span> <span class="s1">&#39;#e6f9af&#39;</span><span class="p">)</span>
+    <span class="n">Bright</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#ffbe0b&#39;</span><span class="p">,</span> <span class="s1">&#39;#fb5607&#39;</span><span class="p">,</span> <span class="s1">&#39;#ff006e&#39;</span><span class="p">,</span> <span class="s1">&#39;#8338ec&#39;</span><span class="p">,</span> <span class="s1">&#39;#3a86ff&#39;</span><span class="p">)</span>
+    <span class="n">Qap</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;#004777&#39;</span><span class="p">,</span> <span class="s1">&#39;#a30000&#39;</span><span class="p">,</span> <span class="s1">&#39;#ff7700&#39;</span><span class="p">,</span> <span class="s1">&#39;#efd28d&#39;</span><span class="p">,</span> <span class="s1">&#39;#00afb5&#39;</span><span class="p">)</span>
+    <span class="n">Rainbow</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;yellow&#39;</span><span class="p">,</span> <span class="s1">&#39;lime&#39;</span><span class="p">,</span> <span class="s1">&#39;aqua&#39;</span><span class="p">,</span> <span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="s1">&#39;magenta&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ColorScheme.gradient"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorScheme.gradient">[docs]</a>    <span class="k">def</span> <span class="nf">gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">360</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Interpolate this ColorScheme to a gradient of the</span>
+<span class="sd">        specified length.</span>
+
+<span class="sd">        :param length: Final length of the gradient</span>
+<span class="sd">        :return: List of all colors in the gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="o">*</span><span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="ColorPair"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorPair">[docs]</a><span class="k">class</span> <span class="nc">ColorPair</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Predefined color pairs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">EARTH</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="s1">&#39;#8b4513&#39;</span><span class="p">)</span>
+    <span class="n">AIR</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="s1">&#39;skyblue&#39;</span><span class="p">)</span>
+    <span class="n">FIRE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;orange&#39;</span><span class="p">)</span>
+    <span class="n">WATER</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="s1">&#39;white&#39;</span><span class="p">)</span>
+    <span class="n">SUN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="s1">&#39;yellow&#39;</span><span class="p">)</span>
+    <span class="n">MOON</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;grey&#39;</span><span class="p">,</span> <span class="s1">&#39;cyan&#39;</span><span class="p">)</span>
+    <span class="n">HOTPINK</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;hotpink&#39;</span><span class="p">,</span> <span class="s1">&#39;purple&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromHtml</span><span class="p">(</span><span class="n">first</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">second</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromHtml</span><span class="p">(</span><span class="n">second</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ColorPair.get"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorPair.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a ColorPair by name</span>
+
+<span class="sd">        TODO: Implement support for ColourLovers</span>
+
+<span class="sd">        :param name: Name of the item to get as a string</span>
+<span class="sd">        :return: Enumerated value of the color pair</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__members__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span></div></div>
+
+
+<div class="viewcode-block" id="rgb_from_tuple"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.rgb_from_tuple">[docs]</a><span class="k">def</span> <span class="nf">rgb_from_tuple</span><span class="p">(</span><span class="n">arg</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a 3-tuple of ints or floats to a Grapefruit color</span>
+
+<span class="sd">    :param arg: The RGB tuple to convert</span>
+<span class="sd">    :return: The Color object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="o">*</span><span class="n">Color</span><span class="o">.</span><span class="n">IntTupleToRgb</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="o">*</span><span class="n">arg</span><span class="p">)</span>
+
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unable to convert </span><span class="si">%s</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">) to color&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span></div>
+
+
+<div class="viewcode-block" id="rgb_to_int_tuple"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.rgb_to_int_tuple">[docs]</a><span class="k">def</span> <span class="nf">rgb_to_int_tuple</span><span class="p">(</span><span class="n">arg</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert/sanitize a 3-tuple of ints or floats</span>
+
+<span class="sd">    :param arg: Tuple of RGB values</span>
+
+<span class="sd">    :return: Tuple of RGB ints</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">clamp</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">[:</span><span class="mi">3</span><span class="p">]])</span>
+
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unable to convert </span><span class="si">%s</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">) to color&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span></div>
+
+
+<span class="n">COLOR_TUPLE_STR</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\((.*, .*, .*, .*)\)&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="to_color"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.to_color">[docs]</a><span class="k">def</span> <span class="nf">to_color</span><span class="p">(</span><span class="o">*</span><span class="n">color_args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert various color representations to grapefruit.Color</span>
+
+<span class="sd">    Handles RGB triplets, hexcodes, and html color names.</span>
+
+<span class="sd">    :return: The color</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">color_args</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Color</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">arg</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">arg</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                    <span class="c1"># grapefruit&#39;s default str() spews a string repr of a tuple</span>
+                    <span class="n">strtuple</span> <span class="o">=</span> <span class="n">COLOR_TUPLE_STR</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">strtuple</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> \
+                                <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">strtuple</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="p">)])</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromHtml</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">rgb_from_tuple</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unable to parse color from </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)))</span>
+        <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">colors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">colors</span></div>
+
+
+<div class="viewcode-block" id="to_rgb"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.to_rgb">[docs]</a><span class="k">def</span> <span class="nf">to_rgb</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert various representations to RGB tuples</span>
+
+<span class="sd">    :return: An RGB int tuple</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Color</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">arg</span><span class="o">.</span><span class="n">intTuple</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromHtml</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span><span class="o">.</span><span class="n">intTuple</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">)</span> \
+                <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Color</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">to_rgb</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">rgb_to_int_tuple</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unable to parse color from </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s1"> (</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)))</span></div>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Decorator to parse various color representations</span>
+
+<span class="sd">Invokes to_color on any arguments listed in decls. This will cause</span>
+<span class="sd">the listed arguments to be resolved to grapefruit.Color objects from</span>
+<span class="sd">the various different representations that might be in use.</span>
+
+<span class="sd">Example:</span>
+
+<span class="sd">@colorarg</span>
+<span class="sd">def frobizzle(self, speed, color1: ColorType=None, color2: ColorType=None)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">colorarg</span> <span class="o">=</span> <span class="n">autocast_decorator</span><span class="p">(</span><span class="n">ColorType</span><span class="p">,</span> <span class="n">to_color</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="ColorUtils"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils">[docs]</a><span class="k">class</span> <span class="nc">ColorUtils</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Various helpers and utilities for working with colors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_circular_interp</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">lerp_degrees</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">end</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">amount</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">lerp</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">end</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">amount</span><span class="p">)</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">lerp</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">end</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">amount</span><span class="p">)</span>
+        <span class="n">a1</span> <span class="o">=</span> <span class="n">a2</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">start</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">a1</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">a2</span> <span class="o">=</span> <span class="n">end</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">lerp</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ColorUtils.hue_gradient"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.hue_gradient">[docs]</a>    <span class="k">def</span> <span class="nf">hue_gradient</span><span class="p">(</span><span class="n">start</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">360</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a gradient which spans all hues</span>
+
+<span class="sd">        :param start: starting hue</span>
+<span class="sd">        :param length: number of colors which should be produced</span>
+<span class="sd">        :return: list of colors</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="mi">360</span> <span class="o">/</span> <span class="n">length</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">Color</span><span class="o">.</span><span class="n">NewFromHsv</span><span class="p">((</span><span class="n">start</span> <span class="o">+</span> <span class="p">(</span><span class="n">step</span> <span class="o">*</span> <span class="n">x</span><span class="p">))</span> <span class="o">%</span> <span class="mi">360</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">)]</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_hsva</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">Color</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="o">*</span><span class="n">rgb_to_hsluv</span><span class="p">(</span><span class="n">color</span><span class="o">.</span><span class="n">rgb</span><span class="p">),</span> <span class="n">color</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.hsv_gradient"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.hsv_gradient">[docs]</a>    <span class="k">def</span> <span class="nf">hsv_gradient</span><span class="p">(</span><span class="n">color1</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">,</span> <span class="n">color2</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a gradient between two points in HSV colorspace</span>
+
+<span class="sd">        :param color1: Starting color</span>
+<span class="sd">        :param color2: Ending color</span>
+<span class="sd">        :param steps: Number of steps in the gradient</span>
+<span class="sd">        :param loop: If the gradient should &quot;loop&quot; back around to it&#39;s starting point</span>
+
+<span class="sd">        :return: List of colors in the gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">_hsva</span><span class="p">(</span><span class="n">color1</span><span class="p">)</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">_hsva</span><span class="p">(</span><span class="n">color2</span><span class="p">)</span>
+
+        <span class="n">gradient</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">steps</span><span class="p">):</span>
+            <span class="n">amount</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">steps</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">_circular_interp</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+            <span class="n">gradient</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="o">*</span><span class="n">hsluv_to_rgb</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">2</span><span class="p">]])))</span>
+
+        <span class="k">return</span> <span class="n">gradient</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ColorUtils.gradient"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.gradient">[docs]</a>    <span class="k">def</span> <span class="nf">gradient</span><span class="p">(</span><span class="n">length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="n">colors</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a looped gradient from multiple evenly-spaced colors</span>
+
+<span class="sd">        Uses the new HSLUV colorspace</span>
+<span class="sd">        :param length: Total number of entries in the final gradient</span>
+<span class="sd">        :param colors: Color stops, varargs</span>
+
+<span class="sd">        :return: List of colors in the gradient</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">luv_colors</span> <span class="o">=</span> <span class="p">[</span><span class="n">rgb_to_hsluv</span><span class="p">(</span><span class="n">to_color</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">rgb</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">]</span>
+        <span class="n">luv_colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">luv_colors</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">steps</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">luv_colors</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">length</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">luv_colors</span><span class="p">))))</span>
+        <span class="n">gradient</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">color_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">luv_colors</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">luv_colors</span><span class="p">[</span><span class="n">color_idx</span><span class="p">]</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">luv_colors</span><span class="p">[(</span><span class="n">color_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+
+            <span class="k">for</span> <span class="n">interp</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">steps</span><span class="p">):</span>
+                <span class="n">amount</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">interp</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">_circular_interp</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+                <span class="n">gradient</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="o">*</span><span class="n">hsluv_to_rgb</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">i</span><span class="p">[</span><span class="mi">2</span><span class="p">]])))</span>
+
+        <span class="k">return</span> <span class="n">gradient</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ColorUtils.color_generator"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.color_generator">[docs]</a>    <span class="k">def</span> <span class="nf">color_generator</span><span class="p">(</span><span class="n">gradient</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">randomize</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">alternate</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">rgb</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a generator which returns colors from the given gradient,</span>
+<span class="sd">        optionally randomizing, or moving across the gradient in alternating</span>
+<span class="sd">        directions.</span>
+
+<span class="sd">        :param gradient: a list of colors</span>
+<span class="sd">        :param randomize: true if colors should be chosen randomly instead of</span>
+<span class="sd">                          sequentially</span>
+<span class="sd">        :param alternate: true if two iterators should move sequentially</span>
+<span class="sd">                          thru the gradient in opposite directions</span>
+<span class="sd">        :param rgb: true if RGB int tuples should be returned</span>
+<span class="sd">        :return: generator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">gradient</span><span class="p">[:]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">randomize</span><span class="p">:</span>
+            <span class="n">grad</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">grad</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">rgb</span><span class="p">:</span>
+            <span class="n">grad</span> <span class="o">=</span> <span class="p">[</span><span class="n">to_rgb</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">grad</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">randomize</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cycle</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
+            <span class="n">cycle2</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">alternate</span><span class="p">:</span>
+                <span class="n">mid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="n">grad2</span> <span class="o">=</span> <span class="n">grad</span><span class="p">[</span><span class="n">mid</span><span class="p">:]</span>
+                <span class="n">grad2</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">grad</span><span class="p">[:</span><span class="n">mid</span><span class="p">])</span>
+                <span class="n">cycle2</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">grad2</span><span class="p">)</span>
+
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="nb">next</span><span class="p">(</span><span class="n">cycle</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">alternate</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="nb">next</span><span class="p">(</span><span class="n">cycle2</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.color_scheme"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.color_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">color_scheme</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">ColorType</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">base_color</span><span class="p">:</span> <span class="n">ColorType</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">11</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generator which produces a continuous stream of colors based on a</span>
+<span class="sd">        color scheme of two overlapping colors.</span>
+
+<span class="sd">        :param color: The &quot;top&quot; color</span>
+<span class="sd">        :param base_color: The base or bg_color color</span>
+<span class="sd">        :param randomize: True if values should be chosen at random instead of sequential</span>
+<span class="sd">        :param steps: Number of steps used for the gradient</span>
+<span class="sd">        :param rgb: True if we should return RGB tuples</span>
+
+<span class="sd">        :return: generator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">c0</span> <span class="o">=</span> <span class="n">c1</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">base_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">c0</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">AnalogousScheme</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">base_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">c0</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">increase_contrast</span><span class="p">(</span><span class="n">base_color</span><span class="p">)</span><span class="o">.</span><span class="n">TriadicScheme</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">steps</span><span class="p">,</span> <span class="n">c0</span><span class="p">,</span> <span class="n">c1</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.scheme_generator"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.scheme_generator">[docs]</a>    <span class="k">def</span> <span class="nf">scheme_generator</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">ColorType</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">base_color</span><span class="p">:</span> <span class="n">ColorType</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">randomize</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                         <span class="n">alternate</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">rgb</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generator which produces a continuous stream of colors based on a</span>
+<span class="sd">        color scheme of two overlapping colors.</span>
+
+<span class="sd">        :param color: The &quot;top&quot; color</span>
+<span class="sd">        :param base_color: The base or bg_color color</span>
+<span class="sd">        :param randomize: True if values should be chosen at random instead of sequential</span>
+<span class="sd">        :param steps: Number of steps used for the gradient</span>
+<span class="sd">        :param rgb: True if we should return RGB tuples</span>
+
+<span class="sd">        :return: generator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">gradient</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">color_scheme</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">base_color</span><span class="p">,</span> <span class="n">steps</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">color_generator</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="n">randomize</span><span class="p">,</span> <span class="n">alternate</span><span class="p">,</span> <span class="n">rgb</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ColorUtils.interference"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.interference">[docs]</a>    <span class="k">def</span> <span class="nf">interference</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">freq1</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">freq2</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">freq3</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                     <span class="n">phase1</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">phase2</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">phase3</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>
+                     <span class="n">center</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">128.0</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">127.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates an interference pattern of three sine waves</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">phase1</span> <span class="o">=</span> <span class="n">phase1</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">3</span>
+        <span class="n">phase2</span> <span class="o">=</span> <span class="n">phase2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">3</span>
+        <span class="n">phase3</span> <span class="o">=</span> <span class="n">phase3</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">3</span>
+
+        <span class="n">center</span> <span class="o">/=</span> <span class="mf">255.0</span>
+        <span class="n">width</span> <span class="o">/=</span> <span class="mf">255.0</span>
+
+        <span class="n">gradient</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">freq1</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">phase1</span><span class="p">)</span> <span class="o">*</span> <span class="n">width</span> <span class="o">+</span> <span class="n">center</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">freq2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">phase2</span><span class="p">)</span> <span class="o">*</span> <span class="n">width</span> <span class="o">+</span> <span class="n">center</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">freq3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">phase3</span><span class="p">)</span> <span class="o">*</span> <span class="n">width</span> <span class="o">+</span> <span class="n">center</span>
+            <span class="n">gradient</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">gradient</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ColorUtils.rainbow_generator"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.rainbow_generator">[docs]</a>    <span class="k">def</span> <span class="nf">rainbow_generator</span><span class="p">(</span><span class="n">randomize</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">alternate</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                          <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">33</span><span class="p">,</span> <span class="n">rgb</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a smooth rainbow gradient</span>
+
+<span class="sd">        :param steps: Length or smoothness of the gradient</span>
+<span class="sd">        :param rgb: True if RGB tuples should be generated</span>
+<span class="sd">        :param alternate: If alternating values (moving in opposite directions</span>
+<span class="sd">                          should be returned on subsequent calls</span>
+
+<span class="sd">        :return: generator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">gradient</span> <span class="o">=</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">interference</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">color_generator</span><span class="p">(</span><span class="n">gradient</span><span class="p">,</span> <span class="n">randomize</span><span class="p">,</span> <span class="n">alternate</span><span class="p">,</span> <span class="n">rgb</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ColorUtils.random_generator"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.random_generator">[docs]</a>    <span class="k">def</span> <span class="nf">random_generator</span><span class="p">(</span><span class="n">rgb</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate random colors using the golden ratio conjugate</span>
+
+<span class="sd">        :param rgb: True if RGB tuples should be generated</span>
+
+<span class="sd">        :return: generator:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">golden_ratio_conjugate</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
+        <span class="n">c0</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromHsv</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">hue</span> <span class="o">+=</span> <span class="n">golden_ratio_conjugate</span>
+            <span class="n">hue</span> <span class="o">%=</span> <span class="mi">1</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">c0</span><span class="o">.</span><span class="n">ColorWithHue</span><span class="p">(</span><span class="n">hue</span> <span class="o">*</span> <span class="mi">360</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">rgb</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">to_rgb</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">value</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.luminance"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.luminance">[docs]</a>    <span class="k">def</span> <span class="nf">luminance</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the relative luminance (as defined by WCAG 2.0) of</span>
+<span class="sd">        the given color.</span>
+
+<span class="sd">        :param color: a color</span>
+<span class="sd">        :return: the calculated relative luminance between 0.0 and 10</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rgb</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">rgb</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">rgb</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="o">&lt;=</span> <span class="mf">0.03928</span><span class="p">:</span>
+                <span class="n">c</span> <span class="o">/=</span> <span class="mf">12.92</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">pow</span><span class="p">((</span><span class="n">c</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1.055</span><span class="p">,</span> <span class="mf">2.4</span><span class="p">)</span>
+            <span class="n">vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="mf">0.2126</span> <span class="o">*</span> <span class="n">vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.7152</span> <span class="o">*</span> <span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.0722</span> <span class="o">*</span> <span class="n">vals</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">L</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.contrast_ratio"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.contrast_ratio">[docs]</a>    <span class="k">def</span> <span class="nf">contrast_ratio</span><span class="p">(</span><span class="n">color1</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">,</span> <span class="n">color2</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the contrast ratio (as defined by WCAG 2.0) between</span>
+<span class="sd">        two colors. If the two colors have the same relative luminance,</span>
+<span class="sd">        the result is 1.0. For black/white, the result is 21.0.</span>
+
+<span class="sd">        :param color1: a color</span>
+<span class="sd">        :param color2: a color</span>
+<span class="sd">        :return: the calculated contrast ratio</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.05</span> <span class="o">+</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">luminance</span><span class="p">(</span><span class="n">color1</span><span class="p">))</span> <span class="o">/</span> \
+                <span class="p">(</span><span class="mf">0.05</span> <span class="o">+</span> <span class="n">ColorUtils</span><span class="o">.</span><span class="n">luminance</span><span class="p">(</span><span class="n">color2</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ratio</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">ratio</span>
+        <span class="k">return</span> <span class="n">ratio</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.inverse"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.inverse">[docs]</a>    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the RGB inverse of this color (1 - component)</span>
+
+<span class="sd">        :param color: a color</span>
+<span class="sd">        :return: Inverse of the given color</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rgb</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">rgb</span>
+        <span class="k">return</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromRgb</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">color</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.increase_contrast"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.increase_contrast">[docs]</a>    <span class="k">def</span> <span class="nf">increase_contrast</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">ColorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs contrast inversion if a hue rotation would result in</span>
+<span class="sd">        white-on-white or black-on-black.</span>
+
+<span class="sd">        :param color: The color to check</span>
+
+<span class="sd">        :return: The new color with adjusted contrast</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hsl</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">color</span><span class="o">.</span><span class="n">hsl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hsl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.1</span> <span class="ow">or</span> <span class="n">hsl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">:</span>
+            <span class="n">hsl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">hsl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">NewFromHsl</span><span class="p">(</span><span class="o">*</span><span class="n">hsl</span><span class="p">,</span> <span class="n">color</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">color</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@colorarg</span>
+<div class="viewcode-block" id="ColorUtils.rgba2rgb"><a class="viewcode-back" href="../../uchroma.color.html#uchroma.color.ColorUtils.rgba2rgb">[docs]</a>    <span class="k">def</span> <span class="nf">rgba2rgb</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">bg_color</span><span class="p">:</span> <span class="n">ColorType</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Alpha-composites data in the numpy array against the given</span>
+<span class="sd">        background color and returns a new buffer without the</span>
+<span class="sd">        alpha component.</span>
+
+<span class="sd">        :param arr: The input array of RGBA data</span>
+<span class="sd">        :param bg_color: The background color</span>
+<span class="sd">        :param out_buf: Optional buffer to render into</span>
+
+<span class="sd">        :return: Array of composited RGB data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">bg_color</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bg_color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bg_color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">bg_color</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">channels</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">out_buf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ichan</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">channels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="n">out_buf</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ichan</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">bg_color</span><span class="p">[</span><span class="n">ichan</span><span class="p">]</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">channels</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ichan</span><span class="p">],</span>
+                <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">dtype</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">out_buf</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

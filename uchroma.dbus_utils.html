@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.dbus_utils module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.input_queue module" href="uchroma.input_queue.html" />
+    <link rel="prev" title="uchroma.color module" href="uchroma.color.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.color.html" title="uchroma.color module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.input_queue.html" title="uchroma.input_queue module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.dbus_utils">
+<span id="uchroma-dbus-utils-module"></span><h1>uchroma.dbus_utils module<a class="headerlink" href="#module-uchroma.dbus_utils" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.dbus_utils.ArgSpec">
+<em class="property">class </em><code class="descclassname">uchroma.dbus_utils.</code><code class="descname">ArgSpec</code><span class="sig-paren">(</span><em>direction</em>, <em>name</em>, <em>type</em><span class="sig-paren">)</span><a class="headerlink" href="#uchroma.dbus_utils.ArgSpec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#tuple" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></a></p>
+<dl class="attribute">
+<dt id="uchroma.dbus_utils.ArgSpec.direction">
+<code class="descname">direction</code><a class="headerlink" href="#uchroma.dbus_utils.ArgSpec.direction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.dbus_utils.ArgSpec.name">
+<code class="descname">name</code><a class="headerlink" href="#uchroma.dbus_utils.ArgSpec.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.dbus_utils.ArgSpec.type">
+<code class="descname">type</code><a class="headerlink" href="#uchroma.dbus_utils.ArgSpec.type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.dbus_utils.DescriptorBuilder">
+<em class="property">class </em><code class="descclassname">uchroma.dbus_utils.</code><code class="descname">DescriptorBuilder</code><span class="sig-paren">(</span><em>obj</em>, <em>interface_name</em>, <em>exclude=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/dbus_utils.html#DescriptorBuilder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.DescriptorBuilder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<p>Helper class for creating D-BUS XML descriptors</p>
+<p>While pydbus allows inline specification of the descriptor,
+frequently the descriptor needs to be dynamic or based on class
+introspection. This builder lets us create it at runtime
+with a simple interface. Additionally, we inspect traitlets
+from the target object and generate properties to match.</p>
+<p>The descriptor needs to be placed in the &#8216;dbus&#8217; attribute of the
+type before registering the object on the bus. Example:</p>
+<blockquote>
+<div>api.__class__.dbus = builder.build()
+bus.register_object(path, api, None)</div></blockquote>
+<dl class="method">
+<dt id="uchroma.dbus_utils.DescriptorBuilder.add_method">
+<code class="descname">add_method</code><span class="sig-paren">(</span><em>method</em>, <em>*argspecs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/dbus_utils.html#DescriptorBuilder.add_method"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.DescriptorBuilder.add_method" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.dbus_utils.DescriptorBuilder.add_property">
+<code class="descname">add_property</code><span class="sig-paren">(</span><em>name: str</em>, <em>signature: str</em>, <em>writable: bool = False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/dbus_utils.html#DescriptorBuilder.add_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.DescriptorBuilder.add_property" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.dbus_utils.DescriptorBuilder.add_signal">
+<code class="descname">add_signal</code><span class="sig-paren">(</span><em>signal</em>, <em>*argspecs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/dbus_utils.html#DescriptorBuilder.add_signal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.DescriptorBuilder.add_signal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.dbus_utils.DescriptorBuilder.build">
+<code class="descname">build</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/uchroma/dbus_utils.html#DescriptorBuilder.build"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.DescriptorBuilder.build" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.dbus_utils.TraitsPropertiesMixin">
+<em class="property">class </em><code class="descclassname">uchroma.dbus_utils.</code><code class="descname">TraitsPropertiesMixin</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/dbus_utils.html#TraitsPropertiesMixin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.TraitsPropertiesMixin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="uchroma.dbus_utils.dbus_prepare">
+<code class="descclassname">uchroma.dbus_utils.</code><code class="descname">dbus_prepare</code><span class="sig-paren">(</span><em>obj</em>, <em>variant: bool = False</em>, <em>camel_keys: bool = False</em><span class="sig-paren">)</span> &#x2192; tuple<a class="reference internal" href="_modules/uchroma/dbus_utils.html#dbus_prepare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.dbus_utils.dbus_prepare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Recursively walks obj and builds a D-Bus signature
+by inspecting types. Variant types are created as
+necessary, and the returned obj may have changed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><code class="docutils literal"><span class="pre">tuple</span></code></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>obj</strong> &#8211; An arbitrary primitive or container type</li>
+<li><strong>variant</strong> (<code class="docutils literal"><span class="pre">bool</span></code>) &#8211; Force wrapping contained objects with variants</li>
+<li><strong>camel_keys</strong> (<code class="docutils literal"><span class="pre">bool</span></code>) &#8211; Convert dict keys to CamelCase</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.blending.html">uchroma.blending module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.color.html">uchroma.color module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">uchroma.dbus_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.input_queue.html">uchroma.input_queue module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.layer.html">uchroma.layer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.renderer.html">uchroma.renderer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.traits.html">uchroma.traits module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.util.html">uchroma.util module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.version.html">uchroma.version module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.color.html" title="uchroma.color module"
+              >previous</a> |
+            <a href="uchroma.input_queue.html" title="uchroma.input_queue module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.dbus_utils.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

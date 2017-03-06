@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.input_queue module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.layer module" href="uchroma.layer.html" />
+    <link rel="prev" title="uchroma.dbus_utils module" href="uchroma.dbus_utils.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.dbus_utils.html" title="uchroma.dbus_utils module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.layer.html" title="uchroma.layer module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.input_queue">
+<span id="uchroma-input-queue-module"></span><h1>uchroma.input_queue module<a class="headerlink" href="#module-uchroma.input_queue" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.input_queue.InputQueue">
+<em class="property">class </em><code class="descclassname">uchroma.input_queue.</code><code class="descname">InputQueue</code><span class="sig-paren">(</span><em>driver</em>, <em>expire_time=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/input_queue.html#InputQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.input_queue.InputQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<p>Asynchronous input event queue</p>
+<p>After calling attach(), users of this class may await get_events()
+until a new event is produced from the keyboard. If an expiration time
+is set, events will not be purged until the time has lapsed-
+subsequents yield/await on get_events will return all active events.</p>
+<dl class="attribute">
+<dt id="uchroma.input_queue.InputQueue.KEY_DOWN">
+<code class="descname">KEY_DOWN</code><em class="property"> = 2</em><a class="headerlink" href="#uchroma.input_queue.InputQueue.KEY_DOWN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.input_queue.InputQueue.KEY_HOLD">
+<code class="descname">KEY_HOLD</code><em class="property"> = 4</em><a class="headerlink" href="#uchroma.input_queue.InputQueue.KEY_HOLD" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.input_queue.InputQueue.KEY_UP">
+<code class="descname">KEY_UP</code><em class="property"> = 1</em><a class="headerlink" href="#uchroma.input_queue.InputQueue.KEY_UP" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.input_queue.InputQueue.attach">
+<code class="descname">attach</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/input_queue.html#InputQueue.attach"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.input_queue.InputQueue.attach" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start listening for input events</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if successful</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.input_queue.InputQueue.detach">
+<code class="descname">detach</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/input_queue.html#InputQueue.detach"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.input_queue.InputQueue.detach" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop listening for input events</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.input_queue.InputQueue.expire_time">
+<code class="descname">expire_time</code><a class="headerlink" href="#uchroma.input_queue.InputQueue.expire_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of seconds to store entries for</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.input_queue.InputQueue.get_events">
+<code class="descname">get_events</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/input_queue.html#InputQueue.get_events"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.input_queue.InputQueue.get_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get all active (new and unexpired) events from the queue.</p>
+<p>This is a coroutine, and will yield until new data is available.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.input_queue.InputQueue.get_events_nowait">
+<code class="descname">get_events_nowait</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/input_queue.html#InputQueue.get_events_nowait"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.input_queue.InputQueue.get_events_nowait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Version of get_events which returns immediately</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.input_queue.InputQueue.keystates">
+<code class="descname">keystates</code><a class="headerlink" href="#uchroma.input_queue.InputQueue.keystates" title="Permalink to this definition">¶</a></dt>
+<dd><p>The keystates to report as a bitmask</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.input_queue.KeyInputEvent">
+<em class="property">class </em><code class="descclassname">uchroma.input_queue.</code><code class="descname">KeyInputEvent</code><a class="reference internal" href="_modules/uchroma/input_queue.html#KeyInputEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.input_queue.KeyInputEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.input_queue.KeyInputEvent" title="uchroma.input_queue.KeyInputEvent"><code class="xref py py-class docutils literal"><span class="pre">uchroma.input_queue.KeyInputEvent</span></code></a>, <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<p>Container of all values of a keyboard input event
+with optional expiration time.</p>
+<dl class="attribute">
+<dt id="uchroma.input_queue.KeyInputEvent.percent_complete">
+<code class="descname">percent_complete</code><a class="headerlink" href="#uchroma.input_queue.KeyInputEvent.percent_complete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Percentage of elapsed time until this event expires</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.input_queue.KeyInputEvent.time_remaining">
+<code class="descname">time_remaining</code><a class="headerlink" href="#uchroma.input_queue.KeyInputEvent.time_remaining" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of seconds until this event expires</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.blending.html">uchroma.blending module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.color.html">uchroma.color module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.dbus_utils.html">uchroma.dbus_utils module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">uchroma.input_queue module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.layer.html">uchroma.layer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.renderer.html">uchroma.renderer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.traits.html">uchroma.traits module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.util.html">uchroma.util module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.version.html">uchroma.version module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.dbus_utils.html" title="uchroma.dbus_utils module"
+              >previous</a> |
+            <a href="uchroma.layer.html" title="uchroma.layer module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.input_queue.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

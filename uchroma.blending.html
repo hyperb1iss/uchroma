@@ -1,0 +1,238 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.blending module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.color module" href="uchroma.color.html" />
+    <link rel="prev" title="uchroma.server.types module" href="uchroma.server.types.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.types.html" title="uchroma.server.types module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.color.html" title="uchroma.color module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.blending">
+<span id="uchroma-blending-module"></span><h1>uchroma.blending module<a class="headerlink" href="#module-uchroma.blending" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.blending.BlendOp">
+<em class="property">class </em><code class="descclassname">uchroma.blending.</code><code class="descname">BlendOp</code><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.addition">
+<em class="property">static </em><code class="descname">addition</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.addition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.addition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply addition blending mode of a layer on an image.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.darken_only">
+<em class="property">static </em><code class="descname">darken_only</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.darken_only"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.darken_only" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply darken only blending mode of a layer on an image.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.difference">
+<em class="property">static </em><code class="descname">difference</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.difference"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.difference" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply difference blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Difference">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.divide">
+<em class="property">static </em><code class="descname">divide</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.divide"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.divide" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply divide blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Divide">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.dodge">
+<em class="property">static </em><code class="descname">dodge</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.dodge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.dodge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply dodge blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Dodge_and_burn">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="uchroma.blending.BlendOp.get_modes">
+<em class="property">classmethod </em><code class="descname">get_modes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.get_modes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.get_modes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.grain_extract">
+<em class="property">static </em><code class="descname">grain_extract</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.grain_extract"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.grain_extract" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply grain extract blending mode of a layer on an image.</p>
+<p>Find more information on the <a class="reference external" href="https://userbase.kde.org/Krita/Manual/Blendingmodes#Grain_Extract">KDE UserBase Wiki</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.grain_merge">
+<em class="property">static </em><code class="descname">grain_merge</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.grain_merge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.grain_merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply grain merge blending mode of a layer on an image.</p>
+<p>Find more information on the <a class="reference external" href="https://userbase.kde.org/Krita/Manual/Blendingmodes#Grain_Merge">KDE UserBase Wiki</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.hard_light">
+<em class="property">static </em><code class="descname">hard_light</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.hard_light"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.hard_light" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply hard light blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Hard_Light">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.lighten_only">
+<em class="property">static </em><code class="descname">lighten_only</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.lighten_only"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.lighten_only" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply lighten only blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Lighten_Only">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.multiply">
+<em class="property">static </em><code class="descname">multiply</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.multiply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.multiply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply multiply blending mode of a layer on an image.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.screen">
+<em class="property">static </em><code class="descname">screen</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.screen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.screen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply screen blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Screen">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.soft_light">
+<em class="property">static </em><code class="descname">soft_light</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.soft_light"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.soft_light" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply soft light blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Soft_Light">Wikipedia</a>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="uchroma.blending.BlendOp.subtract">
+<em class="property">static </em><code class="descname">subtract</code><span class="sig-paren">(</span><em>img_in</em>, <em>img_layer</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#BlendOp.subtract"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.BlendOp.subtract" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply subtract blending mode of a layer on an image.</p>
+<p>Find more information on <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Blend_modes&amp;oldid=747749280#Subtract">Wikipedia</a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="uchroma.blending.blend">
+<code class="descclassname">uchroma.blending.</code><code class="descname">blend</code><span class="sig-paren">(</span><em>img_in: numpy.ndarray</em>, <em>img_layer: numpy.ndarray</em>, <em>blend_op: None</em>, <em>opacity: float = 1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/blending.html#blend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.blending.blend" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">uchroma.blending module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.color.html">uchroma.color module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.dbus_utils.html">uchroma.dbus_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.input_queue.html">uchroma.input_queue module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.layer.html">uchroma.layer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.renderer.html">uchroma.renderer module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.traits.html">uchroma.traits module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.util.html">uchroma.util module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.version.html">uchroma.version module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.types.html" title="uchroma.server.types module"
+              >previous</a> |
+            <a href="uchroma.color.html" title="uchroma.color module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.blending.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

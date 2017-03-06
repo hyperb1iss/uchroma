@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.power &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.server.power</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=broad-except</span>
+
+<span class="kn">from</span> <span class="nn">pydbus</span> <span class="k">import</span> <span class="n">SessionBus</span><span class="p">,</span> <span class="n">SystemBus</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">get_logger</span><span class="p">,</span> <span class="n">Singleton</span>
+<span class="kn">from</span> <span class="nn">.device_manager</span> <span class="k">import</span> <span class="n">UChromaDeviceManager</span>
+
+
+<span class="n">SCREENSAVERS</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;org.freedesktop.ScreenSaver&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;org.gnome.ScreenSaver&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;org.mate.ScreenSaver&#39;</span><span class="p">)</span>
+
+<span class="n">LOGIN_SERVICE</span> <span class="o">=</span> <span class="s1">&#39;org.freedesktop.login1&#39;</span>
+
+
+<div class="viewcode-block" id="PowerMonitor"><a class="viewcode-back" href="../../../uchroma.server.power.html#uchroma.server.power.PowerMonitor">[docs]</a><span class="k">class</span> <span class="nc">PowerMonitor</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">Singleton</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Watches for changes to the system&#39;s suspend state and</span>
+<span class="sd">    screensaver, signalling devices to suspend if necessary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s1">&#39;uchroma.power&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name_watchers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sleeping</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_session_bus</span> <span class="o">=</span> <span class="n">SessionBus</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_system_bus</span> <span class="o">=</span> <span class="n">SystemBus</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dm</span> <span class="o">=</span> <span class="n">UChromaDeviceManager</span><span class="p">()</span> <span class="c1">#singleton</span>
+
+
+    <span class="k">def</span> <span class="nf">_suspend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sleeping</span><span class="p">,</span> <span class="n">fast</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sleeping</span> <span class="o">==</span> <span class="n">sleeping</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sleeping</span> <span class="o">=</span> <span class="n">sleeping</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">device</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dm</span><span class="o">.</span><span class="n">devices</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">sleeping</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Suspending device: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="n">device</span><span class="o">.</span><span class="n">suspend</span><span class="p">(</span><span class="n">fast</span><span class="o">=</span><span class="n">fast</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Resuming device: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="n">device</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_prepare_for_sleep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sleeping</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_suspend</span><span class="p">(</span><span class="n">sleeping</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_active_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">active</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_suspend</span><span class="p">(</span><span class="n">active</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PowerMonitor.start"><a class="viewcode-back" href="../../../uchroma.server.power.html#uchroma.server.power.PowerMonitor.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connects to the PrepareForSleep signal from login1 to monitor</span>
+<span class="sd">        system suspend, and sets up watches for known screensaver</span>
+<span class="sd">        instances.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">SCREENSAVERS</span><span class="p">:</span>
+            <span class="k">def</span> <span class="nf">connect_screensaver</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">service</span><span class="o">=</span><span class="n">name</span><span class="p">):</span>
+                <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Connects the callback when the service appears.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">saver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session_bus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">service</span><span class="p">)</span>
+                    <span class="n">saver</span><span class="o">.</span><span class="n">ActiveChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_active_changed</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Connected screensaver: </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">service</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Could not connect to </span><span class="si">%s</span><span class="s2"> service&quot;</span><span class="p">,</span> <span class="n">service</span><span class="p">)</span>
+
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_name_watchers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_session_bus</span><span class="o">.</span><span class="n">watch_name</span><span class="p">(</span> \
+                    <span class="n">name</span><span class="p">,</span> <span class="n">name_appeared</span><span class="o">=</span><span class="n">connect_screensaver</span><span class="p">))</span>
+
+
+        <span class="k">def</span> <span class="nf">connect_login1</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">login1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_system_bus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">LOGIN_SERVICE</span><span class="p">)</span>
+                <span class="n">login1</span><span class="o">.</span><span class="n">PrepareForSleep</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_prepare_for_sleep</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Connected to </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">LOGIN_SERVICE</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Could not connect to login1 service&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name_watchers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_system_bus</span><span class="o">.</span><span class="n">watch_name</span><span class="p">(</span> \
+                <span class="n">LOGIN_SERVICE</span><span class="p">,</span> <span class="n">name_appeared</span><span class="o">=</span><span class="n">connect_login1</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="PowerMonitor.stop"><a class="viewcode-back" href="../../../uchroma.server.power.html#uchroma.server.power.PowerMonitor.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Disable the monitor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">watcher</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_watchers</span><span class="p">:</span>
+            <span class="n">watcher</span><span class="o">.</span><span class="n">unwatch</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name_watchers</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_running</span> <span class="o">=</span> <span class="kc">False</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

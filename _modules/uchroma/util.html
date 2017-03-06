@@ -1,0 +1,577 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.util &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.util</h1><div class="highlight"><pre>
+<span></span><span class="c1"># pylint: disable=invalid-name, no-member, attribute-defined-outside-init, bad-builtin</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Various helper functions that are used across the library.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">typing</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">import</span> <span class="nn">colorlog</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="k">import</span> <span class="n">interp</span>
+<span class="kn">from</span> <span class="nn">wrapt</span> <span class="k">import</span> <span class="n">decorator</span><span class="p">,</span> <span class="n">synchronized</span>
+
+
+<span class="c1"># Trace log levels</span>
+<span class="n">LOG_TRACE</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">LOG_PROTOCOL_TRACE</span> <span class="o">=</span> <span class="mi">4</span>
+
+
+<span class="n">AUTOCAST_CACHE</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="autocast_decorator"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.autocast_decorator">[docs]</a><span class="k">def</span> <span class="nf">autocast_decorator</span><span class="p">(</span><span class="n">type_hint</span><span class="p">,</span> <span class="n">fix_arg_func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator which will invoke fix_arg_func for any</span>
+<span class="sd">    arguments annotated with type_hint. The decorated</span>
+<span class="sd">    function will then be called with the result.</span>
+
+<span class="sd">    :param type_hint: A PEP484 type hint</span>
+<span class="sd">    :param fix_arg_func: Function to invoke</span>
+
+<span class="sd">    :return: decorator</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@decorator</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">wrapped</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">hinted_args</span> <span class="o">=</span> <span class="n">names</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">cache_key</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">-</span><span class="si">%s</span><span class="s1">-</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">wrapped</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                                  <span class="n">wrapped</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">type_hint</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">in</span> <span class="n">AUTOCAST_CACHE</span><span class="p">:</span>
+            <span class="n">hinted_args</span><span class="p">,</span> <span class="n">names</span> <span class="o">=</span> <span class="n">AUTOCAST_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">wrapped</span><span class="p">)</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="n">hinted_args</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">typing</span><span class="o">.</span><span class="n">get_type_hints</span><span class="p">(</span><span class="n">wrapped</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> \
+                    <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">type_hint</span> <span class="ow">or</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">typing</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">type_hint</span><span class="p">,</span> <span class="kc">None</span><span class="p">]]</span>
+            <span class="n">AUTOCAST_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">hinted_args</span><span class="p">,</span> <span class="n">names</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hinted_args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No arguments with </span><span class="si">%s</span><span class="s2"> hint found&quot;</span> <span class="o">%</span> <span class="n">type_hint</span><span class="p">)</span>
+
+        <span class="n">new_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">hinted_arg</span> <span class="ow">in</span> <span class="n">hinted_args</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">hinted_arg</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">hinted_arg</span><span class="p">]</span> <span class="o">=</span> <span class="n">fix_arg_func</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="n">hinted_arg</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="n">hinted_arg</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">hinted_arg</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_args</span><span class="p">):</span>
+                    <span class="n">new_args</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fix_arg_func</span><span class="p">(</span><span class="n">new_args</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">wrapped</span><span class="p">(</span><span class="o">*</span><span class="n">new_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+<div class="viewcode-block" id="snake_to_camel"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.snake_to_camel">[docs]</a><span class="k">def</span> <span class="nf">snake_to_camel</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a CamelCaseName from a snake_case_name</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(?:^|_)([a-z])&#39;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="camel_to_snake"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.camel_to_snake">[docs]</a><span class="k">def</span> <span class="nf">camel_to_snake</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a snake_case_name from a CamelCaseName</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s1</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;(.)([A-Z][a-z]+)&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\1_\2&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;([a-z0-9])([A-Z])&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\1_\2&#39;</span><span class="p">,</span> <span class="n">s1</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span></div>
+
+
+<span class="n">LOGGERS</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="nd">@synchronized</span>
+<div class="viewcode-block" id="get_logger"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.get_logger">[docs]</a><span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the global logger instance for the given tag</span>
+
+<span class="sd">    :param tag: the log tag</span>
+<span class="sd">    :return: the logger instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">tag</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">LOGGERS</span><span class="p">:</span>
+        <span class="n">handler</span> <span class="o">=</span> <span class="n">colorlog</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()</span>
+        <span class="n">handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">colorlog</span><span class="o">.</span><span class="n">ColoredFormatter</span><span class="p">(</span> \
+            <span class="s1">&#39; </span><span class="si">%(log_color)s%(name)s</span><span class="s1">/</span><span class="si">%(levelname)-8s%(reset)s</span><span class="s1"> | </span><span class="si">%(log_color)s%(message)s%(reset)s</span><span class="s1">&#39;</span><span class="p">))</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+
+        <span class="n">LOGGERS</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">logger</span>
+
+    <span class="k">return</span> <span class="n">LOGGERS</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="max_keylen"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.max_keylen">[docs]</a><span class="k">def</span> <span class="nf">max_keylen</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the length of the longest key</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="clamp"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.clamp">[docs]</a><span class="k">def</span> <span class="nf">clamp</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">min_</span><span class="p">,</span> <span class="n">max_</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constrain a value to the specified range</span>
+
+<span class="sd">    :param value: Input value</span>
+<span class="sd">    :param min_: Range minimum</span>
+<span class="sd">    :param max_: Range maximum</span>
+
+<span class="sd">    :return: The constrained value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">min_</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">max_</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="scale"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.scale">[docs]</a><span class="k">def</span> <span class="nf">scale</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">src_min</span><span class="p">,</span> <span class="n">src_max</span><span class="p">,</span> <span class="n">dst_min</span><span class="p">,</span> <span class="n">dst_max</span><span class="p">,</span> <span class="n">round_</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scale a value from one range to another.</span>
+
+<span class="sd">    :param value: Input value</span>
+<span class="sd">    :param src_min: Min value of input range</span>
+<span class="sd">    :param src_max: Max value of input range</span>
+<span class="sd">    :param dst_min: Min value of output range</span>
+<span class="sd">    :param dst_max: Max value of output range</span>
+<span class="sd">    :param round_: True if the scale value should be rounded to an integer</span>
+
+<span class="sd">    :return: The scaled value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">scaled</span> <span class="o">=</span> <span class="n">interp</span><span class="p">(</span><span class="n">clamp</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">src_min</span><span class="p">,</span> <span class="n">src_max</span><span class="p">),</span> <span class="p">[</span><span class="n">src_min</span><span class="p">,</span> <span class="n">src_max</span><span class="p">],</span> <span class="p">[</span><span class="n">dst_min</span><span class="p">,</span> <span class="n">dst_max</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">round_</span><span class="p">:</span>
+        <span class="n">scaled</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">scaled</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">scaled</span></div>
+
+
+<div class="viewcode-block" id="scale_brightness"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.scale_brightness">[docs]</a><span class="k">def</span> <span class="nf">scale_brightness</span><span class="p">(</span><span class="n">brightness</span><span class="p">,</span> <span class="n">from_hw</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts a brightness value between float percentage (0 - 100)</span>
+<span class="sd">    and an integer value (0 - 255). All API methods should deal in</span>
+<span class="sd">    percentages, but interaction with the hardware will use the</span>
+<span class="sd">    integer value.</span>
+
+<span class="sd">    :param brightness: The brightness level</span>
+<span class="sd">    :param from_hw: True if we are converting from integer to percentage</span>
+
+<span class="sd">    :return: The scaled value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">from_hw</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">brightness</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">brightness</span> <span class="o">&gt;</span> <span class="mi">255</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Integer brightness must be between 0 and 255 (</span><span class="si">%d</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">brightness</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">brightness</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">brightness</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">100.0</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">brightness</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">brightness</span> <span class="o">&gt;</span> <span class="mf">100.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Float brightness must be between 0 and 100 (</span><span class="si">%f</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">brightness</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">brightness</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">brightness</span> <span class="o">*</span> <span class="p">(</span><span class="mf">255.0</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="to_byte"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.to_byte">[docs]</a><span class="k">def</span> <span class="nf">to_byte</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a single int to a single byte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;=B&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="smart_delay"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.smart_delay">[docs]</a><span class="k">def</span> <span class="nf">smart_delay</span><span class="p">(</span><span class="n">delay</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">last_cmd</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">remain</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A &quot;smart&quot; delay mechanism which tries to reduce the</span>
+<span class="sd">    delay as much as possible based on the time the last</span>
+<span class="sd">    delay happened.</span>
+
+<span class="sd">    :param delay: delay in seconds</span>
+<span class="sd">    :param last_cmd: time of last command</span>
+<span class="sd">    :param remain: counter, skip delay unless it&#39;s zero</span>
+
+<span class="sd">    :return: timestamp to feed to next invocation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">remain</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">last_cmd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">delay</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">last_cmd</span>
+        <span class="k">if</span> <span class="n">delta</span> <span class="o">&lt;</span> <span class="n">delay</span><span class="p">:</span>
+            <span class="n">sleep</span> <span class="o">=</span> <span class="n">delay</span> <span class="o">-</span> <span class="n">delta</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">sleep</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">now</span></div>
+
+
+<div class="viewcode-block" id="test_bit"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.test_bit">[docs]</a><span class="k">def</span> <span class="nf">test_bit</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bit</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test if the bit at the specified position is set.</span>
+
+<span class="sd">    :param value: The value to test</span>
+<span class="sd">    :param bit: The bit to check</span>
+
+<span class="sd">    :return: True if the bit is set</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">value</span> <span class="o">&amp;</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">bit</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">bit</span></div>
+
+
+<div class="viewcode-block" id="set_bits"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.set_bits">[docs]</a><span class="k">def</span> <span class="nf">set_bits</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="n">bits</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a list of bools, set (or clear) the bits in</span>
+<span class="sd">    value and return it as an int.</span>
+
+<span class="sd">    :param value: The initial value</span>
+<span class="sd">    :param bits: Tuple of bools</span>
+
+<span class="sd">    :return: Integer with bits set or cleared</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">bit</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bits</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">bits</span><span class="p">[</span><span class="n">bit</span><span class="p">]:</span>
+            <span class="n">value</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">bit</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">bit</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="lerp"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.lerp">[docs]</a><span class="k">def</span> <span class="nf">lerp</span><span class="p">(</span><span class="n">start</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Linear interpolation</span>
+
+<span class="sd">    Return a value between start and stop at the requested percentage</span>
+
+<span class="sd">    :param start: Range start</span>
+<span class="sd">    :param end: Range end</span>
+<span class="sd">    :param amount: Position in range (0.0 - 1.0)</span>
+
+<span class="sd">    :return: The interpolated value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">start</span> <span class="o">+</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">*</span> <span class="n">amount</span></div>
+
+
+<div class="viewcode-block" id="lerp_degrees"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.lerp_degrees">[docs]</a><span class="k">def</span> <span class="nf">lerp_degrees</span><span class="p">(</span><span class="n">start</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Linear interpolation between angles</span>
+
+<span class="sd">    :param start: Range start angle in degrees</span>
+<span class="sd">    :param end: Range end angle in degrees</span>
+<span class="sd">    :param amount: Angle in range (0.0 - 1.0)</span>
+
+<span class="sd">    :return: The interpolated angle in degrees</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">start_r</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+    <span class="n">end_r</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">end</span><span class="p">)</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">end_r</span> <span class="o">-</span> <span class="n">start_r</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">end_r</span> <span class="o">-</span> <span class="n">start_r</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">start_r</span> <span class="o">+</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">amount</span><span class="p">)</span> <span class="o">+</span> <span class="mf">360.0</span><span class="p">)</span> <span class="o">%</span> <span class="mf">360.0</span></div>
+
+
+<div class="viewcode-block" id="ensure_future"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.ensure_future">[docs]</a><span class="k">def</span> <span class="nf">ensure_future</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper for asyncio.ensure_future which dumps exceptions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="n">fut</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">exception_logging_done_cb</span><span class="p">(</span><span class="n">fut</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">fut</span><span class="o">.</span><span class="n">exception</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">e</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">loop</span><span class="o">.</span><span class="n">call_exception_handler</span><span class="p">({</span>
+                <span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="s1">&#39;Unhandled exception in async future&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;future&#39;</span><span class="p">:</span> <span class="n">fut</span><span class="p">,</span>
+                <span class="s1">&#39;exception&#39;</span><span class="p">:</span> <span class="n">e</span><span class="p">,</span>
+            <span class="p">})</span>
+    <span class="n">fut</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="n">exception_logging_done_cb</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fut</span></div>
+
+
+<div class="viewcode-block" id="ArgsDict"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.ArgsDict">[docs]</a><span class="k">class</span> <span class="nc">ArgsDict</span><span class="p">(</span><span class="n">OrderedDict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extension of OrderedDict which does not allow empty keys</span>
+
+<span class="sd">    FIXME: Get rid of this</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ArgsDict</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">empty_keys</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">empty_keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">empty_key</span> <span class="ow">in</span> <span class="n">empty_keys</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">empty_key</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Signal"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.Signal">[docs]</a><span class="k">class</span> <span class="nc">Signal</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A simple signalling construct.</span>
+
+<span class="sd">    Listeners may connect() to this signal, and their handlers will</span>
+<span class="sd">    be invoked when fire() is called.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="Signal.connect"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.Signal.connect">[docs]</a>    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connect a handler to this signal</span>
+
+<span class="sd">        :param handler: Function to invoke when the signal fires</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Signal.fire"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.Signal.fire">[docs]</a>    <span class="k">def</span> <span class="nf">fire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fire the signal, invoking all connected handlers</span>
+
+<span class="sd">        :params args: Arguments to call handlers with</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">handler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handlers</span><span class="p">:</span>
+            <span class="n">handler</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="Singleton"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.Singleton">[docs]</a><span class="k">class</span> <span class="nc">Singleton</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Metaclass for creating singletons</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__instance</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">__instance</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Singleton</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__instance</span></div>
+
+
+<div class="viewcode-block" id="Ticker"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.Ticker">[docs]</a><span class="k">class</span> <span class="nc">Ticker</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Framerate synchronizer</span>
+
+<span class="sd">    Provides a context manager for code which needs to execute</span>
+<span class="sd">    on an interval. The tick starts when the context is entered</span>
+<span class="sd">    and sleeps for the remainder of the interval on exit. If</span>
+<span class="sd">    the interval was missed, sync to the next interval.</span>
+
+<span class="sd">    Since Python 3.4 doesn&#39;t support asynchronous context</span>
+<span class="sd">    managers, it&#39;s required to call &quot;yield from tick.tick()&quot;</span>
+<span class="sd">    after exiting the context manually. On Python 3.6+,</span>
+<span class="sd">    code can simply be called using &quot;async with&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span> <span class="o">=</span> <span class="n">interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tick_start</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_next_tick</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tick_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">next_tick</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tick_start</span>
+
+        <span class="k">if</span> <span class="n">next_tick</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span><span class="p">:</span>
+            <span class="n">next_tick</span> <span class="o">=</span> <span class="n">next_tick</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_next_tick</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span> <span class="o">-</span> <span class="n">next_tick</span>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+<div class="viewcode-block" id="Ticker.tick"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.Ticker.tick">[docs]</a>    <span class="k">def</span> <span class="nf">tick</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sleep until the next tick</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_next_tick</span><span class="p">)</span></div>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">tick</span><span class="p">()</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">interval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The interval between ticks</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span>
+
+
+    <span class="nd">@interval</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span> <span class="o">=</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="ValueAnimator"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.ValueAnimator">[docs]</a><span class="k">class</span> <span class="nc">ValueAnimator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Animates a value over a duration from a start to end,</span>
+<span class="sd">    invoking a callback at each interval.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">min_value</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                 <span class="n">max_value</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">max_time</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                 <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">30.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_callback</span> <span class="o">=</span> <span class="n">callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_range</span> <span class="o">=</span> <span class="n">max_value</span> <span class="o">-</span> <span class="n">min_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_time</span> <span class="o">=</span> <span class="n">max_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fps</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">fps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">_animate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+        <span class="c1"># animation duration</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_range</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_time</span>
+
+        <span class="k">if</span> <span class="n">duration</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># step size</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_range</span> <span class="o">/</span> <span class="p">(</span><span class="n">duration</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fps</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="n">start</span><span class="p">:</span>
+            <span class="n">step</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c1"># animate</span>
+        <span class="n">tick</span> <span class="o">=</span> <span class="n">Ticker</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fps</span><span class="p">)</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="k">while</span> <span class="n">current</span> <span class="o">!=</span> <span class="n">end</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tick</span><span class="p">:</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="n">clamp</span><span class="p">(</span><span class="n">current</span> <span class="o">+</span> <span class="n">step</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callback</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+                <span class="k">yield from</span> <span class="n">tick</span><span class="o">.</span><span class="n">tick</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="ValueAnimator.animate"><a class="viewcode-back" href="../../uchroma.util.html#uchroma.util.ValueAnimator.animate">[docs]</a>    <span class="k">def</span> <span class="nf">animate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">done_cb</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the given callback over the period of max_time</span>
+<span class="sd">        at the given FPS, to animate from start to end.</span>
+<span class="sd">        This can be used for things like brightness levels.</span>
+
+<span class="sd">        :param start: Starting value</span>
+<span class="sd">        :param end: Ending value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_animate</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">done_cb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="n">done_cb</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_callback</span><span class="p">(</span><span class="n">end</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

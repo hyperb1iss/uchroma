@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.laptop module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.server.led module" href="uchroma.server.led.html" />
+    <link rel="prev" title="uchroma.server.keypad module" href="uchroma.server.keypad.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.keypad.html" title="uchroma.server.keypad module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.server.led.html" title="uchroma.server.led module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.server.laptop">
+<span id="uchroma-server-laptop-module"></span><h1>uchroma.server.laptop module<a class="headerlink" href="#module-uchroma.server.laptop" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="uchroma.server.laptop.UChromaLaptop">
+<em class="property">class </em><code class="descclassname">uchroma.server.laptop.</code><code class="descname">UChromaLaptop</code><span class="sig-paren">(</span><em>hardware: uchroma.server.hardware.Hardware</em>, <em>devinfo: hidapi.DeviceInfo</em>, <em>devindex: int</em>, <em>sys_path: str</em>, <em>input_devices=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/laptop.html#UChromaLaptop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.laptop.UChromaLaptop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.keyboard.html#uchroma.server.keyboard.UChromaKeyboard" title="uchroma.server.keyboard.UChromaKeyboard"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.keyboard.UChromaKeyboard</span></code></a></p>
+<p>Commands required for Blade laptops</p>
+<dl class="class">
+<dt id="uchroma.server.laptop.UChromaLaptop.Command">
+<em class="property">class </em><code class="descname">Command</code><a class="reference internal" href="_modules/uchroma/server/laptop.html#UChromaLaptop.Command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.laptop.UChromaLaptop.Command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.server.types.html#uchroma.server.types.BaseCommand" title="uchroma.server.types.BaseCommand"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.types.BaseCommand</span></code></a></p>
+<p>Enumeration of standard commands not handled elsewhere</p>
+<dl class="attribute">
+<dt id="uchroma.server.laptop.UChromaLaptop.Command.GET_BRIGHTNESS">
+<code class="descname">GET_BRIGHTNESS</code><em class="property"> = (14, 132, 2)</em><a class="headerlink" href="#uchroma.server.laptop.UChromaLaptop.Command.GET_BRIGHTNESS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.laptop.UChromaLaptop.Command.SET_BRIGHTNESS">
+<code class="descname">SET_BRIGHTNESS</code><em class="property"> = (14, 4, 2)</em><a class="headerlink" href="#uchroma.server.laptop.UChromaLaptop.Command.SET_BRIGHTNESS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.server.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.keypad.html" title="uchroma.server.keypad module"
+              >previous</a> |
+            <a href="uchroma.server.led.html" title="uchroma.server.led module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.server.laptop.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

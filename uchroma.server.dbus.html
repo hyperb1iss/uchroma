@@ -1,0 +1,521 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.dbus module &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="uchroma.server.device module" href="uchroma.server.device.html" />
+    <link rel="prev" title="uchroma.server.config module" href="uchroma.server.config.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="uchroma.server.config.html" title="uchroma.server.config module"
+             accesskey="P">previous</a> |
+          <a href="uchroma.server.device.html" title="uchroma.server.device module"
+             accesskey="N">next</a> |
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-uchroma.server.dbus">
+<span id="uchroma-server-dbus-module"></span><h1>uchroma.server.dbus module<a class="headerlink" href="#module-uchroma.server.dbus" title="Permalink to this headline">¶</a></h1>
+<p>D-Bus interfaces</p>
+<p>These interfaces are designed to exist as a separate layer
+and do not contain recursive dependencies with the lower
+layers. UI clients should be designed to use these interfaces
+rather than interacting with the hardware directly.</p>
+<dl class="class">
+<dt id="uchroma.server.dbus.AnimationManagerAPI">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">AnimationManagerAPI</code><span class="sig-paren">(</span><em>parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#AnimationManagerAPI"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.server.dbus.ManagedService" title="uchroma.server.dbus.ManagedService"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.dbus.ManagedService</span></code></a></p>
+<dl class="docutils">
+<dt>&lt;node&gt;</dt>
+<dd><dl class="first docutils">
+<dt>&lt;interface name=&#8217;org.chemlab.UChroma.AnimationManager&#8217;&gt;</dt>
+<dd><blockquote class="first">
+<div><dl class="docutils">
+<dt>&lt;method name=&#8217;AddRenderer&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;in&#8217; type=&#8217;s&#8216; name=&#8217;name&#8217; /&gt;
+&lt;arg direction=&#8217;in&#8217; type=&#8217;i&#8217; name=&#8217;zindex&#8217; /&gt;
+&lt;arg direction=&#8217;in&#8217; type=&#8217;a{sv}&#8217; name=&#8217;traits&#8217; /&gt;
+&lt;arg direction=&#8217;out&#8217; type=&#8217;o&#8217; name=&#8217;layer&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;method name=&#8217;RemoveRenderer&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;in&#8217; type=&#8217;i&#8217; name=&#8217;zindex&#8217; /&gt;
+&lt;arg direction=&#8217;out&#8217; type=&#8217;b&#8217; name=&#8217;status&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;method name=&#8217;PauseAnimation&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;out&#8217; type=&#8217;b&#8217; name=&#8217;paused&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;method name=&#8217;StopAnimation&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;out&#8217; type=&#8217;b&#8217; name=&#8217;status&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<p>&lt;property name=&#8217;AvailableRenderers&#8217; type=&#8217;a{sa{sv}}&#8217; access=&#8217;read&#8217; /&gt;</p>
+<dl class="docutils">
+<dt>&lt;property name=&#8217;CurrentRenderers&#8217; type=&#8217;a(so)&#8217; access=&#8217;read&#8217;&gt;</dt>
+<dd>&lt;annotation name=&#8217;org.freedesktop.DBus.Property.EmitsChangedSignal&#8217; value=&#8217;true&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/property&gt;</p>
+</div></blockquote>
+<dl class="last docutils">
+<dt>&lt;property name=&#8217;AnimationState&#8217; type=&#8217;s&#8216; access=&#8217;read&#8217;&gt;</dt>
+<dd><blockquote class="first">
+<div>&lt;annotation name=&#8217;org.freedesktop.DBus.Property.EmitsChangedSignal&#8217; value=&#8217;true&#8217; /&gt;</div></blockquote>
+<p class="last">&lt;/property&gt;</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="last">&lt;/interface&gt;</p>
+</dd>
+</dl>
+<p>&lt;/node&gt;</p>
+<dl class="method">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.AddRenderer">
+<code class="descname">AddRenderer</code><span class="sig-paren">(</span><em>name: str</em>, <em>zindex: int</em>, <em>traits: dict</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/uchroma/server/dbus.html#AnimationManagerAPI.AddRenderer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.AddRenderer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.AnimationState">
+<code class="descname">AnimationState</code><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.AnimationState" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.AvailableRenderers">
+<code class="descname">AvailableRenderers</code><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.AvailableRenderers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.CurrentRenderers">
+<code class="descname">CurrentRenderers</code><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.CurrentRenderers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.PauseAnimation">
+<code class="descname">PauseAnimation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#AnimationManagerAPI.PauseAnimation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.PauseAnimation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.PropertiesChanged">
+<code class="descname">PropertiesChanged</code><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.PropertiesChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.RemoveRenderer">
+<code class="descname">RemoveRenderer</code><span class="sig-paren">(</span><em>zindex: int</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/dbus.html#AnimationManagerAPI.RemoveRenderer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.RemoveRenderer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.AnimationManagerAPI.StopAnimation">
+<code class="descname">StopAnimation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#AnimationManagerAPI.StopAnimation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.AnimationManagerAPI.StopAnimation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.dbus.DeviceAPI">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">DeviceAPI</code><span class="sig-paren">(</span><em>driver</em>, <em>bus</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceAPI"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<p>D-Bus API for device properties and common hardware features.</p>
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.Brightness">
+<code class="descname">Brightness</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.Brightness" title="Permalink to this definition">¶</a></dt>
+<dd><p>The current brightness level</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.FrameDebugOpts">
+<code class="descname">FrameDebugOpts</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.FrameDebugOpts" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.InputSignalEnabled">
+<code class="descname">InputSignalEnabled</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.InputSignalEnabled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enabling input signalling will fire D-Bus signals when keyboard
+input is received. This is used by the tooling and bringup
+utilities. Developer mode must be enabled in order for this
+to be available on the bus due to potential security issues.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.PropertiesChanged">
+<code class="descname">PropertiesChanged</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.PropertiesChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.DeviceAPI.Reset">
+<code class="descname">Reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceAPI.Reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.Reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.SupportedLeds">
+<code class="descname">SupportedLeds</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.SupportedLeds" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.Suspended">
+<code class="descname">Suspended</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.Suspended" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the device is suspended</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.bus">
+<code class="descname">bus</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.bus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.bus_path">
+<code class="descname">bus_path</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.bus_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the bus path for all services related to this device.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceAPI.driver">
+<code class="descname">driver</code><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.driver" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.DeviceAPI.publish">
+<code class="descname">publish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceAPI.publish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.publish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.DeviceAPI.unpublish">
+<code class="descname">unpublish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceAPI.unpublish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceAPI.unpublish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.dbus.DeviceManagerAPI">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">DeviceManagerAPI</code><span class="sig-paren">(</span><em>device_manager</em>, <em>logger</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceManagerAPI"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceManagerAPI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<dl class="docutils">
+<dt>&lt;node&gt;</dt>
+<dd><blockquote class="first">
+<div><dl class="docutils">
+<dt>&lt;interface name=&#8217;org.chemlab.UChroma.DeviceManager&#8217;&gt;</dt>
+<dd><blockquote class="first">
+<div><dl class="docutils">
+<dt>&lt;method name=&#8217;GetDevices&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;out&#8217; type=&#8217;ao&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;signal name=&#8217;DevicesChanged&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;out&#8217; type=&#8217;s&#8216; name=&#8217;action&#8217; /&gt;
+&lt;arg direction=&#8217;out&#8217; type=&#8217;o&#8217; name=&#8217;device&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/signal&gt;</p>
+</div></blockquote>
+<p class="last">&lt;/interface&gt;</p>
+</dd>
+</dl>
+</div></blockquote>
+<p class="last">&lt;/node&gt;</p>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="uchroma.server.dbus.DeviceManagerAPI.DevicesChanged">
+<code class="descname">DevicesChanged</code><a class="headerlink" href="#uchroma.server.dbus.DeviceManagerAPI.DevicesChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.DeviceManagerAPI.GetDevices">
+<code class="descname">GetDevices</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceManagerAPI.GetDevices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceManagerAPI.GetDevices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the list of object paths associated with discovered devices</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.DeviceManagerAPI.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#DeviceManagerAPI.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.DeviceManagerAPI.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Publish the service</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.dbus.FXManagerAPI">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">FXManagerAPI</code><span class="sig-paren">(</span><em>parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#FXManagerAPI"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.FXManagerAPI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.server.dbus.ManagedService" title="uchroma.server.dbus.ManagedService"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.dbus.ManagedService</span></code></a></p>
+<dl class="docutils">
+<dt>&lt;node&gt;</dt>
+<dd><dl class="first docutils">
+<dt>&lt;interface name=&#8217;org.chemlab.UChroma.FXManager&#8217;&gt;</dt>
+<dd><dl class="first docutils">
+<dt>&lt;method name=&#8217;SetFX&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;in&#8217; type=&#8217;s&#8216; name=&#8217;name&#8217; /&gt;
+&lt;arg direction=&#8217;in&#8217; type=&#8217;a{sv}&#8217; name=&#8217;args&#8217; /&gt;
+&lt;arg direction=&#8217;out&#8217; type=&#8217;b&#8217; name=&#8217;status&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;property name=&#8217;CurrentFX&#8217; type=&#8217;(sa{sv})&#8217; access=&#8217;read&#8217;&gt;</dt>
+<dd>&lt;annotation name=&#8217;org.freedesktop.DBus.Property.EmitsChangedSignal&#8217; value=&#8217;true&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/property&gt;</p>
+<p class="last">&lt;property name=&#8217;AvailableFX&#8217; type=&#8217;a{sa{sa{sv}}}&#8217; access=&#8217;read&#8217; /&gt;</p>
+</dd>
+</dl>
+<p class="last">&lt;/interface&gt;</p>
+</dd>
+</dl>
+<p>&lt;/node&gt;</p>
+<dl class="attribute">
+<dt id="uchroma.server.dbus.FXManagerAPI.AvailableFX">
+<code class="descname">AvailableFX</code><a class="headerlink" href="#uchroma.server.dbus.FXManagerAPI.AvailableFX" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.FXManagerAPI.CurrentFX">
+<code class="descname">CurrentFX</code><a class="headerlink" href="#uchroma.server.dbus.FXManagerAPI.CurrentFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the currently active FX and arguments</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.FXManagerAPI.PropertiesChanged">
+<code class="descname">PropertiesChanged</code><a class="headerlink" href="#uchroma.server.dbus.FXManagerAPI.PropertiesChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.FXManagerAPI.SetFX">
+<code class="descname">SetFX</code><span class="sig-paren">(</span><em>name: str</em>, <em>args: dict</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/dbus.html#FXManagerAPI.SetFX"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.FXManagerAPI.SetFX" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the desired FX, with options as a dict.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.dbus.LEDManagerAPI">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">LEDManagerAPI</code><span class="sig-paren">(</span><em>parent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#LEDManagerAPI"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LEDManagerAPI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#uchroma.server.dbus.ManagedService" title="uchroma.server.dbus.ManagedService"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.dbus.ManagedService</span></code></a></p>
+<dl class="docutils">
+<dt>&lt;node&gt;</dt>
+<dd><dl class="first docutils">
+<dt>&lt;interface name=&#8217;org.chemlab.UChroma.LEDManager&#8217;&gt;</dt>
+<dd><p class="first">&lt;property name=&#8217;AvailableLEDs&#8217; type=&#8217;a{sa{sa{sv}}}&#8217; access=&#8217;read&#8217; /&gt;</p>
+<dl class="docutils">
+<dt>&lt;method name=&#8217;GetLED&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;in&#8217; type=&#8217;s&#8216; name=&#8217;led&#8217; /&gt;
+&lt;arg direction=&#8217;out&#8217; type=&#8217;a{sv}&#8217; name=&#8217;properties&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;method name=&#8217;SetLED&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;in&#8217; type=&#8217;s&#8216; name=&#8217;led&#8217; /&gt;
+&lt;arg direction=&#8217;in&#8217; type=&#8217;a{sv}&#8217; name=&#8217;properties&#8217; /&gt;
+&lt;arg direction=&#8217;out&#8217; type=&#8217;b&#8217; name=&#8217;status&#8217; /&gt;</dd>
+</dl>
+<p>&lt;/method&gt;</p>
+<dl class="docutils">
+<dt>&lt;signal name=&#8217;LEDChanged&#8217;&gt;</dt>
+<dd>&lt;arg direction=&#8217;out&#8217; type=&#8217;s&#8216; name=&#8217;led&#8217; /&gt;</dd>
+</dl>
+<p class="last">&lt;/signal&gt;</p>
+</dd>
+</dl>
+<p class="last">&lt;/interface&gt;</p>
+</dd>
+</dl>
+<p>&lt;/node&gt;</p>
+<dl class="attribute">
+<dt id="uchroma.server.dbus.LEDManagerAPI.AvailableLEDs">
+<code class="descname">AvailableLEDs</code><a class="headerlink" href="#uchroma.server.dbus.LEDManagerAPI.AvailableLEDs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.LEDManagerAPI.GetLED">
+<code class="descname">GetLED</code><span class="sig-paren">(</span><em>name: str</em><span class="sig-paren">)</span> &#x2192; dict<a class="reference internal" href="_modules/uchroma/server/dbus.html#LEDManagerAPI.GetLED"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LEDManagerAPI.GetLED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.LEDManagerAPI.LEDChanged">
+<code class="descname">LEDChanged</code><a class="headerlink" href="#uchroma.server.dbus.LEDManagerAPI.LEDChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.LEDManagerAPI.SetLED">
+<code class="descname">SetLED</code><span class="sig-paren">(</span><em>name: str</em>, <em>properties: dict</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/uchroma/server/dbus.html#LEDManagerAPI.SetLED"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LEDManagerAPI.SetLED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.dbus.LayerAPI">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">LayerAPI</code><span class="sig-paren">(</span><em>parent</em>, <em>layer</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#LayerAPI"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LayerAPI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="uchroma.dbus_utils.html#uchroma.dbus_utils.TraitsPropertiesMixin" title="uchroma.dbus_utils.TraitsPropertiesMixin"><code class="xref py py-class docutils literal"><span class="pre">uchroma.dbus_utils.TraitsPropertiesMixin</span></code></a>, <a class="reference internal" href="#uchroma.server.dbus.ManagedService" title="uchroma.server.dbus.ManagedService"><code class="xref py py-class docutils literal"><span class="pre">uchroma.server.dbus.ManagedService</span></code></a></p>
+<dl class="staticmethod">
+<dt id="uchroma.server.dbus.LayerAPI.get_layer_path">
+<em class="property">static </em><code class="descname">get_layer_path</code><span class="sig-paren">(</span><em>path</em>, <em>zindex</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#LayerAPI.get_layer_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LayerAPI.get_layer_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.LayerAPI.layer_path">
+<code class="descname">layer_path</code><a class="headerlink" href="#uchroma.server.dbus.LayerAPI.layer_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.LayerAPI.layer_type">
+<code class="descname">layer_type</code><a class="headerlink" href="#uchroma.server.dbus.LayerAPI.layer_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="uchroma.server.dbus.LayerAPI.layer_zindex">
+<code class="descname">layer_zindex</code><a class="headerlink" href="#uchroma.server.dbus.LayerAPI.layer_zindex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.LayerAPI.publish">
+<code class="descname">publish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#LayerAPI.publish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LayerAPI.publish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.LayerAPI.unpublish">
+<code class="descname">unpublish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#LayerAPI.unpublish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.LayerAPI.unpublish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="uchroma.server.dbus.ManagedService">
+<em class="property">class </em><code class="descclassname">uchroma.server.dbus.</code><code class="descname">ManagedService</code><span class="sig-paren">(</span><em>parent</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#ManagedService"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.ManagedService" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#object" title="(in Python v3.4)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="uchroma.server.dbus.ManagedService.publish">
+<code class="descname">publish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#ManagedService.publish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.ManagedService.publish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="uchroma.server.dbus.ManagedService.unpublish">
+<code class="descname">unpublish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#ManagedService.unpublish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.ManagedService.unpublish" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="uchroma.server.dbus.dev_mode_enabled">
+<code class="descclassname">uchroma.server.dbus.</code><code class="descname">dev_mode_enabled</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/uchroma/server/dbus.html#dev_mode_enabled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uchroma.server.dbus.dev_mode_enabled" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="uchroma.html">uchroma package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="uchroma.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="uchroma.client.html">uchroma.client package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="uchroma.fxlib.html">uchroma.fxlib package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="uchroma.server.html">uchroma.server package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="uchroma.server.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="uchroma.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="uchroma.server.config.html" title="uchroma.server.config module"
+              >previous</a> |
+            <a href="uchroma.server.device.html" title="uchroma.server.device module"
+              >next</a> |
+            <a href="py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/uchroma.server.dbus.rst.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

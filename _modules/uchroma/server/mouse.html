@@ -1,0 +1,344 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uchroma.server.mouse &#8212; uchroma 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../../index.html">uchroma 1.0 documentation</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for uchroma.server.mouse</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+
+<span class="kn">import</span> <span class="nn">hidapi</span>
+
+<span class="kn">from</span> <span class="nn">grapefruit</span> <span class="k">import</span> <span class="n">Color</span>
+
+<span class="kn">from</span> <span class="nn">uchroma.color</span> <span class="k">import</span> <span class="n">to_color</span>
+<span class="kn">from</span> <span class="nn">uchroma.util</span> <span class="k">import</span> <span class="n">clamp</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">scale_brightness</span>
+
+<span class="kn">from</span> <span class="nn">.device</span> <span class="k">import</span> <span class="n">UChromaDevice</span>
+<span class="kn">from</span> <span class="nn">.device_base</span> <span class="k">import</span> <span class="n">BaseCommand</span>
+<span class="kn">from</span> <span class="nn">.hardware</span> <span class="k">import</span> <span class="n">Hardware</span>
+<span class="kn">from</span> <span class="nn">.led</span> <span class="k">import</span> <span class="n">LEDType</span>
+<span class="kn">from</span> <span class="nn">.report</span> <span class="k">import</span> <span class="n">Status</span>
+
+
+<div class="viewcode-block" id="PollingRate"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.PollingRate">[docs]</a><span class="k">class</span> <span class="nc">PollingRate</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enumeration of polling rates</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">INVALID</span> <span class="o">=</span> <span class="mh">0x00</span>
+    <span class="n">MHZ_1000</span> <span class="o">=</span> <span class="mh">0x01</span>
+    <span class="n">MHZ_500</span> <span class="o">=</span> <span class="mh">0x02</span>
+    <span class="n">MHZ_128</span> <span class="o">=</span> <span class="mh">0x08</span></div>
+
+
+<div class="viewcode-block" id="UChromaMouse"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaMouse">[docs]</a><span class="k">class</span> <span class="nc">UChromaMouse</span><span class="p">(</span><span class="n">UChromaDevice</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Additional functionality for Chroma Mice</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="UChromaMouse.Command"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaMouse.Command">[docs]</a>    <span class="k">class</span> <span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Commands used for mouse features</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">SET_POLLING_RATE</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x00</span><span class="p">,</span> <span class="mh">0x05</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">)</span>
+        <span class="n">SET_DPI_XY</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x04</span><span class="p">,</span> <span class="mh">0x05</span><span class="p">,</span> <span class="mh">0x07</span><span class="p">)</span>
+        <span class="n">SET_IDLE_TIME</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x07</span><span class="p">,</span> <span class="mh">0x03</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">)</span>
+
+        <span class="n">GET_POLLING_RATE</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x00</span><span class="p">,</span> <span class="mh">0x85</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">)</span>
+        <span class="n">GET_DPI_XY</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x04</span><span class="p">,</span> <span class="mh">0x85</span><span class="p">,</span> <span class="mh">0x07</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hardware</span><span class="p">:</span> <span class="n">Hardware</span><span class="p">,</span> <span class="n">devinfo</span><span class="p">:</span> <span class="n">hidapi</span><span class="o">.</span><span class="n">DeviceInfo</span><span class="p">,</span> <span class="n">devindex</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                 <span class="n">sys_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">input_devices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">hardware</span><span class="p">,</span> <span class="n">devinfo</span><span class="p">,</span> <span class="n">devindex</span><span class="p">,</span>
+                                           <span class="n">sys_path</span><span class="p">,</span> <span class="n">input_devices</span><span class="p">,</span>
+                                           <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">polling_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PollingRate</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the current polling rate</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_POLLING_RATE</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">PollingRate</span><span class="o">.</span><span class="n">INVALID</span>
+
+        <span class="k">return</span> <span class="n">PollingRate</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+
+    <span class="nd">@polling_rate</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">polling_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rate</span><span class="p">:</span> <span class="n">PollingRate</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the polling rate</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_POLLING_RATE</span><span class="p">,</span> <span class="n">rate</span><span class="p">)</span>
+
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dpi_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get an (x, y) tuple of the current device DPI</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_DPI_XY</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s1">&#39;&gt;HH&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">5</span><span class="p">])</span>
+
+
+    <span class="nd">@dpi_xy</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">dpi_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dpi</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the (x, y) device DPI</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;&gt;HH&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dpi</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;&gt;H&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_DPI_XY</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="UChromaMouse.set_idle_time"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaMouse.set_idle_time">[docs]</a>    <span class="k">def</span> <span class="nf">set_idle_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idle_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the idle time in seconds. The device will enter powersave</span>
+<span class="sd">        mode after the timeout expires.</span>
+
+<span class="sd">        :param idle_time: Timeout in seconds. Must be between 60 and 900.</span>
+
+<span class="sd">        :return: True if successful</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">idle_time</span> <span class="o">=</span> <span class="n">clamp</span><span class="p">(</span><span class="n">idle_time</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">900</span><span class="p">)</span>
+        <span class="n">arg</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;&gt;H&#39;</span><span class="p">,</span> <span class="n">idle_time</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_IDLE_TIME</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_wireless</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        True if this device has battery and dock settings</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="UChromaWirelessMouse"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaWirelessMouse">[docs]</a><span class="k">class</span> <span class="nc">UChromaWirelessMouse</span><span class="p">(</span><span class="n">UChromaMouse</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A mouse with dock and battery functions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="UChromaWirelessMouse.Command"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaWirelessMouse.Command">[docs]</a>    <span class="k">class</span> <span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Commands used for mouse features</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">SET_DOCK_CHARGE_EFFECT</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x03</span><span class="p">,</span> <span class="mh">0x10</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">)</span>
+        <span class="n">SET_DOCK_BRIGHTNESS</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x07</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">)</span>
+        <span class="n">SET_LOW_BATTERY_THRESHOLD</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x07</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">)</span>
+
+        <span class="n">GET_BATTERY_LEVEL</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x07</span><span class="p">,</span> <span class="mh">0x80</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">)</span>
+        <span class="n">GET_DOCK_BRIGHTNESS</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x07</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">)</span>
+        <span class="n">GET_CHARGING_STATUS</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x07</span><span class="p">,</span> <span class="mh">0x84</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hardware</span><span class="p">:</span> <span class="n">Hardware</span><span class="p">,</span> <span class="n">devinfo</span><span class="p">:</span> <span class="n">hidapi</span><span class="o">.</span><span class="n">DeviceInfo</span><span class="p">,</span> <span class="n">devindex</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                 <span class="n">sys_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">input_devices</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">hardware</span><span class="p">,</span> <span class="n">devinfo</span><span class="p">,</span> <span class="n">devindex</span><span class="p">,</span>
+                                                   <span class="n">sys_path</span><span class="p">,</span> <span class="n">input_devices</span><span class="p">,</span>
+                                                   <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_wireless</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This mouse has wireless controls</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+
+    <span class="k">def</span> <span class="nf">_timeout_cb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_offline</span> <span class="ow">and</span> <span class="n">status</span> <span class="o">==</span> <span class="n">Status</span><span class="o">.</span><span class="n">OK</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_offline</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_close</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_offline</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_timeout_cb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_cb</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_brightness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">brightness</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_DOCK_BRIGHTNESS</span><span class="p">,</span>
+                                <span class="n">scale_brightness</span><span class="p">(</span><span class="n">brightness</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">_get_brightness</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_DOCK_BRIGHTNESS</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">scale_brightness</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="kc">True</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">battery_level</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The current battery level</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_BATTERY_LEVEL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mi">255</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_charging</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Is the device currently charging?</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_with_result</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">GET_CHARGING_STATUS</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+
+
+<div class="viewcode-block" id="UChromaWirelessMouse.enable_dock_charge_effect"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaWirelessMouse.enable_dock_charge_effect">[docs]</a>    <span class="k">def</span> <span class="nf">enable_dock_charge_effect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enable</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If enabled, a special charge effect will be shown on the device lighting.</span>
+
+<span class="sd">        :param enable: True to enable the charge effect</span>
+
+<span class="sd">        :return: True if successful</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_DOCK_CHARGE_EFFECT</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">enable</span><span class="p">))</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dock_charge_color</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The color of the dock LEDs while charging</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_led</span><span class="p">(</span><span class="n">LEDType</span><span class="o">.</span><span class="n">BATTERY</span><span class="p">)</span><span class="o">.</span><span class="n">color</span>
+
+
+    <span class="nd">@dock_charge_color</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">dock_charge_color</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the color of the dock while charging. None to disable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">enable_dock_charge_effect</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">enable_dock_charge_effect</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_led</span><span class="p">(</span><span class="n">LEDType</span><span class="o">.</span><span class="n">BATTERY</span><span class="p">)</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="n">to_color</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="UChromaWirelessMouse.set_low_battery_threshold"><a class="viewcode-back" href="../../../uchroma.server.mouse.html#uchroma.server.mouse.UChromaWirelessMouse.set_low_battery_threshold">[docs]</a>    <span class="k">def</span> <span class="nf">set_low_battery_threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the low battery warning threshold as a percentage</span>
+
+<span class="sd">        :param threshold: Threshold percentage, must be between 5 and 25</span>
+
+<span class="sd">        :return: True if successful</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">arg</span> <span class="o">=</span> <span class="n">scale</span><span class="p">(</span><span class="n">threshold</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">25.0</span><span class="p">,</span> <span class="mh">0x0C</span><span class="p">,</span> <span class="mh">0x3F</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">UChromaWirelessMouse</span><span class="o">.</span><span class="n">Command</span><span class="o">.</span><span class="n">SET_LOW_BATTERY_THRESHOLD</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table Of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../uchroma.html">uchroma package</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../../../py-modindex.html" title="Python Module Index"
+              >modules</a> |
+            <a href="../../../genindex.html" title="General Index"
+              >index</a>
+          </div>
+          <div role="note" aria-label="source link">
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Steve Kondik.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>
