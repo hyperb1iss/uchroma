@@ -11,10 +11,12 @@ import textwrap
 
 import gbulb
 
-from uchroma.cmd import UChromaConsoleUtil
 from uchroma.dbus_utils import dbus_prepare
-from uchroma.hardware import Hardware, KeyMapping, Point
-from uchroma.input import KeyInputEvent
+from uchroma.input_queue import KeyInputEvent
+
+from uchroma.client.cmd import UChromaConsoleUtil
+from uchroma.server.hardware import Hardware, KeyMapping, Point
+
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
