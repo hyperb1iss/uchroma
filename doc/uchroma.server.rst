@@ -14,7 +14,6 @@ Submodules
    uchroma.server.anim
    uchroma.server.byte_args
    uchroma.server.config
-   uchroma.server.crc
    uchroma.server.dbus
    uchroma.server.device
    uchroma.server.device_base
@@ -31,6 +30,7 @@ Submodules
    uchroma.server.led
    uchroma.server.macro
    uchroma.server.mouse
+   uchroma.server.power
    uchroma.server.prefs
    uchroma.server.report
    uchroma.server.server
