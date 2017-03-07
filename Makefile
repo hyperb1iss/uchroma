@@ -26,8 +26,8 @@ install_service:
 	install -m 644 -v -D install/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 
 uninstall_library:
-	$(eval UCPATH := $(shell find $(DESTDIR)/usr/local/lib/python3* -maxdepth 2 -name "uchroma"))
-	$(eval EGGPATH := $(shell readlink -f $(UCPATH)-*.egg-info/))
+	$(eval UCPATH := $(wildcard $(DESTDIR)/usr/local/lib/python3*/*/uchroma))
+	$(if $(UCPATH), $(eval EGGPATH := $(shell readlink -f $(UCPATH)-*.egg-info/)))
 	@rm -v -rf $(UCPATH)
 	@rm -v -rf $(EGGPATH)
 	@rm -v -f $(DESTDIR)/usr/local/bin/uchroma
@@ -52,7 +52,7 @@ docs: sphinx
 
 install: install_library install_udev install_service
 
-uninstall: uninstall_library uninstall_udev install_service
+uninstall: uninstall_library uninstall_udev uninstall_service
 
 dist:
 	python3 setup.py sdist --dist-dir=../ --formats=xztar
