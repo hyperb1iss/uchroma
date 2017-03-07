@@ -1,0 +1,16 @@
+addons:
+    apt:
+        sources:
+            - yakkety
+        packages:
+            - libusb-1.0-0-dev
+            - libudev-dev
+language: python
+python:
+    - "3.4"
+    - "3.6"
+script: pytest
+before_install:
+    - pip install --upgrade setuptools
+install:
+    - pip install --upgrade .
