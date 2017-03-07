@@ -1,16 +1,19 @@
 addons:
-    apt:
-        sources:
-            - yakkety
-        packages:
-            - libusb-1.0-0-dev
-            - libudev-dev
+  apt:
+    packages:
+      - gfortran
+      - libblas-dev
+      - liblapack-dev
+      - libudev-dev
+      - libusb-1.0-0-dev
+      - python3-numpy
 language: python
 python:
-    - "3.4"
-    - "3.6"
+  - "3.5"
+cache: pip
 script: pytest
 before_install:
-    - pip install --upgrade setuptools
+  - pip install --upgrade setuptools
+  - pip install --upgrade numpy
 install:
-    - pip install --upgrade .
+  - pip install --upgrade .
