@@ -11,11 +11,11 @@ RAZER_VENDOR_ID = 0x1532
 
 
 # Make sure Cython is installed first
-Distribution(dict(setup_requires=['cython>=0.24']))
+Distribution(dict(setup_requires=['cython>=0.24', 'numpy']))
 
 from Cython.Distutils import build_ext
 from Cython.Build import cythonize
-
+import numpy as np
 
 def get_version():
     module_init = 'uchroma/version.py'
@@ -52,9 +52,9 @@ class HWDBGenerator(install):
 
 
 extensions = [
-    Extension('uchroma.server._crc', ['uchroma/server/_crc.pyx'], include_dirs=['.']),
-    Extension('uchroma._layer', ['uchroma/_layer.pyx'], include_dirs=['.']),
-    Extension('uchroma.fxlib._plasma', ['uchroma/fxlib/_plasma.pyx'], include_dirs=['.'], extra_compile_args=['-O3'])]
+    Extension('uchroma.server._crc', ['uchroma/server/_crc.pyx'], include_dirs=[np.get_include()]),
+    Extension('uchroma._layer', ['uchroma/_layer.pyx'], include_dirs=[np.get_include()]),
+    Extension('uchroma.fxlib._plasma', ['uchroma/fxlib/_plasma.pyx'], include_dirs=[np.get_include()], extra_compile_args=['-O3'])]
 
 setup(name='uchroma',
       version=get_version(),
