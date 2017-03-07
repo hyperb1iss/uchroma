@@ -6,7 +6,9 @@ addons:
       - liblapack-dev
       - libudev-dev
       - libusb-1.0-0-dev
+      - python3-gi
       - python3-numpy
+      - python3-scipy
 language: python
 python:
   - "3.5"
@@ -15,5 +17,7 @@ script: pytest
 before_install:
   - pip install --upgrade setuptools
   - pip install --upgrade numpy
+  - pip install --upgrade scipy
+  - pip install --upgrade matplotlib
 install:
   - pip install --upgrade .
