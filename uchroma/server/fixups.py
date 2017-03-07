@@ -143,13 +143,3 @@ class KeyboardFixup(object):
         :return: The aligned matrix
         """
         return self._align_matrix(frame, matrix)
-
-
-
-BLADE_PRO_KEY_ALIGNMENT_MAP = {
-    'insert': [],
-    'delete': [],
-    'copy': [((5, 11), (5, 10)),   # right alt misaligned under spacebar
-             ((0, 22), (2, 22)),  # wheel is backwards and under trackpad
-             ((0, 21), (0, 22))]
-}

@@ -280,7 +280,6 @@ class UChromaDeviceManager(metaclass=Singleton):
         self._udev_observer = AsyncMonitorObserver(udev_monitor, callback=self._udev_event,
                                                    name='uchroma-monitor')
         ensure_future(self._udev_observer.start())
-        self._udev_observer.start()
         self._monitor = True
 
         if self._callbacks is not None and len(self._callbacks) > 0:
