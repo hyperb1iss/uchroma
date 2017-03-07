@@ -88,21 +88,19 @@ class InputQueue(object):
         return True
 
 
-    @asyncio.coroutine
-    def detach(self):
+    async def detach(self):
         """
         Stop listening for input events
         """
         if not self._attached:
             return
 
-        yield from self._input_manager.remove_callback(self._input_callback)
+        await self._input_manager.remove_callback(self._input_callback)
         self._attached = False
         self._logger.debug("InputQueue detached")
 
 
-    @asyncio.coroutine
-    def get_events(self):
+    async def get_events(self):
         """
         Get all active (new and unexpired) events from the queue.
 
@@ -113,13 +111,13 @@ class InputQueue(object):
             return None
 
         if self._expire_time is None or self._expire_time <= 0:
-            event = yield from self._q.get()
+            event = await self._q.get()
             return event
 
         self._expire()
 
         while len(self._events) == 0:
-            yield from self._q.get()
+            await self._q.get()
 
         return self._events[:]
 
@@ -149,8 +147,7 @@ class InputQueue(object):
         return self._events[:]
 
 
-    @asyncio.coroutine
-    def _input_callback(self, ev):
+    async def _input_callback(self, ev):
         """
         Coroutine called by the evdev module when data is available
         """
@@ -186,7 +183,7 @@ class InputQueue(object):
 
             self._events.append(event)
 
-            yield from self._q.put(event)
+            await self._q.put(event)
 
 
     def _expire(self):

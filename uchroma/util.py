@@ -357,11 +357,6 @@ class Ticker(object):
     on an interval. The tick starts when the context is entered
     and sleeps for the remainder of the interval on exit. If
     the interval was missed, sync to the next interval.
-
-    Since Python 3.4 doesn't support asynchronous context
-    managers, it's required to call "yield from tick.tick()"
-    after exiting the context manually. On Python 3.6+,
-    code can simply be called using "async with".
     """
     def __init__(self, interval: float):
         self._interval = interval
@@ -382,23 +377,20 @@ class Ticker(object):
             self._next_tick = self._interval - next_tick
 
 
-    @asyncio.coroutine
-    def tick(self):
+    async def tick(self):
         """
         Sleep until the next tick
         """
-        yield from asyncio.sleep(self._next_tick)
+        await asyncio.sleep(self._next_tick)
 
 
-    @asyncio.coroutine
-    def __aenter__(self):
+    async def __aenter__(self):
         return self.__enter__()
 
 
-    @asyncio.coroutine
-    def __aexit__(self, *args):
+    async def __aexit__(self, *args):
         self.__exit__(self, *args)
-        yield from self.tick()
+        await self.tick()
 
 
     @property
@@ -429,8 +421,7 @@ class ValueAnimator(object):
         self._task = None
 
 
-    @asyncio.coroutine
-    def _animate(self, start, end):
+    async def _animate(self, start, end):
         # animation duration
         duration = (abs(end - start) / self._range) * self._max_time
 
@@ -446,10 +437,9 @@ class ValueAnimator(object):
         tick = Ticker(self._fps)
         current = start
         while current != end:
-            with tick:
+            async with tick:
                 current = clamp(current + step, min(start, end), max(start, end))
-                yield from self._callback(current)
-                yield from tick.tick()
+                await self._callback(current)
 
         self._task = None
 

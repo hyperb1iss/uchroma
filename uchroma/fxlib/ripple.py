@@ -101,14 +101,13 @@ class Ripple(Renderer):
                 layer.ellipse(coord.y, coord.x, rad / 1.33, rad, color=cc)
 
 
-    @asyncio.coroutine
-    def draw(self, layer, timestamp):
+    async def draw(self, layer, timestamp):
         """
         Draw the next layer
         """
 
         # Yield until the queue becomes active
-        events = yield from self.get_input_events()
+        events = await self.get_input_events()
 
         if len(events) > 0:
             self._process_events(events)

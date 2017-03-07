@@ -25,10 +25,9 @@ class MacroDevice(object):
         self._running = False
 
 
-    @asyncio.coroutine
-    def _listen(self):
+    async def _listen(self):
         while self._running:
-            event = yield from self._queue.get_events()
+            event = await self._queue.get_events()
             self._logger.info('event: %s', event)
             if event.scancode in self._macro_keys['numeric']: 
                 self._logger.info('macro')

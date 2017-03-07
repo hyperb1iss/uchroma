@@ -190,10 +190,9 @@ class DeviceAPI(object):
         self._handle = None
 
 
-    @asyncio.coroutine
-    def _dev_mode_input(self):
+    async def _dev_mode_input(self):
         while self._signal_input:
-            event = yield from self._input_queue.get_events()
+            event = await self._input_queue.get_events()
             if event is not None:
                 self.InputEvent(dbus_prepare(event)[0])
 
@@ -726,8 +725,7 @@ class DeviceManagerAPI(object):
         return None
 
 
-    @asyncio.coroutine
-    def _dm_callback(self, action, device):
+    async def _dm_callback(self, action, device):
         self._logger.info('%s: %s', action, device)
 
         path = None

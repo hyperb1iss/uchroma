@@ -30,20 +30,17 @@ class InputManager(object):
         self._tasks = []
 
 
-    @asyncio.coroutine
-    def _evdev_callback(self, device):
-        while self._opened:
+    async def _evdev_callback(self, device):
+        async for event in device.async_read_loop():
             try:
-                events = yield from device.async_read()
                 if not self._opened:
                     return
 
-                for event in events:
-                    if event.type == evdev.ecodes.EV_KEY:
-                        ev = evdev.categorize(event)
+                if event.type == evdev.ecodes.EV_KEY:
+                    ev = evdev.categorize(event)
 
-                        for callback in self._event_callbacks:
-                            yield from callback(ev)
+                    for callback in self._event_callbacks:
+                        await callback(ev)
 
                 if not self._opened:
                     return
@@ -81,8 +78,7 @@ class InputManager(object):
         return self._opened
 
 
-    @asyncio.coroutine
-    def _close_input_devices(self):
+    async def _close_input_devices(self):
         if not hasattr(self, '_opened') or not self._opened:
             return
 
@@ -98,7 +94,7 @@ class InputManager(object):
                 task.cancel()
                 tasks.append(task)
 
-        yield from asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
+        await asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
         self._event_devices.clear()
 
 
@@ -121,8 +117,7 @@ class InputManager(object):
         return True
 
 
-    @asyncio.coroutine
-    def remove_callback(self, callback):
+    async def remove_callback(self, callback):
         """
         Removes a previously registered callback
 
@@ -134,16 +129,15 @@ class InputManager(object):
         self._event_callbacks.remove(callback)
 
         if len(self._event_callbacks) == 0:
-            yield from self._close_input_devices()
+            await self._close_input_devices()
 
 
-    @asyncio.coroutine
-    def shutdown(self):
+    async def shutdown(self):
         """
         Shuts down the InputManager and disconnects any active callbacks
         """
         for callback in self._event_callbacks:
-            yield from ensure_future(self.remove_callback(callback))
+            await ensure_future(self.remove_callback(callback))
 
 
     def grab(self, excl: bool):

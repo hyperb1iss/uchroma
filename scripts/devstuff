@@ -313,10 +313,9 @@ class KeyConfigTool(object):
         return self._stdscr.getch()
 
 
-    @asyncio.coroutine
-    def _read_mouse(self):
+    async def _read_mouse(self):
         while not self._shutdown:
-            event = yield from self._loop.run_in_executor(None, self._curses_input)
+            event = await self._loop.run_in_executor(None, self._curses_input)
             if event == -1:
                 continue
 

@@ -74,8 +74,7 @@ class LayerHolder(HasTraits):
             self.task = ensure_future(self.renderer._run())
 
 
-    @asyncio.coroutine
-    def stop(self):
+    async def stop(self):
         if self.renderer.running:
 
             tasks = []
@@ -87,10 +86,10 @@ class LayerHolder(HasTraits):
                 self.waiter.cancel()
                 tasks.append(self.waiter)
 
-            yield from self.renderer._stop()
+            await self.renderer._stop()
 
             if len(tasks) > 0:
-                yield from asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
+                await asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
 
             self.renderer.finish(self._frame)
 
@@ -147,8 +146,7 @@ class AnimationLoop(HasTraits):
             self.stop()
 
 
-    @asyncio.coroutine
-    def _dequeue(self, r_idx: int):
+    async def _dequeue(self, r_idx: int):
         """
         Gather completed layers from the renderers. If nothing
         is available, keep the last layer (in case the renderers
@@ -162,7 +160,7 @@ class AnimationLoop(HasTraits):
         renderer = layer.renderer
 
         # wait for a buffer
-        buf = yield from renderer._active_q.get()
+        buf = await renderer._active_q.get()
 
         # return the old buffer to the renderer
         if layer.active_buf is not None:
@@ -200,8 +198,7 @@ class AnimationLoop(HasTraits):
         return False
 
 
-    @asyncio.coroutine
-    def _get_layers(self):
+    async def _get_layers(self):
         """
         Wait for renderers to produce new layers, yields until at least one
         layer is active.
@@ -218,7 +215,7 @@ class AnimationLoop(HasTraits):
         if len(waiters) == 0:
             return
 
-        yield from asyncio.wait(waiters, return_when=futures.FIRST_COMPLETED)
+        await asyncio.wait(waiters, return_when=futures.FIRST_COMPLETED)
 
         # check the rest without waiting
         for r_idx in range(0, len(self.layers)):
@@ -228,8 +225,7 @@ class AnimationLoop(HasTraits):
                 self._dequeue_nowait(r_idx)
 
 
-    @asyncio.coroutine
-    def _commit_layers(self):
+    async def _commit_layers(self):
         """
         Merge layers from all renderers and commit to the hardware
         """
@@ -246,12 +242,11 @@ class AnimationLoop(HasTraits):
 
         except (OSError, IOError):
             self._error = True
-            yield from self._stop()
+            await self._stop()
 
 
 
-    @asyncio.coroutine
-    def _animate(self):
+    async def _animate(self):
         """
         Main loop
 
@@ -271,19 +266,19 @@ class AnimationLoop(HasTraits):
 
         # loop forever, waiting for layers
         while self.running:
-            yield from self._pause_event.wait()
+            await self._pause_event.wait()
 
             with tick:
-                yield from self._get_layers()
+                await self._get_layers()
 
                 if not self.running:
                     break
 
                 # compose and display the frame
-                yield from self._commit_layers()
+                await self._commit_layers()
 
             # FIXME: Use "async with" on Python 3.6+
-            yield from tick.tick()
+            await tick.tick()
 
 
     def _renderer_done(self, future):
@@ -291,7 +286,6 @@ class AnimationLoop(HasTraits):
         Invoked when the renderer exits
         """
         self._logger.info("AnimationLoop is cleaning up")
-        self._stop()
 
         self._anim_task = None
 
@@ -336,8 +330,7 @@ class AnimationLoop(HasTraits):
         return True
 
 
-    @asyncio.coroutine
-    def remove_layer(self, layer_like):
+    async def remove_layer(self, layer_like):
         with self.hold_trait_notifications():
             if isinstance(layer_like, LayerHolder):
                 zindex = self.layers.index(layer_like)
@@ -349,7 +342,7 @@ class AnimationLoop(HasTraits):
             if zindex >= 0 and zindex < len(self.layers):
                 layer = self.layers[zindex]
                 layer_id = id(self.layers[zindex])
-                yield from layer.stop()
+                await layer.stop()
 
                 tmp = self.layers[:]
                 del tmp[zindex]
@@ -360,12 +353,11 @@ class AnimationLoop(HasTraits):
                 self._logger.info("Layer %d removed", zindex)
 
 
-    @asyncio.coroutine
-    def clear_layers(self):
+    async def clear_layers(self):
         if len(self.layers) == 0:
             return False
         for layer in self.layers[::-1]:
-            yield from self.remove_layer(layer)
+            await self.remove_layer(layer)
         return True
 
 
@@ -396,8 +388,7 @@ class AnimationLoop(HasTraits):
         return True
 
 
-    @asyncio.coroutine
-    def _stop(self):
+    async def _stop(self):
         """
         Stop this AnimationLoop
 
@@ -409,11 +400,11 @@ class AnimationLoop(HasTraits):
         self.running = False
 
         for layer in self.layers[::-1]:
-            yield from self.remove_layer(layer)
+            await self.remove_layer(layer)
 
         if self._anim_task is not None and not self._anim_task.done():
             self._anim_task.cancel()
-            yield from asyncio.wait([self._anim_task], return_when=futures.ALL_COMPLETED)
+            await asyncio.wait([self._anim_task], return_when=futures.ALL_COMPLETED)
 
         self._logger.info("AnimationLoop stopped")
 
@@ -631,8 +622,7 @@ class AnimationManager(HasTraits):
         return False
 
 
-    @asyncio.coroutine
-    def shutdown(self):
+    async def shutdown(self):
         """
         Shuts down the animation service, waiting for all layers to
         finish work. This is a coroutine.
@@ -642,7 +632,7 @@ class AnimationManager(HasTraits):
         if self._loop is None:
             return
 
-        yield from self._loop.clear_layers()
+        await self._loop.clear_layers()
 
 
     def restore_prefs(self, prefs):

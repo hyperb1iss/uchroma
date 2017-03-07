@@ -92,8 +92,7 @@ class Renderer(HasTraits):
 
 
     @abstractmethod
-    @asyncio.coroutine
-    def draw(self, layer: Layer, timestamp: float) -> bool:
+    async def draw(self, layer: Layer, timestamp: float) -> bool:
         """
         Coroutine called by AnimationLoop when a new frame needs
         to be drawn. If nothing should be drawn (such as if keyboard
@@ -136,8 +135,7 @@ class Renderer(HasTraits):
         self._input_queue.expire_time = expire_time
 
 
-    @asyncio.coroutine
-    def get_input_events(self):
+    async def get_input_events(self):
         """
         Gets input events, yielding until at least one event is
         available. If expiration is not enabled, this returns
@@ -147,7 +145,7 @@ class Renderer(HasTraits):
         if not self.has_key_input or not self._input_queue.attach():
             raise ValueError('Input events are not supported for this device')
 
-        events = yield from self._input_queue.get_events()
+        events = await self._input_queue.get_events()
         return events
 
 
@@ -176,8 +174,7 @@ class Renderer(HasTraits):
         self._avail_q.put_nowait(layer)
 
 
-    @asyncio.coroutine
-    def _run(self):
+    async def _run(self):
         """
         Coroutine which dequeues buffers for drawing and queues them
         to the AnimationLoop when drawing is done.
@@ -188,16 +185,16 @@ class Renderer(HasTraits):
         self.running = True
 
         while self.running:
-            with self._tick:
+            async with self._tick:
                 # get a buffer, blocking if necessary
-                layer = yield from self._avail_q.get()
+                layer = await self._avail_q.get()
                 layer.background_color = self.background_color
                 layer.blend_mode = self.blend_mode
                 layer.opacity = self.opacity
 
                 try:
                     # draw the layer
-                    status = yield from self.draw(layer, asyncio.get_event_loop().time())
+                    status = await self.draw(layer, asyncio.get_event_loop().time())
                 except Exception as err:
                     self.logger.exception("Exception in renderer, exiting now!", exc_info=err)
                     self.logger.error('Renderer traits: %s', self._trait_values)
@@ -209,12 +206,9 @@ class Renderer(HasTraits):
                 # submit for composition
                 if status:
                     layer.lock(True)
-                    yield from self._active_q.put(layer)
+                    await self._active_q.put(layer)
 
-            # FIXME: Use "async with" on Python 3.6+
-            yield from self._tick.tick()
-
-        yield from self._stop()
+        await self._stop()
 
 
     def _flush(self):
@@ -226,8 +220,7 @@ class Renderer(HasTraits):
             self._active_q.get_nowait()
 
 
-    @asyncio.coroutine
-    def _stop(self):
+    async def _stop(self):
         if not self.running:
             return
 
@@ -236,6 +229,6 @@ class Renderer(HasTraits):
         self._flush()
 
         if self.has_key_input:
-            yield from self._input_queue.detach()
+            await self._input_queue.detach()
 
         self.logger.info("Renderer stopped: z=%d", self.zindex)

@@ -43,13 +43,11 @@ class AsyncMonitorObserver(object):
         MonitorObserver.send_stop(self)
 
 
-    @asyncio.coroutine
-    def start(self):
+    async def start(self):
         asyncio.get_event_loop().run_in_executor(self._executor, self._run)
 
 
-    @asyncio.coroutine
-    def stop(self):
+    async def stop(self):
         asyncio.get_event_loop().run_in_executor(self._executor, self._stop)
         self._executor.shutdown()
 
@@ -87,13 +85,12 @@ class UChromaDeviceManager(metaclass=Singleton):
         self.discover()
 
 
-    @asyncio.coroutine
-    def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
+    async def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
         # delay for udev setup
-        yield from asyncio.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         for callback in self._callbacks:
-            yield from callback(action, device)
+            await callback(action, device)
 
 
     def discover(self):
@@ -257,18 +254,16 @@ class UChromaDeviceManager(metaclass=Singleton):
                 self.discover()
 
 
-    @asyncio.coroutine
-    def close_devices(self):
+    async def close_devices(self):
         """
         Close all open devices and perform cleanup
         """
         for device in self.devices.values():
-            yield from device.shutdown()
+            await device.shutdown()
         self._devices.clear()
 
 
-    @asyncio.coroutine
-    def monitor_start(self):
+    async def monitor_start(self):
         """
         Start watching for device changes
 
@@ -295,15 +290,14 @@ class UChromaDeviceManager(metaclass=Singleton):
         self._logger.debug('Udev monitor started')
 
 
-    @asyncio.coroutine
-    def monitor_stop(self):
+    async def monitor_stop(self):
         """
         Stop watching for device changes
         """
         if not self._monitor:
             return
 
-        yield from ensure_future(self._udev_observer.stop())
+        await ensure_future(self._udev_observer.stop())
         self._monitor = False
 
         self._logger.debug('Udev monitor stopped')

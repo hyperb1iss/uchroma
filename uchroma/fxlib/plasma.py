@@ -56,8 +56,7 @@ class Plasma(Renderer):
         return True
 
 
-    @asyncio.coroutine
-    def draw(self, layer, timestamp):
+    async def draw(self, layer, timestamp):
         duration = timestamp - self._start_time
 
         draw_plasma(layer.width, layer.height, layer.matrix, duration, self._gradient)

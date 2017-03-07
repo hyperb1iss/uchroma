@@ -46,8 +46,7 @@ class Rainbow(Renderer):
         return True
 
 
-    @asyncio.coroutine
-    def draw(self, layer, timestamp):
+    async def draw(self, layer, timestamp):
         data = []
         for row in range(0, layer.height):
             data.append( \

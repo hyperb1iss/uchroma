@@ -73,17 +73,16 @@ class BaseUChromaDevice(object):
         self._executor = futures.ThreadPoolExecutor(max_workers=1)
 
 
-    @asyncio.coroutine
-    def shutdown(self):
+    async def shutdown(self):
         """
         Shuts down all services associated with the device and closes the HID instance.
         """
         if asyncio.get_event_loop().is_running():
             if hasattr(self, '_animation_manager') and self.animation_manager is not None:
-                yield from self.animation_manager.shutdown()
+                await self.animation_manager.shutdown()
 
             if hasattr(self, '_input_manager') and self._input_manager is not None:
-                yield from self._input_manager.shutdown()
+                await self._input_manager.shutdown()
 
         self.close(True)
 
@@ -192,9 +191,8 @@ class BaseUChromaDevice(object):
         return 0.0
 
 
-    @asyncio.coroutine
-    def _update_brightness(self, level):
-        yield from ensure_future(asyncio.get_event_loop().run_in_executor( \
+    async def _update_brightness(self, level):
+        await ensure_future(asyncio.get_event_loop().run_in_executor( \
                 self._executor, functools.partial(self._set_brightness, level)))
 
         suspended = self.suspended and level == 0
