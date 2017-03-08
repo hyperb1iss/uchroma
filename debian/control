@@ -39,7 +39,8 @@ Package: uchroma
 Section: misc
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends},
-         python3,
+         libhidapi-libusb0,
+         python3 (>= 3.5),
          python3-argcomplete,
          python3-cffi,
          python3-colorlog,

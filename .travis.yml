@@ -1,3 +1,4 @@
+dist: trusty
 addons:
   apt:
     packages:
@@ -9,6 +10,10 @@ addons:
       - python3-gi
       - python3-numpy
       - python3-scipy
+      - libhidapi-hidraw0
+      - libffi-dev
+      - libfreetype6-dev
+      - libpng-dev
 language: python
 python:
   - "3.5"
@@ -16,8 +21,9 @@ cache: pip
 script: pytest
 before_install:
   - pip install --upgrade setuptools
-  - pip install --upgrade numpy
-  - pip install --upgrade scipy
-  - pip install --upgrade matplotlib
 install:
-  - pip install --upgrade .
+  - pip install vext.gi
+  - pip install --only-binary=numpy,scipy numpy scipy
+  - pip install cffi
+  - pip install hidapi-cffi
+  - pip install .
