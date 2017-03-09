@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from enum import Enum
 
 from traitlets import Bool, Float, HasTraits, observe
@@ -6,7 +7,6 @@ from uchroma.color import to_color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
 from uchroma.util import scale_brightness, Signal
 
-from .hardware import Quirks
 from .types import BaseCommand, LEDType
 
 from grapefruit import Color
@@ -26,15 +26,9 @@ class LEDMode(Enum):
     SPECTRUM = 0x04
 
 
-class LED(HasTraits):
+class LED(HasTraits, object):
     led_type = WriteOnceUseEnumCaseless(enum_class=LEDType)
     state = Bool(default_value=False, allow_none=False)
-
-    color = ColorTrait(default_value='green', allow_none=False).tag(config=True)
-    mode = UseEnumCaseless(enum_class=LEDMode, default_value=LEDMode.STATIC,
-                           allow_none=False).tag(config=True)
-    brightness = Float(min=0.0, max=100.0, default_value=0.0,
-                       allow_none=False).tag(config=True)
 
     """
     Control individual LEDs which may be present on a device
@@ -68,26 +62,29 @@ class LED(HasTraits):
         self._led_type = led_type
         self._logger = driver.logger
         self.led_type = led_type
+        self._restoring = True
         self._refreshing = False
 
-        if driver.has_quirk(Quirks.GREEN_LOGO_LED):
-            color = self.traits()['color']
-            color.metadata['config'] = False
-            self.color = 'green'
+        # dynamic traits, since they are normally class-level
+        brightness = Float(min=0.0, max=100.0, default_value=80.0,
+                           allow_none=False).tag(config=True)
+        color = ColorTrait(default_value=led_type.default_color,
+                           allow_none=False).tag(config=led_type.rgb)
+        mode = UseEnumCaseless(enum_class=LEDMode, default_value=LEDMode.STATIC,
+                               allow_none=False).tag(config=led_type.has_modes)
 
-            mode = self.traits()['mode']
-            mode.metadata['config'] = False
-            self.mode = LEDMode.STATIC
+        self.add_traits(color=color, mode=mode, brightness=brightness)
 
         self._refresh()
+        self._restoring = False
 
 
     def _get(self, cmd):
-        return self._driver.run_with_result(cmd, VARSTORE, self._led_type)
+        return self._driver.run_with_result(cmd, VARSTORE, self._led_type.hardware_id)
 
 
     def _set(self, cmd, *args):
-        return self._driver.run_command(cmd, *(VARSTORE, self._led_type) + args)
+        return self._driver.run_command(cmd, *(VARSTORE, self._led_type.hardware_id) + args)
 
 
     def _refresh(self):
@@ -102,7 +99,9 @@ class LED(HasTraits):
             # color
             value = self._get(LED.Command.GET_LED_COLOR)
             if value is not None:
-                self.color = Color.NewFromRgb(value[2], value[3], value[4])
+                self.color = Color.NewFromRgb(value[2] / 255.0,
+                                              value[3] / 255.0,
+                                              value[4] / 255.0)
 
             # mode
             value = self._get(LED.Command.GET_LED_MODE)
@@ -138,13 +137,41 @@ class LED(HasTraits):
         else:
             raise ValueError("Unknown LED property: %s" % change.new)
 
-        self._refresh()
+        if not self._restoring:
+            self._refresh()
+
+            if self.led_type != LEDType.BACKLIGHT:
+                self._update_prefs()
 
 
     def __str__(self):
         values = ', '.join('%s=%s' % (k, getattr(self, k)) \
                 for k in ('led_type', 'state', 'brightness', 'color', 'mode'))
         return 'LED(%s)' % values
+
+
+    def _update_prefs(self):
+        prefs = OrderedDict()
+        if self._driver.preferences.leds is not None:
+            prefs.update(self._driver.preferences.leds)
+
+        prefs[self.led_type.name.lower()] = self.get_values()
+        self._driver.preferences.leds = prefs
+
+
+    def get_values(self) -> dict:
+        tdict = OrderedDict()
+        for attr in sorted([k for k, v in self.traits().items() \
+                            if v.metadata.get('config', False)]):
+            tdict[attr] = getattr(self, attr)
+        return tdict
+
+
+    def set_values(self, values: dict):
+        self._restoring = True
+        for key, value in values.items():
+            setattr(self, key, value)
+        self._restoring = False
 
 
     __repr__ = __str__
@@ -156,6 +183,8 @@ class LEDManager(object):
         self._leds = {}
 
         self.led_changed = Signal()
+
+        driver.restore_prefs.connect(self._restore_prefs)
 
 
     @property
@@ -183,3 +212,18 @@ class LEDManager(object):
 
     def _led_changed(self, change):
         self.led_changed.fire(change.owner)
+
+
+    def _restore_prefs(self, prefs):
+        led_prefs = prefs.leds
+
+        for led_type in self.supported_leds:
+            if led_type == LEDType.BACKLIGHT:
+                # handled elsewhere
+                continue
+
+            key = led_type.name.lower()
+            led = self.get(led_type)
+
+            if led_prefs is not None and key in led_prefs:
+                led.set_values(led_prefs[key])

@@ -457,6 +457,7 @@ class AnimationManager(HasTraits):
         self.state_changed = Signal()
 
         driver.power_state_changed.connect(self._power_state_changed)
+        driver.restore_prefs.connect(self._restore_prefs)
 
         self._fxlib = importlib.import_module('uchroma.fxlib')
         self._renderer_info = self._discover_renderers()
@@ -635,7 +636,7 @@ class AnimationManager(HasTraits):
         await self._loop.clear_layers()
 
 
-    def restore_prefs(self, prefs):
+    def _restore_prefs(self, prefs):
         """
         Restore active layers from preferences
         """

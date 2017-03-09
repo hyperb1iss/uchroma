@@ -44,9 +44,6 @@ class Quirks(IntEnum):
     # Device only supports spectrum effect on the backlight LED
     BACKLIGHT_LED_FX_ONLY = 8
 
-    # Logo LED must be green and supports only blink and static
-    GREEN_LOGO_LED = 9
-
 
 # Marker types for YAML output
 _Point = NamedTuple('_Point', [('y', int), ('x', int)])

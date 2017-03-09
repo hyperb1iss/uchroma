@@ -81,8 +81,10 @@ class FXManager(HasTraits):
         self._logger = driver.logger
         self._fxmod = fxmod
 
+        driver.restore_prefs.connect(self._restore_prefs)
 
-    def restore_prefs(self, prefs):
+
+    def _restore_prefs(self, prefs):
         """
         Restore last FX from preferences
         """

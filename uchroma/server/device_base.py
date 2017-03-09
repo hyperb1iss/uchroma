@@ -56,6 +56,7 @@ class BaseUChromaDevice(object):
         self._suspended = False
 
         self.power_state_changed = Signal()
+        self.restore_prefs = Signal()
 
         self._input_manager = None
         if input_devices is not None:
@@ -593,7 +594,7 @@ class BaseUChromaDevice(object):
         return True
 
 
-    def restore_prefs(self):
+    def fire_restore_prefs(self):
         """
         Restore saved preferences
         """
@@ -601,11 +602,7 @@ class BaseUChromaDevice(object):
             if hasattr(self, 'brightness') and self.preferences.brightness is not None:
                 setattr(self, 'brightness', self.preferences.brightness)
 
-            if self.fx_manager is not None:
-                self.fx_manager.restore_prefs(self.preferences)
-
-            if self.animation_manager is not None:
-                self.animation_manager.restore_prefs(self.preferences)
+            self.restore_prefs.fire(self.preferences)
 
 
     def __repr__(self):

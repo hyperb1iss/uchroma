@@ -22,6 +22,7 @@ _Preferences = Configuration.create('_Preferences', [ \
     ('last_updated', float),
     ('serial', str),
     ('brightness', float),
+    ('leds', dict),
     ('fx', str),
     ('fx_args', OrderedDict),
     ('layers', OrderedDict)], mutable=True, yaml_name=u'!preferences')

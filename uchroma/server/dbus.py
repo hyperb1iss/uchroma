@@ -103,6 +103,7 @@ class DeviceAPI(object):
 
     _RW_PROPERTIES = {'polling_rate': 's',
                       'dpi': 'a(ii)',
+                      'dock_brightness': 'd',
                       'dock_charge_color': 's'}
 
 
@@ -732,7 +733,7 @@ class DeviceManagerAPI(object):
 
         if action == 'add':
             path = self._publish_device(device)
-            device.restore_prefs()
+            device.fire_restore_prefs()
 
         elif action == 'remove':
             path = self._unpublish_device(device)

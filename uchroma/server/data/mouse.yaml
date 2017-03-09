@@ -9,7 +9,7 @@ manufacturer: Razer
 type: MOUSE
 vendor_id: 0x1532
 supported_fx: [disable, wave, reactive, breathe, spectrum, static]
-supported_leds: [backlight, battery, scroll_wheel]
+supported_leds: [backlight]
 children:
 - !device-config
   name: Imperator 2012
@@ -36,6 +36,7 @@ children:
     name: Mamba (Wireless)
     product_id: 0x0045
     dimensions: [1, 15]
+    supported_leds: [backlight, battery]
     quirks: WIRELESS
 
   - !device-config
@@ -46,6 +47,7 @@ children:
 - !device-config
   name: Orochi (Wired)
   product_id: 0x0048
+  supported_leds: [scroll_wheel]
   quirks: SCROLL_WHEEL_BRIGHTNESS
 
 - !device-config

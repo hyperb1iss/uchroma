@@ -5,7 +5,7 @@ import hidapi
 
 from grapefruit import Color
 
-from uchroma.color import to_color
+from uchroma.color import colorarg, ColorType, to_color
 from uchroma.util import clamp, scale, scale_brightness
 
 from .device import UChromaDevice
@@ -133,7 +133,7 @@ class UChromaWirelessMouse(UChromaMouse):
         SET_LOW_BATTERY_THRESHOLD = (0x07, 0x01, 0x01)
 
         GET_BATTERY_LEVEL = (0x07, 0x80, 0x02)
-        GET_DOCK_BRIGHTNESS = (0x07, 0x02, 0x01)
+        GET_DOCK_BRIGHTNESS = (0x07, 0x82, 0x01)
         GET_CHARGING_STATUS = (0x07, 0x84, 0x02)
 
 
@@ -163,16 +163,18 @@ class UChromaWirelessMouse(UChromaMouse):
         return self._timeout_cb
 
 
-    def _set_brightness(self, brightness: float) -> bool:
-        return self.run_command(UChromaWirelessMouse.Command.SET_DOCK_BRIGHTNESS,
-                                scale_brightness(brightness))
-
-
-    def _get_brightness(self) -> float:
+    @property
+    def dock_brightness(self) -> float:
         value = self.run_with_result(UChromaWirelessMouse.Command.GET_DOCK_BRIGHTNESS)
         if value is None:
             return 0.0
         return scale_brightness(int(value[0]), True)
+
+
+    @dock_brightness.setter
+    def dock_brightness(self, brightness: float) -> bool:
+        return self.run_command(UChromaWirelessMouse.Command.SET_DOCK_BRIGHTNESS,
+                                scale_brightness(brightness))
 
 
     @property
@@ -217,15 +219,18 @@ class UChromaWirelessMouse(UChromaMouse):
 
 
     @dock_charge_color.setter
-    def dock_charge_color(self, color):
+    @colorarg
+    def dock_charge_color(self, color: ColorType):
         """
         Set the color of the dock while charging. None to disable
         """
-        if color is None:
+        if color is None or (color.rgb[0] == 0.0 and \
+                             color.rgb[1] == 0.0 and \
+                             color.rgb[2] == 0.0):
             self.enable_dock_charge_effect(False)
         else:
             self.enable_dock_charge_effect(True)
-            self.get_led(LEDType.BATTERY).color = to_color(color)
+            self.get_led(LEDType.BATTERY).color = color
 
 
     def set_low_battery_threshold(self, threshold: float) -> bool:
