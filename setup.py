@@ -70,7 +70,8 @@ setup(name='uchroma',
           'console_scripts': [
               'uchroma = uchroma.client.client:run_client',
               'uchromad = uchroma.server.server:run_server'
-          ]
+          ],
+          'uchroma.plugins': ['renderers = uchroma.fxlib']
       },
       install_requires=['argcomplete', 'cffi', 'colorlog', 'colr', 'evdev',
                         'frozendict', 'gbulb', 'grapefruit', 'hidapi-cffi',

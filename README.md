@@ -250,7 +250,7 @@ Overall brightness level of the device is represented by  a percentage from 0-10
 
 ### Animations
 
-UChroma supports custom animations on devices which support a lighting matrix, such as Blade laptops, BlackWidow keyboards, and Mamba mice. Several animation renderers are included, and may also be provided by third-party modules (TODO). Multiple concurrent (stacked) animations are supported, and layers will be alpha-blended together. Animations may run at different frame rates, and may trigger from input events or sound. Current animation parameters are shown in the "uchroma dump" command, shown above.
+UChroma supports custom animations on devices which support a lighting matrix, such as Blade laptops, BlackWidow keyboards, and Mamba mice. Several animation renderers are included, and may also be provided by third-party modules. Multiple concurrent (stacked) animations are supported, and layers will be alpha-blended together. Animations may run at different frame rates, and may trigger from input events or sound. Current animation parameters are shown in the "uchroma dump" command, shown above.
 
 
 #### List available animation renderers:
@@ -360,7 +360,15 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 
 #### *How do I make a custom animation?*
 
->Proper documentation on this topic is forthcoming, but having a look at the bundled renderers in uchroma/fxlib should be enough to get started on. An upcoming release will support out-of-tree modules as well.  Implementations must extend **Renderer** and implement the *init*, *finish*, and *draw* methods. The animation system is a framebuffer and the draw method will be invoked at the FPS requested by your implementation. It's important to keep the FPS as low as possible to avoid unnecessary CPU usage! The draw method is called with a **Layer** object, which provides primitives for drawing shapes and setting individual pixels. The buffer of a frame is a Numpy matrix and may be manipulated directly, if desired.  Functions for performing color math and generating gradients/color schemes can be found in the *uchroma.color* module. We use **Traitlets** for user-configurable parameters. Send a pull request if you implement a new renderer and would like to have it included!
+>Proper documentation on this topic is forthcoming, but having a look at the bundled renderers in uchroma/fxlib should be enough to get started on. Implementations must extend **Renderer** and implement the *init*, *finish*, and *draw* methods. The animation system is a framebuffer and the draw method will be invoked at the FPS requested by your implementation. It's important to keep the FPS as low as possible to avoid unnecessary CPU usage! The draw method is called with a **Layer** object, which provides primitives for drawing shapes and setting individual pixels. The buffer of a frame is a Numpy matrix and may be manipulated directly, if desired.  Functions for performing color math and generating gradients/color schemes can be found in the *uchroma.color* module. We use **Traitlets** for user-configurable parameters. 
+
+In your setup.py, declare an entry point to your effect:
+
+	entry_points={
+	    'uchroma.plugins': ['renderer = my.effect.module:MyClass']
+	}
+
+Send a pull request if you implement a new renderer and would like to have it included!
 >
 
 #### *Are you affiliated with Razer Inc?*
@@ -421,7 +429,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 
 [Inspired by work from Tim Theede and Terry Cain](https://github.com/terrycain/razer-drivers)
  
-This program is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License **as published by the Free Software Foundation, version 3.
+This program is free software: you can redistribute it and/or modify it under the terms of the **GNU Lesser General Public License** as published by the Free Software Foundation, version 3.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Lesser Public License for more details.
 

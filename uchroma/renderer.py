@@ -22,7 +22,7 @@ RendererMeta = NamedTuple('RendererMeta', [('display_name', str), ('description'
 
 
 
-class Renderer(HasTraits):
+class Renderer(HasTraits, object):
     """
     Base class for custom effects renderers.
     """

@@ -1,12 +1,13 @@
 # pylint: disable=unused-argument, protected-access, invalid-name
 import asyncio
-import importlib
+import inspect
 
 from collections import OrderedDict
 from concurrent import futures
 from types import ModuleType
 from typing import NamedTuple
 
+from pkg_resources import iter_entry_points
 from traitlets import Bool, HasTraits, List, observe
 
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
@@ -268,7 +269,7 @@ class AnimationLoop(HasTraits):
         while self.running:
             await self._pause_event.wait()
 
-            with tick:
+            async with tick:
                 await self._get_layers()
 
                 if not self.running:
@@ -276,9 +277,6 @@ class AnimationLoop(HasTraits):
 
                 # compose and display the frame
                 await self._commit_layers()
-
-            # FIXME: Use "async with" on Python 3.6+
-            await tick.tick()
 
 
     def _renderer_done(self, future):
@@ -459,7 +457,6 @@ class AnimationManager(HasTraits):
         driver.power_state_changed.connect(self._power_state_changed)
         driver.restore_prefs.connect(self._restore_prefs)
 
-        self._fxlib = importlib.import_module('uchroma.fxlib')
         self._renderer_info = self._discover_renderers()
 
         self._shutting_down = False
@@ -520,17 +517,30 @@ class AnimationManager(HasTraits):
     def _discover_renderers(self):
         infos = OrderedDict()
 
-        for item in self._fxlib.__dir__():
-            obj = getattr(self._fxlib, item)
-            if isinstance(obj, type) and issubclass(obj, Renderer):
-                if obj.meta.display_name == '_unknown_':
-                    self._logger.error("Renderer %s did not set metadata, skipping",
-                                       obj.__name__)
-                    continue
+        for ep_mod in iter_entry_points(group='uchroma.plugins', name='renderers'):
+            obj = ep_mod.load()
+            if not inspect.ismodule(obj):
+                self._logger.error("Plugin %s is not a module, skipping", ep_mod)
+                continue
 
-                key = '%s.%s' % (obj.__module__, obj.__name__)
-                infos[key] = RendererInfo(obj.__module__, obj, key,
-                                          obj.meta, obj.class_traits())
+        for ep_cls in iter_entry_points(group='uchroma.plugins', name='renderer'):
+            obj = ep_cls.load()
+            if not issubclass(obj, Renderer):
+                self._logger.error("Plugin %s is not a renderer, skipping", ep_cls)
+                continue
+
+        for obj in Renderer.__subclasses__():
+            if inspect.isabstract(obj):
+                continue
+
+            if obj.meta.display_name == '_unknown_':
+                self._logger.error("Renderer %s did not set metadata, skipping",
+                                   obj.__name__)
+                continue
+
+            key = '%s.%s' % (obj.__module__, obj.__name__)
+            infos[key] = RendererInfo(obj.__module__, obj, key,
+                                      obj.meta, obj.class_traits())
 
         self._logger.debug("Loaded renderers: %s", ', '.join(infos.keys()))
         return infos
@@ -563,10 +573,10 @@ class AnimationManager(HasTraits):
         the order renderers were added, with the first producing the
         base layer and the last producing the topmost layer.
 
-        Renderers may be loaded from any valid Python package, the
-        default is "uchroma.fxlib".
-
-        The loop must not be running when this is called.
+        Renderers are defined in setup.py as entry points in group
+        "uchroma.plugins". A module containing multiple renderers may
+        be specified with "renderers" and a single class may be
+        specified as "renderer".
 
         :param renderer: Key name of a discovered renderer
 
