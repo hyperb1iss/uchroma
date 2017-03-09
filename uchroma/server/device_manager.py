@@ -200,6 +200,8 @@ class UChromaDeviceManager(metaclass=Singleton):
         """
         Dict of available devices, empty if no devices are detected.
         """
+        self.discover()
+
         return self._devices
 
 
@@ -258,7 +260,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         """
         Close all open devices and perform cleanup
         """
-        for device in self.devices.values():
+        for device in self._devices.values():
             await device.shutdown()
         self._devices.clear()
 
@@ -283,7 +285,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         self._monitor = True
 
         if self._callbacks is not None and len(self._callbacks) > 0:
-            for device in self.devices.values():
+            for device in self._devices.values():
                 ensure_future(self._fire_callbacks('add', device), loop=self._loop)
 
         self._logger.debug('Udev monitor started')
