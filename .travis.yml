@@ -1,29 +1,15 @@
-dist: trusty
-addons:
-  apt:
-    packages:
-      - gfortran
-      - libblas-dev
-      - liblapack-dev
-      - libudev-dev
-      - libusb-1.0-0-dev
-      - python3-gi
-      - python3-numpy
-      - python3-scipy
-      - libhidapi-hidraw0
-      - libffi-dev
-      - libfreetype6-dev
-      - libpng-dev
-language: python
-python:
-  - "3.5"
-cache: pip
-script: pytest
+sudo: required
+
+env:
+  - distribution: ubuntu
+    version: 16.04
+    python: 3.5
+
+services:
+  - docker
+
 before_install:
-  - pip install --upgrade setuptools
-install:
-  - pip install vext.gi
-  - pip install --only-binary=numpy,scipy numpy scipy
-  - pip install cffi
-  - pip install hidapi-cffi
-  - pip install .
+  - "docker pull ${distribution}:${version}"
+ 
+script:
+  - "docker build --file=tests/${distribution}-${version}-py${python}.dockerfile ."
