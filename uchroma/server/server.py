@@ -32,16 +32,21 @@ class UChromaServer(object):
 
         self._loop = asyncio.get_event_loop()
 
+        level = logging.INFO
+        asyncio_debug = False
+
         if args.debug is not None:
             if len(args.debug) > 2:
                 level = LOG_PROTOCOL_TRACE
+                asyncio_debug = True
             elif len(args.debug) == 2:
                 level = LOG_TRACE
+                asyncio_debug = True
             elif len(args.debug) == 1:
                 level = logging.DEBUG
 
-            logging.getLogger().setLevel(level)
-            self._loop.set_debug(True)
+        logging.getLogger().setLevel(level)
+        self._loop.set_debug(asyncio_debug)
 
 
     def _shutdown_callback(self):
