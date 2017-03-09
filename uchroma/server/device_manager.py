@@ -111,7 +111,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         list of devices changes (monitoring for changes is beyond
         the scope of this API).
         """
-        devinfos = hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)
+        devinfos = sorted(list(hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)), key=lambda x: x.path)
 
         for devinfo in devinfos:
             parent = self._get_parent(devinfo.product_id)
