@@ -198,7 +198,7 @@ class RazerReport(object):
         """
         The byte array containing the raw result data after run() is called.
         """
-        return self._result
+        return self._result.tobytes()
 
 
     @property
