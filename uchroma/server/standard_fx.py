@@ -9,8 +9,7 @@ from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
 
 from .fx import BaseFX, FXModule
 from .hardware import Hardware, Quirks
-from .led import LEDType
-from .types import BaseCommand
+from .types import BaseCommand, LEDType
 
 
 class FX(Enum):

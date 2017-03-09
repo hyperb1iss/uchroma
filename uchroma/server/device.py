@@ -4,9 +4,9 @@ from .device_base import BaseUChromaDevice
 from .frame import Frame
 from .fx import FXManager
 from .hardware import Hardware, Quirks
-from .led import LED, LEDManager, LEDType
+from .led import LED, LEDManager
 from .standard_fx import StandardFX
-
+from .types import LEDType
 
 class UChromaDevice(BaseUChromaDevice):
     """

@@ -11,8 +11,8 @@ from uchroma.util import clamp, scale, scale_brightness
 from .device import UChromaDevice
 from .device_base import BaseCommand
 from .hardware import Hardware
-from .led import LEDType
 from .report import Status
+from .types import LEDType
 
 
 class PollingRate(Enum):

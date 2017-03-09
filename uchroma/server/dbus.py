@@ -26,7 +26,7 @@ from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder, \
 from uchroma.input_queue import InputQueue
 from uchroma.util import camel_to_snake, ensure_future, snake_to_camel, Signal
 
-from uchroma.server.led import LEDType
+from .types import LEDType
 
 
 def dev_mode_enabled():

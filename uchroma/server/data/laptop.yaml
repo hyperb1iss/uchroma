@@ -8,7 +8,7 @@
 manufacturer: Razer
 type: LAPTOP
 vendor_id: 0x1532
-quirks: CUSTOM_FRAME_80
+quirks: [GREEN_LOGO_LED, CUSTOM_FRAME_80]
 supported_leds: [logo]
 supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight, custom_frame,
   rainbow, alignment, gradient, sweep, circle, highlight, morph, fire, ripple_solid,

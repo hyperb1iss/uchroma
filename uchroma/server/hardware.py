@@ -9,7 +9,7 @@ from typing import NamedTuple
 import ruamel.yaml as yaml
 
 from .config import Configuration, FlowSequence, LowerCaseSeq, represent_flow_seq
-from .led import LEDType
+from .types import LEDType
 
 
 RAZER_VENDOR_ID = 0x1532
@@ -43,6 +43,9 @@ class Quirks(IntEnum):
 
     # Device only supports spectrum effect on the backlight LED
     BACKLIGHT_LED_FX_ONLY = 8
+
+    # Logo LED must be green and supports only blink and static
+    GREEN_LOGO_LED = 9
 
 
 # Marker types for YAML output

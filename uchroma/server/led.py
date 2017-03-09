@@ -6,30 +6,14 @@ from uchroma.color import to_color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
 from uchroma.util import scale_brightness, Signal
 
-from .types import BaseCommand
+from .hardware import Quirks
+from .types import BaseCommand, LEDType
 
 from grapefruit import Color
 
 
 NOSTORE = 0
 VARSTORE = 1
-
-
-class LEDType(Enum):
-    """
-    Enumeration of LED types
-
-    All types not available on all devices.
-    """
-    SCROLL_WHEEL = 0x01
-    BATTERY = 0x03
-    LOGO = 0x04
-    BACKLIGHT = 0x05
-    MACRO = 0x07
-    GAME = 0x08
-    PROFILE_RED = 0x0E
-    PROFILE_GREEN = 0x0C
-    PROFILE_BLUE = 0x0D
 
 
 class LEDMode(Enum):
@@ -85,6 +69,16 @@ class LED(HasTraits):
         self._logger = driver.logger
         self.led_type = led_type
         self._refreshing = False
+
+        if driver.has_quirk(Quirks.GREEN_LOGO_LED):
+            color = self.traits()['color']
+            color.metadata['config'] = False
+            self.color = 'green'
+
+            mode = self.traits()['mode']
+            mode.metadata['config'] = False
+            self.mode = LEDMode.STATIC
+
         self._refresh()
 
 
