@@ -120,7 +120,7 @@ class KrakenFX(FXModule):
 
     class StaticFX(BaseFX):
         description = Unicode("Static color")
-        color = ColorTrait(default_value='green')
+        color = ColorTrait(default_value='green').tag(config=True)
 
         def apply(self) -> bool:
             """
@@ -141,7 +141,7 @@ class KrakenFX(FXModule):
 
     class BreatheFX(BaseFX):
         description = Unicode('Colors pulse in and out')
-        colors = ColorSchemeTrait(minlen=1, maxlen=3, default_value=('red', 'green', 'blue'))
+        colors = ColorSchemeTrait(minlen=1, maxlen=3, default_value=('red', 'green', 'blue')).tag(config=True)
 
         def apply(self) -> bool:
             """
@@ -154,8 +154,6 @@ class KrakenFX(FXModule):
 
             :return True if successful:
             """
-            args = [self.colors]
-
             bits = EffectBits()
             bits.on = True
             bits.sync = True
@@ -167,7 +165,7 @@ class KrakenFX(FXModule):
                 bits.breathe_single = True
 
             with self._driver.device_open():
-                if self._driver._set_rgb(*args):
+                if self._driver._set_rgb(*self.colors):
                     return self._driver._set_led_mode(bits)
 
             return False
