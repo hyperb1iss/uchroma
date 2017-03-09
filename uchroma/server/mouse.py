@@ -155,7 +155,7 @@ class UChromaWirelessMouse(UChromaMouse):
     def _timeout_cb(self, status, data):
         if self._offline and status == Status.OK:
             self._offline = False
-            self._close(True)
+            self.close(True)
         self._offline = True
 
 
