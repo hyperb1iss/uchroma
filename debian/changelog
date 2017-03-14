@@ -1,3 +1,9 @@
+uchroma (1.0.1-1ubuntu1) yakkety; urgency=medium
+
+  * Release 1.0.1
+
+ -- Steve Kondik <shade@chemlab.org>  Mon, 13 Mar 2017 22:55:19 -0700
+
 uchroma (1.0-1) yakkety; urgency=medium
 
   * Initial Release.
