@@ -24,6 +24,7 @@ override_dh_clean:
 	rm -rf uchroma/__pycache__
 
 override_dh_install:
+	dh_install
 	python3 setup.py build_ext --inplace
 	python3 setup.py install --install-layout=deb \
 		--root $(CURDIR)/debian/uchroma
