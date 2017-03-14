@@ -12,14 +12,15 @@ from grapefruit import Color
 
 import numpy as np
 
+from uchroma.log import Log
 from uchroma.traits import class_traits_as_dict, ColorTrait, \
         ColorSchemeTrait, trait_as_dict
-from uchroma.util import camel_to_snake, get_logger, snake_to_camel
+from uchroma.util import camel_to_snake, snake_to_camel
 
 
 ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str)])
 
-logger = get_logger('uchroma.util')
+logger = Log.get('uchroma.util')
 
 def _check_variance(items: list):
     if len(items) == 0:

@@ -4,7 +4,8 @@ import time
 
 from typing import NamedTuple
 
-from uchroma.util import clamp, LOG_TRACE
+from uchroma.log import LOG_TRACE
+from uchroma.util import clamp
 
 
 _KeyInputEvent = NamedTuple('KeyInputEvent', \

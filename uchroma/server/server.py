@@ -8,7 +8,8 @@ from concurrent import futures
 
 import gbulb
 
-from uchroma.util import ensure_future, get_logger, LOG_PROTOCOL_TRACE, LOG_TRACE
+from uchroma.log import Log, LOG_PROTOCOL_TRACE, LOG_TRACE
+from uchroma.util import ensure_future
 
 from .dbus import DeviceManagerAPI
 from .device_manager import UChromaDeviceManager
@@ -18,14 +19,14 @@ from .power import PowerMonitor
 class UChromaServer(object):
 
     def __init__(self):
-        self._logger = get_logger('uchroma.server')
-
         gbulb.install()
 
         parser = argparse.ArgumentParser(description='UChroma daemon')
-        parser.add_argument("-v", "--version", action='version', version='self.version')
-        parser.add_argument("-d", "--debug", action='append_const', const=True,
-                            help='Enable debug output')
+        parser.add_argument('-v', "--version", action='version', version='self.version')
+        parser.add_argument('-d', "--debug", action='append_const', const=True,
+                            help="Increase logging verbosity")
+        parser.add_argument('-C', "--colorlog", action='store_true',
+                            help="Use colored log output")
 
         args = parser.parse_args()
 
@@ -34,6 +35,12 @@ class UChromaServer(object):
 
         level = logging.INFO
         asyncio_debug = False
+        colorlog = False
+        if args.colorlog is not None:
+            colorlog = args.colorlog
+
+        Log.enable_color(colorlog)
+        self._logger = Log.get('uchroma.server')
 
         if args.debug is not None:
             if len(args.debug) > 2:

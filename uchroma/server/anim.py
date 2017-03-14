@@ -10,9 +10,10 @@ from typing import NamedTuple
 from pkg_resources import iter_entry_points
 from traitlets import Bool, HasTraits, List, observe
 
+from uchroma.log import LOG_TRACE
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
 from uchroma.traits import FrozenDict, get_args_dict
-from uchroma.util import ensure_future, Signal, Ticker, LOG_TRACE
+from uchroma.util import ensure_future, Signal, Ticker
 
 from .frame import Frame
 

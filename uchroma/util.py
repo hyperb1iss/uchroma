@@ -4,7 +4,6 @@ Various helper functions that are used across the library.
 """
 import asyncio
 import inspect
-import logging
 import math
 import re
 import struct
@@ -13,14 +12,8 @@ import typing
 
 from collections import OrderedDict
 
-import colorlog
 from numpy import interp
 from wrapt import decorator, synchronized
-
-
-# Trace log levels
-LOG_TRACE = 5
-LOG_PROTOCOL_TRACE = 4
 
 
 AUTOCAST_CACHE = {}
@@ -82,28 +75,6 @@ def camel_to_snake(name: str) -> str:
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-LOGGERS = {}
-
-@synchronized
-def get_logger(tag):
-    """
-    Get the global logger instance for the given tag
-
-    :param tag: the log tag
-    :return: the logger instance
-    """
-    if tag not in LOGGERS:
-        handler = colorlog.StreamHandler()
-        handler.setFormatter(colorlog.ColoredFormatter( \
-            ' %(log_color)s%(name)s/%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s'))
-        logger = logging.getLogger(tag)
-        logger.addHandler(handler)
-
-        LOGGERS[tag] = logger
-
-    return LOGGERS[tag]
 
 
 def max_keylen(d) -> int:

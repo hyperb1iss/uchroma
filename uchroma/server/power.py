@@ -2,7 +2,8 @@
 
 from pydbus import SessionBus, SystemBus
 
-from uchroma.util import get_logger, Singleton
+from uchroma.log import Log
+from uchroma.util import Singleton
 from .device_manager import UChromaDeviceManager
 
 
@@ -19,7 +20,7 @@ class PowerMonitor(metaclass=Singleton):
     screensaver, signalling devices to suspend if necessary.
     """
     def __init__(self):
-        self._logger = get_logger('uchroma.power')
+        self._logger = Log.get('uchroma.power')
         self._name_watchers = []
         self._running = False
         self._sleeping = False

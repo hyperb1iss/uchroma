@@ -8,8 +8,9 @@ from traitlets import Bool, HasTraits, Float, Int, observe, Unicode
 
 from uchroma.input_queue import InputQueue
 from uchroma.layer import Layer
+from uchroma.log import Log
 from uchroma.traits import ColorTrait, WriteOnceInt
-from uchroma.util import Ticker, get_logger
+from uchroma.util import Ticker
 
 
 MAX_FPS = 30
@@ -56,7 +57,7 @@ class Renderer(HasTraits, object):
         if hasattr(driver, 'input_manager') and driver.input_manager is not None:
             self._input_queue = InputQueue(driver)
 
-        self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, self.zindex))
+        self._logger = Log.get('uchroma.%s.%d' % (self.__class__.__name__, self.zindex))
         super(Renderer, self).__init__(*args, **kwargs)
 
 
@@ -65,7 +66,7 @@ class Renderer(HasTraits, object):
         if change.old == change.new and change.new >= 0:
             return
 
-        self._logger = get_logger('uchroma.%s.%d' % (self.__class__.__name__, change.new))
+        self._logger = Log.get('uchroma.%s.%d' % (self.__class__.__name__, change.new))
 
 
     def init(self, frame) -> bool:

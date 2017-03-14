@@ -7,7 +7,8 @@ from skimage import draw
 
 from uchroma.blending import BlendOp
 from uchroma.color import colorarg, ColorType, to_color
-from uchroma.util import clamp, get_logger
+from uchroma.log import Log
+from uchroma.util import clamp
 
 from uchroma._layer import color_to_np, set_color
 
@@ -23,7 +24,7 @@ class Layer(object):
         self._height = height
 
         if logger is None:
-            self._logger = get_logger('uchroma.frame')
+            self._logger = Log.get('uchroma.frame')
         else:
             self._logger = logger
 

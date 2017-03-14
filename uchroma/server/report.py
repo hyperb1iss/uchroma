@@ -6,7 +6,8 @@ from enum import Enum
 
 import numpy as np
 
-from uchroma.util import LOG_PROTOCOL_TRACE, smart_delay
+from uchroma.log import LOG_PROTOCOL_TRACE
+from uchroma.util import smart_delay
 
 from .byte_args import ByteArgs
 from ._crc import fast_crc

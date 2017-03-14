@@ -8,7 +8,8 @@ import hidapi
 from pyudev import Context, Monitor, MonitorObserver
 from pyudev._os import pipe
 
-from uchroma.util import ensure_future, get_logger, Singleton, Signal
+from uchroma.log import Log
+from uchroma.util import ensure_future, Singleton, Signal
 
 from .device import UChromaDevice
 from .device_base import BaseUChromaDevice
@@ -66,7 +67,7 @@ class UChromaDeviceManager(metaclass=Singleton):
     """
 
     def __init__(self, *callbacks):
-        self._logger = get_logger('uchroma.devicemanager')
+        self._logger = Log.get('uchroma.devicemanager')
 
         self._devices = OrderedDict()
         self._monitor = False

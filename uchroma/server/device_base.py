@@ -8,7 +8,8 @@ from contextlib import contextmanager
 import hidapi
 from wrapt import synchronized
 
-from uchroma.util import ensure_future, get_logger, Signal, ValueAnimator
+from uchroma.log import Log
+from uchroma.util import ensure_future, Signal, ValueAnimator
 from uchroma.version import __version__
 
 from .anim import AnimationManager
@@ -41,7 +42,7 @@ class BaseUChromaDevice(object):
         self._devindex = index
         self._sys_path = sys_path
 
-        self.logger = get_logger('uchroma.driver-%d' % index)
+        self.logger = Log.get('uchroma.driver-%d' % index)
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)

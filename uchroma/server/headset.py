@@ -5,9 +5,9 @@ from traitlets import Unicode
 from wrapt import synchronized
 
 from uchroma.color import to_color, to_rgb
+from uchroma.log import LOG_PROTOCOL_TRACE
 from uchroma.traits import ColorSchemeTrait, ColorTrait
-from uchroma.util import smart_delay, set_bits, scale_brightness, \
-    test_bit, to_byte, LOG_PROTOCOL_TRACE
+from uchroma.util import smart_delay, set_bits, scale_brightness, test_bit, to_byte
 
 from .byte_args import ByteArgs
 from .device_base import BaseUChromaDevice
