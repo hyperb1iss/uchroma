@@ -116,6 +116,9 @@ class UChromaDeviceManager(metaclass=Singleton):
 
         for devinfo in devinfos:
             parent = self._get_parent(devinfo.product_id)
+            if parent is None:
+                continue
+
             if self._key_for_path(parent.sys_path) is not None:
                 continue
 
