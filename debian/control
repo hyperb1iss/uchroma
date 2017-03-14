@@ -39,6 +39,7 @@ Package: uchroma
 Section: misc
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends},
+         dbus-user-session,
          python3 (>= 3.5),
          python3-argcomplete,
          python3-cffi,
