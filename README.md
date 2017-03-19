@@ -23,16 +23,26 @@ The Razer Chroma line of peripherals have flashy features such as embedded LED m
 
 ## Installation
 
+#### Ubuntu
 Packages are available for Ubuntu Xenial, Yakkety, and Zesty:
 
-[UChroma PPA](https://launchpad.net/~cyanogen/+archive/ubuntu/uchroma) 
+[UChroma PPA](https://launchpad.net/~cyanogen/+archive/ubuntu/uchroma)
 
 	sudo add-apt-repository ppa:cyanogen/uchroma
 	sudo apt update
 	sudo apt install uchroma
 
-Submit a pull request if you'd like to package for other platforms.
 
+***
+
+#### Arch
+
+UChroma can be found in the [AUR](https://aur.archlinux.org/packages/uchroma/)
+
+
+***
+
+#### From Source
 UChroma requires Python 3.5 or newer.
 
 To install from source, clone this repository and simply run "sudo make install" which will
@@ -43,6 +53,9 @@ The UChroma daemon installs itself as a systemd user service. You can check the 
 	 systemctl --user uchromad status
 
 Be sure to uninstall any other software which might alter permissions or change behavior of the devices or kernel HID drivers.
+
+
+Please submit a pull request if you'd like to package for other platforms!
 
 
 
