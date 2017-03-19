@@ -74,3 +74,6 @@ all: install docs
 
 up:
 	python3 setup.py install --user
+
+license:
+	python3 scripts/update-headers header.txt setup.py uchroma scripts/devstuff
