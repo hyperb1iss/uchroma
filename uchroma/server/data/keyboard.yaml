@@ -89,7 +89,7 @@ key_mapping: !!omap
 - KEY_LEFTCTRL: [[5, 1]]
 - KEY_LEFTMETA: [[5, 2]]
 - KEY_LEFTALT: [[5, 3]]
-- KEY_SPACE: [[5, 6], [5, 7], [5, 8]]
+- KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8], [5, 9]]
 - KEY_RIGHTALT: [[5, 11]]
 - KEY_MENU: [[5, 13]]
 - KEY_RIGHTCTRL: [[5, 14]]
@@ -98,7 +98,7 @@ key_mapping: !!omap
 - KEY_RIGHT: [[5, 17]]
 children:
 - !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight]
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static]
   children:
 
   - !device-config
@@ -107,7 +107,7 @@ children:
     quirks: BACKLIGHT_LED_FX_ONLY
 
 - !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight, custom_frame,
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
     rainbow, alignment]
   children:
 
@@ -137,7 +137,7 @@ children:
   - !device-config
     name: BlackWidow Chroma Tournament Edition
     product_id: 0x0209
-    dimensions: [6, 22]
+    dimensions: [6, 18]
 
   - !device-config
     name: BlackWidow Ultimate 2016
