@@ -240,7 +240,9 @@ class KeyConfigTool(object):
         if self._config_file is None:
             return False
 
-        hardware = self._hardware._replace(key_mapping=self._mapping)
+        hdict = self._hardware._asdict()
+        hdict['key_mapping'] = self._mapping
+        hardware = Hardware(**hdict)
         hardware.save_yaml(self._config_file)
 
         status = 'Mappings saved to \'%s\'' % self._config_file

@@ -260,7 +260,15 @@ class Configuration(object):
 
 
     def _asdict(self) -> OrderedDict:
-        return OrderedDict(zip(self.__slots__, self))
+        od = OrderedDict()
+        for slot in self.__slots__:
+            if slot == 'parent' or slot == '_children':
+                continue
+            value = getattr(self, slot)
+            if value is None:
+                continue
+            od[slot] = value
+        return od
 
 
     def sparsedict(self, deep=True) -> OrderedDict:
