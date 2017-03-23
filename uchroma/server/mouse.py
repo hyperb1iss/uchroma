@@ -78,7 +78,10 @@ class UChromaMouse(UChromaDevice):
         """
         Set the polling rate
         """
-        self.run_command(UChromaMouse.Command.SET_POLLING_RATE, rate)
+        if isinstance(rate, str):
+            rate = PollingRate.__members__[rate.upper()]
+
+        self.run_command(UChromaMouse.Command.SET_POLLING_RATE, rate.value)
 
 
 
@@ -95,15 +98,17 @@ class UChromaMouse(UChromaDevice):
 
 
     @dpi_xy.setter
-    def dpi_xy(self, dpi):
+    def dpi_xy(self, dpi: tuple):
         """
         Set the (x, y) device DPI
         """
         args = None
-        if isinstance(args, tuple):
+        if len(dpi) == 2:
             args = struct.pack('>HH', dpi[0], dpi[1])
+        elif len(dpi == 1):
+            args = struct.pack('>H', dpi[0])
         else:
-            args = struct.pack('>H', dpi)
+            raise ValueError("Must specify one (x) or two (x, y) integers to set DPI")
 
         self.run_with_result(UChromaMouse.Command.SET_DPI_XY, 0x01, args)
 

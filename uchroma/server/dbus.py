@@ -115,7 +115,7 @@ class DeviceAPI(object):
 
 
     _RW_PROPERTIES = {'polling_rate': 's',
-                      'dpi': 'a(ii)',
+                      'dpi_xy': 'ai',
                       'dock_brightness': 'd',
                       'dock_charge_color': 's'}
 
@@ -154,6 +154,14 @@ class DeviceAPI(object):
 
         else:
             return super(DeviceAPI, self).__getattribute__(name)
+
+
+    def __setattr__(self, name, value):
+        prop_name = camel_to_snake(name)
+        if prop_name != name and prop_name in DeviceAPI._RW_PROPERTIES:
+            setattr(self._driver, prop_name, value)
+        else:
+            super(DeviceAPI, self).__setattr__(name, value)
 
 
     @property
