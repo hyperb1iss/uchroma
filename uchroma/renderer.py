@@ -18,8 +18,9 @@ import asyncio
 from abc import abstractmethod
 from typing import NamedTuple
 
-from traitlets import Bool, HasTraits, Float, Int, observe, Unicode
+from traitlets import Bool, CaselessStrEnum, HasTraits, Float, Int, observe, Unicode
 
+from uchroma.blending import BlendOp
 from uchroma.input_queue import InputQueue
 from uchroma.layer import Layer
 from uchroma.log import Log
@@ -46,7 +47,8 @@ class Renderer(HasTraits, object):
     meta = RendererMeta('_unknown_', 'Unimplemented', 'Unknown', '0')
 
     fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS).tag(config=True)
-    blend_mode = Unicode().tag(config=True)
+    blend_mode = CaselessStrEnum(BlendOp.get_modes(), default_value='screen',
+                                 allow_none=False).tag(config=True)
     opacity = Float(min=0.0, max=1.0, default_value=1.0).tag(config=True)
     background_color = ColorTrait().tag(config=True)
 
