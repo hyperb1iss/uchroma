@@ -76,6 +76,7 @@ class LED(HasTraits, object):
         self.led_type = led_type
         self._restoring = True
         self._refreshing = False
+        self._dirty = True
 
         # dynamic traits, since they are normally class-level
         brightness = Float(min=0.0, max=100.0, default_value=80.0,
@@ -87,8 +88,15 @@ class LED(HasTraits, object):
 
         self.add_traits(color=color, mode=mode, brightness=brightness)
 
-        self._refresh()
         self._restoring = False
+
+
+    def __getattribute__(self, name):
+        if name in ('brightness', 'color', 'mode', 'state') and self._dirty:
+            self._refresh()
+            self._dirty = False
+
+        return super().__getattribute__(name)
 
 
     def _get(self, cmd):
@@ -96,7 +104,7 @@ class LED(HasTraits, object):
 
 
     def _set(self, cmd, *args):
-        return self._driver.run_command(cmd, *(VARSTORE, self._led_type.hardware_id) + args)
+        return self._driver.run_command(cmd, *(VARSTORE, self._led_type.hardware_id) + args, delay=0.035)
 
 
     def _refresh(self):
@@ -134,8 +142,6 @@ class LED(HasTraits, object):
         if self._refreshing or change.old == change.new:
             return
 
-        self._logger.debug("LED settings changed: %s", change)
-
         if change.name == 'color':
             self._set(LED.Command.SET_LED_COLOR, to_color(change.new))
         elif change.name == 'mode':
@@ -150,7 +156,7 @@ class LED(HasTraits, object):
             raise ValueError("Unknown LED property: %s" % change.new)
 
         if not self._restoring:
-            self._refresh()
+            self._dirty = True
 
             if self.led_type != LEDType.BACKLIGHT:
                 self._update_prefs()
