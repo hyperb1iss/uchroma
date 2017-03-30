@@ -131,6 +131,17 @@ class WriteOnceUseEnumCaseless(WriteOnceMixin, UseEnumCaseless):
     pass
 
 
+class DefaultCaselessStrEnum(CaselessStrEnum):
+    """
+    Extension of CaselessStrEnum which handles default values better
+    """
+    def validate(self, obj, value):
+        if self.default_value and (value is None or value == ''):
+            value = self.default_value
+
+        return super().validate(obj, value)
+
+
 def is_trait_writable(trait: TraitType) -> bool:
     """
     Test if a trait is writable
