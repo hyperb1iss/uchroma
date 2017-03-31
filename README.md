@@ -374,9 +374,9 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 #### *How do I make a custom animation?*
 
 >Proper documentation on this topic is forthcoming, but having a look at the bundled renderers in uchroma/fxlib should be enough to get started on. Implementations must extend **Renderer** and implement the *init*, *finish*, and *draw* methods. The animation system is a framebuffer and the draw method will be invoked at the FPS requested by your implementation. It's important to keep the FPS as low as possible to avoid unnecessary CPU usage! The draw method is called with a **Layer** object, which provides primitives for drawing shapes and setting individual pixels. The buffer of a frame is a Numpy matrix and may be manipulated directly, if desired.  Functions for performing color math and generating gradients/color schemes can be found in the *uchroma.color* module. We use **Traitlets** for user-configurable parameters. 
-
-In your setup.py, declare an entry point to your effect:
-
+>
+> To get an out-of-tree module recognized, declare an entry point to your effect in your module's setup.py:
+>
 	entry_points={
 	    'uchroma.plugins': ['renderer = my.effect.module:MyClass']
 	}
