@@ -1,0 +1,19 @@
+#!/bin/sh
+
+case "$SNAP_ARCH" in
+    "amd64") ARCH='x86_64-linux-gnu'
+    ;;
+    "i386") ARCH='i386-linux-gnu'
+    ;;
+    "arm64") ARCH='aarch64-linux-gnu'
+    ;;
+    "armhf") ARCH='arm-linux-gnueabihf'
+    ;;
+    *)
+        echo "Unsupported architecture: $SNAP_ARCH"
+    ;;
+esac
+
+export GI_TYPELIB_PATH=$SNAP/usr/lib/girepository-1.0:$SNAP/usr/lib/$ARCH/girepository-1.0
+
+$@
