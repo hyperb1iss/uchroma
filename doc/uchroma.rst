@@ -25,6 +25,7 @@ Submodules
    uchroma.dbus_utils
    uchroma.input_queue
    uchroma.layer
+   uchroma.log
    uchroma.renderer
    uchroma.traits
    uchroma.util

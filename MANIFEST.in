@@ -9,6 +9,6 @@ include doc/*
 include install/*
 include scripts/*
 include tests/*
-include uchroma/*.pyx
-include uchroma/*/*.pyx
+include uchroma/_*.pyx
+include uchroma/server/_*.pyx
 

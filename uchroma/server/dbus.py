@@ -345,26 +345,26 @@ class DeviceAPI(object):
 
 class LEDManagerAPI(ManagedService):
     """
-        <node>
-          <interface name='org.chemlab.UChroma.LEDManager'>
+    <node>
+        <interface name='org.chemlab.UChroma.LEDManager'>
             <property name='AvailableLEDs' type='a{sa{sa{sv}}}' access='read' />
 
             <method name='GetLED'>
-              <arg direction='in' type='s' name='led' />
-              <arg direction='out' type='a{sv}' name='properties' />
+                <arg direction='in' type='s' name='led' />
+                <arg direction='out' type='a{sv}' name='properties' />
             </method>
 
             <method name='SetLED'>
-              <arg direction='in' type='s' name='led' />
-              <arg direction='in' type='a{sv}' name='properties' />
-              <arg direction='out' type='b' name='status' />
+                <arg direction='in' type='s' name='led' />
+                <arg direction='in' type='a{sv}' name='properties' />
+                <arg direction='out' type='b' name='status' />
             </method>
 
             <signal name='LEDChanged'>
-              <arg direction='out' type='s' name='led' />
+                <arg direction='out' type='s' name='led' />
             </signal>
-          </interface>
-        </node>
+        </interface>
+    </node>
     """
 
     def __init__(self, parent):
@@ -417,21 +417,21 @@ class LEDManagerAPI(ManagedService):
 
 class FXManagerAPI(ManagedService):
     """
-        <node>
-          <interface name='org.chemlab.UChroma.FXManager'>
+    <node>
+        <interface name='org.chemlab.UChroma.FXManager'>
             <method name='SetFX'>
-              <arg direction='in' type='s' name='name' />
-              <arg direction='in' type='a{sv}' name='args' />
-              <arg direction='out' type='b' name='status' />
+                <arg direction='in' type='s' name='name' />
+                <arg direction='in' type='a{sv}' name='args' />
+                <arg direction='out' type='b' name='status' />
             </method>
 
             <property name='CurrentFX' type='(sa{sv})' access='read'>
-                 <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
+                    <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
             </property>
 
             <property name='AvailableFX' type='a{sa{sa{sv}}}' access='read' />
-          </interface>
-        </node>
+        </interface>
+    </node>
     """
 
     def __init__(self, parent):
@@ -572,39 +572,39 @@ class LayerAPI(TraitsPropertiesMixin, ManagedService):
 
 class AnimationManagerAPI(ManagedService):
     """
-        <node>
-          <interface name='org.chemlab.UChroma.AnimationManager'>
+    <node>
+        <interface name='org.chemlab.UChroma.AnimationManager'>
             <method name='AddRenderer'>
-              <arg direction='in' type='s' name='name' />
-              <arg direction='in' type='i' name='zindex' />
-              <arg direction='in' type='a{sv}' name='traits' />
-              <arg direction='out' type='o' name='layer' />
+                <arg direction='in' type='s' name='name' />
+                <arg direction='in' type='i' name='zindex' />
+                <arg direction='in' type='a{sv}' name='traits' />
+                <arg direction='out' type='o' name='layer' />
             </method>
 
             <method name='RemoveRenderer'>
-              <arg direction='in' type='i' name='zindex' />
-              <arg direction='out' type='b' name='status' />
+                <arg direction='in' type='i' name='zindex' />
+                <arg direction='out' type='b' name='status' />
             </method>
 
             <method name='PauseAnimation'>
-              <arg direction='out' type='b' name='paused' />
+                <arg direction='out' type='b' name='paused' />
             </method>
 
             <method name='StopAnimation'>
-              <arg direction='out' type='b' name='status' />
+                <arg direction='out' type='b' name='status' />
             </method>
 
             <property name='AvailableRenderers' type='a{sa{sv}}' access='read' />
 
             <property name='CurrentRenderers' type='a(so)' access='read'>
-              <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
+                <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
             </property>
 
-           <property name='AnimationState' type='s' access='read'>
-              <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
+            <property name='AnimationState' type='s' access='read'>
+                <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />
             </property>
-          </interface>
-        </node>
+        </interface>
+    </node>
     """
 
     def __init__(self, parent):
@@ -695,18 +695,18 @@ class AnimationManagerAPI(ManagedService):
 
 class DeviceManagerAPI(object):
     """
-        <node>
-          <interface name='org.chemlab.UChroma.DeviceManager'>
-             <method name='GetDevices'>
-               <arg direction='out' type='ao' />
-             </method>
+    <node>
+        <interface name='org.chemlab.UChroma.DeviceManager'>
+            <method name='GetDevices'>
+                <arg direction='out' type='ao' />
+            </method>
 
-             <signal name='DevicesChanged'>
-               <arg direction='out' type='s' name='action' />
-               <arg direction='out' type='o' name='device' />
-             </signal>
-           </interface>
-         </node>
+            <signal name='DevicesChanged'>
+                <arg direction='out' type='s' name='action' />
+                <arg direction='out' type='o' name='device' />
+            </signal>
+        </interface>
+    </node>
     """
 
     def __init__(self, device_manager, logger):

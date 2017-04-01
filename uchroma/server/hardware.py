@@ -144,7 +144,7 @@ class Hardware(BaseHardware):
         """
         True if quirk is required for the device
 
-        :param quirks The quirks to check (varargs)
+        :param: quirks The quirks to check (varargs)
 
         :return: True if the quirk is required
         """

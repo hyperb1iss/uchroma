@@ -29,6 +29,7 @@ from Cython.Distutils import build_ext
 from Cython.Build import cythonize
 import numpy as np
 
+# Read the version file (since we can't import it yet)
 def get_version():
     module_init = 'uchroma/version.py'
 
@@ -42,6 +43,8 @@ def get_version():
 
 
 
+# Generates the HWDB file for use with our udev rule. This is done
+# by loading the YAML descriptors via the Hardware API
 class HWDBGenerator(install):
 
     @staticmethod
@@ -63,10 +66,15 @@ class HWDBGenerator(install):
         print(HWDBGenerator.generate())
 
 
+# Cython
 extensions = [
     Extension('uchroma.server._crc', ['uchroma/server/_crc.pyx'], include_dirs=[np.get_include()]),
     Extension('uchroma._layer', ['uchroma/_layer.pyx'], include_dirs=[np.get_include()]),
     Extension('uchroma.fxlib._plasma', ['uchroma/fxlib/_plasma.pyx'], include_dirs=[np.get_include()], extra_compile_args=['-O3'])]
+
+for e in extensions:
+    e.cython_directives = {'embedsignature': True}
+
 
 setup(name='uchroma',
       version=get_version(),
@@ -77,7 +85,7 @@ setup(name='uchroma',
       license='LGPL',
       platform='Linux',
       packages=['uchroma', 'uchroma.fxlib', 'uchroma.client', 'uchroma.server'],
-      ext_modules = cythonize(extensions),
+      ext_modules = extensions,
       entry_points={
           'console_scripts': [
               'uchroma = uchroma.client.client:run_client',
