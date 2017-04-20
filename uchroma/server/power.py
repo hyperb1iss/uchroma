@@ -20,9 +20,10 @@ from uchroma.util import Singleton
 from .device_manager import UChromaDeviceManager
 
 
-SCREENSAVERS = ('org.freedesktop.ScreenSaver',
-                'org.gnome.ScreenSaver',
-                'org.mate.ScreenSaver')
+SCREENSAVERS = (('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver'),
+                ('org.gnome.ScreenSaver', '/org/gnome/ScreenSaver'),
+                ('org.mate.ScreenSaver', '/org/mate/ScreenSaver'),
+                ('com.canonical.Unity', '/org/gnome/ScreenSaver'))
 
 LOGIN_SERVICE = 'org.freedesktop.login1'
 
@@ -74,18 +75,18 @@ class PowerMonitor(metaclass=Singleton):
         if self._running:
             return
 
-        for name in SCREENSAVERS:
-            def connect_screensaver(*args, service=name):
+        for name, path in SCREENSAVERS:
+            def connect_screensaver(*args, bus_name=name, object_path=path):
                 """
                 Connects the callback when the service appears.
                 """
                 try:
-                    saver = self._session_bus.get(service)
+                    saver = self._session_bus.get(bus_name=bus_name, object_path=object_path)
                     saver.ActiveChanged.connect(self._active_changed)
-                    self._logger.info("Connected screensaver: %s %s", service, args)
+                    self._logger.info("Connected screensaver: %s:%s %s", bus_name, object_path, args)
 
                 except Exception:
-                    self._logger.warn("Could not connect to %s service", service)
+                    self._logger.warn("Could not connect to %s:%s service", bus_name, object_path)
 
 
             self._name_watchers.append(self._session_bus.watch_name( \
