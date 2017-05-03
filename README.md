@@ -1,5 +1,7 @@
 ## uChroma - Razer Chroma control for Linux 
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b38cbbbd41e74cef89438b20faeb75d1)](https://www.codacy.com/app/shade_2/uchroma?utm_source=github.com&utm_medium=referral&utm_content=cyanogen/uchroma&utm_campaign=badger)
+
 
 The Razer Chroma line of peripherals have flashy features such as embedded LED matrices and macro keys. This project aims to provide rich support for these features under Linux without requiring kernel modifications. 
 
