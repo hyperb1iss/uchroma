@@ -264,13 +264,13 @@ class ColorUtils(object):
         for x in range(0, steps):
             amount = float(x) / float(steps - 1)
             i = ColorUtils._circular_interp(start, end, amount)
-            gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]])))
+            gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]]), i[3]))
 
         return gradient
 
 
     @staticmethod
-    def gradient(length: int, *colors) -> list:
+    def gradient(length: int, *colors, loop=True) -> list:
         """
         Generate a looped gradient from multiple evenly-spaced colors
 
@@ -282,9 +282,10 @@ class ColorUtils(object):
         """
 
         luv_colors = [rgb_to_hsluv(to_color(x).rgb) for x in colors]
-        luv_colors.append(luv_colors[0])
+        if loop:
+            luv_colors.append(luv_colors[0])
 
-        steps = max(len(luv_colors), math.floor(length / (len(luv_colors))))
+        steps = max(len(luv_colors), math.floor(length / (len(luv_colors) - 1)))
         gradient = []
         for color_idx in range(0, len(luv_colors) - 1):
             start = luv_colors[color_idx]
@@ -293,7 +294,7 @@ class ColorUtils(object):
             for interp in range(0, steps):
                 amount = float(interp) / float(steps)
                 i = ColorUtils._circular_interp(start, end, amount)
-                gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]])))
+                gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]]), i[3]))
 
         return gradient
 
