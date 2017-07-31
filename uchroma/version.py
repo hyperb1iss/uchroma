@@ -10,4 +10,4 @@
 # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
 # License for more details.
 #
-__version__ = '1.0.2'
+__version__ = '1.0.3'
