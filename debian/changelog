@@ -1,3 +1,9 @@
+uchroma (1.0.3-1) artful; urgency=medium
+
+  * Updated dependencies for Artful 
+
+ -- Steve Kondik <shade@chemlab.org>  Mon, 31 Jul 2017 08:46:57 -0700
+
 uchroma (1.0.2-1ubuntu1) yakkety; urgency=medium
 
   * Release 1.0.2
