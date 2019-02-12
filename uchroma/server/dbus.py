@@ -22,7 +22,6 @@ layers. UI clients should be designed to use these interfaces
 rather than interacting with the hardware directly.
 """
 
-import asyncio
 import logging
 import os
 
@@ -46,7 +45,7 @@ def dev_mode_enabled():
     return os.environ.get('UCHROMA_DEV') is not None
 
 
-class ManagedService(object):
+class ManagedService:
     def __init__(self, parent, *args, **kwargs):
         super(ManagedService, self).__init__(*args, **kwargs)
 
@@ -82,7 +81,7 @@ class ManagedService(object):
             self.unpublish()
 
 
-class DeviceAPI(object):
+class DeviceAPI:
     """
     D-Bus API for device properties and common hardware features.
     """
@@ -148,12 +147,11 @@ class DeviceAPI(object):
                 return value.name.lower()
             if isinstance(value, Color):
                 return value.html
-            if isinstance(value, (list, tuple)) and len(value) > 0 and isinstance(value[0], Enum):
+            if isinstance(value, (list, tuple)) and value and isinstance(value[0], Enum):
                 return [x.name.lower() for x in value]
             return value
 
-        else:
-            return super(DeviceAPI, self).__getattribute__(name)
+        return super(DeviceAPI, self).__getattribute__(name)
 
 
     def __setattr__(self, name, value):
@@ -504,7 +502,7 @@ class LayerAPI(TraitsPropertiesMixin, ManagedService):
         if change.old != change.new:
             if change.new:
                 self.publish()
-            elif self._handle != None:
+            elif self._handle is not None:
                 self._logger.info("Layer stopped zindex=%d (%s)",
                                   self._zindex, self._delegate.meta)
                 self.unpublish()
@@ -693,7 +691,7 @@ class AnimationManagerAPI(ManagedService):
 
 
 
-class DeviceManagerAPI(object):
+class DeviceManagerAPI:
     """
     <node>
         <interface name='org.chemlab.UChroma.DeviceManager'>

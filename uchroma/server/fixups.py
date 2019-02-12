@@ -19,10 +19,8 @@ Fixups are mixins which adjust input/output data in some form.
 import numpy as np
 from numpy import array
 
-from .hardware import Hardware
 
-
-class KeyboardFixup(object):
+class KeyboardFixup:
     """
     Fixup which adjusts key coordinates in order to achieve a linear matrix.
     """
@@ -79,7 +77,7 @@ class KeyboardFixup(object):
 
     @staticmethod
     def _update_debug_info(frame, debug_position: tuple,
-                           in_data: array=None, out_data: array=None):
+                           in_data: array = None, out_data: array = None):
         """
         Used by the alignment utility.
         """

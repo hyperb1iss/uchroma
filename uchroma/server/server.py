@@ -28,7 +28,7 @@ from .device_manager import UChromaDeviceManager
 from .power import PowerMonitor
 
 
-class UChromaServer(object):
+class UChromaServer:
 
     def __init__(self):
         gbulb.install()

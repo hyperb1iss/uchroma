@@ -58,13 +58,13 @@ ADDR_RAINIE_LED_MODE = 0x1008
 ADDR_RAINIE_BREATHING1_START = 0x15DE
 
 
-class EffectBits(object):
+class EffectBits:
     """
     The effect mode on this hardware is represented by a single
     integer. This class assists with managing the bits of
     this value.
     """
-    def __init__(self, value: int=0):
+    def __init__(self, value: int = 0):
         self.on = test_bit(value, 0)
         self.breathe_single = test_bit(value, 1)
         self.spectrum = test_bit(value, 2)
@@ -89,11 +89,11 @@ class EffectBits(object):
         """
         if self.breathe_triple:
             return 3
-        elif self.breathe_double:
+        if self.breathe_double:
             return 2
-        elif self.breathe_single:
+        if self.breathe_single:
             return 1
-        elif self.on == 1:
+        if self.on == 1:
             return 1
         return 0
 
@@ -340,7 +340,7 @@ class UChromaHeadset(BaseUChromaDevice):
                 resp = self._dev.read(REPORT_LENGTH_IN, timeout_ms=500)
                 self._hexdump(resp, '<-- ')
 
-                if resp is None or len(resp) == 0:
+                if not resp:
                     return None
 
                 assert resp[0] == REPORT_ID_IN, \
@@ -375,7 +375,7 @@ class UChromaHeadset(BaseUChromaDevice):
             with self.device_open():
                 value = self.run_with_result(self._cmd_get_led)
                 bits = 0
-                if value is not None and len(value) > 0:
+                if value:
                     bits = value[0]
                 self._mode = EffectBits(bits)
         return self._mode
@@ -405,8 +405,8 @@ class UChromaHeadset(BaseUChromaDevice):
             return [to_color(x) for x in values]
 
 
-    def _set_rgb(self, *colors, brightness: float=None) -> bool:
-        if colors is None or len(colors) == 0:
+    def _set_rgb(self, *colors, brightness: float = None) -> bool:
+        if not colors:
             self.logger.error('RGB group out of range')
             return False
 
@@ -445,7 +445,7 @@ class UChromaHeadset(BaseUChromaDevice):
         :return: List of RGB tuples
         """
         colors = self._get_rgb()
-        if colors is None or len(colors) == 0:
+        if not colors:
             return None
 
         return [to_rgb(color) for color in colors]
@@ -460,8 +460,7 @@ class UChromaHeadset(BaseUChromaDevice):
             if bits.color_count == 0:
                 if bits.on:
                     return 100.0
-                else:
-                    return 0.0
+                return 0.0
 
             value = self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
             if value is None:

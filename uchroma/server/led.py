@@ -14,14 +14,13 @@ from collections import OrderedDict
 from enum import Enum
 
 from traitlets import Bool, Float, HasTraits, observe
+from grapefruit import Color
 
 from uchroma.color import to_color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
 from uchroma.util import scale_brightness, Signal
 
 from .types import BaseCommand, LEDType
-
-from grapefruit import Color
 
 
 NOSTORE = 0
@@ -38,7 +37,7 @@ class LEDMode(Enum):
     SPECTRUM = 0x04
 
 
-class LED(HasTraits, object):
+class LED(HasTraits):
     led_type = WriteOnceUseEnumCaseless(enum_class=LEDType)
     state = Bool(default_value=False, allow_none=False)
 
@@ -213,7 +212,7 @@ class LED(HasTraits, object):
     __repr__ = __str__
 
 
-class LEDManager(object):
+class LEDManager:
     def __init__(self, driver):
         self._driver = driver
         self._leds = {}

@@ -88,10 +88,10 @@ class PreferenceManager(metaclass=Singleton):
         Get the preference hierarchy for the given device serial number.
         """
         result = self._root.search('serial', serial)
-        if result is None or len(result) == 0:
+        if not result:
             result = Preferences(parent=self._root, serial=serial)
 
-        if isinstance(result, list) and len(result) > 0:
+        if isinstance(result, list) and result:
             return result[0]
 
         return result

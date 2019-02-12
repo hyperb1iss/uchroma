@@ -18,7 +18,7 @@ from uchroma.input_queue import InputQueue
 from uchroma.util import ensure_future
 
 
-class MacroDevice(object):
+class MacroDevice:
 
     def __init__(self, driver):
 

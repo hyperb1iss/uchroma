@@ -26,7 +26,7 @@ from .hardware import Quirks
 from .types import BaseCommand
 
 
-class Frame(object):
+class Frame:
     """
     A simple framebuffer for creating custom effects.
 
@@ -122,7 +122,7 @@ class Frame(object):
         before sending to the hardware. If the background color is
         set on a layer, it is only honored if it is the base layer.
         """
-        if len(layers) == 0:
+        if not layers:
             return None
 
         with warnings.catch_warnings():
@@ -199,7 +199,7 @@ class Frame(object):
             time.sleep(0.001)
 
 
-    def _set_frame_data(self, img, frame_id: int=None):
+    def _set_frame_data(self, img, frame_id: int = None):
         if frame_id is None:
             frame_id = Frame.DEFAULT_FRAME_ID
 
@@ -213,7 +213,7 @@ class Frame(object):
         self._driver.fx_manager.activate('custom_frame')
 
 
-    def commit(self, layers, frame_id: int=None, show=True) -> 'Frame':
+    def commit(self, layers, frame_id: int = None, show=True) -> 'Frame':
         """
         Display this frame and prepare for the next frame
 
@@ -234,7 +234,7 @@ class Frame(object):
         return self
 
 
-    def reset(self, frame_id: int=None) -> 'Frame':
+    def reset(self, frame_id: int = None) -> 'Frame':
         """
         Clear the frame on the hardware.
 

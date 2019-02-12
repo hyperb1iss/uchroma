@@ -33,7 +33,7 @@ from .laptop import UChromaLaptop
 from .mouse import UChromaMouse, UChromaWirelessMouse
 
 
-class AsyncMonitorObserver(object):
+class AsyncMonitorObserver:
 
     def __init__(self, monitor, callback=None, name=None, *args, **kwargs):
         if callback is None:
@@ -158,22 +158,22 @@ class UChromaDeviceManager(metaclass=Singleton):
             if device is not None:
                 self._devices[device.key] = device
 
-                if self._monitor and self._callbacks is not None and len(self._callbacks) > 0:
+                if self._monitor and self._callbacks:
                     ensure_future(self._fire_callbacks('add', device), loop=self._loop)
 
 
     def _next_index(self):
-        if len(self._devices) == 0:
+        if not self._devices:
             return 0
 
         indexes = [device.device_index for device in self._devices.values()]
         indexes.sort()
-        for idx in range(0, len(indexes)):
+        for idx, _ in enumerate(indexes):
             if idx + 1 == len(indexes):
-                return indexes[idx] + 1
-            elif indexes[idx] + 1 == indexes[idx + 1]:
+                return _ + 1
+            if _ + 1 == indexes[idx + 1]:
                 continue
-            return indexes[idx] + 1
+            return _ + 1
         raise ValueError('should not be here')
 
 
@@ -263,7 +263,7 @@ class UChromaDeviceManager(metaclass=Singleton):
                 removed = self._devices.pop(key, None)
                 if removed is not None:
                     removed.close()
-                    if self._callbacks is not None and len(self._callbacks) > 0:
+                    if self._callbacks:
                         ensure_future( \
                             self._fire_callbacks('remove', removed), loop=self._loop)
 
@@ -300,7 +300,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         ensure_future(self._udev_observer.start())
         self._monitor = True
 
-        if self._callbacks is not None and len(self._callbacks) > 0:
+        if self._callbacks:
             for device in self._devices.values():
                 ensure_future(self._fire_callbacks('add', device), loop=self._loop)
 

@@ -29,7 +29,7 @@ from uchroma.util import camel_to_snake
 CUSTOM = 'custom_frame'
 
 
-class BaseFX(HasTraits, object):
+class BaseFX(HasTraits):
 
     # meta
     hidden = Bool(default_value=False, read_only=True)
@@ -47,7 +47,7 @@ class BaseFX(HasTraits, object):
 
 
 
-class FXModule(object):
+class FXModule:
     def __init__(self, driver):
         self._driver = driver
         self._available_fx = frozendict(self._load_fx())
@@ -146,7 +146,7 @@ class FXManager(HasTraits):
 
             self._driver.preferences.fx = fx_name
             argsdict = get_args_dict(fx)
-            if len(argsdict) == 0:
+            if not argsdict:
                 argsdict = None
             self._driver.preferences.fx_args = argsdict
         return True
@@ -157,7 +157,7 @@ class FXManager(HasTraits):
         if fx is None:
             return False
 
-        if fx_name != CUSTOM and fx_name != 'disable':
+        if fx_name not in (CUSTOM, 'disable'):
             for k, v in kwargs.items():
                 if fx.has_trait(k):
                     setattr(fx, k, v)

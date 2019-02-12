@@ -69,4 +69,3 @@ class LEDType(Enum):
     @property
     def has_modes(self) -> bool:
         return self._has_modes
-

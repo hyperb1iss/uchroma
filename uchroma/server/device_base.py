@@ -32,7 +32,7 @@ from .report import RazerReport
 from .types import BaseCommand
 
 
-class BaseUChromaDevice(object):
+class BaseUChromaDevice:
     """
     Base class for device objects
     """
@@ -101,7 +101,7 @@ class BaseUChromaDevice(object):
         self.close(True)
 
 
-    def close(self, force: bool=False):
+    def close(self, force: bool = False):
         if not force:
             if self.animation_manager is not None and self.is_animating:
                 return
@@ -295,7 +295,7 @@ class BaseUChromaDevice(object):
 
 
     def get_report(self, command_class: int, command_id: int, data_size: int,
-                   *args, transaction_id: None, remaining_packets: int=0x00) -> RazerReport:
+                   *args, transaction_id: None, remaining_packets: int = 0x00) -> RazerReport:
         """
         Create and initialize a new RazerReport on this device
         """
@@ -325,8 +325,8 @@ class BaseUChromaDevice(object):
 
 
     def run_with_result(self, command: BaseCommand, *args,
-                        transaction_id: int=0xFF, delay: float=None,
-                        remaining_packets: int=0x00) -> bytes:
+                        transaction_id: int = 0xFF, delay: float = None,
+                        remaining_packets: int = 0x00) -> bytes:
         """
         Run a command and return the result
 
@@ -356,7 +356,7 @@ class BaseUChromaDevice(object):
 
 
     @synchronized
-    def run_report(self, report: RazerReport, delay: float=None) -> bool:
+    def run_report(self, report: RazerReport, delay: float = None) -> bool:
         """
         Runs a previously initialized RazerReport on the device
 
@@ -368,8 +368,8 @@ class BaseUChromaDevice(object):
             return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
 
 
-    def run_command(self, command: BaseCommand, *args, transaction_id: int=0xFF,
-                    delay: float=None, remaining_packets: int=0x00) -> bool:
+    def run_command(self, command: BaseCommand, *args, transaction_id: int = 0xFF,
+                    delay: float = None, remaining_packets: int = 0x00) -> bool:
         """
         Run a command
 

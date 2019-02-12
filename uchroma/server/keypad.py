@@ -33,4 +33,3 @@ class UChromaKeypad(UChromaKeyboard):
     @property
     def macro_manager(self):
         return self._macrodev
-

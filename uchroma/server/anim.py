@@ -104,7 +104,7 @@ class LayerHolder(HasTraits):
 
             await self.renderer._stop()
 
-            if len(tasks) > 0:
+            if tasks:
                 await asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
 
             self.renderer.finish(self._frame)
@@ -131,7 +131,7 @@ class AnimationLoop(HasTraits):
     The design of this loop intends to be as CPU-efficient as possible and
     does not wake up spuriously or otherwise consume cycles while inactive.
     """
-    def __init__(self, frame: Frame, default_blend_mode: str=None,
+    def __init__(self, frame: Frame, default_blend_mode: str = None,
                  *args, **kwargs):
         super(AnimationLoop, self).__init__(*args, **kwargs)
 
@@ -220,24 +220,20 @@ class AnimationLoop(HasTraits):
         layer is active.
         """
         # schedule tasks to wait on each renderer queue
-        for r_idx in range(0, len(self.layers)):
-            layer = self.layers[r_idx]
-
-            if layer.waiter is None or layer.waiter.done():
-                layer.waiter = ensure_future(self._dequeue(r_idx))
+        for r_idx, _ in enumerate(self.layers):
+            if _.waiter is None or _.waiter.done():
+                _.waiter = ensure_future(self._dequeue(r_idx))
 
         # async wait for at least one completion
         waiters = [layer.waiter for layer in self.layers]
-        if len(waiters) == 0:
+        if not waiters:
             return
 
         await asyncio.wait(waiters, return_when=futures.FIRST_COMPLETED)
 
         # check the rest without waiting
-        for r_idx in range(0, len(self.layers)):
-            layer = self.layers[r_idx]
-
-            if layer.waiter is not None and not layer.waiter.done():
+        for r_idx, _ in enumerate(self.layers):
+            if _.waiter is not None and not _.waiter.done():
                 self._dequeue_nowait(r_idx)
 
 
@@ -253,7 +249,7 @@ class AnimationLoop(HasTraits):
                 if layer is not None and layer.active_buf is not None]
 
         try:
-            if len(active_bufs) > 0:
+            if active_bufs:
                 self._frame.commit(active_bufs)
 
         except (OSError, IOError):
@@ -304,9 +300,9 @@ class AnimationLoop(HasTraits):
 
 
     def _update_z(self, tmp_list):
-        if len(tmp_list) > 0:
-            for layer_idx in range(0, len(tmp_list)):
-                tmp_list[layer_idx].renderer.zindex = layer_idx
+        if tmp_list:
+            for layer_idx, _ in enumerate(tmp_list):
+                _.renderer.zindex = layer_idx
 
         # fires trait observer
         self.layers = tmp_list
@@ -316,7 +312,7 @@ class AnimationLoop(HasTraits):
         self.layers_changed.fire('modify', *args)
 
 
-    def add_layer(self, renderer: Renderer, zindex: int=None) -> bool:
+    def add_layer(self, renderer: Renderer, zindex: int = None) -> bool:
         with self.hold_trait_notifications():
             if zindex is None:
                 zindex = len(self.layers)
@@ -367,7 +363,7 @@ class AnimationLoop(HasTraits):
 
 
     async def clear_layers(self):
-        if len(self.layers) == 0:
+        if not self.layers:
             return False
         for layer in self.layers[::-1]:
             await self.remove_layer(layer)
@@ -388,7 +384,7 @@ class AnimationLoop(HasTraits):
             self._logger.error("Animation loop already running")
             return False
 
-        if len(self.layers) == 0:
+        if not self.layers:
             self._logger.error("No renderers were configured")
             return False
 
@@ -523,7 +519,7 @@ class AnimationManager(HasTraits):
         for layer in self._loop.layers:
             prefs[layer.type_string] = layer.trait_values
 
-        if len(prefs) > 0:
+        if prefs:
             self._driver.preferences.layers = prefs
         else:
             self._driver.preferences.layers = None
@@ -561,7 +557,7 @@ class AnimationManager(HasTraits):
         return infos
 
 
-    def _get_renderer(self, name, zindex: int=None, **traits) -> Renderer:
+    def _get_renderer(self, name, zindex: int = None, **traits) -> Renderer:
         """
         Instantiate a renderer
 
@@ -580,7 +576,7 @@ class AnimationManager(HasTraits):
         return None
 
 
-    def add_renderer(self, name, traits: dict, zindex: int=None) -> int:
+    def add_renderer(self, name, traits: dict, zindex: int = None) -> int:
         """
         Adds a renderer which will produce a layer of this animation.
         Any number of renderers may be added and the output will be
@@ -667,7 +663,7 @@ class AnimationManager(HasTraits):
         """
         self._logger.debug('Restoring layers: %s', prefs.layers)
 
-        if prefs.layers is not None and len(prefs.layers) > 0:
+        if prefs.layers:
             try:
                 for name, args in prefs.layers.items():
                     self.add_renderer(name, args)

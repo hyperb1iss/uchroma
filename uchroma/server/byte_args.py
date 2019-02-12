@@ -17,7 +17,7 @@ import numpy as np
 from grapefruit import Color
 
 
-class ByteArgs(object):
+class ByteArgs:
     """
     Helper class for assembling byte arrays from
     argument lists of varying types
@@ -90,7 +90,7 @@ class ByteArgs(object):
                 data = arg.value
         elif isinstance(arg, np.ndarray):
             data = arg.flatten()
-        elif isinstance(arg, bytes) or isinstance(arg, bytearray):
+        elif isinstance(arg, (bytearray, bytes)):
             data = arg
         else:
             data = struct.pack("=B", arg)

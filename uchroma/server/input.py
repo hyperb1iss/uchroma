@@ -23,7 +23,7 @@ import evdev
 from uchroma.util import ensure_future
 
 
-class InputManager(object):
+class InputManager:
     """
     Manages event devices associated with a physical device instance and
     allows for callback registration. Reader loop is fully asynchronous.
@@ -86,7 +86,7 @@ class InputManager(object):
             except Exception as err:
                 self._logger.exception("Failed to open device: %s", input_device, exc_info=err)
 
-        if len(self._event_devices) > 0:
+        if self._event_devices:
             self._opened = True
 
         return self._opened
@@ -142,7 +142,7 @@ class InputManager(object):
 
         self._event_callbacks.remove(callback)
 
-        if len(self._event_callbacks) == 0:
+        if not self._event_callbacks:
             await self._close_input_devices()
 
 

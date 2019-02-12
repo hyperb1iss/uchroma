@@ -11,7 +11,7 @@
 # License for more details.
 #
 
-# pylint: disable=import-error, no-name-in-module, invalid-name, redefined-variable-type
+# pylint: disable=import-error, no-name-in-module, invalid-name
 
 import struct
 import time
@@ -41,7 +41,7 @@ class Status(Enum):
     BAD_CRC = 0xFE
     OSERROR = 0xFF
 
-class RazerReport(object):
+class RazerReport:
     """
     Generates and parses HID reports to and from the hardware.
 
@@ -125,7 +125,7 @@ class RazerReport(object):
         self._result = None
 
 
-    def run(self, delay: float=None, timeout_cb=None) -> bool:
+    def run(self, delay: float = None, timeout_cb=None) -> bool:
         """
         Run this report and retrieve the result from the hardware.
 
@@ -280,4 +280,3 @@ class RazerReport(object):
         self._hexdump(data, "raw response: ")
 
         return False
-

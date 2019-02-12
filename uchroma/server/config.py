@@ -17,7 +17,7 @@ import os
 import sys
 import tempfile
 
-from collections import Iterable, OrderedDict, Sequence
+from collections import Iterable, OrderedDict
 from contextlib import contextmanager
 from itertools import chain
 
@@ -28,7 +28,7 @@ import ruamel.yaml as yaml
 from uchroma.util import ArgsDict
 
 
-class Configuration(object):
+class Configuration:
     """
     Configuration hierarchy
 
@@ -49,7 +49,7 @@ class Configuration(object):
 
 
     @classmethod
-    def create(cls, name: str, fields: list, yaml_name: str=None, mutable: bool=False):
+    def create(cls, name: str, fields: list, yaml_name: str = None, mutable: bool = False):
         """
         Derive a new Configuration class type.
 
@@ -119,7 +119,7 @@ class Configuration(object):
 
 
     def __iter__(self):
-        if self._children is not None and len(self._children) > 0:
+        if self._children:
             return chain.from_iterable(self.flatten())
         return iter((self,))
 
@@ -235,7 +235,7 @@ class Configuration(object):
             """
             if obj.get(key) == value:
                 yield obj
-            if obj.children is not None and len(obj.children) > 0:
+            if obj.children:
                 for child in obj.children:
                     yield from search_recursive(child, key, value)
         return [x for x in search_recursive(self, key, value)]
@@ -248,7 +248,7 @@ class Configuration(object):
         :return: The list of hardware objects
         """
         flat = []
-        if self.children is not None and isinstance(self.children, tuple) and len(self.children) > 0:
+        if self.children and isinstance(self.children, tuple):
             flat.extend([child.flatten() for child in self.children])
         else:
             tmp = {}
@@ -262,7 +262,7 @@ class Configuration(object):
     def _asdict(self) -> OrderedDict:
         od = OrderedDict()
         for slot in self.__slots__:
-            if slot == 'parent' or slot == '_children':
+            if slot in ('parent', '_children'):
                 continue
             value = getattr(self, slot)
             if value is None:
@@ -374,7 +374,7 @@ class Configuration(object):
                 children = mapping.pop('children', None)
                 config = cls(**cls._coerce_types(mapping), parent=parent)
 
-            if children is not None and len(children) > 0:
+            if children:
                 for child in children:
                     unpack(child, parent=config)
             return config
@@ -404,7 +404,7 @@ class Configuration(object):
         return None
 
 
-    def save_yaml(self, filename: str=None):
+    def save_yaml(self, filename: str = None):
         """
         Serialize the hierarchy to a file.
 
@@ -439,7 +439,7 @@ def represent_enum_str(dumper, data):
     """
     return dumper.represent_str(data.name)
 
-class FlowSequence(tuple, object):
+class FlowSequence(tuple):
     """
     A YAML sequence created from a tuple which will be represented
     in flowed style.
@@ -452,8 +452,8 @@ class LowerCaseSeq(FlowSequence):
     """
     def __new__(cls, args):
         items = []
-        for x in range(0, len(args)):
-            items.append(args[x].lower())
+        for x, _ in enumerate(args):
+            items.append(_.lower())
         return super().__new__(cls, args)
 
 yaml.RoundTripDumper.ignore_aliases = lambda *x: True

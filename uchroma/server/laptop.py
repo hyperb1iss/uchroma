@@ -53,4 +53,3 @@ class UChromaLaptop(UChromaKeyboard):
         if value is None:
             return 0.0
         return scale_brightness(int(value[1]), True)
-

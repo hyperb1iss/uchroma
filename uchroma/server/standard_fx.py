@@ -13,7 +13,6 @@
 
 # pylint: disable=no-member, invalid-name
 
-from abc import abstractmethod
 from enum import Enum
 
 from traitlets import Bool, Int, Unicode
@@ -116,7 +115,7 @@ class StandardFX(FXModule):
         self._report = None
 
 
-    def _set_effect_basic(self, effect: FX, *args, transaction_id: int=None) -> bool:
+    def _set_effect_basic(self, effect: FX, *args, transaction_id: int = None) -> bool:
         if self._report is None:
             self._report = self._driver.get_report( \
                 *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id)

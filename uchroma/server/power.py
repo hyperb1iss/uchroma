@@ -138,4 +138,3 @@ class PowerMonitor(metaclass=Singleton):
         self._name_watchers.clear()
 
         self._running = False
-

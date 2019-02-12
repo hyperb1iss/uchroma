@@ -62,7 +62,7 @@ class Quirks(IntEnum):
 # Marker types for YAML output
 _Point = NamedTuple('_Point', [('y', int), ('x', int)])
 
-class Point(_Point, object):
+class Point(_Point):
     def __repr__(self):
         return '(%s, %s)' % (self.y, self.x)
 
@@ -72,7 +72,7 @@ class PointList(FlowSequence):
         if isinstance(args, list):
             if isinstance(args[0], int) and len(args) == 2:
                 return Point(args[0], args[1])
-            elif isinstance(args[0], list):
+            if isinstance(args[0], list):
                 return cls([cls(arg) for arg in args])
         return super(PointList, cls).__new__(cls, args)
 
@@ -182,7 +182,7 @@ class Hardware(BaseHardware):
         config = cls.get_type(hw_type)
 
         result = config.search('product_id', product_id)
-        if result is None or len(result) == 0:
+        if not result:
             return None
 
         if isinstance(result, list) and len(result) == 1:
