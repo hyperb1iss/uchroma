@@ -38,6 +38,7 @@ class PowerMonitor(metaclass=Singleton):
         self._name_watchers = []
         self._running = False
         self._sleeping = False
+        self._user_active = False
 
         self._session_bus = SessionBus()
         self._system_bus = SystemBus()
@@ -64,6 +65,19 @@ class PowerMonitor(metaclass=Singleton):
 
     def _active_changed(self, active):
         self._suspend(active, False)
+
+
+    def _is_user_active(self):
+        user = self._system_bus.get(LOGIN_SERVICE, "/org/freedesktop/login1/user/self")
+        self._logger.info("is_user_active: %s %s", user, user.Display)
+        return user is not None and user.Display[0] != ''
+
+
+    def _user_changed(self, changed):
+        is_active = self._is_user_active()
+        if is_active != self._user_active:
+            self._user_active = is_active
+            self._suspend(not self._user_active, True)
 
 
     def start(self):
@@ -98,6 +112,9 @@ class PowerMonitor(metaclass=Singleton):
                 login1 = self._system_bus.get(LOGIN_SERVICE)
                 login1.PrepareForSleep.connect(self._prepare_for_sleep)
                 self._logger.info("Connected to %s %s", LOGIN_SERVICE, args)
+
+                user = self._system_bus.get(LOGIN_SERVICE, "/org/freedesktop/login1/user/self")
+                user.PropertiesChanged.connect(self._user_changed)
 
             except Exception:
                 self._logger.warn("Could not connect to login1 service")
