@@ -68,6 +68,11 @@ class LED(HasTraits, object):
         GET_LED_BRIGHTNESS = (0x03, 0x83, 0x03)
 
 
+    class ExtendedCommand(BaseCommand):
+        SET_LED_BRIGHTNESS = (0x0F, 0x04, 0x03)
+        GET_LED_BRIGHTNESS = (0x0F, 0x84, 0x03)
+
+
     def __init__(self, driver, led_type: LEDType, *args, **kwargs):
         super(LED, self).__init__(*args, **kwargs)
         self._driver = driver
@@ -107,6 +112,19 @@ class LED(HasTraits, object):
         return self._driver.run_command(cmd, *(VARSTORE, self._led_type.hardware_id) + args, delay=0.035)
 
 
+    def _get_brightness(self):
+        if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+            return self._get(LED.ExtendedCommand.GET_LED_BRIGHTNESS)
+        return self._get(LED.Command.GET_LED_BRIGHTNESS)
+
+
+    def _set_brightness(self, value):
+        if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+            self._set(LED.ExtendedCommand.SET_LED_BRIGHTNESS, value)
+        else:
+            self._set(LED.Command.SET_LED_BRIGHTNESS, value)
+
+
     def _refresh(self):
         try:
             self._refreshing = True
@@ -129,7 +147,7 @@ class LED(HasTraits, object):
                 self.mode = LEDMode(value[2])
 
             # brightness
-            value = self._get(LED.Command.GET_LED_BRIGHTNESS)
+            value = self._get_brightness()
             if value is not None:
                 self.brightness = scale_brightness(int(value[2]), True)
 
@@ -147,7 +165,7 @@ class LED(HasTraits, object):
         elif change.name == 'mode':
             self._set(LED.Command.SET_LED_MODE, change.new)
         elif change.name == 'brightness':
-            self._set(LED.Command.SET_LED_BRIGHTNESS, scale_brightness(change.new))
+            self._set_brightness(scale_brightness(change.new))
             if change.old == 0 and change.new > 0:
                 self._set(LED.Command.SET_LED_STATE, 1)
             elif change.old > 0 and change.new == 0:
