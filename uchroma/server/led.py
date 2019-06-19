@@ -20,6 +20,7 @@ from uchroma.color import to_color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
 from uchroma.util import scale_brightness, Signal
 
+from .hardware import Quirks
 from .types import BaseCommand, LEDType
 
 
