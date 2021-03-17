@@ -1,5 +1,5 @@
 #
-# uchroma - Copyright (C) 2017 Steve Kondik
+# uchroma - Copyright (C) 2021 Stefanie Kondik
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published
@@ -266,13 +266,20 @@ class RazerReport:
                 self._status = Status.BAD_CRC
                 return False
 
+            """
             assert transaction_id == self._transaction_id, \
                 'Transaction id does not match (%d vs %d)' % \
                 (transaction_id, self._transaction_id)
-            assert command_class == self._command_class, 'Command class does not match'
-            assert command_id == self._command_id, 'Command id does not match'
-            assert protocol_type == self._protocol_type, 'Protocol type does not match'
-
+            assert command_class == self._command_class, \
+                'Command class does not match (%d vs %d)' % \
+                (command_class, self._command_class)
+            assert command_id == self._command_id, \
+                'Command id does not match (%d vs %d)' % \
+                (command_id, self._command_id)
+            assert protocol_type == self._protocol_type, \
+                'Protocol type does not match (%d vs %d)' % \
+                (protocol_type, self._protocol_type)
+            """
             return True
 
         self._logger.error("Got error %s for command %02x,%02x",

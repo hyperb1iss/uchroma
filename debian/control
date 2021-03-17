@@ -1,7 +1,7 @@
 Source: uchroma
 Section: misc
 Priority: optional
-Maintainer: Steve Kondik <shade@chemlab.org>
+Maintainer: Stefanie Kondik <shade@chemlab.org>
 Build-Depends: cython3,
         debhelper (>=9),
         dh-python,

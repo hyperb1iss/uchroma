@@ -1,5 +1,5 @@
 #
-# uchroma - Copyright (C) 2017 Steve Kondik
+# uchroma - Copyright (C) 2021 Stefanie Kondik
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published
@@ -24,7 +24,7 @@ DEFAULT_SPEED = 8
 class Rainbow(Renderer):
 
     # meta
-    meta = RendererMeta('Rainflow', 'Simple flowing colors', 'Steve Kondik', '1.0')
+    meta = RendererMeta('Rainflow', 'Simple flowing colors', 'Stefanie Kondik', '1.0')
 
     # configurable traits
     speed = Int(default_value=DEFAULT_SPEED, min=0, max=20).tag(config=True)

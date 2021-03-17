@@ -1,5 +1,5 @@
 #
-# uchroma - Copyright (C) 2017 Steve Kondik
+# uchroma - Copyright (C) 2021 Stefanie Kondik
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published
@@ -295,7 +295,7 @@ class BaseUChromaDevice:
 
 
     def get_report(self, command_class: int, command_id: int, data_size: int,
-                   *args, transaction_id: None, remaining_packets: int = 0x00) -> RazerReport:
+                   *args, transaction_id: int, remaining_packets: int = 0x00) -> RazerReport:
         """
         Create and initialize a new RazerReport on this device
         """
@@ -304,6 +304,8 @@ class BaseUChromaDevice:
                 transaction_id = 0x3F
             else:
                 transaction_id = 0xFF
+
+        self.logger.debug('Transaction id: %d quirks: %s' % (transaction_id, self.hardware.quirks))
 
         report = RazerReport(self, command_class, command_id, data_size,
                              transaction_id=transaction_id,
@@ -325,7 +327,7 @@ class BaseUChromaDevice:
 
 
     def run_with_result(self, command: BaseCommand, *args,
-                        transaction_id: int = 0xFF, delay: float = None,
+                        transaction_id: int = None, delay: float = None,
                         remaining_packets: int = 0x00) -> bytes:
         """
         Run a command and return the result
@@ -368,7 +370,7 @@ class BaseUChromaDevice:
             return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
 
 
-    def run_command(self, command: BaseCommand, *args, transaction_id: int = 0xFF,
+    def run_command(self, command: BaseCommand, *args, transaction_id: int = None,
                     delay: float = None, remaining_packets: int = 0x00) -> bool:
         """
         Run a command
@@ -619,9 +621,9 @@ class BaseUChromaDevice:
 
 
     def __repr__(self):
-        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d)" % \
+        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d, quirks=%s)" % \
             (self.__class__.__name__, self.name, self.device_type.value,
-             self.product_id, self.device_index)
+             self.product_id, self.device_index, self.hardware.quirks)
 
 
     def _device_open(self):

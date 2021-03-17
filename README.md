@@ -123,7 +123,7 @@ The number after the dot is the device index. You may select a target device wit
 	
 	           plasma │ Colorful moving blobs of plasma
 	 ─────────────────┼────────────────────────────────────────────────────
-	           author │ Steve Kondik
+	           author │ Stefanie Kondik
 	      description │ Colorful moving blobs of plasma
 	             name │ Plasma
 	          version │ v1.0
@@ -274,7 +274,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	            plasma │ Colorful moving blobs of plasma
 	 ──────────────────┼───────────────────────────────────────────────────
-	            author │ Steve Kondik
+	            author │ Stefanie Kondik
 	       description │ Colorful moving blobs of plasma
 	              name │ Plasma
 	           version │ v1.0
@@ -302,7 +302,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	          rainflow │ Simple flowing colors
 	 ──────────────────┼───────────────────────────────────────────────────
-	            author │ Steve Kondik
+	            author │ Stefanie Kondik
 	       description │ Simple flowing colors
 	              name │ Rainflow
 	           version │ 1.0
@@ -317,7 +317,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	           ripples │ Ripples of color when keys are pressed
 	 ──────────────────┼───────────────────────────────────────────────────
-	            author │ Steve Kondik
+	            author │ Stefanie Kondik
 	       description │ Ripples of color when keys are pressed
 	              name │ Ripples
 	           version │ 1.0
@@ -438,7 +438,7 @@ Send a pull request if you implement a new renderer and would like to have it in
 
 ## Credits
 
-[Copyright (C) 2017 Steve Kondik](https://github.com/cyanogen)
+[Copyright (C) 2021 Stefanie Kondik](https://github.com/cyanogen)
 
 [Inspired by work from Tim Theede and Terry Cain](https://github.com/terrycain/razer-drivers)
  

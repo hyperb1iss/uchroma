@@ -3,11 +3,11 @@ Upstream-Name: uchroma
 Source: https://github.com/cyanogen/uchroma
 
 Files: *
-Copyright: 2016-2017 Steve Kondik <shade@chemlab.org>
+Copyright: 2016-2021 Stefanie Kondik <shade@chemlab.org>
 License: LGPL-3.0+
 
 Files: debian/*
-Copyright: 2017 Steve Kondik <shade@chemlab.org>
+Copyright: 2021 Stefanie Kondik <shade@chemlab.org>
 License: LGPL-3.0+
 
 License: LGPL-3.0+

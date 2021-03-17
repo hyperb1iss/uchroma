@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # uchroma documentation build configuration file, created by
-# sphinx-quickstart on Thu Jan  5 01:52:21 2017.
+# sphinx-quickstart on Thu Jan  5 01:52:21 2021.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -59,8 +59,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'uchroma'
-copyright = '2017, Steve Kondik'
-author = 'Steve Kondik'
+copyright = '2021, Stefanie Kondik'
+author = 'Stefanie Kondik'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -276,7 +276,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'uchroma.tex', 'uchroma Documentation',
-     'Steve Kondik', 'manual'),
+     'Stefanie Kondik', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

@@ -1,5 +1,5 @@
 #
-# uchroma - Copyright (C) 2017 Steve Kondik
+# uchroma - Copyright (C) 2021 Stefanie Kondik
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published
@@ -157,6 +157,9 @@ class UChromaDeviceManager(metaclass=Singleton):
             device = self._create_device(parent, hardware, devinfo)
             if device is not None:
                 self._devices[device.key] = device
+
+                if hardware.type == Hardware.Type.KEYBOARD:
+                    device.set_device_mode(0)
 
                 if self._monitor and self._callbacks:
                     ensure_future(self._fire_callbacks('add', device), loop=self._loop)

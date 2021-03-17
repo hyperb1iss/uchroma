@@ -1,5 +1,5 @@
 #
-# uchroma - Copyright (C) 2017 Steve Kondik
+# uchroma - Copyright (C) 2021 Stefanie Kondik
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published
@@ -38,7 +38,7 @@ class Ripple(Renderer):
 
     # meta
     meta = RendererMeta('Ripples', 'Ripples of color when keys are pressed',
-                        'Steve Kondik', '1.0')
+                        'Stefanie Kondik', '1.0')
 
     # configurable traits
     ripple_width = Int(default_value=DEFAULT_WIDTH, min=1, max=5).tag(config=True)

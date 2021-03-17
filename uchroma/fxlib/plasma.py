@@ -1,5 +1,5 @@
 #
-# uchroma - Copyright (C) 2017 Steve Kondik
+# uchroma - Copyright (C) 2021 Stefanie Kondik
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License as published
@@ -32,7 +32,7 @@ class Plasma(Renderer):
 
     # meta
     meta = RendererMeta('Plasma', 'Colorful moving blobs of plasma',
-                        'Steve Kondik', 'v1.0')
+                        'Stefanie Kondik', 'v1.0')
 
     # configurable traits
     color_scheme = ColorSchemeTrait(minlen=2, \
