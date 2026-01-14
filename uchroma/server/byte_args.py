@@ -14,7 +14,7 @@ import struct
 from enum import Enum
 
 import numpy as np
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 
 class ByteArgs:

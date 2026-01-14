@@ -13,7 +13,7 @@
 
 # pylint: disable=protected-access
 
-import hidapi
+from uchroma.server import hidadapter as hidapi
 
 from traitlets import Unicode
 from wrapt import synchronized

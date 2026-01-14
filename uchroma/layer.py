@@ -16,7 +16,7 @@
 import math
 
 import numpy as np
-from grapefruit import Color
+from uchroma.colorlib import Color
 from skimage import draw
 
 from uchroma.blending import BlendOp

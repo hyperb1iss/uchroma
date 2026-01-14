@@ -21,7 +21,7 @@ from datetime import datetime
 
 import ruamel.yaml as yaml
 
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 from uchroma.util import Singleton
 

@@ -21,7 +21,7 @@ from concurrent import futures
 from types import ModuleType
 from typing import NamedTuple
 
-from pkg_resources import iter_entry_points
+from importlib.metadata import entry_points
 from traitlets import Bool, HasTraits, List, observe
 
 from uchroma.log import LOG_TRACE
@@ -528,13 +528,14 @@ class AnimationManager(HasTraits):
     def _discover_renderers(self):
         infos = OrderedDict()
 
-        for ep_mod in iter_entry_points(group='uchroma.plugins', name='renderers'):
+        eps = entry_points(group='uchroma.plugins')
+        for ep_mod in eps.select(name='renderers'):
             obj = ep_mod.load()
             if not inspect.ismodule(obj):
                 self._logger.error("Plugin %s is not a module, skipping", ep_mod)
                 continue
 
-        for ep_cls in iter_entry_points(group='uchroma.plugins', name='renderer'):
+        for ep_cls in eps.select(name='renderer'):
             obj = ep_cls.load()
             if not issubclass(obj, Renderer):
                 self._logger.error("Plugin %s is not a renderer, skipping", ep_cls)

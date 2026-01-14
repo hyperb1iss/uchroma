@@ -22,7 +22,7 @@ from gi.repository.GLib import Variant
 from traitlets import HasTraits, TraitType, Undefined, UseEnum
 
 from frozendict import frozendict
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 import numpy as np
 

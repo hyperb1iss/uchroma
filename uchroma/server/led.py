@@ -14,7 +14,7 @@ from collections import OrderedDict
 from enum import Enum
 
 from traitlets import Bool, Float, HasTraits, observe
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 from uchroma.color import to_color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless

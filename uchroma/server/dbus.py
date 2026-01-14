@@ -31,7 +31,7 @@ from enum import Enum
 from pydbus import SessionBus
 from pydbus.generic import signal
 
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 from uchroma.dbus_utils import ArgSpec, dbus_prepare, DescriptorBuilder, \
         TraitsPropertiesMixin

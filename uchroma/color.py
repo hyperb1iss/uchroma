@@ -23,7 +23,7 @@ from typing import Iterable, List, Union
 
 import numpy as np
 
-from grapefruit import Color
+from uchroma.colorlib import Color
 from hsluv import hsluv_to_rgb, rgb_to_hsluv
 from skimage.util import dtype
 

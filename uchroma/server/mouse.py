@@ -13,9 +13,9 @@
 import struct
 from enum import Enum
 
-import hidapi
+from uchroma.server import hidadapter as hidapi
 
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 from uchroma.color import colorarg, ColorType, to_color
 from uchroma.util import clamp, scale, scale_brightness

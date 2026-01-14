@@ -17,7 +17,7 @@ import re
 from concurrent import futures
 from contextlib import contextmanager
 
-import hidapi
+from uchroma.server import hidadapter as hidapi
 from wrapt import synchronized
 
 from uchroma.log import Log

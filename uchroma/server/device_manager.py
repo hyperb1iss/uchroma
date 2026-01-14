@@ -15,7 +15,7 @@ import asyncio
 from collections import OrderedDict
 from concurrent import futures
 
-import hidapi
+from uchroma.server import hidadapter as hidapi
 
 from pyudev import Context, Monitor, MonitorObserver
 from pyudev._os import pipe

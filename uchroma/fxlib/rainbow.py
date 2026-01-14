@@ -13,7 +13,7 @@
 import asyncio
 
 from traitlets import Int, observe
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 from uchroma.renderer import Renderer, RendererMeta
 

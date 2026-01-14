@@ -17,13 +17,17 @@ import os
 import sys
 import tempfile
 
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable
 from contextlib import contextmanager
 from itertools import chain
 
 from enum import Enum
 
-import ruamel.yaml as yaml
+from ruamel.yaml import YAML
+
+_yaml = YAML()
+_yaml.preserve_quotes = True
 
 from uchroma.util import ArgsDict
 
@@ -82,8 +86,10 @@ class Configuration:
             """
             return dumper.represent_mapping(yaml_name, data.sparsedict(deep=False))
 
-        yaml.RoundTripLoader.add_constructor(yaml_name, yaml.RoundTripLoader.construct_yaml_map)
-        yaml.RoundTripDumper.add_multi_representer(derived, represent_config)
+        def construct_config(constructor, node):
+            return constructor.construct_yaml_map(node)
+        _yaml.constructor.add_constructor(yaml_name, construct_config)
+        _yaml.representer.add_multi_representer(derived, represent_config)
 
         return derived
 
@@ -384,7 +390,7 @@ class Configuration:
 
         data = None
         with open(filename, 'r') as yaml_file:
-            data = unpack(yaml.round_trip_load(yaml_file.read()))
+            data = unpack(_yaml.load(yaml_file))
 
         if data is not None:
             cls._yaml_cache[filename] = data
@@ -397,7 +403,10 @@ class Configuration:
         """
         Get the YAML representation of this object as a string
         """
-        return yaml.round_trip_dump(self)
+        import io
+        stream = io.StringIO()
+        _yaml.dump(self, stream)
+        return stream.getvalue()
 
 
     def _yaml_header(self) -> str:
@@ -418,7 +427,7 @@ class Configuration:
             header = self._yaml_header()
             if header is not None:
                 temp.write(header)
-            yaml.round_trip_dump(self, stream=temp)
+            _yaml.dump(self, temp)
             tempname = temp.name
         os.rename(tempname, filename)
 
@@ -456,8 +465,7 @@ class LowerCaseSeq(FlowSequence):
             items.append(_.lower())
         return super().__new__(cls, args)
 
-yaml.RoundTripDumper.ignore_aliases = lambda *x: True
-yaml.RoundTripDumper.add_multi_representer(Enum, represent_enum_str)
-yaml.RoundTripDumper.add_multi_representer(FlowSequence, represent_flow_seq)
-
-yaml.RoundTripDumper.add_multi_representer(OrderedDict, yaml.RoundTripDumper.represent_ordereddict)
+# Configure YAML representers
+_yaml.representer.ignore_aliases = lambda *x: True
+_yaml.representer.add_multi_representer(Enum, represent_enum_str)
+_yaml.representer.add_multi_representer(FlowSequence, represent_flow_seq)

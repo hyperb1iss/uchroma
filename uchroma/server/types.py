@@ -19,7 +19,7 @@ Common types and enumerations which are used by everything.
 
 from enum import Enum
 
-from grapefruit import Color
+from uchroma.colorlib import Color
 
 
 class BaseCommand(Enum):

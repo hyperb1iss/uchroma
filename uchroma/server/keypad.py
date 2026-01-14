@@ -10,7 +10,7 @@
 # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
 # License for more details.
 #
-import hidapi
+from uchroma.server import hidadapter as hidapi
 
 from .keyboard import UChromaKeyboard
 from .hardware import Hardware

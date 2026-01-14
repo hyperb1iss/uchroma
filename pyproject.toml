@@ -1,89 +1,66 @@
 [project]
 name = "uchroma"
-version = "2.0.0"
+version = "1.1.0"
 description = "Userspace RGB control for Razer Chroma peripherals"
 readme = "README.md"
 license = "LGPL-3.0-only"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 authors = [{ name = "Stefanie Kondik", email = "stef@hyperbliss.tech" }]
 keywords = ["razer", "chroma", "rgb", "keyboard", "mouse", "linux"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
     "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3",
     "Topic :: System :: Hardware :: Hardware Drivers",
 ]
 dependencies = [
-    "uchroma-core",
-    "uchroma-daemon",
-    "uchroma-cli",
-    "pyusb>=1.3.1",
-    "pyudev>=0.24.4",
+    "argcomplete",
+    "coloraide>=4.0",
+    "colorlog",
+    "colr",
+    "dbus-fast>=2.0",
+    "evdev",
+    "frozendict",
+    "hidapi",
+    "hsluv",
+    "numpy",
+    "pyudev",
+    "ruamel.yaml",
+    "scikit-image",
+    "traitlets",
+    "wrapt",
 ]
 
+[project.scripts]
+uchroma = "uchroma.client.client:run_client"
+uchromad = "uchroma.server.server:run_server"
+
+[project.entry-points."uchroma.plugins"]
+renderers = "uchroma.fxlib"
+
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61", "cython>=3.0", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["uchroma", "uchroma.fxlib", "uchroma.client", "uchroma.server"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"uchroma.server" = ["data/*.yaml"]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0",
-    "pytest-asyncio>=1.3",
-    "pytest-cov>=7.0",
-    "ruff>=0.14",
-    "pyright>=1.1",
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "cython>=3.0",
 ]
-
-[tool.uv.workspace]
-members = [
-    "apps/daemon",
-    "apps/cli",
-    "packages/python/uchroma-core",
-]
-
-[tool.uv.sources]
-uchroma-core = { workspace = true }
-uchroma-daemon = { workspace = true }
-uchroma-cli = { workspace = true }
 
 [tool.ruff]
 line-length = 100
-src = ["apps", "packages"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ASYNC", "C4", "T20", "PT", "PL", "TRY"]
-ignore = [
-    "E501",     # Line too long
-    "E741",     # Ambiguous variable name (l for lightness is fine)
-    "S101",     # Assert usage
-    "TRY003",   # Long exception messages
-    "TRY300",   # Consider else block
-    "TRY301",   # Abstract raise
-    "PLR0912",  # Too many branches
-    "PLR0913",  # Too many arguments
-    "PLR2004",  # Magic values
-    "PLC0415",  # Import not at top level (lazy imports are intentional)
-    "B904",     # raise without from (typer.Exit doesn't need it)
-    "F722",     # Syntax error in forward annotation (dbus-fast uses D-Bus type strings)
-    "F821",     # Undefined name (dbus-fast uses D-Bus type strings like "s", "b", "i")
-    "UP037",    # Remove quotes from type annotation (dbus-fast needs quoted strings)
-    "RUF006",   # Store reference to asyncio.create_task (fire-and-forget is intentional)
-    "SIM105",   # contextlib.suppress (explicit try/except is clearer for async)
-]
-
-[tool.ruff.lint.isort]
-known-first-party = ["uchroma_core", "uchroma_daemon", "uchroma_cli"]
-
-[tool.pyright]
-pythonVersion = "3.13"
-typeCheckingMode = "standard"
-reportMissingImports = false
-reportMissingTypeStubs = false
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+select = ["E", "F", "I"]
+ignore = ["E501", "E741"]
