@@ -1,0 +1,20 @@
+[Unit]
+Description=uchroma RGB Control Daemon
+Documentation=https://github.com/hyperbliss/uchroma
+After=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=tech.hyperbliss.uchroma
+ExecStart=%h/.local/bin/uchromad
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.config/uchroma
+
+[Install]
+WantedBy=default.target

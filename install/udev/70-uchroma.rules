@@ -1,0 +1,9 @@
+# uchroma - Razer device permissions
+# Grant access to Razer devices for users via uaccess (logind)
+
+# Match all Razer HID devices
+ACTION=="add|change", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", TAG+="uaccess"
+ACTION=="add|change", SUBSYSTEM=="usb", ATTRS{idVendor}=="1532", TAG+="uaccess"
+
+# Create symlinks for easier device identification
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", SYMLINK+="razer%n"
