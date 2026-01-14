@@ -19,7 +19,6 @@ dependencies = [
     "argcomplete",
     "coloraide>=4.0",
     "colorlog",
-    "colr",
     "dbus-fast>=2.0",
     "evdev",
     "frozendict",

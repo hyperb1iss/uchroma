@@ -19,18 +19,24 @@ from .hardware import Hardware
 from .types import BaseCommand
 
 
+# LED constants from Razer protocol
+VARSTORE = 0x01
+BACKLIGHT_LED = 0x05
+
+
 class UChromaLaptop(UChromaKeyboard):
     """
     Commands required for Blade laptops
     """
 
-    # commands
+    # Standard LED brightness commands (class 0x03)
+    # These work on Blade 2021+ models
     class Command(BaseCommand):
         """
         Enumeration of standard commands not handled elsewhere
         """
-        SET_BRIGHTNESS = (0x0e, 0x04, 0x02)
-        GET_BRIGHTNESS = (0x0e, 0x84, 0x02)
+        SET_BRIGHTNESS = (0x03, 0x03, 0x03)
+        GET_BRIGHTNESS = (0x03, 0x83, 0x03)
 
 
     def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
@@ -45,11 +51,16 @@ class UChromaLaptop(UChromaKeyboard):
 
 
     def _set_brightness(self, level: float):
-        return self.run_command(UChromaLaptop.Command.SET_BRIGHTNESS, 0x01, scale_brightness(level))
+        # Standard LED brightness: args = [VARSTORE, BACKLIGHT_LED, brightness]
+        return self.run_command(UChromaLaptop.Command.SET_BRIGHTNESS,
+                               VARSTORE, BACKLIGHT_LED, scale_brightness(level))
 
 
     def _get_brightness(self) -> float:
-        value = self.run_with_result(UChromaLaptop.Command.GET_BRIGHTNESS)
+        # Standard LED brightness: args = [VARSTORE, BACKLIGHT_LED, 0x00]
+        value = self.run_with_result(UChromaLaptop.Command.GET_BRIGHTNESS,
+                                    VARSTORE, BACKLIGHT_LED, 0x00)
         if value is None:
             return 0.0
-        return scale_brightness(int(value[1]), True)
+        # Response: brightness is in args[2]
+        return scale_brightness(int(value[2]), True)

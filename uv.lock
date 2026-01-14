@@ -49,12 +49,6 @@ wheels = [
 ]
 
 [[package]]
-name = "colr"
-version = "0.9.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/43/a9/75bcc155e0bf57062e77974a5aea724123de3becd69fca6f8572127c09a2/Colr-0.9.1.tar.gz", hash = "sha256:8c15437eeb2ec8821c6df24b62946dfc6b79f69a1d84c1a6c131945a5ff4623c", size = 116430, upload-time = "2019-08-31T01:36:22.856Z" }
-
-[[package]]
 name = "cython"
 version = "3.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -943,7 +937,6 @@ dependencies = [
     { name = "argcomplete" },
     { name = "coloraide" },
     { name = "colorlog" },
-    { name = "colr" },
     { name = "dbus-fast" },
     { name = "evdev" },
     { name = "frozendict" },
@@ -971,7 +964,6 @@ requires-dist = [
     { name = "argcomplete" },
     { name = "coloraide", specifier = ">=4.0" },
     { name = "colorlog" },
-    { name = "colr" },
     { name = "dbus-fast", specifier = ">=2.0" },
     { name = "evdev" },
     { name = "frozendict" },

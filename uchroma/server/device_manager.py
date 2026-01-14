@@ -141,10 +141,14 @@ class UChromaDeviceManager(metaclass=Singleton):
             if hardware.type == Hardware.Type.HEADSET:
                 if devinfo.interface_number != 3:
                     continue
+            elif hardware.type == Hardware.Type.LAPTOP:
+                # Blade laptops use interface 0 for control
+                if devinfo.interface_number != 0:
+                    continue
             elif hardware.type in (Hardware.Type.KEYBOARD,
-                                   Hardware.Type.KEYPAD,
-                                   Hardware.Type.LAPTOP):
-                if devinfo.interface_number != 2:
+                                   Hardware.Type.KEYPAD):
+                # Keyboards/keypads use interface 0
+                if devinfo.interface_number != 0:
                     continue
             elif hardware.type in (Hardware.Type.MOUSE,
                                    Hardware.Type.MOUSEPAD):
@@ -234,11 +238,21 @@ class UChromaDeviceManager(metaclass=Singleton):
 
     def _get_parent(self, product_id: int):
         pid = "%04x" % product_id
+        vid = "%04x" % RAZER_VENDOR_ID
 
+        # Try with uchroma tag first (requires udev rules installed)
         devs = self._udev_context.list_devices(tag='uchroma', subsystem='usb',
                                                ID_MODEL_ID=pid)
         for dev in devs:
             if dev['DEVTYPE'] == 'usb_device':
+                return dev
+
+        # Fallback: search without tag (for testing without udev rules)
+        devs = self._udev_context.list_devices(subsystem='usb',
+                                               ID_VENDOR_ID=vid,
+                                               ID_MODEL_ID=pid)
+        for dev in devs:
+            if dev.get('DEVTYPE') == 'usb_device':
                 return dev
 
         return None

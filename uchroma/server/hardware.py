@@ -40,6 +40,9 @@ class Quirks(IntEnum):
     # Use "extended" commands
     EXTENDED_FX_CMDS = 2
 
+    # Use transaction code 0x1F (Blade 2021+)
+    TRANSACTION_CODE_1F = 9
+
     # Control device brightness with the scroll wheel LED
     SCROLL_WHEEL_BRIGHTNESS = 3
 

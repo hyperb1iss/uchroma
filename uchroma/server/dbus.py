@@ -208,8 +208,9 @@ class LEDManagerInterface(ServiceInterface):
         leds = {}
         for led in self._driver.led_manager.supported_leds:
             led_obj = self._driver.led_manager.get(led)
-            traits = led_obj.traits() if hasattr(led_obj, 'traits') else {}
-            leds[led.name.lower()] = dbus_prepare(traits)[0]
+            traits = led_obj._trait_values if hasattr(led_obj, '_trait_values') else {}
+            # Inner dict values need to be Variants for a{sv} signature
+            leds[led.name.lower()] = dbus_prepare(traits, variant=True)[0]
         return leds
 
     @method()
@@ -220,7 +221,7 @@ class LEDManagerInterface(ServiceInterface):
             self._logger.error("Unknown LED type: %s", name)
             return {}
         led = self._driver.led_manager.get(ledtype)
-        return dbus_prepare(led._trait_values)[0]
+        return dbus_prepare(led._trait_values, variant=True)[0]
 
     @method()
     def SetLED(self, name: 's', properties: 'a{sv}') -> 'b':
@@ -257,8 +258,15 @@ class FXManagerInterface(ServiceInterface):
         self._fx_manager = driver.fx_manager
 
         self._current_fx = None
-        self._available_fx = dbus_prepare({k: v.class_traits()
-                for k, v in self._fx_manager.available_fx.items()})[0]
+        # Build simplified FX metadata - each FX has a dict of trait_name -> type info
+        self._available_fx = {}
+        for fx_name, fx_class in self._fx_manager.available_fx.items():
+            fx_info = {}
+            for trait_name, trait_type in fx_class.class_traits().items():
+                # Simple type info as Variant
+                type_name = trait_type.__class__.__name__
+                fx_info[trait_name] = Variant('s', type_name)
+            self._available_fx[fx_name] = fx_info
 
         self._fx_manager.observe(self._fx_changed, names=['current_fx'])
 
@@ -338,7 +346,8 @@ class AnimationManagerInterface(ServiceInterface):
         avail = {}
         infos = self._animgr.renderer_info
         for key, info in infos.items():
-            avail[key] = dbus_prepare({'meta': info.meta, 'traits': info.traits})[0]
+            # Inner dict values need to be Variants for a{sv} signature
+            avail[key] = dbus_prepare({'meta': info.meta, 'traits': info.traits}, variant=True)[0]
         return avail
 
     @dbus_property(access=PropertyAccess.READ)

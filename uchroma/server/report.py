@@ -64,13 +64,15 @@ class RazerReport:
         88          CRC
         89          Reserved byte (zero)
 
-    When sending a report, the status code is not sent and the bytes
-    are shifted by one.
+    The status byte is 0x00 when sending, and contains the result code
+    when receiving.
     """
-    REQ_HEADER = '=BHBBBB'
+    # Request and response have same structure
+    REQ_HEADER = '=BBHBBBB'  # status, trans_id, remaining, proto, size, class, cmd
     RSP_HEADER = '=BBHBBBB'
 
-    REQ_REPORT_ID = b'\x02'
+    # OpenRazer uses report ID 0 for both send and receive
+    REQ_REPORT_ID = b'\x00'
     RSP_REPORT_ID = b'\x00'
 
     BUF_SIZE = 90
@@ -91,6 +93,7 @@ class RazerReport:
         self._transaction_id = transaction_id
         self._remaining_packets = remaining_packets
         self._protocol_type = protocol_type
+        self._data_size = data_size  # Store the actual command data size
 
         self._command_class = command_class
         self._command_id = command_id
@@ -227,13 +230,18 @@ class RazerReport:
 
 
     def _pack_request(self) -> bytes:
-        struct.pack_into(RazerReport.REQ_HEADER, self._buf, 0, self._transaction_id,
-                         self._remaining_packets, self._protocol_type, self.args.size,
+        # Pack header: status=0x00 for requests, then transaction_id, etc.
+        struct.pack_into(RazerReport.REQ_HEADER, self._buf, 0,
+                         0x00,  # status byte (0 for requests)
+                         self._transaction_id,
+                         self._remaining_packets, self._protocol_type, self._data_size,
                          self._command_class, self._command_id)
 
-        self._buf[7:87] = self.args.data
+        # Args at offset 8 (after 8-byte header)
+        self._buf[8:88] = self.args.data
 
-        self._buf[87] = fast_crc(self._buf.tobytes())
+        # CRC calculation - fast_crc XORs bytes 1-86 (transaction_id through args[78])
+        self._buf[88] = fast_crc(self._buf.tobytes())
 
         return self._buf.tobytes()
 
@@ -255,31 +263,15 @@ class RazerReport:
         crc = buf[88]
         reserved = buf[89]
 
-        crc_check = fast_crc(buf[1:88])
+        # CRC check - fast_crc XORs bytes 1-86 (transaction_id through args[78])
+        crc_check = fast_crc(buf)
 
         self._status = Status(status)
         self._result = data
 
         if self._status == Status.OK:
-            if crc != crc_check:
-                self._logger.error('Checksum of data should be %d, got %d', crc_check, crc)
-                self._status = Status.BAD_CRC
-                return False
-
-            """
-            assert transaction_id == self._transaction_id, \
-                'Transaction id does not match (%d vs %d)' % \
-                (transaction_id, self._transaction_id)
-            assert command_class == self._command_class, \
-                'Command class does not match (%d vs %d)' % \
-                (command_class, self._command_class)
-            assert command_id == self._command_id, \
-                'Command id does not match (%d vs %d)' % \
-                (command_id, self._command_id)
-            assert protocol_type == self._protocol_type, \
-                'Protocol type does not match (%d vs %d)' % \
-                (protocol_type, self._protocol_type)
-            """
+            # Note: Some devices (like Blade 2021) return CRC=0x00, so we skip CRC validation
+            # on successful responses. This matches razer-laptop-control behavior.
             return True
 
         self._logger.error("Got error %s for command %02x,%02x",

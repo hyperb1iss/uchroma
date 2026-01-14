@@ -302,6 +302,8 @@ class BaseUChromaDevice:
         if transaction_id is None:
             if self.has_quirk(Quirks.TRANSACTION_CODE_3F):
                 transaction_id = 0x3F
+            elif self.has_quirk(Quirks.TRANSACTION_CODE_1F):
+                transaction_id = 0x1F
             else:
                 transaction_id = 0xFF
 

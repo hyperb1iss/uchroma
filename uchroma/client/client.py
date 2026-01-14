@@ -21,7 +21,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import NamedTuple
 
-from colr import Colr, color, strip_codes
+from uchroma.client.colors import Colr, color, strip_codes
 from traitlets import Undefined
 from argcomplete import autocomplete
 
