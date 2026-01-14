@@ -13,12 +13,14 @@
 
 # pylint: disable=broad-except
 
-from pydbus import SessionBus, SystemBus
+
+from dbus_fast import BusType
+from dbus_fast.aio import MessageBus
 
 from uchroma.log import Log
 from uchroma.util import Singleton
-from .device_manager import UChromaDeviceManager
 
+from .device_manager import UChromaDeviceManager
 
 SCREENSAVERS = (('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver'),
                 ('org.gnome.ScreenSaver', '/org/gnome/ScreenSaver'),
@@ -35,15 +37,14 @@ class PowerMonitor(metaclass=Singleton):
     """
     def __init__(self):
         self._logger = Log.get('uchroma.power')
-        self._name_watchers = []
         self._running = False
         self._sleeping = False
         self._user_active = False
 
-        self._session_bus = SessionBus()
-        self._system_bus = SystemBus()
-        self._dm = UChromaDeviceManager() #singleton
-
+        self._session_bus = None
+        self._system_bus = None
+        self._dm = UChromaDeviceManager()  # singleton
+        self._login1_proxy = None
 
     def _suspend(self, sleeping, fast):
         if self._sleeping == sleeping:
@@ -58,29 +59,13 @@ class PowerMonitor(metaclass=Singleton):
                 self._logger.info("Resuming device: %s", name)
                 device.resume()
 
-
     def _prepare_for_sleep(self, sleeping):
         self._suspend(sleeping, True)
-
 
     def _active_changed(self, active):
         self._suspend(active, False)
 
-
-    def _is_user_active(self):
-        user = self._system_bus.get(LOGIN_SERVICE, "/org/freedesktop/login1/user/self")
-        self._logger.info("is_user_active: %s %s", user, user.Display)
-        return user is not None and user.Display[0] != ''
-
-
-    def _user_changed(self, changed):
-        is_active = self._is_user_active()
-        if is_active != self._user_active:
-            self._user_active = is_active
-            self._suspend(not self._user_active, True)
-
-
-    def start(self):
+    async def start(self):
         """
         Connects to the PrepareForSleep signal from login1 to monitor
         system suspend, and sets up watches for known screensaver
@@ -89,52 +74,91 @@ class PowerMonitor(metaclass=Singleton):
         if self._running:
             return
 
-        for name, path in SCREENSAVERS:
-            def connect_screensaver(*args, bus_name=name, object_path=path):
-                """
-                Connects the callback when the service appears.
-                """
-                try:
-                    saver = self._session_bus.get(bus_name=bus_name, object_path=object_path)
-                    saver.ActiveChanged.connect(self._active_changed)
-                    self._logger.info("Connected screensaver: %s:%s %s", bus_name, object_path, args)
+        try:
+            # Connect to session bus for screensavers
+            self._session_bus = await MessageBus(bus_type=BusType.SESSION).connect()
 
-                except Exception:
-                    self._logger.warn("Could not connect to %s:%s service", bus_name, object_path)
+            # Connect to system bus for login1 (suspend/resume)
+            self._system_bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
+            # Connect to login1 for PrepareForSleep
+            await self._connect_login1()
 
-            self._name_watchers.append(self._session_bus.watch_name( \
-                    name, name_appeared=connect_screensaver))
+            # Try to connect to screensavers
+            for name, path in SCREENSAVERS:
+                await self._try_connect_screensaver(name, path)
 
+            self._running = True
+            self._logger.info("Power monitor started")
 
-        def connect_login1(*args):
+        except Exception as e:
+            self._logger.exception("Failed to start power monitor: %s", e)
+
+    async def _connect_login1(self):
+        """Connect to login1 for suspend/resume signals."""
+        try:
+            introspection = await self._system_bus.introspect(
+                LOGIN_SERVICE, '/org/freedesktop/login1')
+            self._login1_proxy = self._system_bus.get_proxy_object(
+                LOGIN_SERVICE, '/org/freedesktop/login1', introspection)
+
+            manager = self._login1_proxy.get_interface('org.freedesktop.login1.Manager')
+
+            # Connect to PrepareForSleep signal
+            manager.on_prepare_for_sleep(self._on_prepare_for_sleep)
+
+            self._logger.info("Connected to %s", LOGIN_SERVICE)
+
+        except Exception as e:
+            self._logger.warning("Could not connect to login1 service: %s", e)
+
+    def _on_prepare_for_sleep(self, sleeping: bool):
+        """Handler for PrepareForSleep signal."""
+        self._prepare_for_sleep(sleeping)
+
+    async def _try_connect_screensaver(self, bus_name: str, object_path: str):
+        """Try to connect to a screensaver service."""
+        try:
+            introspection = await self._session_bus.introspect(bus_name, object_path)
+            proxy = self._session_bus.get_proxy_object(bus_name, object_path, introspection)
+
+            # Try to get ScreenSaver interface
             try:
-                login1 = self._system_bus.get(LOGIN_SERVICE)
-                login1.PrepareForSleep.connect(self._prepare_for_sleep)
-                self._logger.info("Connected to %s %s", LOGIN_SERVICE, args)
-
-                user = self._system_bus.get(LOGIN_SERVICE, "/org/freedesktop/login1/user/self")
-                user.PropertiesChanged.connect(self._user_changed)
-
+                screensaver = proxy.get_interface('org.freedesktop.ScreenSaver')
+                screensaver.on_active_changed(self._on_active_changed)
+                self._logger.info("Connected screensaver: %s:%s", bus_name, object_path)
             except Exception:
-                self._logger.warn("Could not connect to login1 service")
+                # Try alternate interface name
+                try:
+                    screensaver = proxy.get_interface('org.gnome.ScreenSaver')
+                    screensaver.on_active_changed(self._on_active_changed)
+                    self._logger.info("Connected screensaver: %s:%s", bus_name, object_path)
+                except Exception:
+                    pass
 
-        self._name_watchers.append(self._system_bus.watch_name( \
-                LOGIN_SERVICE, name_appeared=connect_login1))
+        except Exception:
+            # Screensaver not available, that's OK
+            pass
 
-        self._running = True
+    def _on_active_changed(self, active: bool):
+        """Handler for screensaver ActiveChanged signal."""
+        self._active_changed(active)
 
-
-    def stop(self):
+    async def stop(self):
         """
         Disable the monitor
         """
         if not self._running:
             return
 
-        for watcher in self._name_watchers:
-            watcher.unwatch()
+        if self._session_bus:
+            self._session_bus.disconnect()
+            self._session_bus = None
 
-        self._name_watchers.clear()
+        if self._system_bus:
+            self._system_bus.disconnect()
+            self._system_bus = None
 
+        self._login1_proxy = None
         self._running = False
+        self._logger.info("Power monitor stopped")

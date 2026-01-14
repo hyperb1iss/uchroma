@@ -23,7 +23,7 @@ dependencies = [
     "dbus-fast>=2.0",
     "evdev",
     "frozendict",
-    "hidapi",
+    "hid",
     "hsluv",
     "numpy",
     "pyudev",

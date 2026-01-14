@@ -12,16 +12,10 @@
 #
 import argparse
 import asyncio
-import atexit
 import logging
 import signal
 
-from concurrent import futures
-
-import gbulb
-
-from uchroma.log import Log, LOG_PROTOCOL_TRACE, LOG_TRACE
-from uchroma.util import ensure_future
+from uchroma.log import LOG_PROTOCOL_TRACE, LOG_TRACE, Log
 
 from .dbus import DeviceManagerAPI
 from .device_manager import UChromaDeviceManager
@@ -31,8 +25,6 @@ from .power import PowerMonitor
 class UChromaServer:
 
     def __init__(self):
-        gbulb.install()
-
         parser = argparse.ArgumentParser(description='UChroma daemon')
         parser.add_argument('-v', "--version", action='version', version='self.version')
         parser.add_argument('-d', "--debug", action='append_const', const=True,
@@ -42,8 +34,8 @@ class UChromaServer:
 
         args = parser.parse_args()
 
-
-        self._loop = asyncio.get_event_loop()
+        self._loop = None
+        self._shutdown_event = asyncio.Event()
 
         level = logging.INFO
         asyncio_debug = False
@@ -65,64 +57,66 @@ class UChromaServer:
                 level = logging.DEBUG
 
         logging.getLogger().setLevel(level)
-        self._loop.set_debug(asyncio_debug)
+        self._asyncio_debug = asyncio_debug
 
-
-    def _shutdown_callback(self):
-        self._logger.info("Shutting down")
-        self._loop.stop()
-
+    def _handle_signal(self, sig):
+        self._logger.info("Received signal %s, shutting down", sig.name)
+        self._shutdown_event.set()
 
     def run(self):
         try:
-            self._run()
+            asyncio.run(self._run())
         except KeyboardInterrupt:
             pass
 
+    async def _run(self):
+        self._loop = asyncio.get_event_loop()
+        self._loop.set_debug(self._asyncio_debug)
 
-    def _run(self):
         dm = UChromaDeviceManager()
-
-        atexit.register(UChromaServer.exit, self._loop)
-
         dbus = DeviceManagerAPI(dm, self._logger)
         power = PowerMonitor()
 
+        # Set up signal handlers
         for sig in (signal.SIGINT, signal.SIGTERM):
-            self._loop.add_signal_handler(sig, self._shutdown_callback)
+            self._loop.add_signal_handler(sig, self._handle_signal, sig)
 
         try:
-            dbus.run()
-            power.start()
+            # Start device monitoring
+            await dm.monitor_start()
 
-            ensure_future(dm.monitor_start(), loop=self._loop)
+            # Start power monitor
+            await power.start()
 
-            self._loop.run_forever()
+            # Start D-Bus service (runs until shutdown)
+            dbus_task = asyncio.create_task(dbus.run())
 
-        except KeyboardInterrupt:
+            # Wait for shutdown signal
+            await self._shutdown_event.wait()
+
+            self._logger.info("Shutting down...")
+
+            # Cancel D-Bus task
+            dbus_task.cancel()
+            try:
+                await dbus_task
+            except asyncio.CancelledError:
+                pass
+
+        except asyncio.CancelledError:
             pass
 
         finally:
+            # Clean up signal handlers
             for sig in (signal.SIGTERM, signal.SIGINT):
                 self._loop.remove_signal_handler(sig)
 
-            power.stop()
+            # Stop services
+            await power.stop()
+            await dm.close_devices()
+            await dm.monitor_stop()
 
-            self._loop.run_until_complete(asyncio.wait( \
-                    [dm.close_devices(), dm.monitor_stop()],
-                    return_when=futures.ALL_COMPLETED))
-
-
-    @staticmethod
-    def exit(loop):
-        try:
-            loop.run_until_complete(asyncio.wait( \
-                    list(asyncio.Task.all_tasks()),
-                    return_when=futures.ALL_COMPLETED))
-            loop.close()
-
-        except KeyboardInterrupt:
-            pass
+            self._logger.info("Shutdown complete")
 
 
 def run_server():

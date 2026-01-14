@@ -14,23 +14,18 @@
 # pylint: disable=invalid-name, redefined-variable-type
 
 import enum
-
 from collections import OrderedDict
 from typing import NamedTuple
 
-from gi.repository.GLib import Variant
+import numpy as np
+from dbus_fast import Variant
+from frozendict import frozendict
 from traitlets import HasTraits, TraitType, Undefined, UseEnum
 
-from frozendict import frozendict
 from uchroma.colorlib import Color
-
-import numpy as np
-
 from uchroma.log import Log
-from uchroma.traits import class_traits_as_dict, ColorTrait, \
-        ColorSchemeTrait, trait_as_dict
+from uchroma.traits import ColorSchemeTrait, ColorTrait, class_traits_as_dict, trait_as_dict
 from uchroma.util import camel_to_snake, snake_to_camel
-
 
 ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str)])
 
@@ -198,17 +193,8 @@ class DescriptorBuilder(object):
     """
     Helper class for creating D-BUS XML descriptors
 
-    While pydbus allows inline specification of the descriptor,
-    frequently the descriptor needs to be dynamic or based on class
-    introspection. This builder lets us create it at runtime
-    with a simple interface. Additionally, we inspect traitlets
-    from the target object and generate properties to match.
-
-    The descriptor needs to be placed in the 'dbus' attribute of the
-    type before registering the object on the bus. Example:
-
-      api.__class__.dbus = builder.build()
-      bus.register_object(path, api, None)
+    Introspects traitlets and generates XML descriptors dynamically.
+    Useful for creating interfaces based on runtime class inspection.
     """
     def __init__(self, obj, interface_name, exclude=None):
         self._interface_name = interface_name
@@ -282,7 +268,7 @@ class DescriptorBuilder(object):
 
         for method in self._methods:
             name = snake_to_camel(method['name'])
-            if not 'args' in method:
+            if 'args' not in method:
                 val += "    <method name='%s' />\n" % name
             else:
                 val += "    <method name='%s'>\n" % name
@@ -293,7 +279,7 @@ class DescriptorBuilder(object):
 
         for signal in self._signals:
             name = snake_to_camel(signal['name'])
-            if not 'args' in signal:
+            if 'args' not in signal:
                 val += "    <signal name='%s' />\n" % name
             else:
                 val += "    <signal name='%s'>\n" % name
