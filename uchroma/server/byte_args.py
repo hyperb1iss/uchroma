@@ -82,7 +82,7 @@ class ByteArgs:
         if packing is not None:
             data = struct.pack(packing, arg)
         elif isinstance(arg, Color):
-            data = struct.pack("=BBB", *arg.intTuple)
+            data = struct.pack("=BBB", *arg.intTuple[:3])  # RGB only, no alpha
         elif isinstance(arg, Enum):
             if hasattr(arg, "opcode"):
                 data = arg.opcode

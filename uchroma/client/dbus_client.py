@@ -109,6 +109,23 @@ class DeviceProxy:
         self._cache = {}
         self._loop = loop
 
+        # Try to get optional interfaces
+        self._fx_iface = None
+        self._anim_iface = None
+        self._led_iface = None
+        try:
+            self._fx_iface = proxy.get_interface('org.chemlab.UChroma.FXManager')
+        except Exception:
+            pass
+        try:
+            self._anim_iface = proxy.get_interface('org.chemlab.UChroma.AnimationManager')
+        except Exception:
+            pass
+        try:
+            self._led_iface = proxy.get_interface('org.chemlab.UChroma.LEDManager')
+        except Exception:
+            pass
+
     def _get_loop(self):
         """Get or create event loop."""
         if self._loop is None or self._loop.is_closed():
@@ -213,6 +230,83 @@ class DeviceProxy:
     @property
     def BusPath(self):
         return self._get_prop('BusPath')
+
+    # FX Manager properties
+    @property
+    def AvailableFX(self):
+        if self._fx_iface is None:
+            return None
+        if 'AvailableFX' not in self._cache:
+            loop = self._get_loop()
+            raw = loop.run_until_complete(self._fx_iface.get_available_fx())
+            # Unwrap dbus_fast Variants
+            self._cache['AvailableFX'] = self._unwrap_variants(raw)
+        return self._cache['AvailableFX']
+
+    def _unwrap_variants(self, obj):
+        """Recursively unwrap dbus_fast Variants."""
+        from dbus_fast import Variant
+        if isinstance(obj, Variant):
+            return self._unwrap_variants(obj.value)
+        elif isinstance(obj, dict):
+            return {k: self._unwrap_variants(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return type(obj)(self._unwrap_variants(item) for item in obj)
+        return obj
+
+    @property
+    def CurrentFX(self):
+        if self._fx_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._fx_iface.get_current_fx())
+
+    def SetFX(self, name, args):
+        if self._fx_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._fx_iface.call_set_fx(name, args))
+
+    # Animation Manager properties
+    @property
+    def AvailableRenderers(self):
+        if self._anim_iface is None:
+            return None
+        if 'AvailableRenderers' not in self._cache:
+            loop = self._get_loop()
+            self._cache['AvailableRenderers'] = loop.run_until_complete(
+                self._anim_iface.get_available_renderers())
+        return self._cache['AvailableRenderers']
+
+    @property
+    def CurrentRenderers(self):
+        if self._anim_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._anim_iface.get_current_renderers())
+
+    def AddRenderer(self, name, zindex):
+        if self._anim_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._anim_iface.call_add_renderer(name, zindex))
+
+    def RemoveRenderer(self, zindex):
+        if self._anim_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._anim_iface.call_remove_renderer(zindex))
+
+    # LED Manager properties
+    @property
+    def AvailableLEDs(self):
+        if self._led_iface is None:
+            return None
+        if 'AvailableLEDs' not in self._cache:
+            loop = self._get_loop()
+            self._cache['AvailableLEDs'] = loop.run_until_complete(
+                self._led_iface.get_available_le_ds())
+        return self._cache['AvailableLEDs']
 
     def get_interface(self, name):
         """Get a specific interface from the proxy."""

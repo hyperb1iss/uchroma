@@ -30,6 +30,33 @@ _yaml = YAML()
 _yaml.preserve_quotes = True
 
 from uchroma.util import ArgsDict
+from uchroma.colorlib import Color
+
+# Add YAML representers for special types
+def represent_enum(dumper, data):
+    """Represent enum values as their string name."""
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data.name)
+
+def represent_color(dumper, data):
+    """Represent Color as HTML hex string."""
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data.html)
+
+def represent_argsdict(dumper, data):
+    """Represent ArgsDict as a regular mapping with serializable values."""
+    # Convert special types to strings for YAML serialization
+    serializable = {}
+    for k, v in data.items():
+        if isinstance(v, Enum):
+            serializable[k] = v.name
+        elif isinstance(v, Color):
+            serializable[k] = v.html
+        else:
+            serializable[k] = v
+    return dumper.represent_mapping('tag:yaml.org,2002:map', serializable)
+
+_yaml.representer.add_multi_representer(Enum, represent_enum)
+_yaml.representer.add_multi_representer(Color, represent_color)
+_yaml.representer.add_representer(ArgsDict, represent_argsdict)
 
 
 class Configuration:

@@ -258,15 +258,18 @@ class FXManagerInterface(ServiceInterface):
         self._fx_manager = driver.fx_manager
 
         self._current_fx = None
-        # Build simplified FX metadata - each FX has a dict of trait_name -> type info
+        # Build FX metadata - each FX has a dict of trait_name -> full trait info
         self._available_fx = {}
         for fx_name, fx_class in self._fx_manager.available_fx.items():
-            fx_info = {}
-            for trait_name, trait_type in fx_class.class_traits().items():
-                # Simple type info as Variant
-                type_name = trait_type.__class__.__name__
-                fx_info[trait_name] = Variant('s', type_name)
-            self._available_fx[fx_name] = fx_info
+            # Use trait_as_dict to serialize class traits without instantiating
+            from uchroma.traits import trait_as_dict
+            fx_traits = {}
+            for trait_name, trait in fx_class.class_traits().items():
+                trait_dict = trait_as_dict(trait)
+                if trait_dict:
+                    obj, sig = dbus_prepare(trait_dict, variant=True)
+                    fx_traits[trait_name] = Variant('a{sv}', obj)
+            self._available_fx[fx_name] = fx_traits
 
         self._fx_manager.observe(self._fx_changed, names=['current_fx'])
 

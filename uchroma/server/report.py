@@ -230,11 +230,14 @@ class RazerReport:
 
 
     def _pack_request(self) -> bytes:
+        # Use actual args size if data_size was None
+        data_size = self._data_size if self._data_size is not None else self._data._data_ptr
+
         # Pack header: status=0x00 for requests, then transaction_id, etc.
         struct.pack_into(RazerReport.REQ_HEADER, self._buf, 0,
                          0x00,  # status byte (0 for requests)
                          self._transaction_id,
-                         self._remaining_packets, self._protocol_type, self._data_size,
+                         self._remaining_packets, self._protocol_type, data_size,
                          self._command_class, self._command_id)
 
         # Args at offset 8 (after 8-byte header)
