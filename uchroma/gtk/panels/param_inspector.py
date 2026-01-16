@@ -123,6 +123,8 @@ class ParamInspector(Gtk.Box):
 
         if param_type == "color":
             widget = self._create_color_widget(param, current_value)
+        elif param_type == "color_list":
+            widget = self._create_color_list_widget(param, current_value)
         elif param_type == "range":
             widget = self._create_range_widget(param, current_value)
         elif param_type == "choice":
@@ -134,7 +136,8 @@ class ParamInspector(Gtk.Box):
 
         if widget:
             box.append(widget)
-            self._widgets[name] = widget
+            if name not in self._widgets:
+                self._widgets[name] = widget
 
         # Wrap in FlowBoxChild
         child = Gtk.FlowBoxChild()
@@ -155,6 +158,60 @@ class ParamInspector(Gtk.Box):
 
         btn.connect("notify::rgba", self._on_color_changed, param["name"])
         return btn
+
+    def _create_color_list_widget(self, param: dict, current_value) -> Gtk.Widget:
+        """Create a multi-color picker row."""
+        wrapper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        wrapper.add_css_class("param-color-list")
+
+        defaults = param.get("defaults", [])
+        if not isinstance(defaults, (list, tuple)):
+            defaults = [defaults]
+        values = current_value if isinstance(current_value, (list, tuple)) else []
+
+        min_len = int(param.get("min", 0) or 0)
+        max_len = param.get("max")
+        count = max(len(values), len(defaults), min_len)
+        if isinstance(max_len, int):
+            count = min(count, max_len)
+        count = min(count, 6) if count else min(min_len or 2, 6)
+
+        allow_empty = min_len == 0
+        auto_toggle = None
+        if allow_empty:
+            auto_toggle = Gtk.ToggleButton(label="Auto")
+            auto_toggle.add_css_class("param-toggle")
+            auto_toggle.set_active(len(values) == 0)
+            auto_toggle.connect("toggled", self._on_color_list_toggle, param["name"])
+            wrapper.append(auto_toggle)
+
+        buttons = []
+        for idx in range(count):
+            btn = Gtk.ColorDialogButton()
+            btn.add_css_class("param-color")
+
+            color_str = None
+            if idx < len(values):
+                color_str = values[idx]
+            elif idx < len(defaults):
+                color_str = defaults[idx]
+            if not color_str:
+                color_str = "#ffffff"
+
+            rgba = Gdk.RGBA()
+            rgba.parse(str(color_str))
+            btn.set_rgba(rgba)
+            btn.set_sensitive(not (auto_toggle and auto_toggle.get_active()))
+            btn.connect("notify::rgba", self._on_color_list_changed, param["name"])
+            wrapper.append(btn)
+            buttons.append(btn)
+
+        self._widgets[param["name"]] = {
+            "buttons": buttons,
+            "toggle": auto_toggle,
+        }
+
+        return wrapper
 
     def _create_range_widget(self, param: dict, current_value) -> Gtk.Widget:
         """Create a slider with value label."""
@@ -228,6 +285,38 @@ class ParamInspector(Gtk.Box):
         )
         self._emit_debounced(name, hex_color)
 
+    def _on_color_list_toggle(self, btn, name):
+        """Handle auto toggle for multi-color lists."""
+        widget_info = self._widgets.get(name)
+        if not isinstance(widget_info, dict):
+            return
+        for button in widget_info.get("buttons", []):
+            button.set_sensitive(not btn.get_active())
+        self._emit_color_list(name)
+
+    def _on_color_list_changed(self, btn, pspec, name):
+        """Handle multi-color list changes."""
+        self._emit_color_list(name)
+
+    def _emit_color_list(self, name: str):
+        widget_info = self._widgets.get(name)
+        if not isinstance(widget_info, dict):
+            return
+        toggle = widget_info.get("toggle")
+        if toggle and toggle.get_active():
+            self._emit_debounced(name, [])
+            return
+
+        values = []
+        for button in widget_info.get("buttons", []):
+            rgba = button.get_rgba()
+            values.append(
+                f"#{int(rgba.red * 255):02x}"
+                f"{int(rgba.green * 255):02x}"
+                f"{int(rgba.blue * 255):02x}"
+            )
+        self._emit_debounced(name, values)
+
     def _on_range_changed(self, scale, name):
         """Handle range change."""
         self._emit_debounced(name, scale.get_value())
@@ -274,6 +363,21 @@ class ParamInspector(Gtk.Box):
                 values[name] = (
                     f"#{int(rgba.red * 255):02x}{int(rgba.green * 255):02x}{int(rgba.blue * 255):02x}"
                 )
+            elif param["type"] == "color_list":
+                if isinstance(widget, dict):
+                    toggle = widget.get("toggle")
+                    if toggle and toggle.get_active():
+                        values[name] = []
+                    else:
+                        colors = []
+                        for btn in widget.get("buttons", []):
+                            rgba = btn.get_rgba()
+                            colors.append(
+                                f"#{int(rgba.red * 255):02x}"
+                                f"{int(rgba.green * 255):02x}"
+                                f"{int(rgba.blue * 255):02x}"
+                            )
+                        values[name] = colors
             elif param["type"] == "range":
                 # Widget is a box with scale as first child
                 scale = widget.get_first_child()
