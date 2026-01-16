@@ -553,15 +553,29 @@ class AnimationCommand(AbstractCommand):
     @property
     def current_state(self) -> dict:
         layers = OrderedDict()
-        if hasattr(self.driver, "CurrentRenderers"):
-            num_renderers = len(self.driver.CurrentRenderers)
-            if num_renderers > 0:
-                for layer_idx in range(num_renderers):
-                    layer = self.client.get_layer(self.driver, layer_idx)
-                    props = layer.GetAll("org.chemlab.UChroma.Layer")
-                    layers[props["Key"]] = ArgsDict(
-                        sorted({camel_to_snake(k): v for k, v in props.items()}.items())
-                    )
+        try:
+            if hasattr(self.driver, "CurrentRenderers"):
+                renderers = self.driver.CurrentRenderers
+                for renderer_type, _path in renderers:
+                    # Extract zindex from path (e.g., "/org/chemlab/UChroma/device/0/layer/1")
+                    zindex = int(_path.split("/")[-1])
+                    try:
+                        props = self.client.get_layer_info(self.driver, zindex)
+                        if props:
+                            # Extract values from Variants
+                            clean_props = {}
+                            for k, v in props.items():
+                                clean_props[k] = v.value if hasattr(v, "value") else v
+                            layers[clean_props.get("Key", renderer_type)] = ArgsDict(
+                                sorted(
+                                    {camel_to_snake(k): v for k, v in clean_props.items()}.items()
+                                )
+                            )
+                    except Exception:
+                        # Method might not exist on older daemon
+                        pass
+        except Exception:
+            pass
 
         return layers
 

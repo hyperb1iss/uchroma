@@ -127,22 +127,26 @@ class LED(HasTraits):
         try:
             self._refreshing = True
 
-            # state
-            value = self._get(LED.Command.GET_LED_STATE)
-            if value is not None:
-                self.state = bool(value[2])
+            # Extended FX devices don't support legacy LED state/color/mode queries
+            if not self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+                # state
+                value = self._get(LED.Command.GET_LED_STATE)
+                if value is not None:
+                    self.state = bool(value[2])
 
-            # color
-            value = self._get(LED.Command.GET_LED_COLOR)
-            if value is not None:
-                self.color = Color.NewFromRgb(value[2] / 255.0, value[3] / 255.0, value[4] / 255.0)
+                # color
+                value = self._get(LED.Command.GET_LED_COLOR)
+                if value is not None:
+                    self.color = Color.NewFromRgb(
+                        value[2] / 255.0, value[3] / 255.0, value[4] / 255.0
+                    )
 
-            # mode
-            value = self._get(LED.Command.GET_LED_MODE)
-            if value is not None:
-                self.mode = LEDMode(value[2])
+                # mode
+                value = self._get(LED.Command.GET_LED_MODE)
+                if value is not None:
+                    self.mode = LEDMode(value[2])
 
-            # brightness
+            # brightness (has extended command support)
             value = self._get_brightness()
             if value is not None:
                 self.brightness = scale_brightness(int(value[2]), True)
@@ -155,16 +159,24 @@ class LED(HasTraits):
         if self._refreshing or change.old == change.new:
             return
 
+        is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
+
         if change.name == "color":
-            self._set(LED.Command.SET_LED_COLOR, to_color(change.new))
+            # Extended FX devices use matrix effects instead of per-LED color
+            if not is_extended:
+                self._set(LED.Command.SET_LED_COLOR, to_color(change.new))
         elif change.name == "mode":
-            self._set(LED.Command.SET_LED_MODE, change.new)
+            # Extended FX devices use matrix effects instead of per-LED mode
+            if not is_extended:
+                self._set(LED.Command.SET_LED_MODE, change.new)
         elif change.name == "brightness":
             self._set_brightness(scale_brightness(change.new))
-            if change.old == 0 and change.new > 0:
-                self._set(LED.Command.SET_LED_STATE, 1)
-            elif change.old > 0 and change.new == 0:
-                self._set(LED.Command.SET_LED_STATE, 0)
+            # Extended FX devices don't support separate LED state
+            if not is_extended:
+                if change.old == 0 and change.new > 0:
+                    self._set(LED.Command.SET_LED_STATE, 1)
+                elif change.old > 0 and change.new == 0:
+                    self._set(LED.Command.SET_LED_STATE, 0)
         else:
             raise ValueError(f"Unknown LED property: {change.new}")
 

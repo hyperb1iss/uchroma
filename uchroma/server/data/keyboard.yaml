@@ -164,7 +164,7 @@ children:
 - !device-config
   supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
     rainbow, starlight]
-  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, CONTROL_IFACE_3]
   children:
 
   # BlackWidow V4 Series
@@ -248,13 +248,13 @@ children:
     name: DeathStalker V2 Pro (Wired)
     product_id: 0x0296
     dimensions: [6, 22]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
 
   - !device-config
     name: DeathStalker V2 Pro TKL
     product_id: 0x029c
     dimensions: [6, 18]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
 
   # Ornata V3 Series
   - !device-config
@@ -271,14 +271,14 @@ children:
 - !device-config
   supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
     rainbow, starlight]
-  quirks: [TRANSACTION_CODE_9F, EXTENDED_FX_CMDS, WIRELESS]
+  quirks: [TRANSACTION_CODE_9F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
   children:
 
   - !device-config
     name: BlackWidow V3 Pro (Wired)
     product_id: 0x025a
     dimensions: [6, 22]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
 
   - !device-config
     name: BlackWidow V3 Pro (Wireless)

@@ -105,6 +105,9 @@ class Quirks(IntEnum):
     # Device firmware lacks hardware effects (needs software rendering)
     SOFTWARE_EFFECTS = 16
 
+    # Device uses USB interface 3 for control commands (modern keyboards)
+    CONTROL_IFACE_3 = 18
+
     # Skip CRC validation on successful responses
     CRC_SKIP_ON_OK = 17
 
@@ -317,7 +320,11 @@ class Hardware(BaseHardware):
 
         # Check new capabilities field first
         if self.capabilities is not None:
-            caps = self.capabilities if isinstance(self.capabilities, (list, tuple)) else [self.capabilities]
+            caps = (
+                self.capabilities
+                if isinstance(self.capabilities, (list, tuple))
+                else [self.capabilities]
+            )
             for cap in caps:
                 cap_val = cap.value if isinstance(cap, Capability) else str(cap).lower()
                 if cap_val == cap_str:

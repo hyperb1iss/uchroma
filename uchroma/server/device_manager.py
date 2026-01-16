@@ -137,8 +137,9 @@ class UChromaDeviceManager(metaclass=Singleton):
                 if devinfo.interface_number != 0:
                     continue
             elif hardware.type in (Hardware.Type.KEYBOARD, Hardware.Type.KEYPAD):
-                # Keyboards/keypads use interface 0
-                if devinfo.interface_number != 0:
+                # Modern keyboards use interface 3, legacy use interface 0
+                expected_iface = 3 if hardware.has_quirk(Quirks.CONTROL_IFACE_3) else 0
+                if devinfo.interface_number != expected_iface:
                     continue
             elif hardware.type in (Hardware.Type.MOUSE, Hardware.Type.MOUSEPAD):
                 if devinfo.interface_number != 1:

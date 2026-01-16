@@ -117,10 +117,20 @@ class Commands:
         protocols=("extended", "modern", "wireless_kb"),
     )
     UNPAIR: ClassVar[CommandDef] = CommandDef(
-        0x00, 0x42, 0x02, "UNPAIR", "Wireless unpairing", protocols=("extended", "modern", "wireless_kb")
+        0x00,
+        0x42,
+        0x02,
+        "UNPAIR",
+        "Wireless unpairing",
+        protocols=("extended", "modern", "wireless_kb"),
     )
     PAIRING_SCAN: ClassVar[CommandDef] = CommandDef(
-        0x00, 0x46, 0x01, "PAIRING_SCAN", "Start pairing scan", protocols=("extended", "modern", "wireless_kb")
+        0x00,
+        0x46,
+        0x01,
+        "PAIRING_SCAN",
+        "Start pairing scan",
+        protocols=("extended", "modern", "wireless_kb"),
     )
     GET_PAIRED_DEVICES: ClassVar[CommandDef] = CommandDef(
         0x00,
@@ -147,7 +157,12 @@ class Commands:
         0x02, 0x0D, None, "SET_KEY_REMAP", "Key remapping (non-analog keyboards)"
     )
     SET_KEY_REMAP_ANALOG: ClassVar[CommandDef] = CommandDef(
-        0x02, 0x12, None, "SET_KEY_REMAP_ANALOG", "Key remapping (analog keyboards)", protocols=("modern",)
+        0x02,
+        0x12,
+        None,
+        "SET_KEY_REMAP_ANALOG",
+        "Key remapping (analog keyboards)",
+        protocols=("modern",),
     )
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -188,7 +203,12 @@ class Commands:
         0x03, 0x0C, None, "SET_FRAME_DATA_SINGLE", "Custom frame (single row)"
     )
     SET_DOCK_CHARGE_EFFECT: ClassVar[CommandDef] = CommandDef(
-        0x03, 0x10, 0x01, "SET_DOCK_CHARGE_EFFECT", "Dock charging LED", protocols=("extended", "modern")
+        0x03,
+        0x10,
+        0x01,
+        "SET_DOCK_CHARGE_EFFECT",
+        "Dock charging LED",
+        protocols=("extended", "modern"),
     )
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -213,7 +233,11 @@ class Commands:
     # ─────────────────────────────────────────────────────────────────────────
 
     SET_PROFILE: ClassVar[CommandDef] = CommandDef(
-        0x05, 0x02, None, "SET_PROFILE", "Switch to profile slot (0=no-store, 1=default, 2=red, 3=green, 4=blue, 5=cyan)"
+        0x05,
+        0x02,
+        None,
+        "SET_PROFILE",
+        "Switch to profile slot (0=no-store, 1=default, 2=red, 3=green, 4=blue, 5=cyan)",
     )
     GET_PROFILE: ClassVar[CommandDef] = CommandDef(
         0x05, 0x03, None, "GET_PROFILE", "Query current profile"
@@ -227,19 +251,44 @@ class Commands:
     # ─────────────────────────────────────────────────────────────────────────
 
     SET_LOW_BATTERY: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x01, 0x01, "SET_LOW_BATTERY", "Set low battery threshold", protocols=("extended", "modern")
+        0x07,
+        0x01,
+        0x01,
+        "SET_LOW_BATTERY",
+        "Set low battery threshold",
+        protocols=("extended", "modern"),
     )
     GET_LOW_BATTERY: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x81, 0x01, "GET_LOW_BATTERY", "Query low battery threshold", protocols=("extended", "modern")
+        0x07,
+        0x81,
+        0x01,
+        "GET_LOW_BATTERY",
+        "Query low battery threshold",
+        protocols=("extended", "modern"),
     )
     SET_DOCK_BRIGHTNESS: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x02, 0x01, "SET_DOCK_BRIGHTNESS", "Set dock LED brightness", protocols=("extended", "modern")
+        0x07,
+        0x02,
+        0x01,
+        "SET_DOCK_BRIGHTNESS",
+        "Set dock LED brightness",
+        protocols=("extended", "modern"),
     )
     GET_DOCK_BRIGHTNESS: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x82, 0x01, "GET_DOCK_BRIGHTNESS", "Query dock brightness", protocols=("extended", "modern")
+        0x07,
+        0x82,
+        0x01,
+        "GET_DOCK_BRIGHTNESS",
+        "Query dock brightness",
+        protocols=("extended", "modern"),
     )
     SET_IDLE_TIME: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x03, 0x02, "SET_IDLE_TIME", "Set idle timeout (60-900 seconds)", protocols=("extended", "modern")
+        0x07,
+        0x03,
+        0x02,
+        "SET_IDLE_TIME",
+        "Set idle timeout (60-900 seconds)",
+        protocols=("extended", "modern"),
     )
     GET_IDLE_TIME: ClassVar[CommandDef] = CommandDef(
         0x07, 0x83, 0x02, "GET_IDLE_TIME", "Query idle timeout", protocols=("extended", "modern")
@@ -248,10 +297,20 @@ class Commands:
         0x07, 0x10, 0x01, "SET_DONGLE_LED", "Set HyperSpeed dongle LED mode", protocols=("modern",)
     )
     GET_BATTERY_LEVEL: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x80, 0x02, "GET_BATTERY_LEVEL", "Query battery level (0-255)", protocols=("extended", "modern")
+        0x07,
+        0x80,
+        0x02,
+        "GET_BATTERY_LEVEL",
+        "Query battery level (0-255)",
+        protocols=("extended", "modern"),
     )
     GET_CHARGING_STATUS: ClassVar[CommandDef] = CommandDef(
-        0x07, 0x84, 0x02, "GET_CHARGING_STATUS", "Query charging (0=no, 1=yes)", protocols=("extended", "modern")
+        0x07,
+        0x84,
+        0x02,
+        "GET_CHARGING_STATUS",
+        "Query charging (0=no, 1=yes)",
+        protocols=("extended", "modern"),
     )
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -298,19 +357,44 @@ class Commands:
         protocols=("extended", "modern"),
     )
     GET_EFFECT_EXTENDED: ClassVar[CommandDef] = CommandDef(
-        0x0F, 0x80, None, "GET_EFFECT_EXTENDED", "Query current effect", protocols=("extended", "modern")
+        0x0F,
+        0x80,
+        None,
+        "GET_EFFECT_EXTENDED",
+        "Query current effect",
+        protocols=("extended", "modern"),
     )
     SET_FRAME_EXTENDED: ClassVar[CommandDef] = CommandDef(
-        0x0F, 0x03, None, "SET_FRAME_EXTENDED", "Extended custom frame", protocols=("extended", "modern")
+        0x0F,
+        0x03,
+        None,
+        "SET_FRAME_EXTENDED",
+        "Extended custom frame",
+        protocols=("extended", "modern"),
     )
     GET_MATRIX_EFFECT: ClassVar[CommandDef] = CommandDef(
-        0x0F, 0x82, None, "GET_MATRIX_EFFECT", "Query matrix state", protocols=("extended", "modern")
+        0x0F,
+        0x82,
+        None,
+        "GET_MATRIX_EFFECT",
+        "Query matrix state",
+        protocols=("extended", "modern"),
     )
     SET_BRIGHTNESS_EXTENDED: ClassVar[CommandDef] = CommandDef(
-        0x0F, 0x04, 0x03, "SET_BRIGHTNESS_EXTENDED", "Set brightness (extended)", protocols=("extended", "modern")
+        0x0F,
+        0x04,
+        0x03,
+        "SET_BRIGHTNESS_EXTENDED",
+        "Set brightness (extended)",
+        protocols=("extended", "modern"),
     )
     GET_BRIGHTNESS_EXTENDED: ClassVar[CommandDef] = CommandDef(
-        0x0F, 0x84, 0x03, "GET_BRIGHTNESS_EXTENDED", "Query brightness (extended)", protocols=("extended", "modern")
+        0x0F,
+        0x84,
+        0x03,
+        "GET_BRIGHTNESS_EXTENDED",
+        "Query brightness (extended)",
+        protocols=("extended", "modern"),
     )
 
     # ─────────────────────────────────────────────────────────────────────────

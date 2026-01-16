@@ -66,7 +66,7 @@ class UChromaClientAsync:
                 proxy = await self._get_proxy(identifier)
                 return DeviceProxy(proxy, loop=loop)
 
-            if re.match(r"\w{4}:\w{4}.\d{2}", identifier):
+            if re.match(r"\w{4}:\w{4}(\.\d{2})?$", identifier):
                 use_key = True
             elif re.match(r"\d+", identifier):
                 identifier = int(identifier)
@@ -76,9 +76,12 @@ class UChromaClientAsync:
         for dev_path in await self.get_device_paths():
             proxy = await self._get_proxy(dev_path)
             dev = DeviceProxy(proxy, loop=loop)
+            # Pre-fetch identity props to avoid nested run_until_complete
+            await dev._prefetch_identity()
 
             if use_key:
-                if identifier == dev.Key:
+                # Support partial key matching (1532:026c matches 1532:026c.01)
+                if dev.Key == identifier or dev.Key.startswith(identifier + "."):
                     return dev
             else:
                 if identifier == dev.DeviceIndex:
@@ -86,16 +89,14 @@ class UChromaClientAsync:
 
         return None
 
-    async def get_layer(self, device_path, layer_idx):
-        """Get a layer proxy by device and index."""
+    async def get_layer_info(self, device_path, zindex):
+        """Get layer info by device and zindex."""
+        # Handle DeviceProxy or string path
+        if isinstance(device_path, DeviceProxy):
+            device_path = device_path._proxy.path
         proxy = await self._get_proxy(device_path)
         anim = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
-        layers = await anim.get_current_renderers()
-
-        if layer_idx >= len(layers):
-            raise ValueError("Layer index out of range")
-
-        return await self._get_proxy(layers[layer_idx][1])
+        return await anim.call_get_layer_info(zindex)
 
 
 class DeviceProxy:
@@ -120,6 +121,11 @@ class DeviceProxy:
             self._anim_iface = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
         with contextlib.suppress(Exception):
             self._led_iface = proxy.get_interface("org.chemlab.UChroma.LEDManager")
+
+    async def _prefetch_identity(self):
+        """Pre-fetch Key and DeviceIndex for sync access during device lookup."""
+        self._cache["Key"] = await self._device_iface.get_key()
+        self._cache["DeviceIndex"] = await self._device_iface.get_device_index()
 
     def _get_loop(self):
         """Get or create event loop."""
@@ -363,9 +369,9 @@ class UChromaClient:
         loop = self._get_loop()
         return self._run(self._async_client.get_device(identifier, loop=loop))
 
-    def get_layer(self, device_path, layer_idx):
+    def get_layer_info(self, device_path, zindex):
         self._ensure_connected()
-        return self._run(self._async_client.get_layer(device_path, layer_idx))
+        return self._run(self._async_client.get_layer_info(device_path, zindex))
 
 
 async def main():

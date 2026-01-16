@@ -39,7 +39,9 @@ def mock_device():
     device.hardware.has_leds = True
     device.hardware.uses_extended_fx = False
     device.hardware.get_supported_effects = MagicMock(return_value=("static", "wave", "breathe"))
-    device.hardware.supports_effect = MagicMock(side_effect=lambda e: e.lower() in ("static", "wave", "breathe"))
+    device.hardware.supports_effect = MagicMock(
+        side_effect=lambda e: e.lower() in ("static", "wave", "breathe")
+    )
     device.hardware.get_protocol_config = MagicMock()
     device.hardware.get_protocol_config.return_value.version.value = "legacy"
     device.hardware.get_protocol_config.return_value.transaction_id = 0xFF
@@ -50,9 +52,7 @@ def mock_device():
 @pytest.fixture
 def wireless_device(mock_device):
     """Create a mock wireless device."""
-    mock_device.hardware.has_capability = MagicMock(
-        side_effect=lambda c: c == Capability.WIRELESS
-    )
+    mock_device.hardware.has_capability = MagicMock(side_effect=lambda c: c == Capability.WIRELESS)
     return mock_device
 
 

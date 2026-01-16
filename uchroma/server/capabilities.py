@@ -133,9 +133,7 @@ class DeviceCapabilities:
         # If no explicit list, return effects supported by the protocol
         uses_extended = self.device.hardware.uses_extended_fx
         all_effects = Effects.get_all_effects()
-        return {
-            e.name for e in all_effects if Effects.supports_protocol(e.name, uses_extended)
-        }
+        return {e.name for e in all_effects if Effects.supports_protocol(e.name, uses_extended)}
 
     @property
     def uses_extended_fx(self) -> bool:

@@ -269,7 +269,7 @@ class Configuration:
 
         return list(search_recursive(self, key, value))
 
-    def flatten(self) -> list | "Configuration":
+    def flatten(self) -> list | Configuration:
         """
         Flattens the hierarchy to a list of concrete objects.
 

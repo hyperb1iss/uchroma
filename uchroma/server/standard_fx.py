@@ -139,10 +139,9 @@ class StandardFX(FXModule):
         return self._driver.run_command(
             StandardFX.Command.SET_EFFECT_EXTENDED,
             0x01,
-            LEDType.BACKLIGHT,
-            effect,
+            LEDType.BACKLIGHT.hardware_id,
+            effect.value,
             *args,
-            transaction_id=0x3F,
         )
 
     def set_effect(self, effect: FX | ExtendedFX, *args) -> bool:

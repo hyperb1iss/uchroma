@@ -23,7 +23,7 @@ from uchroma.color import ColorUtils
 from uchroma.layer import Layer
 
 from .hardware import Quirks
-from .types import BaseCommand
+from .types import BaseCommand, LEDType
 
 
 class Frame:
@@ -53,6 +53,7 @@ class Frame:
 
         SET_FRAME_DATA_MATRIX = (0x03, 0x0B, None)
         SET_FRAME_DATA_SINGLE = (0x03, 0x0C, None)
+        SET_FRAME_EXTENDED = (0x0F, 0x03, None)
 
     def __init__(self, driver, width: int, height: int):
         self._driver = driver
@@ -143,15 +144,24 @@ class Frame:
             transaction_id=0x80,
         )
 
+    # Extended frame format constants
+    VARSTORE = 0x01
+    EXTENDED_CUSTOM_FRAME_EFFECT = 0x08
+
     def _get_frame_data_report(self, remaining_packets: int, *args):
         if self._report is None:
-            tid = 0xFF
-            if self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
+            # Determine command and transaction ID based on device quirks
+            if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+                cmd = Frame.Command.SET_FRAME_EXTENDED.value
+                tid = None  # Use device default
+            elif self._driver.has_quirk(Quirks.CUSTOM_FRAME_80):
+                cmd = Frame.Command.SET_FRAME_DATA_MATRIX.value
                 tid = 0x80
+            else:
+                cmd = Frame.Command.SET_FRAME_DATA_MATRIX.value
+                tid = 0xFF
 
-            self._report = self._driver.get_report(
-                *Frame.Command.SET_FRAME_DATA_MATRIX.value, transaction_id=tid
-            )
+            self._report = self._driver.get_report(*cmd, transaction_id=tid)
 
         self._report.clear()
         self._report.args.put_all(args)
@@ -159,9 +169,26 @@ class Frame:
         self._report.remaining_packets = remaining_packets
         return self._report
 
+    def _build_extended_frame_args(self, row: int, start_col: int, stop_col: int, data):
+        """Build argument list for extended frame command (0x0F, 0x03).
+
+        Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
+        """
+        return [
+            Frame.VARSTORE,
+            LEDType.BACKLIGHT.hardware_id,
+            Frame.EXTENDED_CUSTOM_FRAME_EFFECT,
+            0x00,  # Reserved
+            row,
+            start_col,
+            stop_col,
+            data,
+        ]
+
     def _set_frame_data_matrix(self, img, frame_id: int):
         width = self._width
         multi = False
+        is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
 
         # perform two updates if we exceeded 24 columns
         if width > Frame.MAX_WIDTH:
@@ -183,20 +210,28 @@ class Frame:
                 remaining = (remaining * 2) + 1
 
             data = rowdata[:width]
-            self._driver.run_report(
-                self._get_frame_data_report(
-                    remaining, frame_id, row, start_col, len(data) - 1, data
-                )
-            )
+            stop_col = start_col + len(data) - 1
+
+            if is_extended:
+                # Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
+                args = self._build_extended_frame_args(row, start_col, stop_col, data)
+            else:
+                # Legacy format: [frame_id, row, start, stop, rgb...]
+                args = [frame_id, row, start_col, stop_col, data]
+
+            self._driver.run_report(self._get_frame_data_report(remaining, *args))
 
             if multi:
                 time.sleep(0.001)
                 data = rowdata[width:]
-                self._driver.run_report(
-                    self._get_frame_data_report(
-                        remaining - 1, frame_id, row, width, width + len(data) - 1, data
-                    )
-                )
+                stop_col = width + len(data) - 1
+
+                if is_extended:
+                    args = self._build_extended_frame_args(row, width, stop_col, data)
+                else:
+                    args = [frame_id, row, width, stop_col, data]
+
+                self._driver.run_report(self._get_frame_data_report(remaining - 1, *args))
 
             time.sleep(0.001)
 

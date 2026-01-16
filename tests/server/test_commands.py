@@ -54,9 +54,7 @@ class TestCommandDef:
 
     def test_supports_protocol_specific_protocols(self):
         """Command only supports specified protocols."""
-        cmd = CommandDef(
-            0x0F, 0x02, None, "SET_EFFECT_EXTENDED", protocols=("extended", "modern")
-        )
+        cmd = CommandDef(0x0F, 0x02, None, "SET_EFFECT_EXTENDED", protocols=("extended", "modern"))
         assert cmd.supports_protocol("legacy") is False
         assert cmd.supports_protocol("extended") is True
         assert cmd.supports_protocol("modern") is True

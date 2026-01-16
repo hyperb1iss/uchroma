@@ -144,6 +144,27 @@ class DeviceInterface(ServiceInterface):
             return [str(z) for z in zones]
         return []
 
+    @dbus_property(access=PropertyAccess.READ)
+    def KeyMapping(self) -> "a{sa(ii)}":
+        mapping = OrderedDict()
+        keymap = getattr(self._driver, "key_mapping", None)
+        if not keymap:
+            return mapping
+
+        for key, points in keymap.items():
+            if points is None:
+                continue
+            # Check if points is a single coordinate (2-tuple with int elements)
+            # vs a collection of coordinates (PointList/list of Points)
+            if len(points) == 2 and isinstance(points[0], int):
+                # Single point like Point(0, 1)
+                mapping[str(key)] = [tuple(points)]
+            else:
+                # Collection of points - convert each to tuple
+                mapping[str(key)] = [tuple(p) for p in points]
+
+        return mapping
+
     # Read-write properties
     @dbus_property()
     def Brightness(self) -> "d":
@@ -343,10 +364,10 @@ class AnimationManagerInterface(ServiceInterface):
         """Sync cached layer info from the animation loop."""
         self._layers = []
 
-        if self._animgr._loop is None:  # noqa: SLF001
+        if self._animgr._loop is None:
             return
 
-        for holder in self._animgr._loop.layers:  # noqa: SLF001
+        for holder in self._animgr._loop.layers:
             self._layers.append(
                 {
                     "type": holder.type_string,

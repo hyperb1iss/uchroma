@@ -43,9 +43,7 @@ class MockHIDDevice:
     transaction_id: int = 0xFF
 
     # Queue of expected commands and their responses
-    _expected: deque[tuple[int, int, bytes | None, Callable | None]] = field(
-        default_factory=deque
-    )
+    _expected: deque[tuple[int, int, bytes | None, Callable | None]] = field(default_factory=deque)
     # Queue of received commands
     _received: list[bytes] = field(default_factory=list)
     # Last sent report
