@@ -74,6 +74,7 @@ dev = [
     "ruff>=0.9",
     "ty>=0.0.1a7",
     "cython>=3.0",
+    "pygobject-stubs>=2.16.0",
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,12 +124,26 @@ combine-as-imports = true
 python-version = "3.10"
 
 [tool.ty.rules]
-# Start with warnings for gradual adoption
+# Ignore missing stubs for external packages (hid, pyudev, evdev, coloraide, dbus-fast)
+unresolved-import = "ignore"
+# Traitlets uses dynamic attributes extensively
+unresolved-attribute = "ignore"
+possibly-missing-attribute = "ignore"
+# Gradual adoption - warn on these
 possibly-unresolved-reference = "warn"
-unresolved-import = "warn"
-unresolved-attribute = "warn"
 invalid-type-form = "warn"
+# Errors we want to fix
+invalid-assignment = "error"
+invalid-argument-type = "warn"
+invalid-return-type = "warn"
 
 [tool.ty.src]
 include = ["uchroma/**/*.py"]
 exclude = ["**/build/**", "**/.venv/**"]
+
+# Relax rules for D-Bus files that use D-Bus type signatures as annotations
+[[tool.ty.overrides]]
+include = ["**/dbus.py", "**/dbus_*.py"]
+[tool.ty.overrides.rules]
+unresolved-reference = "ignore"
+invalid-return-type = "ignore"
