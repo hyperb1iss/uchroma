@@ -64,6 +64,15 @@ class TestDeviceMatcher:
         result = matcher.match("index", 1)
         assert result["name"] == "Razer Mamba Elite"
 
+    def test_index_match_prefers_explicit_device_index(self):
+        devices = [
+            {"name": "Device A", "key": "1532:0001.00", "type": "keyboard", "index": 42},
+            {"name": "Device B", "key": "1532:0002.00", "type": "mouse", "index": 7},
+        ]
+        matcher = DeviceMatcher(devices)
+        result = matcher.match("index", 7)
+        assert result["name"] == "Device B"
+
     def test_key_match_partial(self, devices):
         matcher = DeviceMatcher(devices)
         result = matcher.match("key", "1532:0226")

@@ -165,6 +165,8 @@ class DeviceService:
             match = matcher.auto_select()
         else:
             match_type, value = parse_device_spec(spec)
+            if match_type == "path":
+                return self._client.get_device(value)
             match = matcher.match(match_type, value)
 
         if match is None:
@@ -199,6 +201,11 @@ class DeviceService:
             match = matcher.auto_select()  # Raises if ambiguous
         else:
             match_type, value = parse_device_spec(spec)
+            if match_type == "path":
+                proxy = self._client.get_device(value)
+                if proxy is None:
+                    raise ValueError(f"Device not found: {spec}")
+                return proxy
             match = matcher.match(match_type, value)  # Raises if not found
 
         proxy = self._client.get_device(match["key"])

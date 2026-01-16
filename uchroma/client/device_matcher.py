@@ -67,6 +67,16 @@ class DeviceMatcher:
         if match_type == "index":
             if not isinstance(value, int):
                 value = int(value)
+
+            # Prefer matching on explicit device indices when present.
+            has_explicit_index = any("index" in dev for dev in self._devices)
+            if has_explicit_index:
+                for dev in self._devices:
+                    if dev.get("index") == value:
+                        return dev
+                raise ValueError(f"Device index {value} not found")
+
+            # Backwards-compatible fallback: list position.
             if 0 <= value < len(self._devices):
                 return self._devices[value]
             raise ValueError(f"Device index {value} not found (have {len(self._devices)} devices)")
