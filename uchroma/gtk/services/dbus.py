@@ -128,6 +128,118 @@ class DBusService:
             await self.get_device_proxy(path)
         return self._device_proxies.get(path, {}).get("led")
 
+    def _unwrap_variants(self, obj):
+        """Recursively unwrap dbus_fast Variants."""
+        if isinstance(obj, Variant):
+            return self._unwrap_variants(obj.value)
+        if isinstance(obj, dict):
+            return {k: self._unwrap_variants(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return type(obj)(self._unwrap_variants(item) for item in obj)
+        return obj
+
+    async def get_available_fx(self, path: str) -> dict:
+        """Fetch available effects with trait metadata."""
+        fx_proxy = await self.get_fx_proxy(path)
+        if not fx_proxy:
+            return {}
+
+        try:
+            raw = await fx_proxy.get_available_fx()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get available FX: {e}")
+            return {}
+
+    async def get_current_fx(self, path: str):
+        """Fetch current effect and params."""
+        fx_proxy = await self.get_fx_proxy(path)
+        if not fx_proxy:
+            return ("", {})
+
+        try:
+            raw = await fx_proxy.get_current_fx()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get current FX: {e}")
+            return ("", {})
+
+    async def get_available_renderers(self, path: str) -> dict:
+        """Fetch available renderers with metadata."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return {}
+
+        try:
+            raw = await anim_proxy.get_available_renderers()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get available renderers: {e}")
+            return {}
+
+    async def get_current_renderers(self, path: str):
+        """Fetch current renderer stack."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return []
+
+    async def get_animation_state(self, path: str) -> str:
+        """Fetch animation state string."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return ""
+
+        try:
+            return await anim_proxy.get_animation_state()
+        except Exception as e:
+            print(f"Failed to get animation state: {e}")
+            return ""
+
+        try:
+            raw = await anim_proxy.get_current_renderers()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get current renderers: {e}")
+            return []
+
+    async def get_layer_info(self, path: str, zindex: int) -> dict:
+        """Fetch layer trait values."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return {}
+
+        try:
+            raw = await anim_proxy.call_get_layer_info(zindex)
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get layer info: {e}")
+            return {}
+
+    async def set_layer_traits(self, path: str, zindex: int, traits: dict):
+        """Set renderer traits for a layer."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return False
+
+        try:
+            dbus_traits = {}
+            for k, v in traits.items():
+                if isinstance(v, bool):
+                    dbus_traits[k] = Variant("b", v)
+                elif isinstance(v, int):
+                    dbus_traits[k] = Variant("i", v)
+                elif isinstance(v, float):
+                    dbus_traits[k] = Variant("d", v)
+                elif isinstance(v, str):
+                    dbus_traits[k] = Variant("s", v)
+                elif isinstance(v, list):
+                    dbus_traits[k] = Variant("as", v)
+
+            return await anim_proxy.call_set_layer_traits(zindex, dbus_traits)
+        except Exception as e:
+            print(f"Failed to set layer traits: {e}")
+            return False
+
     async def set_effect(self, path: str, effect_name: str, params: dict | None = None):
         """Set an effect on a device."""
         fx_proxy = await self.get_fx_proxy(path)
@@ -176,6 +288,8 @@ class DBusService:
                         dbus_traits[k] = Variant("d", v)
                     elif isinstance(v, str):
                         dbus_traits[k] = Variant("s", v)
+                    elif isinstance(v, list):
+                        dbus_traits[k] = Variant("as", v)
 
             return await anim_proxy.call_add_renderer(name, zindex, dbus_traits)
         except Exception as e:
@@ -204,6 +318,18 @@ class DBusService:
             return await anim_proxy.call_stop_animation()
         except Exception as e:
             print(f"Failed to stop animation: {e}")
+            return False
+
+    async def pause_animation(self, path: str):
+        """Toggle pause/resume animation on a device."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return False
+
+        try:
+            return await anim_proxy.call_pause_animation()
+        except Exception as e:
+            print(f"Failed to pause animation: {e}")
             return False
 
     async def set_brightness(self, path: str, value: float):

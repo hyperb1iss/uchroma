@@ -339,14 +339,25 @@ class AnimationManagerInterface(ServiceInterface):
         self._animgr.layers_changed.connect(self._layers_changed)
         self._animgr.state_changed.connect(self._state_changed)
 
+    def _sync_layers(self):
+        """Sync cached layer info from the animation loop."""
+        self._layers = []
+
+        if self._animgr._loop is None:  # noqa: SLF001
+            return
+
+        for holder in self._animgr._loop.layers:  # noqa: SLF001
+            self._layers.append(
+                {
+                    "type": holder.type_string,
+                    "zindex": holder.zindex,
+                    "layer": holder.renderer,
+                }
+            )
+
     def _layers_changed(self, action, zindex=None, layer=None):
-        if action == "add" and layer is not None:
-            layer_info = {
-                "type": f"{layer.__class__.__module__}.{layer.__class__.__name__}",
-                "zindex": layer.zindex,
-                "layer": layer,
-            }
-            self._layers.append(layer_info)
+        if action in {"add", "remove", "modify"}:
+            self._sync_layers()
 
         self.emit_properties_changed({"CurrentRenderers": self.CurrentRenderers})
 
@@ -388,6 +399,40 @@ class AnimationManagerInterface(ServiceInterface):
         if z >= 0:
             return f"{self._device_api.bus_path}/layer/{z}"
         return "/"
+
+    @method()
+    def GetLayerInfo(self, zindex: "i") -> "a{sv}":
+        """Get info about a layer by zindex."""
+        for info in self._layers:
+            if info["zindex"] == zindex:
+                layer = info["layer"]
+                result = {
+                    "Key": Variant("s", info["type"]),
+                    "ZIndex": Variant("i", zindex),
+                    "Type": Variant("s", info["type"]),
+                }
+                # Add trait values
+                if hasattr(layer, "traits"):
+                    from uchroma.traits import get_args_dict  # noqa: PLC0415
+
+                    for k, v in get_args_dict(layer).items():
+                        result[k] = dbus_prepare(v, variant=True)[0]
+                return result
+        return {}
+
+    @method()
+    def SetLayerTraits(self, zindex: "i", traits: "a{sv}") -> "b":
+        """Set renderer traits for a layer by zindex."""
+        for info in self._layers:
+            if info["zindex"] == zindex:
+                layer = info["layer"]
+                for k, v in traits.items():
+                    if not hasattr(layer, "has_trait") or not layer.has_trait(k):
+                        continue
+                    val = v.value if isinstance(v, Variant) else v
+                    setattr(layer, k, val)
+                return True
+        return False
 
     @method()
     def RemoveRenderer(self, zindex: "i") -> "b":
