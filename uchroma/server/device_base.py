@@ -289,7 +289,11 @@ class BaseUChromaDevice:
         Create and initialize a new RazerReport on this device
         """
         if transaction_id is None:
-            if self.has_quirk(Quirks.TRANSACTION_CODE_3F):
+            if self.has_quirk(Quirks.TRANSACTION_CODE_9F):
+                transaction_id = 0x9F
+            elif self.has_quirk(Quirks.TRANSACTION_CODE_08):
+                transaction_id = 0x08
+            elif self.has_quirk(Quirks.TRANSACTION_CODE_3F):
                 transaction_id = 0x3F
             elif self.has_quirk(Quirks.TRANSACTION_CODE_1F):
                 transaction_id = 0x1F
