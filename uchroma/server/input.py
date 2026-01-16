@@ -132,8 +132,8 @@ class InputManager:
         """
         Shuts down the InputManager and disconnects any active callbacks
         """
-        for callback in self._event_callbacks:
-            await ensure_future(self.remove_callback(callback))
+        for callback in list(self._event_callbacks):
+            await self.remove_callback(callback)
 
     def grab(self, excl: bool):
         """
