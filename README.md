@@ -1,27 +1,38 @@
-## uChroma - Razer Chroma control for Linux 
+## 💜 uChroma
+
+**RGB Control for Razer Chroma on Linux**
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/GTK4-Frontend-4a86cf?style=for-the-badge&logo=gtk&logoColor=white" alt="GTK4">
+  <img src="https://img.shields.io/badge/D--Bus-API-e135ff?style=for-the-badge&logo=freedesktoporg&logoColor=white" alt="D-Bus">
+  <img src="https://img.shields.io/badge/License-LGPL--3.0-50fa7b?style=for-the-badge&logo=gnu&logoColor=white" alt="License">
+</p>
+
+The Razer Chroma line of peripherals have flashy features such as embedded LED matrices and macro keys. This project aims to provide rich support for these features under Linux without requiring kernel modifications.
 
 
-The Razer Chroma line of peripherals have flashy features such as embedded LED matrices and macro keys. This project aims to provide rich support for these features under Linux without requiring kernel modifications. 
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b38cbbbd41e74cef89438b20faeb75d1)](https://www.codacy.com/app/shade_2/uchroma?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=hyperb1iss/uchroma&amp;utm_campaign=Badge_Grade) [![Build Status](https://travis-ci.org/hyperb1iss/uchroma.svg?branch=master)](https://travis-ci.org/hyperb1iss/uchroma)
+## ✦ What can it do?
 
-
-
-## What can it do?
-
-* Supports Razer keyboards, mice, mouse pads, laptops, and keypads
+* Supports Razer keyboards, mice, mouse pads, laptops, headsets, and keypads — **[see supported devices](docs/reference/devices.md)**
 * Enables activation of built-in hardware lighting effects
 * Several custom effects included for devices with LED matrices, more on the way
 * Rich animation/framebuffer API for creation of custom effects
+* GTK4 frontend with live LED matrix preview
+* Fan control and power management for laptops
+* Battery monitoring for wireless devices
 * Optimized for low power consumption
 * Simple installation and setup
 * Powerful command line interface
 * D-Bus API
 * 100% *asyncio*-powered Python, 100% open source (LGPL)
 
+📚 **[Full Documentation](docs/)** — User guide, CLI reference, effect development
 
 
-## Installation
+
+## 📦 Installation
 
 #### Debian/Ubuntu
 Packaging assets live in `debian/` and target modern Python (3.10+). If you're building locally,
@@ -53,7 +64,7 @@ Be sure to uninstall any other software which might alter permissions or change 
 
 
 
-## Usage
+## ⚡ Usage
 
 UChroma consists of two main executables, *uchromad* and *uchroma*. The *uchromad* executable runs in the background as a systemd user service, handles all hardware interactions, executes animations, stores preferences, and publishes several D-Bus services for clients to use. The *uchroma* command provides a uniform interface to all discovered devices. The CLI tool is based on subcommands (similar to Git), and help can be viewed at any level by passing the "-h" flag.
 
@@ -353,7 +364,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	
 
-## Frequently Asked Questions
+## 🔮 Frequently Asked Questions
 
 #### *My device is not recognized!*
 
@@ -405,7 +416,7 @@ Send a pull request if you implement a new renderer and would like to have it in
 
 #### *Is a GUI available?*
 
->Not yet, but it will happen! We have a D-Bus API which provides total control of the hardware and a powerful CLI, but a GNOME frontend is definitely on the radar.
+>Yes! A GTK4 frontend with libadwaita styling is included. Run `uchroma-gtk` to launch it. The GUI provides a live LED matrix preview, effect configuration, and layer management.
 
 
 #### *How can I contribute?*
@@ -414,25 +425,24 @@ Send a pull request if you implement a new renderer and would like to have it in
 
 
 
-## Powered by...
+## 🧪 Powered by...
 
 #### *Awesome libraries used by UChroma:*
 
 * [Numpy](http://numpy.org)
 * [Scikit-Image](http://scikit-image.org)
-* [Grapefruit](https://github.com/xav/Grapefruit)
+* [ColorAide](https://facelessuser.github.io/coloraide/)
 * [HIDAPI](https://github.com/NF6X/pyhidapi)
 * [Traitlets](https://github.com/ipython/traitlets)
-* [pydbus](https://github.com/LEW21/pydbus)
+* [dbus-fast](https://github.com/Bluetooth-Devices/dbus-fast)
 * [pyudev](https://pyudev.readthedocs.io/en/latest/)
 * [python-evdev](https://python-evdev.readthedocs.io/en/latest/)
-* [Gbulb](https://github.com/nathan-hoad/gbulb)
 
 
 
 ## Credits
 
-[Copyright (C) 2021 Stefanie Jane](https://github.com/hyperb1iss)
+[Copyright (C) 2017-2026 Stefanie Jane](https://github.com/hyperb1iss)
 
 [Inspired by work from Tim Theede and Terry Cain](https://github.com/terrycain/razer-drivers)
  
