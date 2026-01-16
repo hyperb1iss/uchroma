@@ -116,6 +116,7 @@ def trait_to_param(name: str, trait_def: dict) -> dict | None:
         min_val = trait_def.get("min", 0)
         max_val = trait_def.get("max")
         default = trait_def.get("default_value")
+        value_type = "int" if cls_name == "Int" else "float"
 
         if max_val is None:
             if isinstance(default, (int, float)) and default > 0:
@@ -139,6 +140,7 @@ def trait_to_param(name: str, trait_def: dict) -> dict | None:
             "max": max_val,
             "step": step,
             "default": default if default is not None else min_val,
+            "value_type": value_type,
         }
 
     return None
@@ -155,4 +157,3 @@ def build_param_defs(traits: dict[str, dict], *, exclude: set[str] | None = None
         if param:
             params.append(param)
     return params
-

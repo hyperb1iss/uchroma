@@ -26,6 +26,7 @@ class ParamInspector(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
 
         self._params = []
+        self._param_map = {}
         self._widgets = {}
         self._debounce_sources = {}
 
@@ -72,6 +73,7 @@ class ParamInspector(Gtk.Box):
         """
         self._clear_params()
         self._params = params
+        self._param_map = {param["name"]: param for param in params}
         self._title.set_label(title)
 
         values = values or {}
@@ -105,6 +107,7 @@ class ParamInspector(Gtk.Box):
 
         self._widgets.clear()
         self._params = []
+        self._param_map.clear()
 
     def _create_param_widget(self, param: dict, current_value=None) -> Gtk.Widget | None:
         """Create a widget for a parameter."""
@@ -319,7 +322,11 @@ class ParamInspector(Gtk.Box):
 
     def _on_range_changed(self, scale, name):
         """Handle range change."""
-        self._emit_debounced(name, scale.get_value())
+        param = self._param_map.get(name, {})
+        value = scale.get_value()
+        if param.get("value_type") == "int":
+            value = int(round(value))
+        self._emit_debounced(name, value)
 
     def _on_choice_changed(self, dropdown, pspec, name, options):
         """Handle choice change."""
@@ -381,7 +388,10 @@ class ParamInspector(Gtk.Box):
             elif param["type"] == "range":
                 # Widget is a box with scale as first child
                 scale = widget.get_first_child()
-                values[name] = scale.get_value()
+                value = scale.get_value()
+                if param.get("value_type") == "int":
+                    value = int(round(value))
+                values[name] = value
             elif param["type"] == "choice":
                 idx = widget.get_selected()
                 options = param.get("options", [])
