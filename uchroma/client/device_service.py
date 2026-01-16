@@ -330,6 +330,93 @@ class DeviceService:
         prepared, _ = dbus_prepare(props, variant=True)
         return device.SetLED(led_name, prepared)
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # System Control Operations (laptops)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def has_system_control(self, device: "DeviceProxy") -> bool:
+        """Check if device supports system control (fans, power modes, boost)."""
+        return device.HasSystemControl
+
+    def get_fan_rpm(self, device: "DeviceProxy") -> tuple[int, int] | None:
+        """Get current fan RPM values."""
+        return device.FanRPM
+
+    def get_fan_mode(self, device: "DeviceProxy") -> str | None:
+        """Get current fan mode (auto/manual)."""
+        return device.FanMode
+
+    def get_fan_limits(self, device: "DeviceProxy") -> dict | None:
+        """Get fan RPM limits (min/max values)."""
+        return device.FanLimits
+
+    def set_fan_auto(self, device: "DeviceProxy") -> bool:
+        """Set fans to automatic control."""
+        return device.SetFanAuto()
+
+    def set_fan_rpm(self, device: "DeviceProxy", rpm: int, fan2_rpm: int = -1) -> bool:
+        """Set manual fan RPM. Use -1 for fan2_rpm to copy rpm value."""
+        return device.SetFanRPM(rpm, fan2_rpm)
+
+    def get_power_mode(self, device: "DeviceProxy") -> str | None:
+        """Get current power mode."""
+        return device.PowerMode
+
+    def set_power_mode(self, device: "DeviceProxy", mode: str) -> bool:
+        """Set power mode (balanced, gaming, creator, custom)."""
+        device.PowerMode = mode
+        return True
+
+    def get_available_power_modes(self, device: "DeviceProxy") -> list[str] | None:
+        """Get available power modes."""
+        return device.AvailablePowerModes
+
+    def get_cpu_boost(self, device: "DeviceProxy") -> str | None:
+        """Get current CPU boost mode."""
+        return device.CPUBoost
+
+    def set_cpu_boost(self, device: "DeviceProxy", mode: str) -> bool:
+        """Set CPU boost mode."""
+        device.CPUBoost = mode
+        return True
+
+    def get_gpu_boost(self, device: "DeviceProxy") -> str | None:
+        """Get current GPU boost mode."""
+        return device.GPUBoost
+
+    def set_gpu_boost(self, device: "DeviceProxy", mode: str) -> bool:
+        """Set GPU boost mode."""
+        device.GPUBoost = mode
+        return True
+
+    def get_available_boost_modes(self, device: "DeviceProxy") -> list[str] | None:
+        """Get available boost modes."""
+        return device.AvailableBoostModes
+
+    def supports_fan_speed(self, device: "DeviceProxy") -> bool:
+        """Check if device supports reading fan speed."""
+        return device.SupportsFanSpeed
+
+    def supports_boost(self, device: "DeviceProxy") -> bool:
+        """Check if device supports boost control."""
+        return device.SupportsBoost
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Battery/Wireless Operations
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def is_wireless(self, device: "DeviceProxy") -> bool:
+        """Check if device is wireless."""
+        return device.IsWireless
+
+    def is_charging(self, device: "DeviceProxy") -> bool:
+        """Check if device is charging."""
+        return device.IsCharging
+
+    def get_battery_level(self, device: "DeviceProxy") -> int:
+        """Get battery level as percentage (0-100)."""
+        return device.BatteryLevel
+
 
 # Singleton for CLI use
 _service: DeviceService | None = None

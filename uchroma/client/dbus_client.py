@@ -107,12 +107,15 @@ class DeviceProxy:
         self._fx_iface = None
         self._anim_iface = None
         self._led_iface = None
+        self._system_iface = None
         with contextlib.suppress(Exception):
             self._fx_iface = proxy.get_interface("io.uchroma.FXManager")
         with contextlib.suppress(Exception):
             self._anim_iface = proxy.get_interface("io.uchroma.AnimationManager")
         with contextlib.suppress(Exception):
             self._led_iface = proxy.get_interface("io.uchroma.LEDManager")
+        with contextlib.suppress(Exception):
+            self._system_iface = proxy.get_interface("io.uchroma.SystemControl")
 
     async def _prefetch_identity(self):
         """Pre-fetch Key and DeviceIndex for sync access during device lookup."""
@@ -316,6 +319,154 @@ class DeviceProxy:
             return False
         loop = self._get_loop()
         return loop.run_until_complete(self._led_iface.call_set_led(led_name, props))
+
+    # System Control properties and methods
+    @property
+    def HasSystemControl(self):
+        """Check if device supports system control (laptops only)."""
+        return self._system_iface is not None
+
+    @property
+    def FanRPM(self):
+        """Get current fan RPM(s)."""
+        if self._system_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_fan_rpm())
+
+    @property
+    def FanMode(self):
+        """Get current fan mode (auto/manual)."""
+        if self._system_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_fan_mode())
+
+    @property
+    def FanLimits(self):
+        """Get fan RPM limits."""
+        if self._system_iface is None:
+            return None
+        if "FanLimits" not in self._cache:
+            loop = self._get_loop()
+            raw = loop.run_until_complete(self._system_iface.get_fan_limits())
+            self._cache["FanLimits"] = self._unwrap_variants(raw)
+        return self._cache["FanLimits"]
+
+    @property
+    def PowerMode(self):
+        """Get current power mode."""
+        if self._system_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_power_mode())
+
+    @PowerMode.setter
+    def PowerMode(self, mode):
+        """Set power mode."""
+        if self._system_iface is None:
+            return
+        loop = self._get_loop()
+        loop.run_until_complete(self._system_iface.set_power_mode(mode))
+
+    @property
+    def AvailablePowerModes(self):
+        """Get available power modes."""
+        if self._system_iface is None:
+            return None
+        if "AvailablePowerModes" not in self._cache:
+            loop = self._get_loop()
+            self._cache["AvailablePowerModes"] = loop.run_until_complete(
+                self._system_iface.get_available_power_modes()
+            )
+        return self._cache["AvailablePowerModes"]
+
+    @property
+    def CPUBoost(self):
+        """Get current CPU boost mode."""
+        if self._system_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_cpu_boost())
+
+    @CPUBoost.setter
+    def CPUBoost(self, mode):
+        """Set CPU boost mode."""
+        if self._system_iface is None:
+            return
+        loop = self._get_loop()
+        loop.run_until_complete(self._system_iface.set_cpu_boost(mode))
+
+    @property
+    def GPUBoost(self):
+        """Get current GPU boost mode."""
+        if self._system_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_gpu_boost())
+
+    @GPUBoost.setter
+    def GPUBoost(self, mode):
+        """Set GPU boost mode."""
+        if self._system_iface is None:
+            return
+        loop = self._get_loop()
+        loop.run_until_complete(self._system_iface.set_gpu_boost(mode))
+
+    @property
+    def AvailableBoostModes(self):
+        """Get available boost modes."""
+        if self._system_iface is None:
+            return None
+        if "AvailableBoostModes" not in self._cache:
+            loop = self._get_loop()
+            self._cache["AvailableBoostModes"] = loop.run_until_complete(
+                self._system_iface.get_available_boost_modes()
+            )
+        return self._cache["AvailableBoostModes"]
+
+    @property
+    def SupportsFanSpeed(self):
+        """Check if device supports fan speed reading."""
+        if self._system_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_supports_fan_speed())
+
+    @property
+    def SupportsBoost(self):
+        """Check if device supports boost control."""
+        if self._system_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.get_supports_boost())
+
+    def SetFanAuto(self):
+        """Set fans to automatic control."""
+        if self._system_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.call_set_fan_auto())
+
+    def SetFanRPM(self, rpm, fan2_rpm=-1):
+        """Set manual fan RPM."""
+        if self._system_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._system_iface.call_set_fan_rpm(rpm, fan2_rpm))
+
+    # Battery/Wireless properties (from Device interface)
+    @property
+    def IsWireless(self):
+        return self._get_prop("IsWireless")
+
+    @property
+    def IsCharging(self):
+        return self._get_prop("IsCharging")
+
+    @property
+    def BatteryLevel(self):
+        return self._get_prop("BatteryLevel")
 
     def get_interface(self, name):
         """Get a specific interface from the proxy."""

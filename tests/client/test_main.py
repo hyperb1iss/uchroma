@@ -18,6 +18,7 @@ class MockDeviceProxy:
         self._fx_iface = True
         self._anim_iface = True
         self._led_iface = True
+        self._system_iface = False  # No system control by default
         # Additional properties for dump command
         self.DeviceType = "keyboard"
         self.Key = "1532:0203.00"
@@ -90,6 +91,24 @@ class MockDeviceProxy:
         self.CurrentRenderers = []
         self.CurrentFX = ("static", {})
 
+        # System control properties (not a laptop by default)
+        self.HasSystemControl = False
+        self.FanRPM = None
+        self.FanMode = None
+        self.FanLimits = None
+        self.PowerMode = None
+        self.AvailablePowerModes = None
+        self.CPUBoost = None
+        self.GPUBoost = None
+        self.AvailableBoostModes = None
+        self.SupportsFanSpeed = False
+        self.SupportsBoost = False
+
+        # Battery/wireless properties (not wireless by default)
+        self.IsWireless = False
+        self.IsCharging = False
+        self.BatteryLevel = 0
+
     def AddRenderer(self, name, zindex, traits):
         return f"/io/uchroma/device/0/layer/{len(self.CurrentRenderers)}"
 
@@ -112,6 +131,12 @@ class MockDeviceProxy:
         return {"brightness": 1.0}
 
     def SetLED(self, led_name, props):
+        return True
+
+    def SetFanAuto(self):
+        return True
+
+    def SetFanRPM(self, rpm, fan2_rpm=-1):
         return True
 
 
@@ -171,6 +196,68 @@ class MockDeviceService(DeviceService):
     def set_layer_traits(self, device, zindex, traits):
         return device.SetLayerTraits(zindex, traits)
 
+    # System control methods
+    def has_system_control(self, device):
+        return device.HasSystemControl
+
+    def get_fan_rpm(self, device):
+        return device.FanRPM
+
+    def get_fan_mode(self, device):
+        return device.FanMode
+
+    def get_fan_limits(self, device):
+        return device.FanLimits
+
+    def set_fan_auto(self, device):
+        return device.SetFanAuto()
+
+    def set_fan_rpm(self, device, rpm, fan2_rpm=-1):
+        return device.SetFanRPM(rpm, fan2_rpm)
+
+    def get_power_mode(self, device):
+        return device.PowerMode
+
+    def set_power_mode(self, device, mode):
+        device.PowerMode = mode
+        return True
+
+    def get_available_power_modes(self, device):
+        return device.AvailablePowerModes
+
+    def get_cpu_boost(self, device):
+        return device.CPUBoost
+
+    def set_cpu_boost(self, device, mode):
+        device.CPUBoost = mode
+        return True
+
+    def get_gpu_boost(self, device):
+        return device.GPUBoost
+
+    def set_gpu_boost(self, device, mode):
+        device.GPUBoost = mode
+        return True
+
+    def get_available_boost_modes(self, device):
+        return device.AvailableBoostModes
+
+    def supports_fan_speed(self, device):
+        return device.SupportsFanSpeed
+
+    def supports_boost(self, device):
+        return device.SupportsBoost
+
+    # Battery/wireless methods
+    def is_wireless(self, device):
+        return device.IsWireless
+
+    def is_charging(self, device):
+        return device.IsCharging
+
+    def get_battery_level(self, device):
+        return device.BatteryLevel
+
 
 @pytest.fixture(autouse=True)
 def mock_device_service(monkeypatch):
@@ -182,6 +269,8 @@ def mock_device_service(monkeypatch):
     monkeypatch.setattr("uchroma.client.commands.anim.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.fx.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.led.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.power.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.battery.get_device_service", lambda: mock)
     return mock
 
 

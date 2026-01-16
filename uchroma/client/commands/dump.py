@@ -120,6 +120,10 @@ class DumpCommand(Command):
 
     def _dump_single_device(self, proxy) -> None:
         """Dump detailed info for a single device proxy."""
+        from uchroma.client.device_service import get_device_service  # noqa: PLC0415
+
+        service = get_device_service()
+
         self.print(f"  {self.out.device(proxy.Name)}")
         self.print()
 
@@ -160,6 +164,42 @@ class DumpCommand(Command):
         current_fx = proxy.CurrentFX
         if current_fx and isinstance(current_fx, tuple) and len(current_fx) >= 1:
             info.append(("current_fx", current_fx[0]))
+
+        # Battery/Wireless info
+        try:
+            if service.is_wireless(proxy):
+                info.append(("wireless", "yes"))
+                battery = service.get_battery_level(proxy)
+                charging = service.is_charging(proxy)
+                status = f"{battery}% {'(charging)' if charging else ''}"
+                info.append(("battery", status.strip()))
+        except Exception:
+            pass
+
+        # System control info (laptops)
+        try:
+            if service.has_system_control(proxy):
+                info.append(("system_control", "yes"))
+                power_mode = service.get_power_mode(proxy)
+                if power_mode:
+                    info.append(("power_mode", power_mode))
+                if service.supports_fan_speed(proxy):
+                    fan_rpm = service.get_fan_rpm(proxy)
+                    if fan_rpm:
+                        rpm1, rpm2 = fan_rpm
+                        if rpm2 > 0 and rpm2 != rpm1:
+                            info.append(("fan_rpm", f"{rpm1} / {rpm2}"))
+                        else:
+                            info.append(("fan_rpm", str(rpm1)))
+                if service.supports_boost(proxy):
+                    cpu = service.get_cpu_boost(proxy)
+                    gpu = service.get_gpu_boost(proxy)
+                    if cpu:
+                        info.append(("cpu_boost", cpu))
+                    if gpu:
+                        info.append(("gpu_boost", gpu))
+        except Exception:
+            pass
 
         for key, value in info:
             self.print(f"    {self.out.kv(key, str(value))}")

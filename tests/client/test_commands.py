@@ -17,14 +17,16 @@ from uchroma.client.device_service import DeviceInfo, DeviceService
 class MockDeviceProxy:
     """Mock device proxy for testing."""
 
-    def __init__(self, name="BlackWidow Chroma", brightness=80):
+    def __init__(self, name="BlackWidow Chroma", brightness=80, is_laptop=False, is_wireless=False):
         self.Name = name
         self.Brightness = brightness
         self._fx_iface = True  # Has FX support
         self._anim_iface = True
         self._led_iface = True
+        self._system_iface = is_laptop  # System control for laptops
+        self._is_wireless = is_wireless
         # Additional properties for dump command
-        self.DeviceType = "keyboard"
+        self.DeviceType = "laptop" if is_laptop else "keyboard"
         self.Key = "1532:0203.00"
         self.SerialNumber = "XX1234567890"
         self.FirmwareVersion = "v1.05"
@@ -100,6 +102,26 @@ class MockDeviceProxy:
         self.CurrentRenderers = []
         self.CurrentFX = ("static", {})
 
+        # System control properties (laptops)
+        self.HasSystemControl = is_laptop
+        self.FanRPM = (3500, 3500) if is_laptop else None
+        self.FanMode = "auto" if is_laptop else None
+        self.FanLimits = {"min": 2000, "max": 5000} if is_laptop else None
+        self.PowerMode = "balanced" if is_laptop else None
+        self.AvailablePowerModes = (
+            ["balanced", "gaming", "creator", "custom"] if is_laptop else None
+        )
+        self.CPUBoost = "medium" if is_laptop else None
+        self.GPUBoost = "medium" if is_laptop else None
+        self.AvailableBoostModes = ["low", "medium", "high", "boost"] if is_laptop else None
+        self.SupportsFanSpeed = is_laptop
+        self.SupportsBoost = is_laptop
+
+        # Battery/wireless properties
+        self.IsWireless = is_wireless
+        self.IsCharging = True if is_wireless else False
+        self.BatteryLevel = 75 if is_wireless else 0
+
     def AddRenderer(self, name, zindex, traits):
         return f"/io/uchroma/device/0/layer/{len(self.CurrentRenderers)}"
 
@@ -122,6 +144,12 @@ class MockDeviceProxy:
         return {"brightness": 1.0, "color": "green"}
 
     def SetLED(self, led_name, props):
+        return True
+
+    def SetFanAuto(self):
+        return True
+
+    def SetFanRPM(self, rpm, fan2_rpm=-1):
         return True
 
 
@@ -192,6 +220,68 @@ class MockDeviceService(DeviceService):
     def set_layer_traits(self, device, zindex, traits):
         return device.SetLayerTraits(zindex, traits)
 
+    # System control methods
+    def has_system_control(self, device):
+        return device.HasSystemControl
+
+    def get_fan_rpm(self, device):
+        return device.FanRPM
+
+    def get_fan_mode(self, device):
+        return device.FanMode
+
+    def get_fan_limits(self, device):
+        return device.FanLimits
+
+    def set_fan_auto(self, device):
+        return device.SetFanAuto()
+
+    def set_fan_rpm(self, device, rpm, fan2_rpm=-1):
+        return device.SetFanRPM(rpm, fan2_rpm)
+
+    def get_power_mode(self, device):
+        return device.PowerMode
+
+    def set_power_mode(self, device, mode):
+        device.PowerMode = mode
+        return True
+
+    def get_available_power_modes(self, device):
+        return device.AvailablePowerModes
+
+    def get_cpu_boost(self, device):
+        return device.CPUBoost
+
+    def set_cpu_boost(self, device, mode):
+        device.CPUBoost = mode
+        return True
+
+    def get_gpu_boost(self, device):
+        return device.GPUBoost
+
+    def set_gpu_boost(self, device, mode):
+        device.GPUBoost = mode
+        return True
+
+    def get_available_boost_modes(self, device):
+        return device.AvailableBoostModes
+
+    def supports_fan_speed(self, device):
+        return device.SupportsFanSpeed
+
+    def supports_boost(self, device):
+        return device.SupportsBoost
+
+    # Battery/wireless methods
+    def is_wireless(self, device):
+        return device.IsWireless
+
+    def is_charging(self, device):
+        return device.IsCharging
+
+    def get_battery_level(self, device):
+        return device.BatteryLevel
+
 
 @pytest.fixture(autouse=True)
 def mock_device_service(monkeypatch):
@@ -203,6 +293,8 @@ def mock_device_service(monkeypatch):
     monkeypatch.setattr("uchroma.client.commands.anim.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.fx.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.led.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.power.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.battery.get_device_service", lambda: mock)
     return mock
 
 
@@ -437,3 +529,195 @@ class TestDumpCommand:
         # Test 'info' alias
         args = cli.parse_args(["info"])
         assert args.command == "info"
+
+
+class TestPowerCommand:
+    """Test power command."""
+
+    def test_power_status_no_system_control(self, mock_device_service):
+        from uchroma.client.commands.power import PowerCommand
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = PowerCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["power"])
+        result = cmd.run(args)
+
+        # Should succeed but show "no system control" message
+        assert result == 0
+
+    def test_power_status_with_system_control(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.power import PowerCommand
+
+        # Return a laptop device
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(is_laptop=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = PowerCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["power"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_power_mode_set(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.power import PowerCommand
+
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(is_laptop=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = PowerCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["power", "mode", "gaming"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_power_fan_auto(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.power import PowerCommand
+
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(is_laptop=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = PowerCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["power", "fan", "auto"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_power_fan_manual(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.power import PowerCommand
+
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(is_laptop=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = PowerCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["power", "fan", "manual", "3500"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_power_boost_set(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.power import PowerCommand
+
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(is_laptop=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = PowerCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["power", "boost", "--cpu", "high", "--gpu", "medium"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_power_aliases(self):
+        from uchroma.client.commands.power import PowerCommand
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        PowerCommand.register(cli, subparsers)
+
+        # Test 'fan' alias
+        args = cli.parse_args(["fan"])
+        assert args.command == "fan"
+
+        # Test 'boost' alias
+        args = cli.parse_args(["boost"])
+        assert args.command == "boost"
+
+
+class TestBatteryCommand:
+    """Test battery command."""
+
+    def test_battery_not_wireless(self, mock_device_service):
+        from uchroma.client.commands.battery import BatteryCommand
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = BatteryCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["battery"])
+        result = cmd.run(args)
+
+        # Should succeed (device is not wireless)
+        assert result == 0
+
+    def test_battery_wireless_device(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.battery import BatteryCommand
+
+        # Return a wireless device
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(name="DeathAdder V2 Pro", is_wireless=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = BatteryCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["battery"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_battery_quiet_mode(self, mock_device_service, monkeypatch):
+        from uchroma.client.commands.battery import BatteryCommand
+
+        monkeypatch.setattr(
+            mock_device_service,
+            "require_device",
+            lambda spec: MockDeviceProxy(is_wireless=True),
+        )
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        cmd = BatteryCommand.register(cli, subparsers)
+
+        args = cli.parse_args(["battery", "-q"])
+        result = cmd.run(args)
+
+        assert result == 0
+
+    def test_battery_aliases(self):
+        from uchroma.client.commands.battery import BatteryCommand
+
+        cli = UChromaCLI()
+        subparsers = cli.add_subparsers()
+        BatteryCommand.register(cli, subparsers)
+
+        # Test 'bat' alias
+        args = cli.parse_args(["bat"])
+        assert args.command == "bat"
+
+        # Test 'wireless' alias
+        args = cli.parse_args(["wireless"])
+        assert args.command == "wireless"
