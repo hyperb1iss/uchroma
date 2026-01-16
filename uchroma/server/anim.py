@@ -5,6 +5,7 @@
 # pylint: disable=unused-argument, protected-access, invalid-name
 
 import asyncio
+import contextlib
 import inspect
 from collections import OrderedDict
 from concurrent import futures
@@ -32,6 +33,7 @@ class LayerHolder(HasTraits):
         self.waiter = None
         self.active_buf = None
         self.task = None
+        self._finished = False
 
         self.traits_changed = Signal()
         self._renderer.observe(self._traits_changed, names=["all"])
@@ -71,22 +73,23 @@ class LayerHolder(HasTraits):
             self.task = ensure_future(self.renderer._run())
 
     async def stop(self):
-        if self.renderer.running:
-            tasks = []
-            if self.task is not None and not self.task.done():
-                self.task.cancel()
-                tasks.append(self.task)
+        tasks = []
+        if self.task is not None and not self.task.done():
+            self.task.cancel()
+            tasks.append(self.task)
 
-            if self.waiter is not None and not self.waiter.done():
-                self.waiter.cancel()
-                tasks.append(self.waiter)
+        if self.waiter is not None and not self.waiter.done():
+            self.waiter.cancel()
+            tasks.append(self.waiter)
 
-            await self.renderer._stop()
+        await self.renderer._stop()
 
-            if tasks:
-                await asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
+        if tasks:
+            await asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
 
+        if not self._finished:
             self.renderer.finish(self._frame)
+            self._finished = True
 
 
 class AnimationLoop(HasTraits):
@@ -118,6 +121,7 @@ class AnimationLoop(HasTraits):
         self._default_blend_mode = default_blend_mode
 
         self._anim_task = None
+        self._stop_task = None
 
         self._pause_event = asyncio.Event()
         self._pause_event.set()
@@ -358,6 +362,7 @@ class AnimationLoop(HasTraits):
         self._error = False
         self.running = True
 
+        self._stop_task = None
         self._anim_task = ensure_future(self._animate())
         self._anim_task.add_done_callback(self._renderer_done)
 
@@ -378,8 +383,10 @@ class AnimationLoop(HasTraits):
             await self.remove_layer(layer)
 
         if self._anim_task is not None and not self._anim_task.done():
-            self._anim_task.cancel()
-            await asyncio.wait([self._anim_task], return_when=futures.ALL_COMPLETED)
+            current_task = asyncio.current_task()
+            if current_task is not self._anim_task:
+                self._anim_task.cancel()
+                await asyncio.wait([self._anim_task], return_when=futures.ALL_COMPLETED)
 
         self._logger.info("AnimationLoop stopped")
 
@@ -387,9 +394,24 @@ class AnimationLoop(HasTraits):
         if not self.running:
             return False
 
-        task = ensure_future(self._stop())
-        if cb is not None:
-            task.add_done_callback(cb)
+        if self._stop_task is None or self._stop_task.done():
+            self._stop_task = ensure_future(self._stop())
+        if cb is not None and self._stop_task is not None:
+            self._stop_task.add_done_callback(cb)
+        return True
+
+    async def stop_async(self) -> bool:
+        """
+        Stop this AnimationLoop and wait for shutdown to complete.
+        """
+        if self.running:
+            self.stop()
+
+        if self._stop_task is None:
+            return False
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._stop_task
         return True
 
     def pause(self, paused):
@@ -609,6 +631,7 @@ class AnimationManager(HasTraits):
             return
 
         await self._loop.clear_layers()
+        await self._loop.stop_async()
 
     def _restore_prefs(self, prefs):
         """

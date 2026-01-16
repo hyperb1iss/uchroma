@@ -150,7 +150,7 @@ class InputQueue:
         """
         self._expire()
 
-        if ev.keystate == ev.key_up and not self._keystates & InputQueue.KEY_UP:
+        if ev.keystate == ev.key_up and not self.keystates & InputQueue.KEY_UP:
             return
 
         if ev.keystate == ev.key_down and not self.keystates & InputQueue.KEY_DOWN:
@@ -176,32 +176,31 @@ class InputQueue:
         if self._logger.isEnabledFor(LOG_TRACE):
             self._logger.debug("Input event: %s", event)
 
-        if self._expire_time is not None:
-            for idx in range(len(self._events)):
-                if self._events[idx].keycode == event.keycode:
-                    self._events[idx] = None
-            self._events = [x for x in self._events if x is not None]
+        if self._expire_time is None or self._expire_time <= 0:
+            await self._q.put(event)
+            return
 
-            self._events.append(event)
+        had_events = bool(self._events)
+        self._events = [x for x in self._events if x.keycode != event.keycode]
+        self._events.append(event)
 
+        # Use the queue as a wakeup signal when transitioning from empty -> non-empty.
+        # This prevents unbounded growth of the queue while events remain active.
+        if not had_events:
             await self._q.put(event)
 
     def _expire(self):
         """
         Clear all events which have passed the deadline
         """
-        if self._expire_time is None:
+        if self._expire_time is None or self._expire_time <= 0:
             return
 
         now = time.time()
 
         # Remove expired events from queue
-        try:
-            while self._events[0].expire_time < now:
-                self._events.pop(0)
-
-        except IndexError:
-            pass
+        while self._events and self._events[0].expire_time < now:
+            self._events.pop(0)
 
     @property
     def expire_time(self):

@@ -479,3 +479,37 @@ class TestInputQueueInputCallback:
 
         count = asyncio.run(run_test())
         assert count == 1  # Should still be 1, replaced
+
+    def test_input_callback_does_not_grow_queue_in_expire_mode(self, input_queue):
+        """_input_callback should not grow the internal queue while events remain active."""
+
+        async def run_test():
+            mock_ev1 = MagicMock()
+            mock_ev1.keystate = mock_ev1.key_down = 1
+            mock_ev1.key_up = 0
+            mock_ev1.key_hold = 2
+            mock_ev1.keycode = "KEY_A"
+            mock_ev1.scancode = "30"
+            mock_ev1.event = MagicMock()
+            mock_ev1.event.timestamp.return_value = time.time()
+
+            mock_ev2 = MagicMock()
+            mock_ev2.keystate = mock_ev2.key_down = 1
+            mock_ev2.key_up = 0
+            mock_ev2.key_hold = 2
+            mock_ev2.keycode = "KEY_B"
+            mock_ev2.scancode = "31"
+            mock_ev2.event = MagicMock()
+            mock_ev2.event.timestamp.return_value = time.time() + 0.1
+
+            await input_queue._input_callback(mock_ev1)
+            size_after_first = input_queue._q.qsize()
+
+            await input_queue._input_callback(mock_ev2)
+            size_after_second = input_queue._q.qsize()
+
+            return size_after_first, size_after_second
+
+        size_after_first, size_after_second = asyncio.run(run_test())
+        assert size_after_first == 1
+        assert size_after_second == 1

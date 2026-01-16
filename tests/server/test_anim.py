@@ -284,6 +284,21 @@ class TestLayerHolder:
         result = asyncio.run(run_test())
         assert result is True
 
+    def test_stop_cancels_waiter_when_renderer_not_running(self, mock_frame, mock_renderer):
+        """LayerHolder.stop cancels waiter task even when renderer is not running."""
+        from uchroma.server.anim import LayerHolder
+
+        mock_renderer.running = False
+        holder = LayerHolder(mock_renderer, mock_frame)
+
+        async def run_test():
+            holder.waiter = asyncio.create_task(asyncio.sleep(10))
+            await holder.stop()
+            return holder.waiter.cancelled() and mock_renderer.finish.called
+
+        result = asyncio.run(run_test())
+        assert result is True
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AnimationManager Tests
@@ -391,6 +406,22 @@ class TestAnimationManager:
 
         result = asyncio.run(run_test())
         assert result is True
+
+    def test_shutdown_awaits_loop_stop(self, animation_manager):
+        """AnimationManager.shutdown awaits loop stop."""
+
+        async def run_test():
+            loop = MagicMock()
+            loop.clear_layers = AsyncMock()
+            loop.stop_async = AsyncMock()
+            animation_manager._loop = loop
+
+            await animation_manager.shutdown()
+
+            loop.clear_layers.assert_awaited_once()
+            loop.stop_async.assert_awaited_once()
+
+        asyncio.run(run_test())
 
     def test_create_loop(self, animation_manager, mock_frame):
         """AnimationManager._create_loop creates AnimationLoop."""
