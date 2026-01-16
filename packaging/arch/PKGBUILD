@@ -1,0 +1,53 @@
+pkgname=uchroma
+pkgver=1.1.0
+pkgrel=1
+pkgdesc="Userspace RGB control for Razer Chroma peripherals"
+arch=("x86_64")
+url="https://github.com/hyperbliss/uchroma"
+license=("LGPL3")
+depends=(
+  "python"
+  "python-argcomplete"
+  "python-coloraide"
+  "python-colorlog"
+  "python-dbus-fast"
+  "python-evdev"
+  "python-frozendict"
+  "python-hid"
+  "python-hsluv"
+  "python-numpy"
+  "python-pyudev"
+  "python-ruamel-yaml"
+  "python-scikit-image"
+  "python-traitlets"
+  "python-wrapt"
+)
+optdepends=(
+  "python-gobject: GTK frontend"
+)
+makedepends=(
+  "cython"
+  "python-build"
+  "python-installer"
+  "python-numpy"
+)
+source=("$pkgname-$pkgver.tar.gz::https://github.com/hyperbliss/uchroma/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=("SKIP")
+install="$pkgname.install"
+
+build() {
+  cd "$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+
+  install -Dm644 install/udev/70-uchroma.rules \
+    "$pkgdir/usr/lib/udev/rules.d/70-uchroma.rules"
+  install -Dm644 install/systemd/uchromad.service \
+    "$pkgdir/usr/lib/systemd/user/uchromad.service"
+  install -Dm644 install/dbus/org.chemlab.UChroma.service \
+    "$pkgdir/usr/share/dbus-1/services/org.chemlab.UChroma.service"
+}

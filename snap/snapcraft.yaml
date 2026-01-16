@@ -1,10 +1,11 @@
 name: uchroma
-version: '1.0.2'
+version: '1.1.0'
 summary: Razer Chroma peripheral manager
 description: |
  An advanced driver for the Razer Chroma line of peripherals.
  Supports lighting effects, custom animations, and more.
 
+base: core22
 grade: stable
 confinement: strict
 
@@ -16,17 +17,17 @@ plugs:
     name: org.chemlab.UChroma
 
 slots:
-    session-dbus-interface:
-      bus: session
-      interface: dbus
-      name: org.chemlab.UChroma
+  session-dbus-interface:
+    bus: session
+    interface: dbus
+    name: org.chemlab.UChroma
 
 apps:
   uchroma:
-    command: gi-wrap uchroma
+    command: bin/gi-wrap uchroma
 
   uchromad:
-    command: gi-wrap uchromad
+    command: bin/gi-wrap uchromad
     daemon: simple
     plugs:
       - hardware-observe
@@ -42,6 +43,8 @@ parts:
     python-version: python3
     build-packages:
       - cython3
+      - libhidapi-dev
+      - python3-dev
       - python3-numpy
     stage-packages:
       - python3-gi

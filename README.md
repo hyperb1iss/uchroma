@@ -23,39 +23,33 @@ The Razer Chroma line of peripherals have flashy features such as embedded LED m
 
 ## Installation
 
-#### Ubuntu
-Packages are available for Ubuntu Xenial, Yakkety, and Zesty:
-
-[UChroma PPA](https://launchpad.net/~cyanogen/+archive/ubuntu/uchroma)
-
-	sudo add-apt-repository ppa:cyanogen/uchroma
-	sudo apt update
-	sudo apt install uchroma
-
+#### Debian/Ubuntu
+Packaging assets live in `debian/` and target modern Python (3.10+). If you're building locally,
+use your distro's standard `dpkg-buildpackage` workflow.
 
 ***
 
 #### Arch
+An AUR package is available, and `packaging/arch/PKGBUILD` provides a modern PKGBUILD baseline.
 
-UChroma can be found in the [AUR](https://aur.archlinux.org/packages/uchroma/)
+***
 
+#### Snap
+Snap packaging is provided in `snap/snapcraft.yaml` (strict confinement, session D-Bus).
 
 ***
 
 #### From Source
-UChroma requires Python 3.5 or newer.
+UChroma requires Python 3.10 or newer and uses `uv` for dependency management.
 
-To install from source, clone this repository and simply run "sudo make install" which will
-fetch all required dependencies automatically.
+System integration (udev + systemd user service):
 
-The UChroma daemon installs itself as a systemd user service. You can check the status with:
-
-	 systemctl --user uchromad status
+	sudo make install-udev
+	sudo make install-service
+	systemctl --user daemon-reload
+	systemctl --user enable --now uchromad.service
 
 Be sure to uninstall any other software which might alter permissions or change behavior of the devices or kernel HID drivers.
-
-
-Please submit a pull request if you'd like to package for other platforms!
 
 
 
