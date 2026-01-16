@@ -1,16 +1,18 @@
-#
-# uchroma - Copyright (C) 2021 Stefanie Kondik
-#
-# This program is free software: you can redistribute it and/or modify it
-# under the terms of the GNU Lesser General Public License as published
-# by the Free Software Foundation, version 3.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
-# License for more details.
-#
+"""Built-in renderer effects for uchroma."""
+
+# Original effects
+# New demoscene-inspired effects
+from .aurora import Aurora as Aurora
+from .comets import Comets as Comets
+from .copper import CopperBars as CopperBars
+from .embers import Embers as Embers
+from .kaleidoscope import Kaleidoscope as Kaleidoscope
+from .metaballs import Metaballs as Metaballs
+from .nebula import Nebula as Nebula
+from .ocean import Ocean as Ocean
 from .plasma import Plasma as Plasma
 from .rainbow import Rainbow as Rainbow
 from .reaction import Reaction as Reaction
 from .ripple import Ripple as Ripple
+from .typewriter import Typewriter as Typewriter
+from .vortex import Vortex as Vortex
