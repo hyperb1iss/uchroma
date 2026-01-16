@@ -9,15 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from uchroma.color import ColorScheme
-from uchroma.log import Log
-
-_logger = Log.get("uchroma.gtk.params")
-
 MAX_COLOR_SLOTS = 6
-
-# Cache ColorScheme names for fast lookup
-_COLOR_SCHEME_NAMES = frozenset(s.name for s in ColorScheme)
 
 LABEL_OVERRIDES = {
     "fps": "FPS",
@@ -109,8 +101,8 @@ def trait_to_param(name: str, trait_def: dict) -> dict | None:
             "default": trait_def.get("default_value", False),
         }
 
-    # ColorPresetTrait - a color scheme preset selector with gradient swatches
-    if trait_def.get("info_text") == "a predefined color scheme" and "values" in trait_def:
+    # ColorPresetTrait - detected by name_prefix containing "ColorScheme"
+    if trait_def.get("name_prefix", "").startswith("ColorScheme") and "values" in trait_def:
         values = list(trait_def.get("values") or [])
         default = trait_def.get("default_value")
         return {

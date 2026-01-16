@@ -160,11 +160,21 @@ uninstall-service: ## Uninstall systemd service
 # Documentation
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: docs
-docs: ## Build documentation
-	make -C doc html
+.PHONY: docs docs-dev docs-build docs-preview docs-lint docs-lint-fix
 
-.PHONY: docs-clean
-docs-clean: ## Clean documentation
-	make -C doc clean
-	rm -f doc/uchroma.*
+docs: docs-dev  ## Alias for docs-dev
+
+docs-dev:  ## Start docs dev server
+	cd docs && npm run dev
+
+docs-build:  ## Build docs for production
+	cd docs && npm run build
+
+docs-preview:  ## Preview production build
+	cd docs && npm run preview
+
+docs-lint:  ## Check docs formatting
+	cd docs && npm run lint
+
+docs-lint-fix:  ## Fix docs formatting
+	cd docs && npm run lint:fix

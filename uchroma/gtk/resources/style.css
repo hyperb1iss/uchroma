@@ -390,6 +390,20 @@ headerbar.flat {
     border-left-color: @silk_purple;
 }
 
+/* Drag and drop states */
+.layer-row.layer-dragging {
+    opacity: 0.5;
+    background-color: alpha(@silk_cyan, 0.1);
+}
+
+.layer-row.layer-drop-above {
+    box-shadow: inset 0 3px 0 @silk_cyan;
+}
+
+.layer-row.layer-drop-below {
+    box-shadow: inset 0 -3px 0 @silk_cyan;
+}
+
 .layer-handle {
     color: @text_dim;
 }
@@ -454,6 +468,48 @@ headerbar.flat {
 
 .layer-delete:hover {
     color: @silk_red;
+}
+
+/* Blend mode popover */
+.blend-popover {
+    background-color: @surface_dark;
+    border: 1px solid alpha(@silk_purple, 0.3);
+    border-radius: 8px;
+}
+
+.blend-popover contents {
+    padding: 4px;
+}
+
+.blend-category {
+    font-size: 11px;
+    font-weight: 600;
+    color: @silk_purple;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 8px 4px 8px;
+    margin-top: 4px;
+}
+
+.blend-option {
+    border-radius: 6px;
+    padding: 4px 8px;
+    min-width: 180px;
+}
+
+.blend-option:hover {
+    background-color: alpha(@silk_purple, 0.15);
+}
+
+.blend-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: @text_primary;
+}
+
+.blend-desc {
+    font-size: 11px;
+    color: @text_dim;
 }
 
 .play-btn {

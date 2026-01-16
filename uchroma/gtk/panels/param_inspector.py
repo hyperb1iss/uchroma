@@ -194,11 +194,34 @@ class ParamInspector(Gtk.Box):
         preset_btn = Gtk.MenuButton()
         preset_btn.add_css_class("param-preset-btn")
 
-        # Set initial label and show gradient for current selection
-        if current and current in all_schemes:
-            preset_btn.set_label(current)
-        else:
-            preset_btn.set_label("Select preset...")
+        # Create button content with gradient + label
+        btn_content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+
+        # Gradient swatch for current selection
+        gradient = Gtk.DrawingArea()
+        gradient.set_size_request(60, 18)
+        gradient.add_css_class("preset-btn-gradient")
+
+        current_colors = all_schemes.get(current, ()) if current else ()
+        self._setup_gradient_draw(gradient, current_colors)
+        btn_content.append(gradient)
+
+        # Label
+        label = Gtk.Label(label=current if current else "Select...")
+        label.add_css_class("preset-btn-label")
+        btn_content.append(label)
+
+        # Dropdown arrow
+        arrow = Gtk.Image.new_from_icon_name("pan-down-symbolic")
+        arrow.add_css_class("preset-btn-arrow")
+        btn_content.append(arrow)
+
+        preset_btn.set_child(btn_content)
+
+        # Store references for updating
+        preset_btn._gradient = gradient
+        preset_btn._label = label
+        preset_btn._schemes = all_schemes
 
         # Popover with scrollable list
         popover = Gtk.Popover()
@@ -225,6 +248,39 @@ class ParamInspector(Gtk.Box):
         preset_btn.set_popover(popover)
 
         return preset_btn
+
+    def _setup_gradient_draw(self, gradient: Gtk.DrawingArea, colors: tuple):
+        """Set up gradient drawing function with given colors."""
+        rgba_colors = []
+        for color_str in colors:
+            rgba = Gdk.RGBA()
+            if rgba.parse(str(color_str)):
+                rgba_colors.append(rgba)
+
+        def draw_gradient(area, cr, width, height, cols=rgba_colors):
+            if not cols:
+                cr.set_source_rgb(0.3, 0.3, 0.3)
+                cr.rectangle(0, 0, width, height)
+                cr.fill()
+                return
+
+            radius = 4
+            cr.new_sub_path()
+            cr.arc(width - radius, radius, radius, -1.5708, 0)
+            cr.arc(width - radius, height - radius, radius, 0, 1.5708)
+            cr.arc(radius, height - radius, radius, 1.5708, 3.1416)
+            cr.arc(radius, radius, radius, 3.1416, 4.7124)
+            cr.close_path()
+
+            pat = cairo.LinearGradient(0, 0, width, 0)
+            for i, c in enumerate(cols):
+                stop = i / max(len(cols) - 1, 1)
+                pat.add_color_stop_rgb(stop, c.red, c.green, c.blue)
+
+            cr.set_source(pat)
+            cr.fill()
+
+        gradient.set_draw_func(draw_gradient)
 
     def _create_preset_option_row(
         self,
@@ -295,8 +351,13 @@ class ParamInspector(Gtk.Box):
 
         btn.set_child(box)
 
-        def on_click(b, n=name, pb=preset_btn, po=popover, pn=param_name):
-            pb.set_label(n)
+        def on_click(b, n=name, c=colors, pb=preset_btn, po=popover, pn=param_name):
+            # Update button label and gradient
+            if hasattr(pb, "_label"):
+                pb._label.set_label(n)
+            if hasattr(pb, "_gradient") and hasattr(pb, "_schemes"):
+                self._setup_gradient_draw(pb._gradient, c)
+                pb._gradient.queue_draw()
             po.popdown()
             self.emit("param-changed", pn, n)
 

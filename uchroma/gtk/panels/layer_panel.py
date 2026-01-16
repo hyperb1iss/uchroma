@@ -16,7 +16,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 import cairo  # noqa: E402
-from gi.repository import Adw, Gdk, GObject, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk  # noqa: E402
 
 from ..widgets.layer_row import LayerRow  # noqa: E402
 
@@ -35,6 +35,11 @@ class LayerPanel(Gtk.Box):
             None,
             (int, str, object),
         ),  # zindex, property, value
+        "layer-reordered": (
+            GObject.SignalFlags.RUN_FIRST,
+            None,
+            (int, int),
+        ),  # from_index, to_index
         "play-clicked": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "stop-clicked": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
@@ -46,6 +51,7 @@ class LayerPanel(Gtk.Box):
         self._selected_layer = None
         self._renderers = []
         self._add_btn = None
+        self._drop_target_row = None
 
         self.add_css_class("layer-panel")
         self.set_margin_start(16)
@@ -110,6 +116,9 @@ class LayerPanel(Gtk.Box):
         self._list.connect("row-selected", self._on_row_selected)
         self._list.set_placeholder(self._create_placeholder())
 
+        # Setup drop target for layer reordering
+        self._setup_drop_target()
+
         list_frame.set_child(self._list)
         self.append(list_frame)
 
@@ -130,6 +139,103 @@ class LayerPanel(Gtk.Box):
         box.append(self._placeholder_label)
 
         return box
+
+    def _setup_drop_target(self):
+        """Setup drop target for layer reordering."""
+        drop_target = Gtk.DropTarget.new(GLib.VariantType.new("i"), Gdk.DragAction.MOVE)
+        drop_target.connect("drop", self._on_drop)
+        drop_target.connect("motion", self._on_drag_motion)
+        drop_target.connect("leave", self._on_drag_leave)
+        self._list.add_controller(drop_target)
+
+    def _on_drag_motion(self, target, x, y):
+        """Handle drag motion - highlight drop position."""
+        row = self._list.get_row_at_y(int(y))
+
+        # Clear previous highlight
+        if self._drop_target_row and self._drop_target_row != row:
+            self._drop_target_row.remove_css_class("layer-drop-above")
+            self._drop_target_row.remove_css_class("layer-drop-below")
+
+        if row:
+            row_alloc = row.get_allocation()
+            row_mid = row_alloc.height / 2
+            relative_y = y - row_alloc.y
+
+            row.remove_css_class("layer-drop-above")
+            row.remove_css_class("layer-drop-below")
+
+            if relative_y < row_mid:
+                row.add_css_class("layer-drop-above")
+            else:
+                row.add_css_class("layer-drop-below")
+
+            self._drop_target_row = row
+
+        return Gdk.DragAction.MOVE
+
+    def _on_drag_leave(self, target):
+        """Clear drop highlighting when drag leaves."""
+        if self._drop_target_row:
+            self._drop_target_row.remove_css_class("layer-drop-above")
+            self._drop_target_row.remove_css_class("layer-drop-below")
+            self._drop_target_row = None
+
+    def _on_drop(self, target, value, x, y):
+        """Handle drop - reorder layers."""
+        from_index = value.get_int32()
+
+        drop_row = self._list.get_row_at_y(int(y))
+        if not drop_row or not isinstance(drop_row, LayerRow):
+            self._on_drag_leave(target)
+            return False
+
+        row_alloc = drop_row.get_allocation()
+        row_mid = row_alloc.height / 2
+        relative_y = y - row_alloc.y
+
+        # The list is displayed in reverse order (highest z-index at top)
+        visual_drop_pos = drop_row.get_index()
+        if relative_y >= row_mid:
+            visual_drop_pos += 1
+
+        num_layers = len(self._layers)
+
+        if from_index < 0 or from_index >= num_layers:
+            self._on_drag_leave(target)
+            return False
+
+        source_row = self._layers[from_index]
+        source_visual_pos = num_layers - 1 - from_index
+
+        # Account for shift when moving down
+        if visual_drop_pos > source_visual_pos:
+            visual_drop_pos -= 1
+
+        to_index = num_layers - 1 - visual_drop_pos
+        to_index = max(0, min(num_layers - 1, to_index))
+
+        if from_index != to_index:
+            # Reorder in our list
+            self._layers.remove(source_row)
+            self._layers.insert(to_index, source_row)
+
+            # Reorder in the ListBox
+            self._list.remove(source_row)
+            new_visual_pos = num_layers - 1 - to_index
+            self._list.insert(source_row, new_visual_pos)
+
+            # Update z-indices
+            self._update_zindices()
+
+            # Emit signal for parent
+            self.emit("layer-reordered", from_index, to_index)
+
+        # Clear drop styling
+        self._on_drag_leave(target)
+        source_row.remove_css_class("layer-dragging")
+
+        return True
 
     def _on_add_clicked(self, btn):
         """Show renderer picker."""

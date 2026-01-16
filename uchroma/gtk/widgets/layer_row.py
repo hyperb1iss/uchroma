@@ -13,11 +13,37 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk, Pango  # noqa: E402
+from gi.repository import Gdk, GLib, GObject, Gtk, Pango  # noqa: E402
 
 from uchroma.blending import BlendOp  # noqa: E402
 
 BLEND_MODES = BlendOp.get_modes()
+
+# Blend mode metadata: (display_name, description, category)
+BLEND_INFO = {
+    "screen": ("Screen", "Brightens by inverting, multiplying, inverting", "lighten"),
+    "addition": ("Add", "Adds colors together, very bright", "lighten"),
+    "dodge": ("Dodge", "Brightens based on layer, high contrast", "lighten"),
+    "lighten_only": ("Lighten", "Keeps brighter pixels from each layer", "lighten"),
+    "multiply": ("Multiply", "Darkens by multiplying colors", "darken"),
+    "darken_only": ("Darken", "Keeps darker pixels from each layer", "darken"),
+    "soft_light": ("Soft Light", "Gentle contrast like diffused light", "contrast"),
+    "hard_light": ("Hard Light", "Strong contrast, multiply or screen", "contrast"),
+    "difference": ("Difference", "Subtracts colors, inverts similar areas", "compare"),
+    "subtract": ("Subtract", "Subtracts layer from base", "compare"),
+    "divide": ("Divide", "Divides base by layer, brightens", "compare"),
+    "grain_extract": ("Grain Extract", "Extracts texture details", "texture"),
+    "grain_merge": ("Grain Merge", "Merges texture details", "texture"),
+}
+
+CATEGORY_ORDER = ["lighten", "darken", "contrast", "compare", "texture"]
+CATEGORY_LABELS = {
+    "lighten": "Lighten",
+    "darken": "Darken",
+    "contrast": "Contrast",
+    "compare": "Compare",
+    "texture": "Texture",
+}
 
 
 class LayerRow(Gtk.ListBoxRow):
@@ -78,14 +104,19 @@ class LayerRow(Gtk.ListBoxRow):
         name_label.set_ellipsize(Pango.EllipsizeMode.END)
         box.append(name_label)
 
-        # Blend mode dropdown
-        blend_list = Gtk.StringList.new(BLEND_MODES)
-        self._blend_dropdown = Gtk.DropDown(model=blend_list)
-        self._blend_dropdown.add_css_class("layer-blend")
-        self._blend_dropdown.set_size_request(90, -1)
-        self._blend_dropdown.connect("notify::selected", self._on_blend_changed)
-        box.append(self._blend_dropdown)
-        self.blend_mode = self._blend_mode
+        # Blend mode picker (MenuButton + Popover)
+        self._blend_btn = Gtk.MenuButton()
+        self._blend_btn.add_css_class("layer-blend")
+        self._blend_btn.set_size_request(90, -1)
+
+        # Button label shows current mode
+        self._blend_label = Gtk.Label(label=BLEND_INFO.get(self._blend_mode, (self._blend_mode,))[0])
+        self._blend_btn.set_child(self._blend_label)
+
+        # Build popover with categorized blend modes
+        popover = self._build_blend_popover()
+        self._blend_btn.set_popover(popover)
+        box.append(self._blend_btn)
 
         # Opacity slider
         self._opacity_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 1, 0.05)
@@ -115,11 +146,103 @@ class LayerRow(Gtk.ListBoxRow):
 
         self.set_child(box)
 
-    def _on_blend_changed(self, dropdown, pspec):
-        idx = dropdown.get_selected()
-        if idx != Gtk.INVALID_LIST_POSITION and idx < len(BLEND_MODES):
-            self._blend_mode = BLEND_MODES[idx]
-            self.emit("blend-changed", self._blend_mode)
+        # Setup drag source for reordering
+        self._setup_drag_source()
+
+    def _setup_drag_source(self):
+        """Setup drag source for layer reordering."""
+        drag_source = Gtk.DragSource()
+        drag_source.set_actions(Gdk.DragAction.MOVE)
+        drag_source.connect("prepare", self._on_drag_prepare)
+        drag_source.connect("drag-begin", self._on_drag_begin)
+        self.add_controller(drag_source)
+
+    def _on_drag_prepare(self, source, x, y):
+        """Prepare drag data - return content provider with row index."""
+        # Store the row's current index in the value
+        value = GLib.Variant.new_int32(self.zindex)
+        return Gdk.ContentProvider.new_for_value(value)
+
+    def _on_drag_begin(self, source, drag):
+        """Handle drag start - create visual feedback."""
+        # Create a snapshot of the row for the drag icon
+        snapshot = Gtk.Snapshot()
+        self.snapshot(snapshot)
+        paintable = snapshot.to_paintable(None)
+        if paintable:
+            Gtk.DragSource.set_icon(source, paintable, 0, 0)
+        self.add_css_class("layer-dragging")
+
+    def _build_blend_popover(self) -> Gtk.Popover:
+        """Build popover with categorized blend modes."""
+        popover = Gtk.Popover()
+        popover.add_css_class("blend-popover")
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_max_content_height(280)
+        scroll.set_propagate_natural_height(True)
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        vbox.set_margin_start(4)
+        vbox.set_margin_end(4)
+        vbox.set_margin_top(4)
+        vbox.set_margin_bottom(4)
+
+        # Group modes by category
+        categories: dict[str, list[str]] = {cat: [] for cat in CATEGORY_ORDER}
+        for mode in BLEND_MODES:
+            info = BLEND_INFO.get(mode)
+            if info:
+                categories[info[2]].append(mode)
+
+        for cat in CATEGORY_ORDER:
+            modes = categories.get(cat, [])
+            if not modes:
+                continue
+
+            # Category header
+            header = Gtk.Label(label=CATEGORY_LABELS.get(cat, cat))
+            header.add_css_class("blend-category")
+            header.set_xalign(0)
+            vbox.append(header)
+
+            # Mode buttons
+            for mode in modes:
+                info = BLEND_INFO.get(mode, (mode, "", cat))
+                btn = Gtk.Button()
+                btn.add_css_class("flat")
+                btn.add_css_class("blend-option")
+
+                btn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+                btn_box.set_margin_start(4)
+                btn_box.set_margin_end(4)
+
+                name = Gtk.Label(label=info[0])
+                name.add_css_class("blend-name")
+                name.set_xalign(0)
+                btn_box.append(name)
+
+                desc = Gtk.Label(label=info[1])
+                desc.add_css_class("blend-desc")
+                desc.set_xalign(0)
+                btn_box.append(desc)
+
+                btn.set_child(btn_box)
+                btn.connect("clicked", self._on_blend_selected, mode, popover)
+                vbox.append(btn)
+
+        scroll.set_child(vbox)
+        popover.set_child(scroll)
+        return popover
+
+    def _on_blend_selected(self, btn, mode: str, popover: Gtk.Popover):
+        """Handle blend mode selection."""
+        self._blend_mode = mode
+        info = BLEND_INFO.get(mode, (mode,))
+        self._blend_label.set_label(info[0])
+        popover.popdown()
+        self.emit("blend-changed", mode)
 
     def _on_opacity_changed(self, scale):
         self._opacity = scale.get_value()
@@ -143,7 +266,8 @@ class LayerRow(Gtk.ListBoxRow):
     def blend_mode(self, value: str):
         if value in BLEND_MODES:
             self._blend_mode = value
-        self._blend_dropdown.set_selected(BLEND_MODES.index(value))
+            info = BLEND_INFO.get(value, (value,))
+            self._blend_label.set_label(info[0])
 
     @property
     def opacity(self) -> float:
