@@ -8,10 +8,13 @@ Works entirely through D-Bus, no server-side imports.
 """
 
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from uchroma.client.commands.base import Command
 from uchroma.client.device_service import get_device_service
+
+if TYPE_CHECKING:
+    from uchroma.client.cli_base import UChromaCLI
 
 
 class LEDInfo:
@@ -151,7 +154,7 @@ class LEDCommand(Command):
     help = "Control standalone LEDs (logo, underglow, etc.)"
     aliases: ClassVar[list[str]] = []
 
-    def __init__(self, cli=None):
+    def __init__(self, cli: "UChromaCLI"):
         super().__init__(cli)
         self._led_cache: dict[str, LEDInfo] | None = None
 

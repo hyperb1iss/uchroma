@@ -9,10 +9,13 @@ Works entirely through D-Bus, no server-side imports.
 
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import OrderedDict
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from uchroma.client.commands.base import Command
 from uchroma.client.device_service import get_device_service
+
+if TYPE_CHECKING:
+    from uchroma.client.cli_base import UChromaCLI
 
 
 class RendererInfo:
@@ -180,7 +183,7 @@ class AnimCommand(Command):
     help = "Manage custom animation layers"
     aliases: ClassVar[list[str]] = ["animation", "layer"]
 
-    def __init__(self, cli=None):
+    def __init__(self, cli: "UChromaCLI"):
         super().__init__(cli)
         self._renderer_cache: dict[str, RendererInfo] | None = None
         self._alias_map: dict[str, str] = {}  # alias -> full_name

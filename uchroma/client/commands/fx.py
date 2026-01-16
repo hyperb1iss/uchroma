@@ -8,10 +8,13 @@ Works entirely through D-Bus, no server-side imports.
 """
 
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from uchroma.client.commands.base import Command
 from uchroma.client.device_service import get_device_service
+
+if TYPE_CHECKING:
+    from uchroma.client.cli_base import UChromaCLI
 
 
 class FXInfo:
@@ -25,9 +28,9 @@ class FXInfo:
         self._traits = dict_as_class_traits(traits_dict) if traits_dict else None
 
         # Get description from traits if available
-        self.description = ""
+        self.description: str = ""
         if self._traits and hasattr(self._traits, "description"):
-            self.description = self._traits.description or ""
+            self.description = str(self._traits.description) if self._traits.description else ""
 
         # Check if hidden
         self.hidden = False
@@ -159,7 +162,7 @@ class FxCommand(Command):
     help = "Set hardware lighting effect"
     aliases: ClassVar[list[str]] = ["effect"]
 
-    def __init__(self, cli=None):
+    def __init__(self, cli: "UChromaCLI"):
         super().__init__(cli)
         self._fx_cache: dict[str, FXInfo] | None = None
 
