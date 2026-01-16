@@ -610,8 +610,24 @@ class SystemControlInterface(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def AvailableBoostModes(self) -> "as":
-        """List of available boost modes."""
+        """List of available boost modes (empty if device doesn't support boost)."""
+        if not self._driver.supports_boost:
+            return []
         return [m.name.lower() for m in BoostMode]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Capability Flags
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @dbus_property(access=PropertyAccess.READ)
+    def SupportsFanSpeed(self) -> "b":
+        """True if device supports real-time fan RPM reading."""
+        return self._driver.supports_fan_speed
+
+    @dbus_property(access=PropertyAccess.READ)
+    def SupportsBoost(self) -> "b":
+        """True if device supports CPU/GPU boost control."""
+        return self._driver.supports_boost
 
 
 class DeviceManagerInterface(ServiceInterface):

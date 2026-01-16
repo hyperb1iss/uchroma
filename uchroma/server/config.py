@@ -344,20 +344,23 @@ class Configuration:
                             odict[field] = field_type(val.items())
                         elif isinstance(val, dict) and issubclass(field_type, tuple):
                             odict[field] = field_type(**val)
+                        # Handle Enum before Iterable (Enum classes are iterable but need special handling)
+                        elif issubclass(field_type, Enum):
+                            if isinstance(val, str):
+                                odict[field] = field_type[val.upper()]
+                            elif isinstance(val, list):
+                                odict[field] = tuple([field_type[x.upper()] for x in val])
+                            else:
+                                odict[field] = field_type(val)
                         elif isinstance(val, Iterable) and issubclass(field_type, Iterable):
                             if hasattr(field_type, "__slots__"):
                                 # namedtuple
                                 odict[field] = field_type(*val)
                             else:
                                 odict[field] = field_type(val)
-                        elif isinstance(val, str) and issubclass(field_type, Enum):
-                            odict[field] = field_type[val.upper()]
                         else:
                             if isinstance(val, list):
-                                if issubclass(field_type, Enum):
-                                    odict[field] = tuple([field_type[x.upper()] for x in val])
-                                else:
-                                    odict[field] = tuple([field_type(x) for x in val])
+                                odict[field] = tuple([field_type(x) for x in val])
                             else:
                                 odict[field] = field_type(val)
 

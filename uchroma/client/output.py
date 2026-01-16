@@ -2,7 +2,10 @@
 # Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
 """
-CLI output styling with SilkCircuit color palette.
+CLI output styling with semantic design tokens.
+
+Exposes only semantic methods (device, key, value, etc.) — not colors.
+Color mapping is internal via the SilkCircuit theme.
 
 Respects NO_COLOR env var and TTY detection.
 """
@@ -10,23 +13,57 @@ Respects NO_COLOR env var and TTY detection.
 import os
 import re
 import sys
+from enum import Enum, auto
 
-# SilkCircuit Neon palette
-COLORS: dict[str, tuple[int, int, int]] = {
-    "electric_purple": (225, 53, 255),
-    "neon_cyan": (128, 255, 234),
-    "coral": (255, 106, 193),
-    "electric_yellow": (241, 250, 140),
-    "success_green": (80, 250, 123),
-    "error_red": (255, 99, 99),
-    "dim": (128, 128, 128),
+# ─────────────────────────────────────────────────────────────────────────────
+# Design Tokens (internal)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _Token(Enum):
+    """Semantic design tokens — maps UI concepts to colors."""
+
+    # Content types
+    DEVICE = auto()  # Device names
+    KEY = auto()  # Property names, labels
+    VALUE = auto()  # Property values, data
+    PATH = auto()  # File paths, URLs
+    HEADER = auto()  # Section titles (bold only)
+
+    # States
+    SUCCESS = auto()  # Confirmations, completed
+    ERROR = auto()  # Failures, problems
+    WARNING = auto()  # Cautions, attention
+    MUTED = auto()  # Metadata, less important
+    ACTIVE = auto()  # Current/selected marker
+
+
+# SilkCircuit Neon theme — maps tokens to RGB values
+_THEME: dict[_Token, tuple[int, int, int] | None] = {
+    # Content types
+    _Token.DEVICE: (128, 255, 234),  # Neon Cyan
+    _Token.KEY: (128, 255, 234),  # Neon Cyan
+    _Token.VALUE: (225, 53, 255),  # Electric Purple
+    _Token.PATH: (128, 255, 234),  # Neon Cyan
+    _Token.HEADER: None,  # Bold only, no color
+    # States
+    _Token.SUCCESS: (80, 250, 123),  # Green
+    _Token.ERROR: (255, 99, 99),  # Red
+    _Token.WARNING: (241, 250, 140),  # Electric Yellow
+    _Token.MUTED: (128, 128, 128),  # Gray
+    _Token.ACTIVE: (80, 250, 123),  # Green
 }
 
-# Unicode symbols (pre-computed for Python 3.10 compatibility)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Symbols
+# ─────────────────────────────────────────────────────────────────────────────
+
 CHECKMARK = "\u2713"  # ✓
 CROSS = "\u2717"  # ✗
 SEPARATOR = "\u2500"  # ─
 PIPE = "\u2502"  # │
+BULLET = "\u2022"  # •
 
 ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -36,8 +73,18 @@ def strip_ansi(text: str) -> str:
     return ANSI_PATTERN.sub("", str(text))
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Output Class
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 class Output:
-    """CLI output with SilkCircuit styling."""
+    """
+    CLI output with semantic styling.
+
+    All public methods use UI concepts (device, key, value), not colors.
+    The theme mapping is internal and swappable.
+    """
 
     def __init__(self, force_color: bool | None = None):
         self._color_enabled = self._detect_color(force_color)
@@ -55,67 +102,94 @@ class Output:
         # Check for dumb terminal
         return os.environ.get("TERM") != "dumb"
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # Internal styling
+    # ─────────────────────────────────────────────────────────────────────────
+
     def _rgb(self, r: int, g: int, b: int, text: str) -> str:
         """Apply RGB color to text."""
         if not self._color_enabled:
             return text
         return f"\x1b[38;2;{r};{g};{b}m{text}\x1b[0m"
 
-    def _style(self, text: str, bold: bool = False) -> str:
-        """Apply text styles."""
-        if not self._color_enabled or not bold:
+    def _bold(self, text: str) -> str:
+        """Apply bold style."""
+        if not self._color_enabled:
             return text
         return f"\x1b[1m{text}\x1b[0m"
 
-    # Color shortcuts using SilkCircuit palette
-    def cyan(self, text: str) -> str:
-        """Neon cyan - paths, interactions."""
-        return self._rgb(*COLORS["neon_cyan"], text)
+    def _apply(self, token: _Token, text: str, bold: bool = False) -> str:
+        """Apply a design token to text."""
+        rgb = _THEME.get(token)
+        result = text
+        if rgb is not None:
+            result = self._rgb(*rgb, result)
+        if bold:
+            result = self._bold(result)
+        return result
 
-    def purple(self, text: str) -> str:
-        """Electric purple - keywords, markers."""
-        return self._rgb(*COLORS["electric_purple"], text)
+    # ─────────────────────────────────────────────────────────────────────────
+    # Semantic methods — content types
+    # ─────────────────────────────────────────────────────────────────────────
 
-    def coral(self, text: str) -> str:
-        """Coral - hashes, numbers."""
-        return self._rgb(*COLORS["coral"], text)
+    def device(self, text: str) -> str:
+        """Format a device name."""
+        return self._apply(_Token.DEVICE, text, bold=True)
 
-    def yellow(self, text: str) -> str:
-        """Electric yellow - warnings, timestamps."""
-        return self._rgb(*COLORS["electric_yellow"], text)
+    def key(self, text: str) -> str:
+        """Format a property name or label."""
+        return self._apply(_Token.KEY, text)
 
-    def green(self, text: str) -> str:
-        """Success green."""
-        return self._rgb(*COLORS["success_green"], text)
+    def value(self, text: str) -> str:
+        """Format a property value."""
+        return self._apply(_Token.VALUE, text)
 
-    def red(self, text: str) -> str:
-        """Error red."""
-        return self._rgb(*COLORS["error_red"], text)
+    def path(self, text: str) -> str:
+        """Format a file path or URL."""
+        return self._apply(_Token.PATH, text)
 
-    def dim(self, text: str) -> str:
-        """Dimmed text."""
-        return self._rgb(*COLORS["dim"], text)
+    def header(self, text: str) -> str:
+        """Format a section header."""
+        return self._apply(_Token.HEADER, text, bold=True)
 
-    def bold(self, text: str) -> str:
-        """Bold text."""
-        return self._style(text, bold=True)
+    # ─────────────────────────────────────────────────────────────────────────
+    # Semantic methods — states
+    # ─────────────────────────────────────────────────────────────────────────
 
-    # Semantic output methods
     def success(self, message: str) -> str:
-        """Format success message."""
-        return f"{self.green(CHECKMARK)} {message}"
+        """Format a success message with checkmark."""
+        mark = self._apply(_Token.SUCCESS, CHECKMARK)
+        return f"{mark} {message}"
 
     def error(self, message: str) -> str:
-        """Format error message."""
-        return f"{self.red(CROSS)} {message}"
+        """Format an error message with cross."""
+        mark = self._apply(_Token.ERROR, CROSS)
+        return f"{mark} {message}"
 
     def warning(self, message: str) -> str:
-        """Format warning message."""
-        return f"{self.yellow('!')} {message}"
+        """Format a warning message."""
+        mark = self._apply(_Token.WARNING, "!")
+        return f"{mark} {message}"
 
-    def device_line(self, name: str, device_type: str, key: str) -> str:
+    def muted(self, text: str) -> str:
+        """Format muted/secondary text."""
+        return self._apply(_Token.MUTED, text)
+
+    def active(self, text: str) -> str:
+        """Format active/selected indicator."""
+        return self._apply(_Token.ACTIVE, text)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Compound formatters
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def device_line(self, name: str, device_type: str, device_key: str) -> str:
         """Format a device listing line."""
-        return f"{self.bold(self.cyan(name))} {self.dim(device_type)} {self.dim(key)}"
+        return f"{self.device(name)} {self.muted(device_type)} {self.muted(device_key)}"
+
+    def kv(self, k: str, v: str) -> str:
+        """Format a key-value pair inline."""
+        return f"{self.key(k)} = {self.value(v)}"
 
     def columns(self, items: list[tuple[str, str]], key_width: int = 0) -> list[str]:
         """Format key-value pairs as aligned columns."""
@@ -123,27 +197,23 @@ class Output:
             key_width = max(len(k) for k, _ in items) if items else 0
 
         lines = []
-        for key, value in items:
-            padded_key = key.rjust(key_width)
-            lines.append(f"  {self.bold(padded_key)} {PIPE} {value}")
+        for k, v in items:
+            padded_key = k.rjust(key_width)
+            lines.append(f"  {self._bold(padded_key)} {PIPE} {v}")
         return lines
 
     def trait_line(
-        self, name: str, trait_type: str, value: str | None = None, constraints: str = ""
+        self, name: str, trait_type: str, current_value: str | None = None, constraints: str = ""
     ) -> str:
         """Format a trait/parameter line."""
-        parts = [f"  {self.bold(self.cyan(name))}"]
-        parts.append(f" {self.dim(f'({trait_type})')}")
-        if value is not None:
-            parts.append(f" = {self.purple(str(value))}")
+        parts = [f"  {self.key(name)}"]
+        parts.append(f" {self.muted(f'({trait_type})')}")
+        if current_value is not None:
+            parts.append(f" = {self.value(str(current_value))}")
         if constraints:
-            parts.append(f" {self.dim(constraints)}")
+            parts.append(f" {self.muted(constraints)}")
         return "".join(parts)
-
-    def header(self, text: str) -> str:
-        """Format a section header."""
-        return self.bold(text)
 
     def separator(self, width: int = 40) -> str:
         """Format a horizontal separator."""
-        return self.dim(SEPARATOR * width)
+        return self.muted(SEPARATOR * width)

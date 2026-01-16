@@ -128,6 +128,11 @@ class Capability(StrEnum):
     # Misc
     PROFILE_LEDS = "profile_leds"  # Device has individual profile LEDs
 
+    # EC Features (Laptop system control)
+    EC_FAN_CONTROL = "ec_fan_control"  # Basic fan/power mode control (0x0d,0x02/0x82)
+    EC_FAN_SPEED = "ec_fan_speed"  # Real-time fan RPM reading (0x0d,0x81)
+    EC_BOOST = "ec_boost"  # CPU/GPU boost control (0x0d,0x0d/0x8d)
+
 
 class MatrixType(StrEnum):
     """

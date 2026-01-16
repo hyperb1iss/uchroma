@@ -99,6 +99,7 @@ class Kaleidoscope(Renderer):
         # Symmetry wedge angle
         wedge = 2.0 * math.pi / sym
 
+        assert self._polar_map is not None
         for idx, (angle, radius) in enumerate(self._polar_map):
             row = idx // width
             col = idx % width

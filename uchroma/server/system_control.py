@@ -14,7 +14,7 @@ from enum import IntEnum
 
 from uchroma.util import Signal
 
-from .hardware import Hardware
+from .hardware import Capability, Hardware
 from .types import BaseCommand
 
 
@@ -122,8 +122,18 @@ class SystemControlMixin:
 
     @property
     def supports_system_control(self) -> bool:
-        """Check if device supports EC control."""
-        return self.hardware.type == Hardware.Type.LAPTOP
+        """Check if device supports EC control (basic fan/power modes)."""
+        return self.hardware.has_capability(Capability.EC_FAN_CONTROL)
+
+    @property
+    def supports_fan_speed(self) -> bool:
+        """Check if device supports real-time fan RPM reading."""
+        return self.hardware.has_capability(Capability.EC_FAN_SPEED)
+
+    @property
+    def supports_boost(self) -> bool:
+        """Check if device supports CPU/GPU boost control."""
+        return self.hardware.has_capability(Capability.EC_BOOST)
 
     @property
     def fan_limits(self) -> FanLimits:
@@ -174,8 +184,8 @@ class SystemControlMixin:
         """
         Get current fan RPM.
 
-        Tries GET_FAN_SPEED first (actual RPM), falls back to GET_FAN_MODE
-        (configured speed setting) if unsupported.
+        If device supports EC_FAN_SPEED, uses GET_FAN_SPEED for actual RPM.
+        Otherwise falls back to GET_FAN_MODE (configured speed setting).
 
         Returns:
             Tuple of (fan1_rpm, fan2_rpm) - fan2 is None if single fan
@@ -183,16 +193,17 @@ class SystemControlMixin:
         if not self.supports_system_control:
             return (0, None)
 
-        # Try GET_FAN_SPEED (0x81) for actual RPM first
-        result = self.run_with_result(ECCommand.GET_FAN_SPEED, 0x00, 0x00)
-        if result is not None and len(result) >= 3:
-            fan1 = result[2] * 100
-            fan2 = None
-            if self.fan_limits.supports_dual_fan:
-                result2 = self.run_with_result(ECCommand.GET_FAN_SPEED, 0x00, 0x01)
-                if result2 is not None and len(result2) >= 3:
-                    fan2 = result2[2] * 100
-            return (fan1, fan2)
+        # Only try GET_FAN_SPEED if device supports it
+        if self.supports_fan_speed:
+            result = self.run_with_result(ECCommand.GET_FAN_SPEED, 0x00, 0x00)
+            if result is not None and len(result) >= 3:
+                fan1 = result[2] * 100
+                fan2 = None
+                if self.fan_limits.supports_dual_fan:
+                    result2 = self.run_with_result(ECCommand.GET_FAN_SPEED, 0x00, 0x01)
+                    if result2 is not None and len(result2) >= 3:
+                        fan2 = result2[2] * 100
+                return (fan1, fan2)
 
         # Fall back to GET_FAN_MODE for configured speed (not actual RPM)
         result = self.run_with_result(ECCommand.GET_FAN_MODE, 0x00, 0x00, 0x00, 0x00)
@@ -379,12 +390,13 @@ class SystemControlMixin:
 
     # ─────────────────────────────────────────────────────────────────────────
     # Boost Control (for CUSTOM power mode)
+    # Only available on select models (Blade 15 Advanced 2020, Studio 2020)
     # ─────────────────────────────────────────────────────────────────────────
 
     @property
     def cpu_boost(self) -> BoostMode:
         """Get CPU boost mode."""
-        if not self.supports_system_control:
+        if not self.supports_boost:
             return BoostMode.LOW
 
         result = self.run_with_result(ECCommand.GET_BOOST, 0x01, 0x00)
@@ -399,14 +411,14 @@ class SystemControlMixin:
     @cpu_boost.setter
     def cpu_boost(self, mode: BoostMode):
         """Set CPU boost mode (requires CUSTOM power mode)."""
-        if not self.supports_system_control:
+        if not self.supports_boost:
             return
         self.run_command(ECCommand.SET_BOOST, 0x01, 0x00, mode.value)
 
     @property
     def gpu_boost(self) -> BoostMode:
         """Get GPU boost mode."""
-        if not self.supports_system_control:
+        if not self.supports_boost:
             return BoostMode.LOW
 
         result = self.run_with_result(ECCommand.GET_BOOST, 0x01, 0x01)
@@ -421,6 +433,6 @@ class SystemControlMixin:
     @gpu_boost.setter
     def gpu_boost(self, mode: BoostMode):
         """Set GPU boost mode (requires CUSTOM power mode)."""
-        if not self.supports_system_control:
+        if not self.supports_boost:
             return
         self.run_command(ECCommand.SET_BOOST, 0x01, 0x01, mode.value)

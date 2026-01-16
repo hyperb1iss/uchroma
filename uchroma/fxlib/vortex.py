@@ -95,6 +95,7 @@ class Vortex(Renderer):
         center_g = self.center_glow
         ring_dens = self.ring_density
 
+        assert self._polar_map is not None
         for idx, (angle, radius) in enumerate(self._polar_map):
             row = idx // width
             col = idx % width

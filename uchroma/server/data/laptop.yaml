@@ -303,11 +303,13 @@ children:
     - [[5, 14], [5, 13]]  # the up & down keys are the same cell.
 
 # 2021+ Blade models - use transaction ID 0x1F and standard LED commands
+# EC fan control works, but NOT fan_speed reading or boost
 - !device-config
   name: Blade 15 Advanced (Mid 2021)
   product_id: 0x0276
   dimensions: [6, 16]
   quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
   supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight,
     custom_frame, ripple_solid, ripple]
   key_mapping: !!omap
@@ -391,28 +393,34 @@ children:
   - KEY_DOWN: [[5, 14]]
   - KEY_RIGHT: [[5, 15]]
 
+# 2021 Blade models - support basic fan/power control but NOT fan_speed or boost
 - !device-config
   name: Blade 15 Advanced (Early 2021)
   product_id: 0x026D
   dimensions: [6, 16]
+  capabilities: [ec_fan_control]
 
 - !device-config
   name: Blade 17 Pro (Early 2021)
   product_id: 0x026E
   dimensions: [6, 16]
+  capabilities: [ec_fan_control]
 
 - !device-config
   name: Blade 15 Base (Early 2021)
   product_id: 0x026F
   dimensions: [6, 16]
+  capabilities: [ec_fan_control]
 
 - !device-config
   name: Blade 14 (2021)
   product_id: 0x0270
   dimensions: [6, 16]
+  capabilities: [ec_fan_control]
 
 - !device-config
   name: Blade 17 Pro (Mid 2021)
   product_id: 0x0279
   dimensions: [6, 16]
+  capabilities: [ec_fan_control]
 
