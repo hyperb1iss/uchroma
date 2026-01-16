@@ -33,7 +33,7 @@ class BaseFX(HasTraits):
     description = Unicode("_unimplemented_", read_only=True)
 
     def __init__(self, fxmod, driver, *args, **kwargs):
-        super(BaseFX, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._fxmod = fxmod
         self._driver = driver
 
@@ -84,7 +84,7 @@ class FXManager(HasTraits):
         """
         :param driver: The UChromaDevice to control
         """
-        super(FXManager, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._driver = driver
         self._logger = driver.logger
         self._fxmod = fxmod

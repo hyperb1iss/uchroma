@@ -13,11 +13,11 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from .models.store import DeviceStore
-from .services.dbus import DBusService
-from .window import UChromaWindow
+from .models.store import DeviceStore  # noqa: E402
+from .services.dbus import DBusService  # noqa: E402
+from .window import UChromaWindow  # noqa: E402
 
 
 class UChromaApplication(Adw.Application):
@@ -32,6 +32,7 @@ class UChromaApplication(Adw.Application):
         self.device_store = DeviceStore()
         self._window = None
         self._startup_task = None
+        self._pending_tasks: set[asyncio.Task] = set()
 
         # Set up actions
         self._setup_actions()
@@ -120,7 +121,7 @@ class UChromaApplication(Adw.Application):
             elif action == "remove":
                 self.device_store.remove_device(device_path)
 
-        asyncio.create_task(update())
+        self._schedule_task(update())
 
     def _show_daemon_error(self):
         """Show error dialog when daemon is not running."""
@@ -164,18 +165,24 @@ class UChromaApplication(Adw.Application):
 
     def _on_refresh(self, action, param):
         """Refresh device list."""
-        asyncio.create_task(self.device_store.populate(self.dbus))
+        self._schedule_task(self.device_store.populate(self.dbus))
 
     def _on_settings(self, action, param):
         """Show settings dialog."""
         # TODO: Implement settings dialog
+
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
 
 def main():
     """Entry point for the GTK application."""
     # Set up GLib event loop policy for asyncio
     try:
-        from gi.events import GLibEventLoopPolicy
+        from gi.events import GLibEventLoopPolicy  # noqa: PLC0415
 
         asyncio.set_event_loop_policy(GLibEventLoopPolicy())
     except ImportError:

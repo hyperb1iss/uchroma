@@ -103,7 +103,7 @@ class Device:
             return bytes(self._device.read(size, timeout_ms))
         return bytes(self._device.read(size))
 
-    def send_feature_report(self, data: bytes, report_id: bytes = None) -> int:
+    def send_feature_report(self, data: bytes, report_id: bytes | None = None) -> int:
         """Send a feature report.
 
         Args:

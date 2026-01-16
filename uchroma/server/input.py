@@ -117,9 +117,8 @@ class InputManager:
         if callback in self._event_callbacks:
             return True
 
-        if not self._opened:
-            if not self._open_input_devices():
-                return False
+        if not self._opened and not self._open_input_devices():
+            return False
 
         self._event_callbacks.append(callback)
         return True

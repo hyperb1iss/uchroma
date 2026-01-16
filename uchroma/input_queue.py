@@ -227,6 +227,5 @@ class InputQueue:
         self._expire_time = seconds
 
     def __del__(self):
-        if hasattr(self, "_input_manager"):
-            if self._input_manager is not None:
-                self.detach()
+        if hasattr(self, "_input_manager") and self._input_manager is not None:
+            self.detach()

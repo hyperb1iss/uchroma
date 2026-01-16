@@ -63,9 +63,7 @@ class UChromaMouse(UChromaDevice):
         *args,
         **kwargs,
     ):
-        super(UChromaMouse, self).__init__(
-            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
-        )
+        super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
 
     @property
     def polling_rate(self) -> PollingRate:
@@ -164,9 +162,7 @@ class UChromaWirelessMouse(UChromaMouse):
         *args,
         **kwargs,
     ):
-        super(UChromaWirelessMouse, self).__init__(
-            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
-        )
+        super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
 
     @property
     def is_wireless(self):

@@ -10,11 +10,11 @@
 # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
 # License for more details.
 #
-from .device import UChromaDevice
-from .device_manager import UChromaDeviceManager
-from .hardware import Hardware
-from .headset import UChromaHeadset
-from .keyboard import UChromaKeyboard
-from .keypad import UChromaKeypad
-from .laptop import UChromaLaptop
-from .mouse import UChromaMouse, UChromaWirelessMouse
+from .device import UChromaDevice as UChromaDevice
+from .device_manager import UChromaDeviceManager as UChromaDeviceManager
+from .hardware import Hardware as Hardware
+from .headset import UChromaHeadset as UChromaHeadset
+from .keyboard import UChromaKeyboard as UChromaKeyboard
+from .keypad import UChromaKeypad as UChromaKeypad
+from .laptop import UChromaLaptop as UChromaLaptop
+from .mouse import UChromaMouse as UChromaMouse, UChromaWirelessMouse as UChromaWirelessMouse

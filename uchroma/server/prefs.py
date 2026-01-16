@@ -48,7 +48,7 @@ _Preferences = Configuration.create(
 class Preferences(_Preferences):
     def _yaml_header(self) -> str:
         header = "#\n#  uChroma preferences\n#\n"
-        header += "#  Updated on: %s\n" % datetime.now().isoformat(" ")
+        header += "#  Updated on: {}\n".format(datetime.now().isoformat(" "))
         header += "#\n"
         return header
 

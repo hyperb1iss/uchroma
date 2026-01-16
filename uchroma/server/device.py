@@ -36,9 +36,7 @@ class UChromaDevice(BaseUChromaDevice):
         *args,
         **kwargs,
     ):
-        super(UChromaDevice, self).__init__(
-            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
-        )
+        super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
 
         self._fx_manager = FXManager(self, StandardFX(self))
         self._led_manager = LEDManager(self)

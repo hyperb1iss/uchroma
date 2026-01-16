@@ -4,11 +4,14 @@ Device Model
 GObject-based reactive model for device state, synchronized with D-Bus.
 """
 
+import asyncio
+import contextlib
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject
+from gi.repository import GObject  # noqa: E402
 
 
 class DeviceModel(GObject.Object):
@@ -50,6 +53,7 @@ class DeviceModel(GObject.Object):
         self._device_proxy = None
         self._fx_proxy = None
         self._anim_proxy = None
+        self._pending_tasks: set[asyncio.Task] = set()
 
         self._syncing = False  # Prevent feedback loops
 
@@ -88,15 +92,11 @@ class DeviceModel(GObject.Object):
             self.name = await device_proxy.get_name()
             self.device_type = await device_proxy.get_device_type()
 
-            try:
+            with contextlib.suppress(Exception):
                 self.serial_number = await device_proxy.get_serial_number()
-            except Exception:
-                pass
 
-            try:
+            with contextlib.suppress(Exception):
                 self.firmware_version = await device_proxy.get_firmware_version()
-            except Exception:
-                pass
 
             try:
                 self.vendor_id = await device_proxy.get_vendor_id()
@@ -112,15 +112,11 @@ class DeviceModel(GObject.Object):
             except Exception:
                 pass
 
-            try:
+            with contextlib.suppress(Exception):
                 self.brightness = await device_proxy.get_brightness()
-            except Exception:
-                pass
 
-            try:
+            with contextlib.suppress(Exception):
                 self.suspended = await device_proxy.get_suspended()
-            except Exception:
-                pass
 
             # FX state
             if fx_proxy:
@@ -159,9 +155,7 @@ class DeviceModel(GObject.Object):
         if self._syncing or not self._device_proxy:
             return
 
-        import asyncio
-
-        asyncio.create_task(self._set_brightness_async())
+        self._schedule_task(self._set_brightness_async())
 
     async def _set_brightness_async(self):
         """Async brightness setter."""
@@ -175,9 +169,7 @@ class DeviceModel(GObject.Object):
         if self._syncing or not self._device_proxy:
             return
 
-        import asyncio
-
-        asyncio.create_task(self._set_suspended_async())
+        self._schedule_task(self._set_suspended_async())
 
     async def _set_suspended_async(self):
         """Async suspended setter."""
@@ -198,6 +190,12 @@ class DeviceModel(GObject.Object):
                 self.is_animating = changed["AnimationState"].value == "running"
         finally:
             self._syncing = False
+
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
     def __repr__(self):
         return f"<DeviceModel '{self.name}' ({self.product_id_hex})>"

@@ -45,10 +45,10 @@ class MacroDevice:
             return
 
         self._uinput = UInput.from_device(
-            driver.input_manager.input_devices[0],
-            name="UChroma Virtual Macro Device %d" % driver.device_index,
+            self._driver.input_manager.input_devices[0],
+            name=f"UChroma Virtual Macro Device {self._driver.device_index}",
         )
-        self._queue = InputQueue(driver)
+        self._queue = InputQueue(self._driver)
 
         self._queue.attach()
         self._driver.input_manager.grab(True)

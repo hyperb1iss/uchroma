@@ -4,12 +4,15 @@ Lighting Page
 Unified lighting control with mode switcher for Hardware Effects vs Custom Animation.
 """
 
+import asyncio
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, GObject, Gtk
+from gi.repository import Adw, Gdk, GObject, Gtk  # noqa: E402
 
 # Hardware effects with metadata
 HARDWARE_EFFECTS = [
@@ -232,9 +235,9 @@ class EffectCard(Gtk.FlowBoxChild):
 class LayerRow(Gtk.Box):
     """A single layer in the animation stack."""
 
-    __gtype_name__ = "UChromaLayerRow"
+    __gtype_name__ = "UChromaLightingLayerRow"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "delete-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "selected": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "blend-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
@@ -353,6 +356,7 @@ class LightingPage(Adw.PreferencesPage):
         self._param_widgets = {}
         self._layers = []
         self._selected_layer = None
+        self._pending_tasks: set[asyncio.Task] = set()
 
         self.set_title("Lighting")
         self.set_icon_name("starred-symbolic")
@@ -628,15 +632,19 @@ class LightingPage(Adw.PreferencesPage):
                     params[name] = widget.get_model().get_string(idx)
         return params
 
-    def _apply_effect(self, effect_id: str, params: dict = None):
+    def _apply_effect(self, effect_id: str, params: dict | None = None):
         """Apply effect to device."""
         if not self._device:
             return
         app = self.get_root().get_application()
         if app:
-            import asyncio
+            self._schedule_task(app.dbus.set_effect(self._device.path, effect_id, params))
 
-            asyncio.create_task(app.dbus.set_effect(self._device.path, effect_id, params))
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
     # === CUSTOM ANIMATION ===
 
@@ -675,9 +683,7 @@ class LightingPage(Adw.PreferencesPage):
         if self._device:
             app = self.get_root().get_application()
             if app:
-                import asyncio
-
-                asyncio.create_task(app.dbus.add_renderer(self._device.path, response, zindex))
+                self._schedule_task(app.dbus.add_renderer(self._device.path, response, zindex))
 
     def _on_layer_delete(self, layer_row, row):
         zindex = self._layers.index(row)
@@ -696,9 +702,7 @@ class LightingPage(Adw.PreferencesPage):
         if self._device:
             app = self.get_root().get_application()
             if app:
-                import asyncio
-
-                asyncio.create_task(app.dbus.remove_renderer(self._device.path, zindex))
+                self._schedule_task(app.dbus.remove_renderer(self._device.path, zindex))
 
     def _on_layer_selected(self, layer_row, row):
         if self._selected_layer:
@@ -762,9 +766,7 @@ class LightingPage(Adw.PreferencesPage):
         if self._device:
             app = self.get_root().get_application()
             if app:
-                import asyncio
-
-                asyncio.create_task(app.dbus.stop_animation(self._device.path))
+                self._schedule_task(app.dbus.stop_animation(self._device.path))
 
         for layer in self._layers[:]:
             self.layers_box.remove(layer)

@@ -11,6 +11,7 @@
 # License for more details.
 #
 import logging
+from typing import ClassVar
 
 import colorlog
 from wrapt import synchronized
@@ -28,7 +29,7 @@ class Log:
     Colored output can optionally be enabled.
     """
 
-    _LOGGERS = {}
+    _LOGGERS: ClassVar[dict] = {}
     _use_color = False
 
     @synchronized

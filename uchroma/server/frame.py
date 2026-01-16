@@ -200,7 +200,7 @@ class Frame:
 
             time.sleep(0.001)
 
-    def _set_frame_data(self, img, frame_id: int = None):
+    def _set_frame_data(self, img, frame_id: int | None = None):
         if frame_id is None:
             frame_id = Frame.DEFAULT_FRAME_ID
 
@@ -212,7 +212,7 @@ class Frame:
     def _set_custom_frame(self):
         self._driver.fx_manager.activate("custom_frame")
 
-    def commit(self, layers, frame_id: int = None, show=True) -> "Frame":
+    def commit(self, layers, frame_id: int | None = None, show=True) -> "Frame":
         """
         Display this frame and prepare for the next frame
 
@@ -232,7 +232,7 @@ class Frame:
 
         return self
 
-    def reset(self, frame_id: int = None) -> "Frame":
+    def reset(self, frame_id: int | None = None) -> "Frame":
         """
         Clear the frame on the hardware.
 

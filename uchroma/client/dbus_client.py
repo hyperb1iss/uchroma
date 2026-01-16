@@ -14,9 +14,10 @@
 # pylint: disable=invalid-name
 
 import asyncio
+import contextlib
 import re
 
-from dbus_fast import BusType
+from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
 
 BASE_PATH = "/org/chemlab/UChroma"
@@ -113,18 +114,12 @@ class DeviceProxy:
         self._fx_iface = None
         self._anim_iface = None
         self._led_iface = None
-        try:
+        with contextlib.suppress(Exception):
             self._fx_iface = proxy.get_interface("org.chemlab.UChroma.FXManager")
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             self._anim_iface = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             self._led_iface = proxy.get_interface("org.chemlab.UChroma.LEDManager")
-        except Exception:
-            pass
 
     def _get_loop(self):
         """Get or create event loop."""
@@ -241,8 +236,6 @@ class DeviceProxy:
 
     def _unwrap_variants(self, obj):
         """Recursively unwrap dbus_fast Variants."""
-        from dbus_fast import Variant
-
         if isinstance(obj, Variant):
             return self._unwrap_variants(obj.value)
         elif isinstance(obj, dict):
@@ -331,10 +324,8 @@ class DeviceProxy:
             "SupportedLeds",
             "BusPath",
         ]:
-            try:
+            with contextlib.suppress(Exception):
                 props[attr] = getattr(self, attr)
-            except Exception:
-                pass
         return props
 
 

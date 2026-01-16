@@ -33,7 +33,7 @@ from .frame import Frame
 
 class LayerHolder(HasTraits):
     def __init__(self, renderer: Renderer, frame: Frame, blend_mode=None, *args, **kwargs):
-        super(LayerHolder, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._renderer = renderer
         self._frame = frame
@@ -48,7 +48,7 @@ class LayerHolder(HasTraits):
 
         self._renderer._flush()
 
-        for buf in range(NUM_BUFFERS):
+        for _buf in range(NUM_BUFFERS):
             layer = self._frame.create_layer()
             layer.blend_mode = self._blend_mode
             self._renderer._free_layer(layer)
@@ -56,7 +56,7 @@ class LayerHolder(HasTraits):
     @property
     def type_string(self):
         cls = self._renderer.__class__
-        return "%s.%s" % (cls.__module__, cls.__name__)
+        return f"{cls.__module__}.{cls.__name__}"
 
     @property
     def trait_values(self):
@@ -121,8 +121,8 @@ class AnimationLoop(HasTraits):
     does not wake up spuriously or otherwise consume cycles while inactive.
     """
 
-    def __init__(self, frame: Frame, default_blend_mode: str = None, *args, **kwargs):
-        super(AnimationLoop, self).__init__(*args, **kwargs)
+    def __init__(self, frame: Frame, default_blend_mode: str | None = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self._frame = frame
         self._default_blend_mode = default_blend_mode
@@ -291,7 +291,7 @@ class AnimationLoop(HasTraits):
     def _layer_traits_changed(self, *args):
         self.layers_changed.fire("modify", *args)
 
-    def add_layer(self, renderer: Renderer, zindex: int = None) -> bool:
+    def add_layer(self, renderer: Renderer, zindex: int | None = None) -> bool:
         with self.hold_trait_notifications():
             if zindex is None:
                 zindex = len(self.layers)
@@ -429,7 +429,7 @@ class AnimationManager(HasTraits):
     paused = Bool(False)
 
     def __init__(self, driver):
-        super(AnimationManager, self).__init__()
+        super().__init__()
 
         self._driver = driver
         self._loop = None
@@ -516,13 +516,13 @@ class AnimationManager(HasTraits):
                 self._logger.error("Renderer %s did not set metadata, skipping", obj.__name__)
                 continue
 
-            key = "%s.%s" % (obj.__module__, obj.__name__)
+            key = f"{obj.__module__}.{obj.__name__}"
             infos[key] = RendererInfo(obj.__module__, obj, key, obj.meta, obj.class_traits())
 
         self._logger.debug("Loaded renderers: %s", ", ".join(infos.keys()))
         return infos
 
-    def _get_renderer(self, name, zindex: int = None, **traits) -> Renderer:
+    def _get_renderer(self, name, zindex: int | None = None, **traits) -> Renderer:
         """
         Instantiate a renderer
 
@@ -540,7 +540,7 @@ class AnimationManager(HasTraits):
 
         return None
 
-    def add_renderer(self, name, traits: dict, zindex: int = None) -> int:
+    def add_renderer(self, name, traits: dict, zindex: int | None = None) -> int:
         """
         Adds a renderer which will produce a layer of this animation.
         Any number of renderers may be added and the output will be
@@ -561,7 +561,7 @@ class AnimationManager(HasTraits):
 
         if zindex is not None and zindex > len(self._loop.layers):
             raise ValueError(
-                "Z-index out of range (requested %d max %d)" % (zindex, len(self._loop.layers))
+                f"Z-index out of range (requested {zindex} max {len(self._loop.layers)})"
             )
 
         renderer = self._get_renderer(name, **traits)

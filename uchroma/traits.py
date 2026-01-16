@@ -48,13 +48,13 @@ class ColorTrait(TraitType):
     default_value = "black"
 
     def __init__(self, *args, **kwargs):
-        super(ColorTrait, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def validate(self, obj, value):
         try:
             if value is not None:
                 value = to_color(value)
-        except:
+        except Exception:
             self.error(obj, value)
         return value
 
@@ -66,10 +66,10 @@ class ColorSchemeTrait(List):
 
     info_text = "a list of colors"
 
-    def __init__(
-        self, trait=ColorTrait(), default_value=(), minlen=0, maxlen=sys.maxsize, **kwargs
-    ):
-        super(ColorSchemeTrait, self).__init__(
+    def __init__(self, trait=None, default_value=(), minlen=0, maxlen=sys.maxsize, **kwargs):
+        if trait is None:
+            trait = ColorTrait()
+        super().__init__(
             trait=trait, default_value=default_value, minlen=minlen, maxlen=maxlen, **kwargs
         )
 
@@ -83,7 +83,7 @@ class ColorPresetTrait(UseEnum):
     info_text = "a predefined color scheme"
 
     def __init__(self, enum_class, default_value=None, **kwargs):
-        super(ColorPresetTrait, self).__init__(enum_class, default_value=default_value, **kwargs)
+        super().__init__(enum_class, default_value=default_value, **kwargs)
 
 
 class WriteOnceMixin:
@@ -128,7 +128,7 @@ class UseEnumCaseless(UseEnum):
             # -- SUPPORT SCOPED-NAMES, like: "Color.red" => "red"
             value = value.replace(self.name_prefix, "", 1)
 
-        keys = [x.lower() for x in self.enum_class.__members__.keys()]
+        keys = [x.lower() for x in self.enum_class.__members__]
         idx = keys.index(value.lower())
         if idx < 0:
             return Undefined
@@ -163,10 +163,7 @@ def is_trait_writable(trait: TraitType) -> bool:
     if trait.read_only:
         return False
 
-    if hasattr(trait, "write_once") and trait.write_once:
-        return False
-
-    return True
+    return not (hasattr(trait, "write_once") and trait.write_once)
 
 
 def trait_as_dict(trait: TraitType) -> dict:
@@ -203,13 +200,13 @@ def trait_as_dict(trait: TraitType) -> dict:
         if isinstance(v, enum.Enum):
             tdict[k] = v.name
         if isinstance(v, type):
-            tdict[k] = "%s.%s" % (v.__module__, v.__name__)
+            tdict[k] = f"{v.__module__}.{v.__name__}"
 
     tdict["__class__"] = (cls.__module__, cls.__name__)
     return tdict
 
 
-def class_traits_as_dict(obj: HasTraits, values: dict = None) -> dict:
+def class_traits_as_dict(obj: HasTraits, values: dict | None = None) -> dict:
     """
     Create a dict which represents all traits of the given object.
     This dict itself can be inspected in a generic API, or it
@@ -255,7 +252,7 @@ def dict_as_trait(obj: dict) -> TraitType:
 
     module = importlib.import_module(module_name)
     if not hasattr(module, trait_class):
-        raise TypeError("Unknown class: %s" % trait_class)
+        raise TypeError(f"Unknown class: {trait_class}")
     cls = getattr(module, trait_class)
 
     if "trait" in tobj:
@@ -288,7 +285,7 @@ def dict_as_class_traits(obj: dict) -> HasTraits:
     :return: the stub HasTraits instance
     """
     if not isinstance(obj, dict):
-        raise TypeError("Object must be a dict (was: %s)" % obj)
+        raise TypeError(f"Object must be a dict (was: {obj})")
 
     traits = {}
     values = {}
@@ -327,7 +324,7 @@ def get_args_dict(obj: HasTraits, incl_all=False):
     return argsdict
 
 
-def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser, prefix: str = None):
+def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser, prefix: str | None = None):
     """
     Add all traits from the given object to the argparse context.
 
@@ -339,9 +336,9 @@ def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser, prefix: str =
         if trait.get_metadata("config") is not True:
             continue
 
-        argname = "--%s" % key
+        argname = f"--{key}"
         if prefix is not None:
-            argname = "--%s.%s" % (prefix, key)
+            argname = f"--{prefix}.{key}"
 
         if isinstance(trait, Container):
             parser.add_argument(argname, nargs="+", help=trait.info_text)
@@ -397,7 +394,7 @@ def apply_from_argparse(args, traits=None, target: HasTraits = None) -> dict:
     # apply the argparse flags to the target object
     for key in intersect:
         if target.traits()[key].get_metadata("config") is not True:
-            raise ValueError("Trait is not marked as configurable: %s" % key)
+            raise ValueError(f"Trait is not marked as configurable: {key}")
 
         setattr(target, key, getattr(args, key))
 

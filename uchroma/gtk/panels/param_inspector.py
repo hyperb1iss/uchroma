@@ -4,11 +4,13 @@ Parameter Inspector Panel
 Contextual parameter controls for selected effect or layer.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Gdk, GLib, GObject, Gtk
+from gi.repository import Gdk, GLib, GObject, Gtk  # noqa: E402
 
 
 class ParamInspector(Gtk.Box):
@@ -16,7 +18,7 @@ class ParamInspector(Gtk.Box):
 
     __gtype_name__ = "UChromaParamInspector"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "param-changed": (GObject.SignalFlags.RUN_FIRST, None, (str, object)),  # name, value
     }
 
@@ -60,7 +62,7 @@ class ParamInspector(Gtk.Box):
         self._empty.set_margin_top(8)
         self.append(self._empty)
 
-    def set_params(self, params: list, title: str = "SETTINGS", values: dict = None):
+    def set_params(self, params: list, title: str = "SETTINGS", values: dict | None = None):
         """Set parameters to display.
 
         Args:

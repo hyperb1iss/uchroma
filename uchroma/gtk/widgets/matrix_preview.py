@@ -12,8 +12,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 
-import numpy as np
-from gi.repository import Gtk
+import numpy as np  # noqa: E402
+from gi.repository import Gtk  # noqa: E402
 
 
 class MatrixPreview(Gtk.DrawingArea):

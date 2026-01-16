@@ -35,7 +35,7 @@ class PreviewRenderer:
         self.cols = cols
         self.frame = np.zeros((rows, cols, 3), dtype=np.float32)
 
-    def set_effect(self, effect_id: str, params: dict = None):
+    def set_effect(self, effect_id: str, params: dict | None = None):
         """Set the effect to render."""
         self._effect_id = effect_id
         self._effect_params = params or {}

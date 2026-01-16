@@ -73,7 +73,7 @@ class LED(HasTraits):
         GET_LED_BRIGHTNESS = (0x0F, 0x84, 0x03)
 
     def __init__(self, driver, led_type: LEDType, *args, **kwargs):
-        super(LED, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._driver = driver
         self._led_type = led_type
         self._logger = driver.logger
@@ -109,7 +109,7 @@ class LED(HasTraits):
 
     def _set(self, cmd, *args):
         return self._driver.run_command(
-            cmd, *(VARSTORE, self._led_type.hardware_id) + args, delay=0.035
+            cmd, *(VARSTORE, self._led_type.hardware_id, *args), delay=0.035
         )
 
     def _get_brightness(self):
@@ -166,7 +166,7 @@ class LED(HasTraits):
             elif change.old > 0 and change.new == 0:
                 self._set(LED.Command.SET_LED_STATE, 0)
         else:
-            raise ValueError("Unknown LED property: %s" % change.new)
+            raise ValueError(f"Unknown LED property: {change.new}")
 
         if not self._restoring:
             self._dirty = True
@@ -176,10 +176,9 @@ class LED(HasTraits):
 
     def __str__(self):
         values = ", ".join(
-            "%s=%s" % (k, getattr(self, k))
-            for k in ("led_type", "state", "brightness", "color", "mode")
+            f"{k}={getattr(self, k)}" for k in ("led_type", "state", "brightness", "color", "mode")
         )
-        return "LED(%s)" % values
+        return f"LED({values})"
 
     def _update_prefs(self):
         prefs = OrderedDict()

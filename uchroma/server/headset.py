@@ -104,7 +104,7 @@ class EffectBits:
 
 class KrakenFX(FXModule):
     def __init__(self, *args, **kwargs):
-        super(KrakenFX, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     class DisableFX(BaseFX):
         description = Unicode("Disable all effects")
@@ -247,7 +247,7 @@ class UChromaHeadset(BaseUChromaDevice):
         *args,
         **kwargs,
     ):
-        super(UChromaHeadset, self).__init__(hardware, devinfo, devindex, sys_path, *args, **kwargs)
+        super().__init__(hardware, devinfo, devindex, sys_path, *args, **kwargs)
 
         self._last_cmd_time = None
 
@@ -271,7 +271,7 @@ class UChromaHeadset(BaseUChromaDevice):
                 UChromaHeadset.Command.KYLIE_SET_RGB_3,
             ]
         else:
-            raise ValueError("Incompatible model (%s)" % repr(self.hardware))
+            raise ValueError(f"Incompatible model ({self.hardware!r})")
 
         self._fx_manager = FXManager(self, KrakenFX(self))
         self._rgb = None
@@ -293,7 +293,7 @@ class UChromaHeadset(BaseUChromaDevice):
 
     def _hexdump(self, data: bytes, tag=""):
         if data is not None and self.logger.isEnabledFor(LOG_PROTOCOL_TRACE):
-            self.logger.debug("%s%s", tag, "".join("%02x " % b for b in data))
+            self.logger.debug("%s%s", tag, "".join(f"{b:02x} " for b in data))
 
     def _run_command(self, command: BaseCommand, *args) -> bool:
         try:
@@ -343,9 +343,8 @@ class UChromaHeadset(BaseUChromaDevice):
                 if not resp:
                     return None
 
-                assert resp[0] == REPORT_ID_IN, "Inbound report should have id %02x (was %02x)" % (
-                    REPORT_ID_IN,
-                    resp[0],
+                assert resp[0] == REPORT_ID_IN, (
+                    f"Inbound report should have id {REPORT_ID_IN:02x} (was {resp[0]:02x})"
                 )
 
                 return resp[1 : command.length + 1]
@@ -395,11 +394,11 @@ class UChromaHeadset(BaseUChromaDevice):
                 return None
 
             it = iter(value)
-            values = list(iter(zip(it, it, it, it)))
+            values = list(iter(zip(it, it, it, it, strict=False)))
 
             return [to_color(x) for x in values]
 
-    def _set_rgb(self, *colors, brightness: float = None) -> bool:
+    def _set_rgb(self, *colors, brightness: float | None = None) -> bool:
         if not colors:
             self.logger.error("RGB group out of range")
             return False

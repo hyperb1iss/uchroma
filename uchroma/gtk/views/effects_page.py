@@ -4,12 +4,14 @@ Effects Page
 Effect selection with visual cards and dynamic parameter controls.
 """
 
+import asyncio
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, Gtk
+from gi.repository import Adw, Gdk, Gtk  # noqa: E402
 
 # Effect definitions with metadata
 EFFECTS = [
@@ -159,6 +161,7 @@ class EffectsPage(Adw.PreferencesPage):
         self._current_effect = None
         self._cards = {}
         self._param_widgets = {}
+        self._pending_tasks: set[asyncio.Task] = set()
 
         self.set_title("Effects")
         self.set_icon_name("starred-symbolic")
@@ -208,10 +211,8 @@ class EffectsPage(Adw.PreferencesPage):
         """Set the current device."""
         self._device = device
 
-        if device:
-            # Select current effect card
-            if device.current_fx and device.current_fx in self._cards:
-                self._select_effect(device.current_fx)
+        if device and device.current_fx and device.current_fx in self._cards:
+            self._select_effect(device.current_fx)
 
     def _on_effect_selected(self, flow_box, child):
         """Handle effect card selection."""
@@ -337,13 +338,17 @@ class EffectsPage(Adw.PreferencesPage):
 
         return params
 
-    def _apply_effect(self, effect_id: str, params: dict = None):
+    def _apply_effect(self, effect_id: str, params: dict | None = None):
         """Apply effect to device."""
         if not self._device:
             return
 
         app = self.get_root().get_application()
         if app:
-            import asyncio
+            self._schedule_task(app.dbus.set_effect(self._device.path, effect_id, params))
 
-            asyncio.create_task(app.dbus.set_effect(self._device.path, effect_id, params))
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)

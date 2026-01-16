@@ -128,7 +128,7 @@ class RazerReport:
 
     def _hexdump(self, data, tag=""):
         if self._logger.isEnabledFor(LOG_PROTOCOL_TRACE):
-            self._logger.debug("%s%s", tag, "".join("%02x " % b for b in data))
+            self._logger.debug("%s%s", tag, "".join(f"{b:02x} " for b in data))
 
     def clear(self):
         self._buf.fill(0)
@@ -137,7 +137,7 @@ class RazerReport:
         self._remaining_packets = 0x00
         self._result = None
 
-    def run(self, delay: float = None, timeout_cb=None) -> bool:
+    def run(self, delay: float | None = None, timeout_cb=None) -> bool:
         """
         Run this report and retrieve the result from the hardware.
 
@@ -261,26 +261,25 @@ class RazerReport:
         return self._buf.tobytes()
 
     def _unpack_response(self, buf: bytes) -> bool:
-        assert len(buf) == self.BUF_SIZE, "Packed struct should be %d bytes, got %d" % (
-            self.BUF_SIZE,
-            len(buf),
+        assert len(buf) == self.BUF_SIZE, (
+            f"Packed struct should be {self.BUF_SIZE} bytes, got {len(buf)}"
         )
 
         header = struct.unpack(self.RSP_HEADER, buf[:8])
         status = header[0]
-        transaction_id = header[1]
-        remaining_packets = header[2]
-        protocol_type = header[3]
+        header[1]
+        header[2]
+        header[3]
         data_size = header[4]
-        command_class = header[5]
-        command_id = header[6]
+        header[5]
+        header[6]
 
         data = np.frombuffer(buf[8 : 8 + data_size], dtype=np.uint8)
-        crc = buf[88]
-        reserved = buf[89]
+        buf[88]
+        buf[89]
 
         # CRC check - fast_crc XORs bytes 1-86 (transaction_id through args[78])
-        crc_check = fast_crc(buf)
+        fast_crc(buf)
 
         self._status = Status(status)
         self._result = data

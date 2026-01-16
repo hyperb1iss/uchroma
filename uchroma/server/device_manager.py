@@ -115,7 +115,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         list of devices changes (monitoring for changes is beyond
         the scope of this API).
         """
-        devinfos = sorted(list(hidapi.enumerate(vendor_id=RAZER_VENDOR_ID)), key=lambda x: x.path)
+        devinfos = sorted(hidapi.enumerate(vendor_id=RAZER_VENDOR_ID), key=lambda x: x.path)
 
         for devinfo in devinfos:
             parent = self._get_parent(devinfo.product_id)
@@ -220,8 +220,8 @@ class UChromaDeviceManager(metaclass=Singleton):
         return self._callbacks
 
     def _get_parent(self, product_id: int):
-        pid = "%04x" % product_id
-        vid = "%04x" % RAZER_VENDOR_ID
+        pid = f"{product_id:04x}"
+        vid = f"{RAZER_VENDOR_ID:04x}"
 
         # Try with uchroma tag first (requires udev rules installed)
         devs = self._udev_context.list_devices(tag="uchroma", subsystem="usb", ID_MODEL_ID=pid)

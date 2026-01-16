@@ -76,9 +76,9 @@ class UChromaConsoleUtil:
                 firmware_version = dev.FirmwareVersion
             except OSError as err:
                 if self._args.debug:
-                    args.parser.error("Error opening device: %s" % err)
+                    args.parser.error(f"Error opening device: {err}")
 
-            print("[%s]: %s (%s / %s)" % (dev.Key, dev.Name, serial_number, firmware_version))
+            print(f"[{dev.Key}]: {dev.Name} ({serial_number} / {firmware_version})")
 
     @property
     def description(self):
@@ -86,7 +86,7 @@ class UChromaConsoleUtil:
 
     @property
     def version(self):
-        return "uchroma-%s" % __version__
+        return f"uchroma-{__version__}"
 
     def _add_subparsers(self, sub):
         pass
@@ -95,7 +95,7 @@ class UChromaConsoleUtil:
         if hasattr(self._args, "device") and self._args.device is not None:
             driver = self._client.get_device(self._args.device)
             if driver is None:
-                self._parser.error("Invalid device: %s" % self._args.device)
+                self._parser.error(f"Invalid device: {self._args.device}")
 
         else:
             dev_paths = self._client.get_device_paths()
@@ -110,7 +110,7 @@ class UChromaConsoleUtil:
     def set_property(self, target, name, value):
         name = snake_to_camel(name)
         if not hasattr(target, name):
-            raise ValueError("Invalid property: %s" % name)
+            raise ValueError(f"Invalid property: {name}")
         cls_obj = getattr(target.__class__, name)
         if hasattr(cls_obj, "_type"):
             typespec = cls_obj._type

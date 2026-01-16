@@ -47,9 +47,7 @@ class UChromaLaptop(UChromaKeyboard):
         *args,
         **kwargs,
     ):
-        super(UChromaLaptop, self).__init__(
-            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
-        )
+        super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
 
     def _get_serial_number(self):
         return self.name

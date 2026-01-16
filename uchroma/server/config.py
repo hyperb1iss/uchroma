@@ -13,6 +13,7 @@
 
 # pylint: disable=no-member,protected-access, too-many-nested-blocks
 
+import io
 import os
 import sys
 import tempfile
@@ -27,8 +28,8 @@ from ruamel.yaml import YAML
 _yaml = YAML()
 _yaml.preserve_quotes = True
 
-from uchroma.colorlib import Color
-from uchroma.util import ArgsDict
+from uchroma.colorlib import Color  # noqa: E402
+from uchroma.util import ArgsDict  # noqa: E402
 
 
 # Add YAML representers for special types
@@ -82,7 +83,7 @@ class Configuration:
     __slots__ = ()
 
     @classmethod
-    def create(cls, name: str, fields: list, yaml_name: str = None, mutable: bool = False):
+    def create(cls, name: str, fields: list, yaml_name: str | None = None, mutable: bool = False):
         """
         Derive a new Configuration class type.
 
@@ -112,7 +113,7 @@ class Configuration:
         derived._field_types["parent"] = derived
 
         if yaml_name is None:
-            yaml_name = "!%s" % derived.__name__.lower()
+            yaml_name = f"!{derived.__name__.lower()}"
 
         def represent_config(dumper, data):
             """
@@ -147,12 +148,12 @@ class Configuration:
     def __str__(self):
         clsname = self.__class__.__name__
         values = ", ".join(
-            "%s=%r" % (k, getattr(self, k))
+            f"{k}={getattr(self, k)!r}"
             for k in self.__slots__
             if k != "parent" and hasattr(self, k) and getattr(self, k) is not None
         )
 
-        return "%s(%s)" % (clsname, values)
+        return f"{clsname}({values})"
 
     __repr__ = __str__
 
@@ -198,9 +199,7 @@ class Configuration:
 
     def __setattr__(self, name, value):
         if not self.__class__._mutable:
-            raise AttributeError(
-                "'%s' object is read-only (attr='%s')" % (self.__class__.__name__, name)
-            )
+            raise AttributeError(f"'{self.__class__.__name__}' object is read-only (attr='{name}')")
         super().__setattr__(name, value)
 
         if self.__class__._mutable and self.__class__._notify:
@@ -233,7 +232,7 @@ class Configuration:
         if key <= len(self.__slots__):
             return getattr(self, self.__slots__[key])
 
-        raise AttributeError("Invalid index: %s" % key)
+        raise AttributeError(f"Invalid index: {key}")
 
     def get(self, key: str, default=None):
         """
@@ -267,7 +266,7 @@ class Configuration:
                 for child in obj.children:
                     yield from search_recursive(child, key, value)
 
-        return [x for x in search_recursive(self, key, value)]
+        return list(search_recursive(self, key, value))
 
     def flatten(self) -> list:
         """
@@ -340,8 +339,7 @@ class Configuration:
                                 scope = module
                             else:
                                 raise ValueError(
-                                    "Can't convert field type '%s' in scope %s"
-                                    % (field_type, scope)
+                                    f"Can't convert field type '{field_type}' in scope {scope}"
                                 )
                         field_type = getattr(scope, field_type)
 
@@ -371,11 +369,10 @@ class Configuration:
                             else:
                                 odict[field] = field_type(val)
 
-                    except (TypeError, ValueError):
+                    except (TypeError, ValueError) as err:
                         raise ValueError(
-                            "Can't coerce %s to type %s (from %s [%s])"
-                            % (field, field_type, val, type(val))
-                        )
+                            f"Can't coerce {field} to type {field_type} (from {val} [{type(val)}])"
+                        ) from err
                 else:
                     odict[field] = val
         return odict
@@ -425,8 +422,6 @@ class Configuration:
         """
         Get the YAML representation of this object as a string
         """
-        import io
-
         stream = io.StringIO()
         _yaml.dump(self, stream)
         return stream.getvalue()
@@ -434,7 +429,7 @@ class Configuration:
     def _yaml_header(self) -> str:
         return None
 
-    def save_yaml(self, filename: str = None):
+    def save_yaml(self, filename: str | None = None):
         """
         Serialize the hierarchy to a file.
 
@@ -484,7 +479,7 @@ class LowerCaseSeq(FlowSequence):
 
     def __new__(cls, args):
         items = []
-        for x, _ in enumerate(args):
+        for _x, _ in enumerate(args):
             items.append(_.lower())
         return super().__new__(cls, args)
 

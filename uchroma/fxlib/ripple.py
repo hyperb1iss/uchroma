@@ -46,7 +46,7 @@ class Ripple(Renderer):
     color = ColorTrait().tag(config=True)
 
     def __init__(self, *args, **kwargs):
-        super(Ripple, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._generator = ColorUtils.rainbow_generator()
         self._max_distance = None

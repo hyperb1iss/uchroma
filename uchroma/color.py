@@ -108,7 +108,7 @@ def rgb_from_tuple(arg: tuple) -> Color:
         if all(isinstance(n, float) for n in arg):
             return Color.NewFromRgb(*arg)
 
-    raise TypeError("Unable to convert %s (%s) to color" % (arg, type(arg[0])))
+    raise TypeError(f"Unable to convert {arg} ({type(arg[0])}) to color")
 
 
 def rgb_to_int_tuple(arg: tuple) -> tuple:
@@ -122,7 +122,7 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
     if len(arg) >= 3:
         return tuple([clamp(round(x), 0, 255) for x in arg[:3]])
 
-    raise TypeError("Unable to convert %s (%s) to color" % (arg, type(arg[0])))
+    raise TypeError(f"Unable to convert {arg} ({type(arg[0])}) to color")
 
 
 COLOR_TUPLE_STR = re.compile(r"\((.*, .*, .*, .*)\)")
@@ -153,7 +153,7 @@ def to_color(*color_args) -> Color:
             elif isinstance(arg, Iterable):
                 value = rgb_from_tuple(arg)
             else:
-                raise TypeError("Unable to parse color from '%s' (%s)" % (arg, type(arg)))
+                raise TypeError(f"Unable to parse color from '{arg}' ({type(arg)})")
         colors.append(value)
 
     if len(colors) == 0:
@@ -176,20 +176,15 @@ def to_rgb(arg) -> tuple:
         return arg.intTuple[:3]
     if isinstance(arg, str):
         return Color.NewFromHtml(arg).intTuple[:3]
-    if isinstance(arg, tuple) or isinstance(arg, list):
+    if isinstance(arg, (tuple, list)):
         if arg[0] is None:
             return (0, 0, 0)
 
-        if (
-            isinstance(arg[0], list)
-            or isinstance(arg[0], tuple)
-            or isinstance(arg[0], str)
-            or isinstance(arg[0], Color)
-        ):
+        if isinstance(arg[0], (list, tuple, str, Color)):
             return [to_rgb(item) for item in arg]
         return rgb_to_int_tuple(arg)
 
-    raise TypeError("Unable to parse color from '%s' (%s)" % (arg, type(arg)))
+    raise TypeError(f"Unable to parse color from '{arg}' ({type(arg)})")
 
 
 """

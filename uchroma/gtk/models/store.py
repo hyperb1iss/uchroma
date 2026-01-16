@@ -8,9 +8,9 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Gio, GLib, GObject
+from gi.repository import Gio, GLib, GObject  # noqa: E402
 
-from .device import DeviceModel
+from .device import DeviceModel  # noqa: E402
 
 
 class DeviceStore(GObject.Object, Gio.ListModel):
@@ -92,7 +92,8 @@ class DeviceStore(GObject.Object, Gio.ListModel):
         for i in range(self._store.get_n_items()):
             if self._store.get_item(i) is device:
                 self._store.remove(i)
-                GLib.idle_add(lambda: self.items_changed(i, 1, 0))
+                position = i  # Capture value to avoid late binding
+                GLib.idle_add(lambda pos=position: self.items_changed(pos, 1, 0))
                 break
 
     def get_device_by_path(self, path: str) -> DeviceModel:

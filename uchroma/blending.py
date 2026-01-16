@@ -197,7 +197,7 @@ def blend(img_in: np.ndarray, img_layer: np.ndarray, blend_op: None, opacity: fl
         if hasattr(BlendOp, blend_op):
             blend_op = getattr(BlendOp, blend_op)
         else:
-            raise ValueError("Invalid blend mode: %s" % blend_op)
+            raise ValueError(f"Invalid blend mode: {blend_op}")
 
     comp = blend_op(img_in, img_layer)
 

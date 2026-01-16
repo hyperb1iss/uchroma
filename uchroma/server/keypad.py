@@ -28,9 +28,7 @@ class UChromaKeypad(UChromaKeyboard):
         *args,
         **kwargs,
     ):
-        super(UChromaKeypad, self).__init__(
-            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
-        )
+        super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
 
         self._macrodev = None
         if hardware.macro_keys is not None:

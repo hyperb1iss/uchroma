@@ -73,15 +73,15 @@ class Renderer(HasTraits):
         if hasattr(driver, "input_manager") and driver.input_manager is not None:
             self._input_queue = InputQueue(driver)
 
-        self._logger = Log.get("uchroma.%s.%d" % (self.__class__.__name__, self.zindex))
-        super(Renderer, self).__init__(*args, **kwargs)
+        self._logger = Log.get(f"uchroma.{self.__class__.__name__}.{self.zindex}")
+        super().__init__(*args, **kwargs)
 
     @observe("zindex")
     def _z_changed(self, change):
         if change.old == change.new and change.new >= 0:
             return
 
-        self._logger = Log.get("uchroma.%s.%d" % (self.__class__.__name__, change.new))
+        self._logger = Log.get(f"uchroma.{self.__class__.__name__}.{change.new}")
 
     def init(self, frame) -> bool:
         """
@@ -217,9 +217,9 @@ class Renderer(HasTraits):
     def _flush(self):
         if self.running:
             return
-        for qlen in range(self._avail_q.qsize()):
+        for _qlen in range(self._avail_q.qsize()):
             self._avail_q.get_nowait()
-        for qlen in range(self._active_q.qsize()):
+        for _qlen in range(self._active_q.qsize()):
             self._active_q.get_nowait()
 
     async def _stop(self):

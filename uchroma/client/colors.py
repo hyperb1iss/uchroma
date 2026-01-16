@@ -15,7 +15,9 @@ def strip_codes(text: str) -> str:
     return ANSI_PATTERN.sub("", str(text))
 
 
-def color(text: str, style: str = None, fore: tuple = None, back: tuple = None) -> str:
+def color(
+    text: str, style: str | None = None, fore: tuple | None = None, back: tuple | None = None
+) -> str:
     """Apply color/style to text."""
     codes = []
 

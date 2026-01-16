@@ -4,12 +4,14 @@ Dashboard Page
 Quick overview and controls for the selected device.
 """
 
+import asyncio
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk  # noqa: E402
 
 
 class DashboardPage(Adw.PreferencesPage):
@@ -21,6 +23,7 @@ class DashboardPage(Adw.PreferencesPage):
         super().__init__()
 
         self._device = None
+        self._pending_tasks: set[asyncio.Task] = set()
 
         self.set_title("Dashboard")
         self.set_icon_name("go-home-symbolic")
@@ -143,7 +146,7 @@ class DashboardPage(Adw.PreferencesPage):
             ("Breathe", "breathe", "#f1fa8c"),
         ]
 
-        for label, effect_id, color in effects:
+        for label, effect_id, _color in effects:
             btn = Gtk.Button(label=label)
             btn.add_css_class("pill")
             btn.connect("clicked", self._on_quick_effect, effect_id)
@@ -170,7 +173,7 @@ class DashboardPage(Adw.PreferencesPage):
         self._product_label.set_label(device.product_id_hex)
 
         if device.has_matrix:
-            self.matrix_row.set_subtitle(f"{device.width} × {device.height}")
+            self.matrix_row.set_subtitle(f"{device.width} x {device.height}")
         else:
             self.matrix_row.set_subtitle("Not available")
 
@@ -240,6 +243,10 @@ class DashboardPage(Adw.PreferencesPage):
         # Get app and set effect via D-Bus
         app = self.get_root().get_application()
         if app:
-            import asyncio
+            self._schedule_task(app.dbus.set_effect(self._device.path, effect_id))
 
-            asyncio.create_task(app.dbus.set_effect(self._device.path, effect_id))
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)

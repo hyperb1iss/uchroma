@@ -9,7 +9,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gdk, Gtk
+from gi.repository import Adw, Gdk, Gtk  # noqa: E402
 
 # LED zone definitions with icons
 ZONE_ICONS = {
@@ -33,7 +33,7 @@ class ZoneCard(Gtk.Box):
 
     __gtype_name__ = "UChromaZoneCard"
 
-    def __init__(self, zone_name: str, zone_data: dict = None):
+    def __init__(self, zone_name: str, zone_data: dict | None = None):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
 
         self.zone_name = zone_name

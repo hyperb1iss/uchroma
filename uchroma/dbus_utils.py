@@ -258,48 +258,34 @@ class DescriptorBuilder:
             self.add_property(snake_to_camel(name), sig, not (trait.read_only or write_once))
 
     def build(self) -> str:
-        val = "<node>\n  <interface name='%s'>\n" % self._interface_name
+        val = f"<node>\n  <interface name='{self._interface_name}'>\n"
 
         for name, sig in self._ro_props.items():
-            val += "    <property name='%s' type='%s' access='read' />\n" % (
-                snake_to_camel(name),
-                sig,
-            )
+            val += f"    <property name='{snake_to_camel(name)}' type='{sig}' access='read' />\n"
 
         for name, sig in self._rw_props.items():
-            val += "    <property name='%s' type='%s' access='readwrite'>\n" % (
-                snake_to_camel(name),
-                sig,
-            )
+            val += f"    <property name='{snake_to_camel(name)}' type='{sig}' access='readwrite'>\n"
             val += "      <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />\n"
             val += "    </property>\n"
 
         for method in self._methods:
             name = snake_to_camel(method["name"])
             if "args" not in method:
-                val += "    <method name='%s' />\n" % name
+                val += f"    <method name='{name}' />\n"
             else:
-                val += "    <method name='%s'>\n" % name
+                val += f"    <method name='{name}'>\n"
                 for argspec in method["args"]:
-                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % (
-                        argspec.direction,
-                        argspec.type,
-                        argspec.name,
-                    )
+                    val += f"      <arg direction='{argspec.direction}' type='{argspec.type}' name='{argspec.name}' />\n"
                 val += "    </method>\n"
 
         for signal in self._signals:
             name = snake_to_camel(signal["name"])
             if "args" not in signal:
-                val += "    <signal name='%s' />\n" % name
+                val += f"    <signal name='{name}' />\n"
             else:
-                val += "    <signal name='%s'>\n" % name
+                val += f"    <signal name='{name}'>\n"
                 for argspec in signal["args"]:
-                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % (
-                        argspec.direction,
-                        argspec.type,
-                        argspec.name,
-                    )
+                    val += f"      <arg direction='{argspec.direction}' type='{argspec.type}' name='{argspec.name}' />\n"
                 val += "    </signal>\n"
 
         val += "  </interface>\n</node>"
@@ -309,7 +295,7 @@ class DescriptorBuilder:
 
 class TraitsPropertiesMixin:
     def __init__(self, *args, **kwargs):
-        super(TraitsPropertiesMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getattribute__(self, name):
         # Intercept everything and delegate to the device class by converting
@@ -330,11 +316,11 @@ class TraitsPropertiesMixin:
                 return trait._asdict()
             return value
 
-        return super(TraitsPropertiesMixin, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def __setattr__(self, name, value):
         prop_name = camel_to_snake(name)
         if prop_name != name and self._delegate.has_trait(prop_name):
             return self._delegate.set_trait(prop_name, value)
 
-        return super(TraitsPropertiesMixin, self).__setattr__(name, value)
+        return super().__setattr__(name, value)

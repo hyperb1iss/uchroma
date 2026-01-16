@@ -66,9 +66,8 @@ class Layer:
         if mode is None:
             self._blend_mode = BlendOp.screen
 
-        elif isinstance(mode, str):
-            if mode in BlendOp.get_modes():
-                self._blend_mode = getattr(BlendOp, mode)
+        elif isinstance(mode, str) and mode in BlendOp.get_modes():
+            self._blend_mode = getattr(BlendOp, mode)
 
     @property
     def opacity(self) -> float:

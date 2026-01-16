@@ -4,18 +4,20 @@ UChroma Main Window
 Single-screen layout with matrix preview, mode toggle, and contextual panels.
 """
 
+import asyncio
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gtk  # noqa: E402
 
-from .panels import EffectSelector, LayerPanel, ModeToggle, ParamInspector
-from .services.preview_renderer import PreviewRenderer
-from .widgets import BrightnessScale, MatrixPreview
-from .widgets.effect_card import get_effect_by_id
-from .widgets.layer_row import get_renderer_by_id
+from .panels import EffectSelector, LayerPanel, ModeToggle, ParamInspector  # noqa: E402
+from .services.preview_renderer import PreviewRenderer  # noqa: E402
+from .widgets import BrightnessScale, MatrixPreview  # noqa: E402
+from .widgets.effect_card import get_effect_by_id  # noqa: E402
+from .widgets.layer_row import get_renderer_by_id  # noqa: E402
 
 
 class UChromaWindow(Adw.ApplicationWindow):
@@ -37,6 +39,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._mode = self.MODE_HARDWARE
         self._selected_effect = None
         self._effect_params = {}
+        self._pending_tasks: set[asyncio.Task] = set()
 
         # Preview renderer
         self._preview_renderer = PreviewRenderer(rows=6, cols=22)
@@ -298,10 +301,8 @@ class UChromaWindow(Adw.ApplicationWindow):
 
         app = self.get_application()
         if app and hasattr(app, "dbus"):
-            import asyncio
-
             params = self._param_inspector.get_values()
-            asyncio.create_task(app.dbus.set_effect(self._device.path, effect_id, params))
+            self._schedule_task(app.dbus.set_effect(self._device.path, effect_id, params))
 
     # === CUSTOM ANIMATION ===
 
@@ -309,16 +310,14 @@ class UChromaWindow(Adw.ApplicationWindow):
         """Handle layer added."""
         renderer_data = get_renderer_by_id(renderer_id)
         if renderer_data:
-            row = panel.add_layer(renderer_id, renderer_data["name"])
+            panel.add_layer(renderer_id, renderer_data["name"])
 
             # Apply to device
             if self._device:
                 app = self.get_application()
                 if app and hasattr(app, "dbus"):
-                    import asyncio
-
                     zindex = len(panel.layers) - 1
-                    asyncio.create_task(
+                    self._schedule_task(
                         app.dbus.add_renderer(self._device.path, renderer_id, zindex)
                     )
 
@@ -333,9 +332,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         if self._device:
             app = self.get_application()
             if app and hasattr(app, "dbus"):
-                import asyncio
-
-                asyncio.create_task(app.dbus.remove_renderer(self._device.path, zindex))
+                self._schedule_task(app.dbus.remove_renderer(self._device.path, zindex))
 
         if not panel.layers:
             self._mode_toggle.set_status("No layers", False)
@@ -375,9 +372,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         if self._device:
             app = self.get_application()
             if app and hasattr(app, "dbus"):
-                import asyncio
-
-                asyncio.create_task(app.dbus.stop_animation(self._device.path))
+                self._schedule_task(app.dbus.stop_animation(self._device.path))
 
     # === PARAMETERS ===
 
@@ -401,9 +396,7 @@ class UChromaWindow(Adw.ApplicationWindow):
 
         app = self.get_application()
         if app and hasattr(app, "dbus"):
-            import asyncio
-
-            asyncio.create_task(app.dbus.set_brightness(self._device.path, value))
+            self._schedule_task(app.dbus.set_brightness(self._device.path, value))
 
     def _on_power_toggled(self, btn):
         """Handle power toggle."""
@@ -419,9 +412,7 @@ class UChromaWindow(Adw.ApplicationWindow):
 
         app = self.get_application()
         if app and hasattr(app, "dbus"):
-            import asyncio
-
-            asyncio.create_task(app.dbus.set_suspended(self._device.path, suspended))
+            self._schedule_task(app.dbus.set_suspended(self._device.path, suspended))
 
     # === PREVIEW ===
 
@@ -442,6 +433,12 @@ class UChromaWindow(Adw.ApplicationWindow):
             # Select first device
             first_device = app.device_store.get_item(0)
             self.set_device(first_device)
+
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
     def do_close_request(self):
         """Handle window close."""

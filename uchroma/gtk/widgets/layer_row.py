@@ -4,11 +4,13 @@ Layer Row Widget
 Compact layer row for animation stack with inline controls.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
 BLEND_MODES = [
     "normal",
@@ -30,7 +32,7 @@ class LayerRow(Gtk.ListBoxRow):
 
     __gtype_name__ = "UChromaLayerRow"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "layer-selected": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "layer-deleted": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "blend-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),

@@ -14,7 +14,7 @@ import asyncio
 import functools
 import re
 from concurrent import futures
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
 from wrapt import synchronized
 
@@ -60,10 +60,10 @@ class BaseUChromaDevice:
         self._devindex = index
         self._sys_path = sys_path
 
-        self.logger = Log.get("uchroma.driver-%d" % index)
+        self.logger = Log.get(f"uchroma.driver-{index}")
 
         # needed for mixins
-        super(BaseUChromaDevice, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._dev = None
         self._serial_number = None
@@ -114,10 +114,8 @@ class BaseUChromaDevice:
                 return
 
         if hasattr(self, "_dev") and self._dev is not None:
-            try:
+            with suppress(Exception):
                 self._dev.close()
-            except Exception:
-                pass
 
             self._dev = None
 
@@ -263,9 +261,8 @@ class BaseUChromaDevice:
 
         :param level: Brightness level, 0-100
         """
-        if not self._suspended:
-            if self._device_open():
-                self._brightness_animator.animate(self.brightness, level, done_cb=self._done_cb)
+        if not self._suspended and self._device_open():
+            self._brightness_animator.animate(self.brightness, level, done_cb=self._done_cb)
 
         self.preferences.brightness = level
 
@@ -299,7 +296,7 @@ class BaseUChromaDevice:
             else:
                 transaction_id = 0xFF
 
-        self.logger.debug("Transaction id: %d quirks: %s" % (transaction_id, self.hardware.quirks))
+        self.logger.debug(f"Transaction id: {transaction_id} quirks: {self.hardware.quirks}")
 
         report = RazerReport(
             self,
@@ -327,8 +324,8 @@ class BaseUChromaDevice:
         self,
         command: BaseCommand,
         *args,
-        transaction_id: int = None,
-        delay: float = None,
+        transaction_id: int | None = None,
+        delay: float | None = None,
         remaining_packets: int = 0x00,
     ) -> bytes:
         """
@@ -363,7 +360,7 @@ class BaseUChromaDevice:
         return result
 
     @synchronized
-    def run_report(self, report: RazerReport, delay: float = None) -> bool:
+    def run_report(self, report: RazerReport, delay: float | None = None) -> bool:
         """
         Runs a previously initialized RazerReport on the device
 
@@ -378,8 +375,8 @@ class BaseUChromaDevice:
         self,
         command: BaseCommand,
         *args,
-        transaction_id: int = None,
-        delay: float = None,
+        transaction_id: int | None = None,
+        delay: float | None = None,
         remaining_packets: int = 0x00,
     ) -> bool:
         """
@@ -460,7 +457,7 @@ class BaseUChromaDevice:
             if version is None:
                 self._firmware_version = "(unknown)"
             else:
-                self._firmware_version = "v%d.%d" % (int(version[0]), int(version[1]))
+                self._firmware_version = f"v{int(version[0])}.{int(version[1])}"
 
         return self._firmware_version
 
@@ -500,7 +497,7 @@ class BaseUChromaDevice:
         """
         Unique key which identifies this device to the device manager
         """
-        return "%04x:%04x.%02d" % (self.vendor_id, self.product_id, self.device_index)
+        return f"{self.vendor_id:04x}:{self.product_id:04x}.{self.device_index:02d}"
 
     @property
     def hardware(self) -> Hardware:
@@ -610,14 +607,7 @@ class BaseUChromaDevice:
             self.restore_prefs.fire(self.preferences)
 
     def __repr__(self):
-        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d, quirks=%s)" % (
-            self.__class__.__name__,
-            self.name,
-            self.device_type.value,
-            self.product_id,
-            self.device_index,
-            self.hardware.quirks,
-        )
+        return f"{self.__class__.__name__}(name={self.name}, type={self.device_type.value}, product_id=0x{self.product_id:04x}, index={self.device_index}, quirks={self.hardware.quirks})"
 
     def _device_open(self):
         self._ref_count += 1

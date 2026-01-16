@@ -28,7 +28,7 @@ class Rainbow(Renderer):
     stagger = Int(default_value=4, min=0, max=100).tag(config=True)
 
     def __init__(self, *args, **kwargs):
-        super(Rainbow, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._gradient = None
         self._offset = 0

@@ -47,7 +47,7 @@ def autocast_decorator(type_hint, fix_arg_func):
     @decorator
     def wrapper(wrapped, instance, args, kwargs):
         hinted_args = names = None
-        cache_key = "%s-%s-%s" % (wrapped.__class__.__name__, wrapped.__name__, str(type_hint))
+        cache_key = f"{wrapped.__class__.__name__}-{wrapped.__name__}-{type_hint!s}"
 
         if cache_key in AUTOCAST_CACHE:
             hinted_args, names = AUTOCAST_CACHE[cache_key]
@@ -62,7 +62,7 @@ def autocast_decorator(type_hint, fix_arg_func):
             AUTOCAST_CACHE[cache_key] = hinted_args, names
 
         if len(hinted_args) == 0:
-            raise ValueError("No arguments with %s hint found" % type_hint)
+            raise ValueError(f"No arguments with {type_hint} hint found")
 
         new_args = list(args)
         for hinted_arg in hinted_args:
@@ -129,7 +129,7 @@ def scale(value, src_min, src_max, dst_min, dst_max, round_=False):
     """
     scaled = interp(clamp(value, src_min, src_max), [src_min, src_max], [dst_min, dst_max])
     if round_:
-        scaled = int(round(scaled))
+        scaled = round(scaled)
 
     return scaled
 
@@ -148,7 +148,7 @@ def scale_brightness(brightness, from_hw=False):
     """
     if from_hw:
         if brightness < 0 or brightness > 255:
-            raise ValueError("Integer brightness must be between 0 and 255 (%d)" % brightness)
+            raise ValueError(f"Integer brightness must be between 0 and 255 ({brightness})")
 
         if brightness is None:
             return 0.0
@@ -156,12 +156,12 @@ def scale_brightness(brightness, from_hw=False):
         return round(float(brightness) * (100.0 / 255.0), 2)
 
     if brightness < 0.0 or brightness > 100.0:
-        raise ValueError("Float brightness must be between 0 and 100 (%f)" % brightness)
+        raise ValueError(f"Float brightness must be between 0 and 100 ({brightness:f})")
 
     if brightness is None:
         return 0
 
-    return int(round(brightness * (255.0 / 100.0)))
+    return round(brightness * (255.0 / 100.0))
 
 
 def to_byte(value: int) -> bytes:
@@ -290,7 +290,7 @@ class ArgsDict(OrderedDict):
     """
 
     def __init__(self, *args, **kwargs):
-        super(ArgsDict, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         empty_keys = []
         for k, v in self.items():
             if v is None:
@@ -337,7 +337,7 @@ class Singleton(type):
         try:
             return cls.__instance
         except AttributeError:
-            cls.__instance = super(Singleton, cls).__call__(*args, **kwargs)
+            cls.__instance = super().__call__(*args, **kwargs)
             return cls.__instance
 
 

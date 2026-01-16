@@ -4,11 +4,13 @@ Brightness Scale Widget
 Compact horizontal brightness control with icon and percentage label.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
 
 class BrightnessScale(Gtk.Box):
@@ -16,7 +18,7 @@ class BrightnessScale(Gtk.Box):
 
     __gtype_name__ = "UChromaBrightnessScale"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "value-changed": (GObject.SignalFlags.RUN_FIRST, None, (float,)),
     }
 

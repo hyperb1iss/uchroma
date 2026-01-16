@@ -86,22 +86,16 @@ class AbstractCommand:
         length = self.width - 5 - offset
         if len(strip_codes(line)) < length:
             return line
-        return "%s(...)" % line[:length]
+        return f"{line[:length]}(...)"
 
     def columns(self, key_width, key, value):
         print(
-            " %s %s %s"
-            % (Colr(key).rjust(key_width), CHAR_VERT, self.ellipsize(value, offset=key_width))
+            f" {Colr(key).rjust(key_width)} {CHAR_VERT} {self.ellipsize(value, offset=key_width)}"
         )
 
     def seperator(self, key_width):
         print(
-            " %s%s%s"
-            % (
-                ENTER + (CHAR_HORIZ * (key_width + 1)),
-                CHAR_CROSS,
-                (CHAR_HORIZ * (self.width - key_width)) + EXIT,
-            )
+            f" {ENTER + (CHAR_HORIZ * (key_width + 1))}{CHAR_CROSS}{(CHAR_HORIZ * (self.width - key_width)) + EXIT}"
         )
 
     def show_traits(self, traits, values=None, indent=0):
@@ -128,26 +122,26 @@ class AbstractCommand:
 
             if trait_type == "caselessstrenum":
                 trait_type = "choice"
-                desc = "one of: %s" % ", ".join([x.lower() for x in sorted(trait.values)])
+                desc = "one of: {}".format(", ".join([x.lower() for x in sorted(trait.values)]))
             elif hasattr(trait, "info_text"):
                 desc = trait.info_text
 
             constraints = []
             if hasattr(trait, "min"):
-                constraints.append("min: %s" % trait.min)
+                constraints.append(f"min: {trait.min}")
             if hasattr(trait, "max"):
-                constraints.append("max: %s" % trait.max)
+                constraints.append(f"max: {trait.max}")
             if hasattr(trait, "_minlen") and trait._minlen > 0:
-                constraints.append("min length: %s" % trait._minlen)
+                constraints.append(f"min length: {trait._minlen}")
             if hasattr(trait, "_maxlen") and trait._maxlen != sys.maxsize:
-                constraints.append("max length: %s" % trait._maxlen)
+                constraints.append(f"max length: {trait._maxlen}")
             if (
                 hasattr(trait, "default_value")
                 and trait.default_value is not None
                 and trait.default_value != ""
                 and trait.default_value is not Undefined
             ):
-                constraints.append("default: %s" % trait.default_value)
+                constraints.append(f"default: {trait.default_value}")
 
             constraint_str = ""
             if len(constraints) > 0:
@@ -167,7 +161,7 @@ class AbstractCommand:
                     value = color_block(*value)
 
                 self.columns(indent, color(name, style="bright"), value)
-                self.columns(indent, "(%s)" % trait_type, desc)
+                self.columns(indent, f"({trait_type})", desc)
 
                 self.columns(indent, "", constraint_str)
             else:
@@ -194,7 +188,7 @@ class AbstractCommand:
         if aliases is None:
             keys = objects.keys()
         else:
-            keys = [aliases.get(k, k) for k in objects.keys()]
+            keys = [aliases.get(k, k) for k in objects]
 
         if keylen is None:
             keys = list(keys)
@@ -242,7 +236,7 @@ class AbstractCommand:
 
     @classmethod
     def add_traits_parser(
-        cls, parser, name, remote_traits, callback, help_text: str = None, aliases=None
+        cls, parser, name, remote_traits, callback, help_text: str | None = None, aliases=None
     ):
         if help_text is None:
             help_text = remote_traits.description
@@ -266,7 +260,7 @@ class AbstractCommand:
 
 class DumpCommand(AbstractCommand):
     def __init__(self, parent, dumpables):
-        super(DumpCommand, self).__init__(parent)
+        super().__init__(parent)
         self._dumpables = dumpables
 
     def add_parser(self, sub):
@@ -292,7 +286,7 @@ class DumpCommand(AbstractCommand):
 
         print("\n Device properties:\n")
 
-        device_index = "device-%s" % props.pop("device_index")
+        device_index = "device-{}".format(props.pop("device_index"))
         device_name = props.pop("name")
 
         self.columns(
@@ -325,7 +319,7 @@ class BrightnessCommand(AbstractCommand):
 
     def parse(self, args):
         if args.level is None:
-            args.parser.exit(message="%f\n" % self.driver.Brightness)
+            args.parser.exit(message=f"{self.driver.Brightness:f}\n")
 
         if args.level < 0 or args.level > 100:
             args.parser.error("Brightness must be between 0 and 100")
@@ -335,7 +329,7 @@ class BrightnessCommand(AbstractCommand):
 
 class LEDCommand(AbstractCommand):
     def __init__(self, *args, **kwargs):
-        super(LEDCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._leds = None
 
     def add_parser(self, sub):
@@ -353,7 +347,7 @@ class LEDCommand(AbstractCommand):
         for name, t_dict in sorted(self.driver.AvailableLEDs.items()):
             traits = dict_as_class_traits(t_dict)
             self._leds[name] = RemoteTraits(
-                name.lower(), "LED: %s" % name.title(), None, None, traits
+                name.lower(), f"LED: {name.title()}", None, None, traits
             )
 
         return self._leds
@@ -402,7 +396,7 @@ class LEDCommand(AbstractCommand):
 
 class FXCommand(AbstractCommand):
     def __init__(self, *args, **kwargs):
-        super(FXCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._fx = None
 
     def add_parser(self, sub):
@@ -433,7 +427,7 @@ class FXCommand(AbstractCommand):
 
     def dump(self, keylen):
         if len(self.current_state) > 0:
-            if len(self.current_state) == 1 and list(self.current_state.keys())[0] in (
+            if len(self.current_state) == 1 and next(iter(self.current_state.keys())) in (
                 "disable",
                 "custom_frame",
             ):
@@ -470,7 +464,7 @@ class FXCommand(AbstractCommand):
 
 class AnimationCommand(AbstractCommand):
     def __init__(self, *args, **kwargs):
-        super(AnimationCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._renderer_info = None
         self._aliases = {}
 
@@ -586,7 +580,7 @@ class AnimationCommand(AbstractCommand):
 
     def _pause(self, args):
         paused = self.driver.PauseAnimation()
-        args.parser.exit(message="Pause state: %s\n" % paused)
+        args.parser.exit(message=f"Pause state: {paused}\n")
 
     def _stop(self, args):
         if not self.driver.StopAnimation():
@@ -605,7 +599,7 @@ class AnimationCommand(AbstractCommand):
         if layer is None:
             args.parser.error("Failed to create renderer")
 
-        args.parser.exit(message="Created layer: %s\n" % layer)
+        args.parser.exit(message=f"Created layer: {layer}\n")
 
     def _add(self, args):
         layers = self.driver.CurrentRenderers
@@ -644,7 +638,7 @@ class AnimationCommand(AbstractCommand):
         for k, v in args.changed.items():
             self.set_property(layer_obj, k, v)
 
-        args.parser.exit(message="Layer %d updated\n" % layer)
+        args.parser.exit(message=f"Layer {layer} updated\n")
 
     def _modify(self, args):
         layers = self.driver.CurrentRenderers
@@ -660,7 +654,7 @@ class AnimationCommand(AbstractCommand):
                 str(layer_idx),
                 renderer,
                 self._modify_layer,
-                help_text="Layer %d: %s" % (layer_idx, renderer.description),
+                help_text=f"Layer {layer_idx}: {renderer.description}",
             )
 
         self.parse_traits(args)
@@ -679,7 +673,7 @@ class AnimationCommand(AbstractCommand):
         if not self.driver.RemoveRenderer(delete_args.zindex):
             args.parser.error("Failed to delete layer")
 
-        args.parser.exit(message="Layer %d deleted\n" % delete_args.zindex)
+        args.parser.exit(message=f"Layer {delete_args.zindex} deleted\n")
 
 
 class UChromaTool(UChromaConsoleUtil):

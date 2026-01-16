@@ -4,12 +4,14 @@ Device Sidebar
 List of connected UChroma devices with selection.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
 
 class DeviceRow(Gtk.Box):
@@ -71,7 +73,7 @@ class DeviceSidebar(Gtk.ListBox):
 
     __gtype_name__ = "UChromaDeviceSidebar"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "device-selected": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
     }
 

@@ -4,11 +4,13 @@ Effect Card Widget
 Visual card for hardware effect selection with animated preview strip.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
 
 class EffectCard(Gtk.Button):
@@ -16,7 +18,7 @@ class EffectCard(Gtk.Button):
 
     __gtype_name__ = "UChromaEffectCard"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "effect-activated": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 

@@ -4,12 +4,15 @@ Animation Page
 Layer composer for custom animation effects with drag-reorder support.
 """
 
+import asyncio
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GObject, Gtk  # noqa: E402
 
 # Available renderers with metadata
 RENDERERS = [
@@ -59,9 +62,9 @@ BLEND_MODES = [
 class LayerRow(Gtk.Box):
     """A single layer in the animation stack."""
 
-    __gtype_name__ = "UChromaLayerRow"
+    __gtype_name__ = "UChromaAnimationLayerRow"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "delete-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "selected": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "blend-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
@@ -187,6 +190,7 @@ class AnimationPage(Adw.PreferencesPage):
         self._device = None
         self._layers = []
         self._selected_layer = None
+        self._pending_tasks: set[asyncio.Task] = set()
 
         self.set_title("Animation")
         self.set_icon_name("media-playlist-repeat-symbolic")
@@ -377,9 +381,13 @@ class AnimationPage(Adw.PreferencesPage):
         if self._device:
             app = self.get_root().get_application()
             if app:
-                import asyncio
+                self._schedule_task(app.dbus.add_renderer(self._device.path, renderer_id, zindex))
 
-                asyncio.create_task(app.dbus.add_renderer(self._device.path, renderer_id, zindex))
+    def _schedule_task(self, coro):
+        """Schedule an async task and track it to prevent GC."""
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
     def _on_layer_delete(self, layer_row, row):
         """Handle layer deletion."""
@@ -402,9 +410,7 @@ class AnimationPage(Adw.PreferencesPage):
         if self._device:
             app = self.get_root().get_application()
             if app:
-                import asyncio
-
-                asyncio.create_task(app.dbus.remove_renderer(self._device.path, zindex))
+                self._schedule_task(app.dbus.remove_renderer(self._device.path, zindex))
 
     def _on_layer_selected(self, layer_row, row):
         """Handle layer selection."""
@@ -432,9 +438,7 @@ class AnimationPage(Adw.PreferencesPage):
         if self._device:
             app = self.get_root().get_application()
             if app:
-                import asyncio
-
-                asyncio.create_task(app.dbus.stop_animation(self._device.path))
+                self._schedule_task(app.dbus.stop_animation(self._device.path))
 
         # Clear UI
         for layer in self._layers[:]:

@@ -10,7 +10,7 @@ import sys
 def main():
     """Main entry point."""
     # Import and run application
-    from .application import main as app_main
+    from .application import main as app_main  # noqa: PLC0415
 
     return app_main()
 

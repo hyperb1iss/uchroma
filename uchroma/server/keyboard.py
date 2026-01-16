@@ -42,9 +42,7 @@ class UChromaKeyboard(UChromaDevice, KeyboardFixup):
         *args,
         **kwargs,
     ):
-        super(UChromaKeyboard, self).__init__(
-            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
-        )
+        super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
 
     def get_device_mode(self) -> tuple:
         """

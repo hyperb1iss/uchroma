@@ -12,6 +12,7 @@
 #
 import argparse
 import asyncio
+import contextlib
 import logging
 import signal
 
@@ -63,10 +64,8 @@ class UChromaServer:
         self._shutdown_event.set()
 
     def run(self):
-        try:
+        with contextlib.suppress(KeyboardInterrupt):
             asyncio.run(self._run())
-        except KeyboardInterrupt:
-            pass
 
     async def _run(self):
         self._loop = asyncio.get_event_loop()
@@ -97,10 +96,8 @@ class UChromaServer:
 
             # Cancel D-Bus task
             dbus_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await dbus_task
-            except asyncio.CancelledError:
-                pass
 
         except asyncio.CancelledError:
             pass

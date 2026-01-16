@@ -4,6 +4,7 @@ D-Bus Service
 Async wrapper for UChroma D-Bus communication.
 """
 
+import contextlib
 from collections.abc import Callable
 
 from dbus_fast import BusType, Variant
@@ -47,11 +48,8 @@ class DBusService:
 
         # The signal subscription depends on the interface definition
         # This is a simplified version - actual implementation depends on dbus-fast API
-        try:
+        with contextlib.suppress(AttributeError):
             self._manager_proxy.on_devices_changed(self._on_devices_changed)
-        except AttributeError:
-            # Signal might not be available
-            pass
 
     def _on_devices_changed(self, action: str, device_path: str):
         """Handle DevicesChanged signal."""
@@ -91,26 +89,20 @@ class DBusService:
             }
 
             # Try to get additional interfaces
-            try:
+            with contextlib.suppress(Exception):
                 self._device_proxies[path]["fx"] = proxy.get_interface(
                     "org.chemlab.UChroma.FXManager"
                 )
-            except Exception:
-                pass
 
-            try:
+            with contextlib.suppress(Exception):
                 self._device_proxies[path]["anim"] = proxy.get_interface(
                     "org.chemlab.UChroma.AnimationManager"
                 )
-            except Exception:
-                pass
 
-            try:
+            with contextlib.suppress(Exception):
                 self._device_proxies[path]["led"] = proxy.get_interface(
                     "org.chemlab.UChroma.LEDManager"
                 )
-            except Exception:
-                pass
 
             return self._device_proxies[path]["device"]
 
@@ -136,7 +128,7 @@ class DBusService:
             await self.get_device_proxy(path)
         return self._device_proxies.get(path, {}).get("led")
 
-    async def set_effect(self, path: str, effect_name: str, params: dict = None):
+    async def set_effect(self, path: str, effect_name: str, params: dict | None = None):
         """Set an effect on a device."""
         fx_proxy = await self.get_fx_proxy(path)
         if not fx_proxy:
@@ -164,7 +156,9 @@ class DBusService:
             print(f"Failed to set effect: {e}")
             return False
 
-    async def add_renderer(self, path: str, name: str, zindex: int = -1, traits: dict = None):
+    async def add_renderer(
+        self, path: str, name: str, zindex: int = -1, traits: dict | None = None
+    ):
         """Add an animation renderer."""
         anim_proxy = await self.get_anim_proxy(path)
         if not anim_proxy:

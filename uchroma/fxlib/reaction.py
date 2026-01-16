@@ -43,7 +43,7 @@ class Reaction(Renderer):
     color = ColorTrait().tag(config=True)
 
     def __init__(self, *args, **kwargs):
-        super(Reaction, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.fps = 30
 
         # It seems like observers can be called before __init__
@@ -131,6 +131,4 @@ class Reaction(Renderer):
             self._set_colors(bg_color, self.color)
 
     def init(self, frame) -> bool:
-        if not self.has_key_input:
-            return False
-        return True
+        return self.has_key_input

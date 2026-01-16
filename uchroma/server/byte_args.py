@@ -48,8 +48,7 @@ class ByteArgs:
 
     def _ensure_space(self, size):
         assert len(self._data) > size + self._data_ptr, (
-            "Additional argument (len=%d) would exceed size limit %d (cur=%d)"
-            % (size, len(self._data), self._data_ptr)
+            f"Additional argument (len={size}) would exceed size limit {len(self._data)} (cur={self._data_ptr})"
         )
 
     def clear(self):

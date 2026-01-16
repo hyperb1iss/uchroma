@@ -68,7 +68,7 @@ class _Point(NamedTuple):
 
 class Point(_Point):
     def __repr__(self):
-        return "(%s, %s)" % (self.y, self.x)
+        return f"({self.y}, {self.x})"
 
 
 class PointList(FlowSequence):
@@ -78,7 +78,7 @@ class PointList(FlowSequence):
                 return Point(args[0], args[1])
             if isinstance(args[0], list):
                 return cls([cls(arg) for arg in args])
-        return super(PointList, cls).__new__(cls, args)
+        return super().__new__(cls, args)
 
 
 class KeyMapping(OrderedDict):
@@ -97,7 +97,7 @@ _KeyFixupMapping.__new__.__defaults__ = (None,) * len(_KeyFixupMapping._fields)
 
 class KeyFixupMapping(_KeyFixupMapping):
     def _asdict(self):
-        return OrderedDict([x for x in zip(self._fields, self) if x[1] is not None])
+        return OrderedDict([x for x in zip(self._fields, self, strict=False) if x[1] is not None])
 
 
 class Zone(NamedTuple):
@@ -184,7 +184,7 @@ class Hardware(BaseHardware):
             return None
 
         config_path = os.path.join(os.path.dirname(__file__), "data")
-        yaml_path = os.path.join(config_path, "%s.yaml" % hw_type.name.lower())
+        yaml_path = os.path.join(config_path, f"{hw_type.name.lower()}.yaml")
 
         config = cls.load_yaml(yaml_path)
         assert config is not None
@@ -222,10 +222,10 @@ class Hardware(BaseHardware):
     def _yaml_header(self) -> str:
         header = "#\n#  uChroma device configuration\n#\n"
         if self.name is not None:
-            header += "#  Model: %s (%s)\n" % (self.name, self.type.value)
+            header += f"#  Model: {self.name} ({self.type.value})\n"
         elif self.type is not None:
-            header += "#  Type: %s\n" % self.type.name.title()
-        header += "#  Updated on: %s\n" % datetime.now().isoformat(" ")
+            header += f"#  Type: {self.type.name.title()}\n"
+        header += "#  Updated on: {}\n".format(datetime.now().isoformat(" "))
         header += "#\n"
 
         return header
@@ -233,7 +233,7 @@ class Hardware(BaseHardware):
 
 # YAML library configuration
 def represent_hex_quad(dumper, data):
-    return dumper.represent_scalar("tag:yaml.org,2002:int", "0x%04x" % data)
+    return dumper.represent_scalar("tag:yaml.org,2002:int", f"0x{data:04x}")
 
 
 def represent_namedtuple(dumper, data):

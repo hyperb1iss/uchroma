@@ -114,10 +114,10 @@ class StandardFX(FXModule):
         SET_EFFECT_EXTENDED = (0x0F, 0x02, None)
 
     def __init__(self, *args, **kwargs):
-        super(StandardFX, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._report = None
 
-    def _set_effect_basic(self, effect: FX, *args, transaction_id: int = None) -> bool:
+    def _set_effect_basic(self, effect: FX, *args, transaction_id: int | None = None) -> bool:
         if self._report is None:
             self._report = self._driver.get_report(
                 *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id
@@ -353,12 +353,10 @@ class StandardFX(FXModule):
             :return: True if successful
             """
             varstore = 0x01
-            tid = None
 
             # FIXME: This doesn't work.
             if self._driver.device_type == Hardware.Type.MOUSE:
                 varstore = 0x00
-                tid = 0x80
             return self._fxmod.set_effect(FX.CUSTOM_FRAME, varstore)
 
     class RainbowFX(BaseFX):

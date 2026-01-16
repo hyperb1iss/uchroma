@@ -40,7 +40,7 @@ class Plasma(Renderer):
     gradient_length = Int(default_value=360, min=0).tag(config=True)
 
     def __init__(self, *args, **kwargs):
-        super(Plasma, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._gradient = None
         self._start_time = 0

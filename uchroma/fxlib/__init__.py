@@ -10,7 +10,7 @@
 # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
 # License for more details.
 #
-from .plasma import Plasma
-from .rainbow import Rainbow
-from .reaction import Reaction
-from .ripple import Ripple
+from .plasma import Plasma as Plasma
+from .rainbow import Rainbow as Rainbow
+from .reaction import Reaction as Reaction
+from .ripple import Ripple as Ripple

@@ -27,7 +27,7 @@ class KeyboardFixup:
     """
 
     def __init__(self, *args, **kwargs):
-        super(KeyboardFixup, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._alignment_map = self._hardware.key_fixup_mapping
         self._row_offsets = self._hardware.key_row_offsets

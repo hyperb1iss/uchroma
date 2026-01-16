@@ -263,13 +263,13 @@ class FXManagerInterface(ServiceInterface):
         self._available_fx = {}
         for fx_name, fx_class in self._fx_manager.available_fx.items():
             # Use trait_as_dict to serialize class traits without instantiating
-            from uchroma.traits import trait_as_dict
+            from uchroma.traits import trait_as_dict  # noqa: PLC0415
 
             fx_traits = {}
             for trait_name, trait in fx_class.class_traits().items():
                 trait_dict = trait_as_dict(trait)
                 if trait_dict:
-                    obj, sig = dbus_prepare(trait_dict, variant=True)
+                    obj, _sig = dbus_prepare(trait_dict, variant=True)
                     fx_traits[trait_name] = Variant("a{sv}", obj)
             self._available_fx[fx_name] = fx_traits
 
@@ -336,7 +336,7 @@ class AnimationManagerInterface(ServiceInterface):
     def _layers_changed(self, action, zindex=None, layer=None):
         if action == "add" and layer is not None:
             layer_info = {
-                "type": "%s.%s" % (layer.__class__.__module__, layer.__class__.__name__),
+                "type": f"{layer.__class__.__module__}.{layer.__class__.__name__}",
                 "zindex": layer.zindex,
                 "layer": layer,
             }
@@ -362,7 +362,7 @@ class AnimationManagerInterface(ServiceInterface):
     def CurrentRenderers(self) -> "a(so)":
         path = self._device_api.bus_path
         return [
-            (info["type"], "%s/layer/%d" % (path, info["zindex"]))
+            (info["type"], f"{path}/layer/{info['zindex']}")
             for info in sorted(self._layers, key=lambda z: z["zindex"])
         ]
 
@@ -380,7 +380,7 @@ class AnimationManagerInterface(ServiceInterface):
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in traits.items()}
         z = self._animgr.add_renderer(name, traits=kwargs, zindex=zindex)
         if z >= 0:
-            return "%s/layer/%d" % (self._device_api.bus_path, z)
+            return f"{self._device_api.bus_path}/layer/{z}"
         return "/"
 
     @method()
@@ -448,12 +448,7 @@ class DeviceAPI:
 
     @property
     def bus_path(self):
-        return "/org/chemlab/UChroma/%s/%04x_%04x_%02d" % (
-            self._driver.device_type.value,
-            self._driver.vendor_id,
-            self._driver.product_id,
-            self._driver.device_index,
-        )
+        return f"/org/chemlab/UChroma/{self._driver.device_type.value}/{self._driver.vendor_id:04x}_{self._driver.product_id:04x}_{self._driver.device_index:02d}"
 
     @property
     def driver(self):

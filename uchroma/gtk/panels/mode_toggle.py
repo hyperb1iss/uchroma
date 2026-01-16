@@ -4,11 +4,13 @@ Mode Toggle Panel
 Switch between Hardware FX and Custom Animation modes.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
 
 class ModeToggle(Gtk.Box):
@@ -19,7 +21,7 @@ class ModeToggle(Gtk.Box):
     MODE_HARDWARE = "hardware"
     MODE_CUSTOM = "custom"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "mode-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 

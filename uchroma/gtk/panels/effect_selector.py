@@ -4,13 +4,15 @@ Effect Selector Panel
 Horizontal flow of effect cards for hardware FX selection.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
-from ..widgets.effect_card import EFFECTS, EffectCard
+from ..widgets.effect_card import EFFECTS, EffectCard  # noqa: E402
 
 
 class EffectSelector(Gtk.Box):
@@ -18,7 +20,7 @@ class EffectSelector(Gtk.Box):
 
     __gtype_name__ = "UChromaEffectSelector"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "effect-selected": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 

@@ -4,14 +4,16 @@ Layer Panel
 Layer list with playback controls for custom animation mode.
 """
 
+from typing import ClassVar
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import GObject, Gtk
+from gi.repository import GObject, Gtk  # noqa: E402
 
-from ..widgets.layer_row import RENDERERS, LayerRow
+from ..widgets.layer_row import RENDERERS, LayerRow  # noqa: E402
 
 
 class LayerPanel(Gtk.Box):
@@ -19,7 +21,7 @@ class LayerPanel(Gtk.Box):
 
     __gtype_name__ = "UChromaLayerPanel"
 
-    __gsignals__ = {
+    __gsignals__: ClassVar[dict] = {
         "layer-added": (GObject.SignalFlags.RUN_FIRST, None, (str,)),  # renderer_id
         "layer-removed": (GObject.SignalFlags.RUN_FIRST, None, (int,)),  # zindex
         "layer-selected": (GObject.SignalFlags.RUN_FIRST, None, (object,)),  # LayerRow or None
