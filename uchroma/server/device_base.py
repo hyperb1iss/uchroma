@@ -11,7 +11,7 @@ from wrapt import synchronized
 
 from uchroma.log import Log
 from uchroma.server import hidadapter as hidapi
-from uchroma.util import Signal, ValueAnimator, ensure_future
+from uchroma.util import Signal, ValueAnimator
 from uchroma.version import __version__
 
 from .anim import AnimationManager

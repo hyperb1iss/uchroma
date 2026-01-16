@@ -86,7 +86,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         if callbacks is not None:
             self._callbacks.extend(callbacks)
 
-        self._loop = asyncio.get_event_loop()
+        self._loop = None
 
         self.device_added = Signal()
         self.device_removed = Signal()
@@ -265,7 +265,7 @@ class UChromaDeviceManager(metaclass=Singleton):
                 removed = self._devices.pop(key, None)
                 if removed is not None:
                     removed.close()
-                    if self._callbacks:
+                    if self._callbacks and self._loop is not None:
                         ensure_future(self._fire_callbacks("remove", removed), loop=self._loop)
 
         else:
@@ -290,6 +290,9 @@ class UChromaDeviceManager(metaclass=Singleton):
         if self._monitor:
             return
 
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
+
         udev_monitor = Monitor.from_netlink(self._udev_context)
         udev_monitor.filter_by_tag("uchroma")
         udev_monitor.filter_by(subsystem="usb", device_type="usb_device")
@@ -297,10 +300,10 @@ class UChromaDeviceManager(metaclass=Singleton):
         self._udev_observer = AsyncMonitorObserver(
             udev_monitor, callback=self._udev_event, name="uchroma-monitor"
         )
-        ensure_future(self._udev_observer.start())
+        await self._udev_observer.start()
         self._monitor = True
 
-        if self._callbacks:
+        if self._callbacks and self._loop is not None:
             for device in self._devices.values():
                 ensure_future(self._fire_callbacks("add", device), loop=self._loop)
 
@@ -313,7 +316,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         if not self._monitor:
             return
 
-        await ensure_future(self._udev_observer.stop())
+        await self._udev_observer.stop()
         self._monitor = False
 
         self._logger.debug("Udev monitor stopped")
