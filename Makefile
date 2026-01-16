@@ -1,79 +1,158 @@
-DESTDIR?=/
-PYTHONDIR?=$(shell python3 -c 'import sys; print(sys.path[-1])')
+# UChroma Development Makefile
+# Run `make help` to see all available commands
 
-purge_pycache:
-	@find -name '__pycache__' | xargs rm -rf
+DESTDIR ?= /
+SHELL := /bin/bash
 
-clean: purge_pycache
-	@rm -rf build dist uchroma.egg-info
-	make -C doc clean
+# ─────────────────────────────────────────────────────────────────────────────
+# Help
+# ─────────────────────────────────────────────────────────────────────────────
 
-install_library: purge_pycache
-	python3 setup.py install --root=$(DESTDIR)
+.PHONY: help
+help: ## Show this help
+	@echo -e "\033[38;2;128;255;234m━━━ UChroma Development ━━━\033[0m"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[38;2;225;53;255m%-15s\033[0m %s\n", $$1, $$2}'
 
-cython_inplace:
-	python3 setup.py build_ext --inplace
+.DEFAULT_GOAL := help
 
-install_udev: cython_inplace
+# ─────────────────────────────────────────────────────────────────────────────
+# Build & Sync
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: sync
+sync: ## Sync dependencies and build package
+	uv sync --extra gtk
+
+.PHONY: rebuild
+rebuild: ## Rebuild package (use after editing .pyx files)
+	uv sync --extra gtk --reinstall-package uchroma
+
+.PHONY: clean
+clean: ## Clean build artifacts
+	rm -rf build/ dist/ *.egg-info/
+	rm -f uchroma/*.so uchroma/*.c
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Code Quality
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: lint
+lint: ## Run ruff linter
+	uv run ruff check .
+
+.PHONY: lint-fix
+lint-fix: ## Run ruff linter and fix auto-fixable issues
+	uv run ruff check --fix .
+
+.PHONY: fmt
+fmt: ## Format code with ruff
+	uv run ruff format .
+
+.PHONY: fmt-check
+fmt-check: ## Check formatting without modifying
+	uv run ruff format --check .
+
+.PHONY: typecheck
+typecheck: ## Run ty type checker
+	uv run ty check uchroma/
+
+.PHONY: tc
+tc: typecheck ## Alias for typecheck
+
+.PHONY: check
+check: lint fmt-check typecheck ## Run all checks (lint + format + types)
+
+.PHONY: fix
+fix: lint-fix fmt ## Fix all auto-fixable issues (lint + format)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Run
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: server
+server: ## Run the daemon
+	uv run uchromad
+
+.PHONY: server-debug
+server-debug: ## Run daemon in debug mode
+	UCHROMA_LOG_LEVEL=DEBUG uv run uchromad
+
+.PHONY: cli
+cli: ## Run the CLI client (use: make cli ARGS="device list")
+	uv run uchroma $(ARGS)
+
+.PHONY: gtk
+gtk: ## Run the GTK frontend
+	uv run python -m uchroma.gtk
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Testing
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: test
+test: ## Run tests
+	uv run pytest $(ARGS)
+
+.PHONY: test-v
+test-v: ## Run tests with verbose output
+	uv run pytest -v
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Development
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: dev
+dev: ## Install dev dependencies
+	uv sync --extra gtk --group dev
+
+.PHONY: watch
+watch: ## Watch for changes and rebuild (requires watchexec)
+	watchexec -e py,pyx -r -- make rebuild
+
+.PHONY: info
+info: ## Show package info
+	@echo "Package: uchroma"
+	@uv run python -c "import uchroma; print(f'Version: {uchroma.__version__}' if hasattr(uchroma, '__version__') else 'Version: unknown')"
+	@echo "Python: $$(uv run python --version)"
+	@uv run python -c "import uchroma; print(f'Location: {uchroma.__file__}')"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Installation (System)
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: install-udev
+install-udev: ## Install udev rules (requires sudo)
 	install -m 644 -v -D install/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
-	$(eval HWDB := $(shell mktemp))
-	python3 setup.py -q hwdb > $(HWDB)
-	install -m 644 -v -D $(HWDB) $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
-	@rm -v -f $(HWDB)
+	@echo -e "\033[38;2;80;250;123m✓ udev rules installed. Run: sudo udevadm control --reload-rules\033[0m"
 
-install_service:
+.PHONY: install-service
+install-service: ## Install systemd user service
 	install -m 644 -v -D install/org.chemlab.UChroma.service $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
 	install -m 644 -v -D install/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
+	@echo -e "\033[38;2;80;250;123m✓ systemd service installed. Run: systemctl --user daemon-reload\033[0m"
 
-uninstall_library:
-	$(eval UCPATH := $(wildcard $(DESTDIR)/usr/local/lib/python3*/*/uchroma))
-	$(if $(UCPATH), $(eval EGGPATH := $(shell readlink -f $(UCPATH)-*.egg-info/)))
-	@rm -v -rf $(UCPATH)
-	@rm -v -rf $(EGGPATH)
-	@rm -v -f $(DESTDIR)/usr/local/bin/uchroma
-	@rm -v -f $(DESTDIR)/usr/local/bin/uchromad
+.PHONY: uninstall-udev
+uninstall-udev: ## Uninstall udev rules
+	rm -v -f $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
+	rm -v -f $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
 
-uninstall_udev:
-	@rm -v -f $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
-	@rm -v -f $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
+.PHONY: uninstall-service
+uninstall-service: ## Uninstall systemd service
+	rm -v -f $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
+	rm -v -f $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 
-uninstall_service:
-	@rm -v -f $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
-	@rm -v -f $(DESTDIR)/usr/lib/systemd/user/uchromad.service
+# ─────────────────────────────────────────────────────────────────────────────
+# Documentation
+# ─────────────────────────────────────────────────────────────────────────────
 
-sphinx_clean:
-	@rm -f doc/uchroma.*
-
-sphinx: sphinx_clean cython_inplace
-	sphinx-apidoc -o doc -M -f -e .
-
-docs: sphinx
+.PHONY: docs
+docs: ## Build documentation
 	make -C doc html
 
-install: install_library install_udev install_service
-
-uninstall: uninstall_library uninstall_udev uninstall_service
-
-dist:
-	python3 setup.py sdist --dist-dir=../ --formats=xztar
-
-dist_orig: dist
-	rename -f 's/uchroma-(.*)\.tar\.xz/uchroma_$$1\.orig\.tar\.xz/' ../*
-
-debs: dist_orig
-	debuild -i -us -uc -b
-
-deb-src: dist_orig
-	rename -f 's/uchroma-(.*)\.tar\.xz/uchroma_$$1\.orig\.tar\.xz/' ../*
-	debuild -S -i -I
-
-test:
-	pytest
-
-all: install docs
-
-up:
-	python3 setup.py install --user
-
-license:
-	python3 scripts/update-headers header.txt setup.py uchroma scripts/devstuff
+.PHONY: docs-clean
+docs-clean: ## Clean documentation
+	make -C doc clean
+	rm -f doc/uchroma.*

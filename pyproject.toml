@@ -71,13 +71,64 @@ include-package-data = true
 [dependency-groups]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.4",
+    "ruff>=0.9",
+    "ty>=0.0.1a7",
     "cython>=3.0",
 ]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Ruff - Linting & Formatting
+# ─────────────────────────────────────────────────────────────────────────────
 [tool.ruff]
 line-length = 100
+target-version = "py310"
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["E501", "E741"]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "PLC",    # pylint conventions
+    "PLE",    # pylint errors
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous variable name
+    "UP007",  # use X | Y for union types (not always desired)
+    "SIM108", # use ternary (not always clearer)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["uchroma"]
+force-single-line = false
+combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PT"]  # pytest style not enforced in tests
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ty - Type Checking
+# ─────────────────────────────────────────────────────────────────────────────
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.rules]
+# Start with warnings for gradual adoption
+possibly-unresolved-reference = "warn"
+unresolved-import = "warn"
+unresolved-attribute = "warn"
+invalid-type-form = "warn"
+
+[tool.ty.src]
+include = ["uchroma/**/*.py"]
+exclude = ["**/build/**", "**/.venv/**"]
