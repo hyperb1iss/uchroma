@@ -35,6 +35,28 @@ def dev_mode_enabled():
 
 
 BUS_NAME = "io.uchroma"
+ROOT_PATH = "/io/uchroma"
+
+
+def _interface_properties(iface: ServiceInterface) -> dict:
+    props = {}
+    logger = getattr(iface, "_logger", None)
+    for prop in ServiceInterface._get_properties(iface):
+        if getattr(prop, "disabled", False):
+            continue
+        try:
+            value = prop.prop_getter(iface)
+        except Exception as exc:
+            if logger is not None:
+                logger.warning(
+                    "ObjectManager skipped %s.%s: %s",
+                    iface.name,
+                    prop.name,
+                    exc,
+                )
+            continue
+        props[prop.name] = Variant(prop.signature, value)
+    return props
 
 
 class DeviceInterface(ServiceInterface):
@@ -192,21 +214,6 @@ class DeviceInterface(ServiceInterface):
     def Reset(self):
         self._driver.reset()
 
-    @signal()
-    def PropertiesChanged(
-        self, interface_name: "s", changed_properties: "a{sv}", invalidated_properties: "as"
-    ) -> "sa{sv}as":
-        return [interface_name, changed_properties, invalidated_properties]
-
-    def emit_properties_changed(
-        self, changed_properties: dict, invalidated_properties: list[str] | None = None
-    ):
-        props = {
-            k: Variant("d" if isinstance(v, float) else "b", v)
-            for k, v in changed_properties.items()
-        }
-        self.PropertiesChanged("io.uchroma.Device", props, invalidated_properties or [])
-
 
 class LEDManagerInterface(ServiceInterface):
     """
@@ -316,24 +323,6 @@ class FXManagerInterface(ServiceInterface):
         # Extract values from variants
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in args.items()}
         return self._fx_manager.activate(name, **kwargs)
-
-    @signal()
-    def PropertiesChanged(
-        self, interface_name: "s", changed_properties: "a{sv}", invalidated_properties: "as"
-    ) -> "sa{sv}as":
-        return [interface_name, changed_properties, invalidated_properties]
-
-    def emit_properties_changed(
-        self, changed_properties: dict, invalidated_properties: list[str] | None = None
-    ):
-        # FX uses tuple, serialize appropriately
-        props = {}
-        for k, v in changed_properties.items():
-            if isinstance(v, tuple) and len(v) == 2:
-                props[k] = Variant("(sa{sv})", v)
-            else:
-                props[k] = Variant("s", str(v))
-        self.PropertiesChanged("io.uchroma.FXManager", props, invalidated_properties or [])
 
 
 class AnimationManagerInterface(ServiceInterface):
@@ -482,23 +471,6 @@ class AnimationManagerInterface(ServiceInterface):
     @method()
     def PauseAnimation(self) -> "b":
         return self._animgr.pause()
-
-    @signal()
-    def PropertiesChanged(
-        self, interface_name: "s", changed_properties: "a{sv}", invalidated_properties: "as"
-    ) -> "sa{sv}as":
-        return [interface_name, changed_properties, invalidated_properties]
-
-    def emit_properties_changed(
-        self, changed_properties: dict, invalidated_properties: list[str] | None = None
-    ):
-        props = {}
-        for k, v in changed_properties.items():
-            if isinstance(v, list):
-                props[k] = Variant("a(so)", v)
-            else:
-                props[k] = Variant("s", str(v))
-        self.PropertiesChanged("io.uchroma.AnimationManager", props, invalidated_properties or [])
 
 
 class SystemControlInterface(ServiceInterface):
@@ -655,6 +627,30 @@ class DeviceManagerInterface(ServiceInterface):
         return [action, device]
 
 
+class ObjectManagerInterface(ServiceInterface):
+    """
+    D-Bus ObjectManager interface for device discovery and introspection.
+    """
+
+    def __init__(self, manager_api):
+        super().__init__("org.freedesktop.DBus.ObjectManager")
+        self._manager_api = manager_api
+
+    @method()
+    def GetManagedObjects(self) -> "a{oa{sa{sv}}}":
+        return self._manager_api.build_managed_objects()
+
+    @signal()
+    def InterfacesAdded(
+        self, object_path: "o", interfaces_and_properties: "a{sa{sv}}"
+    ) -> "oa{sa{sv}}":
+        return [object_path, interfaces_and_properties]
+
+    @signal()
+    def InterfacesRemoved(self, object_path: "o", interfaces: "as") -> "oas":
+        return [object_path, interfaces]
+
+
 class DeviceAPI:
     """
     Manages D-Bus interfaces for a single device.
@@ -676,6 +672,12 @@ class DeviceAPI:
     @property
     def driver(self):
         return self._driver
+
+    def interface_map(self) -> dict:
+        return {iface.name: _interface_properties(iface) for iface in self._interfaces}
+
+    def interface_names(self) -> list[str]:
+        return [iface.name for iface in self._interfaces]
 
     def publish(self):
         if self._published:
@@ -740,25 +742,41 @@ class DeviceManagerAPI:
         self._dm.callbacks.append(self._dm_callback)
         self._devs = OrderedDict()
         self._manager_iface = None
+        self._object_manager_iface = None
 
     def _publish_device(self, device):
         devapi = DeviceAPI(device, self._bus)
         devapi.publish()
         self._devs[device.key] = devapi
         self._update_device_paths()
+        if self._object_manager_iface is not None:
+            self._object_manager_iface.InterfacesAdded(devapi.bus_path, devapi.interface_map())
         return devapi.bus_path
 
     def _unpublish_device(self, device):
         devapi = self._devs.pop(device.key, None)
         if devapi is not None:
+            interfaces = devapi.interface_names()
             devapi.unpublish()
             self._update_device_paths()
+            if self._object_manager_iface is not None and interfaces:
+                self._object_manager_iface.InterfacesRemoved(devapi.bus_path, interfaces)
             return devapi.bus_path
         return None
 
     def _update_device_paths(self):
         if self._manager_iface:
             self._manager_iface.set_device_paths([x.bus_path for x in self._devs.values()])
+
+    def build_managed_objects(self) -> dict:
+        root_ifaces = {}
+        if self._manager_iface is not None:
+            root_ifaces[self._manager_iface.name] = _interface_properties(self._manager_iface)
+
+        managed = {ROOT_PATH: root_ifaces}
+        for devapi in self._devs.values():
+            managed[devapi.bus_path] = devapi.interface_map()
+        return managed
 
     async def _dm_callback(self, action, device):
         self._logger.info("%s: %s", action, device)
@@ -786,7 +804,9 @@ class DeviceManagerAPI:
 
         # Create and export manager interface
         self._manager_iface = DeviceManagerInterface()
-        self._bus.export("/io/uchroma", self._manager_iface)
+        self._object_manager_iface = ObjectManagerInterface(self)
+        self._bus.export(ROOT_PATH, self._manager_iface)
+        self._bus.export(ROOT_PATH, self._object_manager_iface)
 
         # Request the bus name
         await self._bus.request_name(BUS_NAME)
