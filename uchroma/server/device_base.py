@@ -292,8 +292,6 @@ class BaseUChromaDevice:
         if transaction_id is None:
             transaction_id = get_transaction_id(self.hardware)
 
-        self.logger.debug(f"Transaction id: 0x{transaction_id:02X} quirks: {self.hardware.quirks}")
-
         report = RazerReport(
             self,
             command_class,

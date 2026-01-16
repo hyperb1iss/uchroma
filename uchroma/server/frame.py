@@ -23,7 +23,7 @@ from uchroma.color import ColorUtils
 from uchroma.layer import Layer
 
 from .hardware import Quirks
-from .types import BaseCommand, LEDType
+from .types import BaseCommand
 
 
 class Frame:
@@ -144,10 +144,6 @@ class Frame:
             transaction_id=0x80,
         )
 
-    # Extended frame format constants
-    VARSTORE = 0x01
-    EXTENDED_CUSTOM_FRAME_EFFECT = 0x08
-
     def _get_frame_data_report(self, remaining_packets: int, *args):
         if self._report is None:
             # Determine command and transaction ID based on device quirks
@@ -172,17 +168,20 @@ class Frame:
     def _build_extended_frame_args(self, row: int, start_col: int, stop_col: int, data):
         """Build argument list for extended frame command (0x0F, 0x03).
 
-        Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
+        Per OpenRazer razer_chroma_extended_matrix_set_custom_frame2:
+        - arguments[0-1]: Reserved (0x00)
+        - arguments[2]: row index
+        - arguments[3]: start column
+        - arguments[4]: stop column
+        - arguments[5+]: RGB data
         """
         return [
-            Frame.VARSTORE,
-            LEDType.BACKLIGHT.hardware_id,
-            Frame.EXTENDED_CUSTOM_FRAME_EFFECT,
-            0x00,  # Reserved
-            row,
-            start_col,
-            stop_col,
-            data,
+            0x00,  # arguments[0] - reserved
+            0x00,  # arguments[1] - reserved
+            row,  # arguments[2] - row index
+            start_col,  # arguments[3] - start column
+            stop_col,  # arguments[4] - stop column
+            data,  # arguments[5+] - RGB data
         ]
 
     def _set_frame_data_matrix(self, img, frame_id: int):

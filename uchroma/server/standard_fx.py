@@ -136,10 +136,19 @@ class StandardFX(FXModule):
         return self._driver.run_report(self._report)
 
     def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:
+        # Per OpenRazer: custom_frame uses NOSTORE (0x00) and ZERO_LED (0x00)
+        # Other effects use VARSTORE (0x01) and BACKLIGHT_LED
+        if effect == ExtendedFX.CUSTOM_FRAME:
+            varstore = 0x00  # NOSTORE
+            led_id = 0x00  # ZERO_LED
+        else:
+            varstore = 0x01  # VARSTORE
+            led_id = LEDType.BACKLIGHT.hardware_id
+
         return self._driver.run_command(
             StandardFX.Command.SET_EFFECT_EXTENDED,
-            0x01,
-            LEDType.BACKLIGHT.hardware_id,
+            varstore,
+            led_id,
             effect.value,
             *args,
         )
