@@ -63,6 +63,7 @@ CHECKMARK = "\u2713"  # ✓
 CROSS = "\u2717"  # ✗
 SEPARATOR = "\u2500"  # ─
 PIPE = "\u2502"  # │
+CROSS_CHAR = "\u253c"  # ┼
 BULLET = "\u2022"  # •
 
 ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*m")
@@ -217,3 +218,34 @@ class Output:
     def separator(self, width: int = 40) -> str:
         """Format a horizontal separator."""
         return self.muted(SEPARATOR * width)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Table formatters (matching old client.py style)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def table_row(self, key_width: int, key: str, value: str, width: int = 80) -> str:
+        """Format a table row with right-justified key and vertical separator."""
+        # Get visible length of key (without ANSI codes) for proper padding
+        key_visible_len = len(strip_ansi(key))
+        # Calculate padding needed
+        padding = key_width - key_visible_len
+        padded_key = " " * padding + key
+
+        # Ellipsize long values
+        visible_len = len(strip_ansi(value))
+        max_val_len = width - key_width - 5
+        if visible_len > max_val_len and max_val_len > 10:
+            # Find a good truncation point
+            value = strip_ansi(value)[: max_val_len - 5] + "(...)"
+
+        return f" {padded_key} {PIPE} {value}"
+
+    def table_sep(self, key_width: int, width: int = 80) -> str:
+        """Format a table separator line with cross character."""
+        left = SEPARATOR * (key_width + 1)
+        right = SEPARATOR * (width - key_width - 3)
+        return f" {left}{CROSS_CHAR}{right}"
+
+    def table_header(self, key_width: int, key: str, value: str) -> str:
+        """Format a table header row (bold key and value)."""
+        return self.table_row(key_width, self._bold(key), self._bold(value))

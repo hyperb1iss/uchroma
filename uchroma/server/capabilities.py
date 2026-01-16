@@ -207,7 +207,9 @@ class DeviceCapabilities:
     # Comprehensive Info
     # ─────────────────────────────────────────────────────────────────────────
 
-    def get_all_capabilities(self) -> dict[str, bool | str | set[str] | tuple[int, int] | None]:
+    def get_all_capabilities(
+        self,
+    ) -> dict[str, bool | int | str | set[str] | tuple[int, int] | None]:
         """
         Get comprehensive capability information.
 

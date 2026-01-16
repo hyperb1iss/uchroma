@@ -285,17 +285,37 @@ class DeviceProxy:
         loop = self._get_loop()
         return loop.run_until_complete(self._anim_iface.call_remove_renderer(zindex))
 
-    # LED Manager properties
+    def SetLayerTraits(self, zindex, traits):
+        if self._anim_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._anim_iface.call_set_layer_traits(zindex, traits))
+
+    # LED Manager properties and methods
     @property
     def AvailableLEDs(self):
         if self._led_iface is None:
             return None
         if "AvailableLEDs" not in self._cache:
             loop = self._get_loop()
-            self._cache["AvailableLEDs"] = loop.run_until_complete(
-                self._led_iface.get_available_le_ds()
-            )
+            raw = loop.run_until_complete(self._led_iface.get_available_le_ds())
+            self._cache["AvailableLEDs"] = self._unwrap_variants(raw)
         return self._cache["AvailableLEDs"]
+
+    def GetLED(self, led_name):
+        """Get current state of an LED."""
+        if self._led_iface is None:
+            return None
+        loop = self._get_loop()
+        raw = loop.run_until_complete(self._led_iface.call_get_led(led_name))
+        return self._unwrap_variants(raw)
+
+    def SetLED(self, led_name, props):
+        """Set LED properties."""
+        if self._led_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._led_iface.call_set_led(led_name, props))
 
     def get_interface(self, name):
         """Get a specific interface from the proxy."""

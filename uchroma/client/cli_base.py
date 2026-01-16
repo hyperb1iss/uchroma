@@ -126,6 +126,9 @@ Examples:
 
         Handles @device extraction before standard parsing.
         The --device flag takes precedence over @device syntax.
+
+        Uses parse_known_args to support commands with dynamic subparsers.
+        Unparsed args are stored in parsed.unparsed for the command to handle.
         """
         if args is None:
             args = sys.argv[1:]
@@ -133,8 +136,9 @@ Examples:
         # Extract @device specifier
         at_device_spec, remaining = self._extract_device_spec(args)
 
-        # Parse remaining args
-        parsed = self.parser.parse_args(remaining)
+        # Parse remaining args - use parse_known_args for dynamic subcommands
+        parsed, unparsed = self.parser.parse_known_args(remaining)
+        parsed.unparsed = unparsed
 
         # Merge device_spec: --device flag takes precedence
         if parsed.device is not None:

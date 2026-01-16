@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol
 
 from .commands import Commands
@@ -42,11 +43,11 @@ class WirelessMixin:
     - run_command(command, *args) method
     """
 
-    # Type hints for mixin methods (implemented by host class)
+    # These methods must be provided by the host class (see HasHardwareAndCommands Protocol)
     hardware: Hardware
-    has_quirk: HasHardwareAndCommands.has_quirk
-    run_with_result: HasHardwareAndCommands.run_with_result
-    run_command: HasHardwareAndCommands.run_command
+    has_quirk: Callable[..., bool]
+    run_with_result: Callable[..., bytes | None]
+    run_command: Callable[..., bool]
 
     @property
     def is_wireless(self) -> bool:

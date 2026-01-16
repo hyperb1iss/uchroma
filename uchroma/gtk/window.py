@@ -1023,16 +1023,19 @@ class UChromaWindow(Adw.ApplicationWindow):
             self._layer_panel.clear()
             for renderer_id, _zindex, info in sorted(layer_infos, key=lambda x: x[1]):
                 renderer_data = self._renderer_defs.get(renderer_id)
-                renderer_name = (
-                    renderer_data.get("name")
-                    if renderer_data
+                name_from_data = renderer_data.get("name") if renderer_data else None
+                renderer_name: str = (
+                    str(name_from_data)
+                    if name_from_data
                     else humanize_label(renderer_id.split(".")[-1])
                 )
                 row = self._layer_panel.add_layer(renderer_id, renderer_name)
-                if info.get("blend_mode"):
-                    row.blend_mode = str(info.get("blend_mode"))
-                if info.get("opacity") is not None:
-                    row.opacity = float(info.get("opacity"))
+                blend_mode = info.get("blend_mode")
+                if blend_mode:
+                    row.blend_mode = str(blend_mode)
+                opacity = info.get("opacity")
+                if opacity is not None:
+                    row.opacity = float(opacity)
         finally:
             self._syncing_layers = False
 

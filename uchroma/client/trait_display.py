@@ -76,12 +76,15 @@ class TraitDisplay:
         # Handle min/max for numeric traits
         if isinstance(trait, (Float, Int)):
             # Skip infinite bounds (default values)
-            min_val = trait.min
-            max_val = trait.max
-            if min_val is not None and not math.isinf(min_val):
-                parts.append(f"min: {min_val}")
-            if max_val is not None and not math.isinf(max_val):
-                parts.append(f"max: {max_val}")
+            # Note: traitlets' min/max types don't narrow well, but are always numeric
+            if trait.min is not None:
+                min_f = float(trait.min)  # type: ignore[arg-type]
+                if not math.isinf(min_f):
+                    parts.append(f"min: {trait.min}")
+            if trait.max is not None:
+                max_f = float(trait.max)  # type: ignore[arg-type]
+                if not math.isinf(max_f):
+                    parts.append(f"max: {trait.max}")
 
         if not parts:
             return ""

@@ -253,6 +253,83 @@ class DeviceService:
 
         return device.SetFX(effect, args)
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # Animation Operations
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def get_available_renderers(self, device: "DeviceProxy") -> dict | None:
+        """Get available animation renderers with metadata and traits."""
+        return device.AvailableRenderers
+
+    def get_current_renderers(self, device: "DeviceProxy") -> list | None:
+        """Get currently active renderer layers."""
+        return device.CurrentRenderers
+
+    def add_renderer(
+        self, device: "DeviceProxy", name: str, zindex: int = -1, traits: dict | None = None
+    ) -> str | None:
+        """
+        Add an animation renderer layer.
+
+        Args:
+            device: Device proxy
+            name: Fully qualified renderer name (e.g., 'uchroma.fxlib.plasma.Plasma')
+            zindex: Layer index (-1 for auto)
+            traits: Optional trait overrides
+
+        Returns:
+            Layer path on success, None on failure
+        """
+        # Convert traits to D-Bus variants
+        from uchroma.dbus_utils import dbus_prepare  # noqa: PLC0415
+
+        prepared, _ = dbus_prepare(traits or {}, variant=True)
+        return device.AddRenderer(name, zindex, prepared)
+
+    def remove_renderer(self, device: "DeviceProxy", zindex: int) -> bool:
+        """Remove a renderer layer by index."""
+        return device.RemoveRenderer(zindex)
+
+    def pause_animation(self, device: "DeviceProxy") -> bool:
+        """Toggle animation pause state. Returns new pause state."""
+        return device.PauseAnimation()
+
+    def stop_animation(self, device: "DeviceProxy") -> bool:
+        """Stop and clear all animation layers."""
+        return device.StopAnimation()
+
+    def get_layer_info(self, device: "DeviceProxy", zindex: int) -> dict | None:
+        """Get properties for a specific layer."""
+        if not self._try_connect():
+            return None
+        return self._client.get_layer_info(device, zindex)
+
+    def set_layer_traits(self, device: "DeviceProxy", zindex: int, traits: dict) -> bool:
+        """Set traits on a running layer."""
+        from uchroma.dbus_utils import dbus_prepare  # noqa: PLC0415
+
+        prepared, _ = dbus_prepare(traits, variant=True)
+        return device.SetLayerTraits(zindex, prepared)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # LED Operations
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def get_available_leds(self, device: "DeviceProxy") -> dict | None:
+        """Get available LEDs with their traits."""
+        return device.AvailableLEDs
+
+    def get_led_state(self, device: "DeviceProxy", led_name: str) -> dict | None:
+        """Get current state of an LED."""
+        return device.GetLED(led_name)
+
+    def set_led(self, device: "DeviceProxy", led_name: str, props: dict) -> bool:
+        """Set LED properties."""
+        from uchroma.dbus_utils import dbus_prepare  # noqa: PLC0415
+
+        prepared, _ = dbus_prepare(props, variant=True)
+        return device.SetLED(led_name, prepared)
+
 
 # Singleton for CLI use
 _service: DeviceService | None = None

@@ -21,6 +21,7 @@ class MockDeviceProxy:
         self.Name = name
         self.Brightness = brightness
         self._fx_iface = True  # Has FX support
+        self._anim_iface = True
         # Additional properties for dump command
         self.DeviceType = "keyboard"
         self.Key = "1532:0203.00"
@@ -34,8 +35,34 @@ class MockDeviceProxy:
         self.Width = 22
         self.SupportedLeds = ["backlight", "logo"]
         self.AvailableFX = {"static": {}, "wave": {}, "spectrum": {}}
-        self.AvailableRenderers = {"uchroma.fxlib.plasma.Plasma": {}}
+        self.AvailableRenderers = {
+            "uchroma.fxlib.plasma.Plasma": {
+                "meta": {
+                    "display_name": "Color Plasma",
+                    "description": "Colorful plasma effect",
+                    "author": "UChroma",
+                    "version": "1.0",
+                },
+                "traits": {},
+            }
+        }
+        self.CurrentRenderers = []
         self.CurrentFX = ("static", {})
+
+    def AddRenderer(self, name, zindex, traits):
+        return f"/io/uchroma/device/0/layer/{len(self.CurrentRenderers)}"
+
+    def RemoveRenderer(self, zindex):
+        return True
+
+    def PauseAnimation(self):
+        return True
+
+    def StopAnimation(self):
+        return True
+
+    def SetLayerTraits(self, zindex, traits):
+        return True
 
 
 class MockDeviceService(DeviceService):
@@ -84,6 +111,27 @@ class MockDeviceService(DeviceService):
     def set_effect(self, device, effect, **kwargs):
         return True
 
+    def get_available_renderers(self, device):
+        return device.AvailableRenderers
+
+    def get_current_renderers(self, device):
+        return device.CurrentRenderers
+
+    def add_renderer(self, device, name, zindex=-1, traits=None):
+        return device.AddRenderer(name, zindex, traits or {})
+
+    def remove_renderer(self, device, zindex):
+        return device.RemoveRenderer(zindex)
+
+    def pause_animation(self, device):
+        return device.PauseAnimation()
+
+    def stop_animation(self, device):
+        return device.StopAnimation()
+
+    def set_layer_traits(self, device, zindex, traits):
+        return device.SetLayerTraits(zindex, traits)
+
 
 @pytest.fixture(autouse=True)
 def mock_device_service(monkeypatch):
@@ -92,6 +140,7 @@ def mock_device_service(monkeypatch):
     monkeypatch.setattr("uchroma.client.device_service._service", mock)
     monkeypatch.setattr("uchroma.client.commands.devices.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.brightness.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.anim.get_device_service", lambda: mock)
     return mock
 
 

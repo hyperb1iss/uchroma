@@ -80,10 +80,10 @@ class EffectSelector(Gtk.Box):
             child = next_child
 
         for effect in effects:
-            effect_id: str = effect["id"]  # type: ignore[assignment]
-            effect_name: str = effect["name"]  # type: ignore[assignment]
-            effect_icon: str = effect.get("icon", "starred-symbolic")  # type: ignore[assignment]
-            preview_class: str = effect.get("preview", "default")  # type: ignore[assignment]
+            effect_id: str = effect["id"]
+            effect_name: str = effect["name"]
+            effect_icon: str = effect.get("icon", "starred-symbolic")
+            preview_class: str = effect.get("preview", "default")
             card = EffectCard(
                 effect_id=effect_id,
                 name=effect_name,

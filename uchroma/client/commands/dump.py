@@ -178,11 +178,10 @@ class DumpCommand(Command):
             self.print(f"    {self.out.kv(key, value)}")
 
     def _dump_hardware(self) -> None:
-        """Dump hardware database info."""
+        """Dump hardware database info (optional - requires server deps)."""
         self.print(self.out.header("Hardware Database"))
         self.print()
 
-        # TODO: Get actual counts from hardware module
         try:
             from uchroma.server.hardware import Hardware  # noqa: PLC0415
 
@@ -191,7 +190,6 @@ class DumpCommand(Command):
                 try:
                     config = Hardware.get_type(hw_type)
                     if config:
-                        # Count devices recursively
                         count = self._count_devices(config)
                         if count > 0:
                             counts[hw_type.name.lower()] = count
