@@ -87,8 +87,8 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
         elif isinstance(obj, HasTraits):
             obj, sig = dbus_prepare(class_traits_as_dict(obj), variant=True)
 
-        elif hasattr(obj, '_asdict') and hasattr(obj, '_field_types'):
-            # typing.NamedTuple
+        elif hasattr(obj, '_asdict') and (hasattr(obj, '_field_types') or hasattr(obj, '__annotations__')):
+            # typing.NamedTuple (Python 3.13+ uses __annotations__, older used _field_types)
             obj, sig = dbus_prepare(obj._asdict(), variant=True)
 
         elif isinstance(obj, type) and issubclass(obj, enum.Enum):

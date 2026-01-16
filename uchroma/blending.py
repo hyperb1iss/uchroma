@@ -185,14 +185,14 @@ def _compose_alpha(img_in, img_layer, opacity: float=1.0):
     new_alpha = img_in[:, :, 3] + (1.0 - img_in[:, :, 3]) * comp_alpha
     np.seterr(divide='ignore', invalid='ignore')
     ratio = comp_alpha / new_alpha
-    ratio[ratio == np.NAN] = 0.0
+    ratio[np.isnan(ratio)] = 0.0
     return ratio
 
 
 def blend(img_in: np.ndarray, img_layer: np.ndarray, blend_op: None, opacity: float=1.0):
     # sanity check of inputs
-    assert img_in.dtype == np.float, 'Input variable img_in should be of numpy.float type.'
-    assert img_layer.dtype == np.float, 'Input variable img_layer should be of numpy.float type.'
+    assert img_in.dtype == np.float64, 'Input variable img_in should be of numpy.float64 type.'
+    assert img_layer.dtype == np.float64, 'Input variable img_layer should be of numpy.float64 type.'
     assert img_in.shape[2] == 4, 'Input variable img_in should be of shape [:, :,4].'
     assert img_layer.shape[2] == 4, 'Input variable img_layer should be of shape [:, :,4].'
     assert 0.0 <= opacity <= 1.0, 'Opacity needs to be between 0.0 and 1.0.'

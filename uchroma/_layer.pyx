@@ -6,7 +6,7 @@ cimport numpy as np
 
 
 def color_to_np(*colors):
-    return np.array([tuple(x) for x in colors], dtype=np.float)
+    return np.array([tuple(x) for x in colors], dtype=np.float64)
 
 
 # a few methods pulled from skimage-dev for blending support

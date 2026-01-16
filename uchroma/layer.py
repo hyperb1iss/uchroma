@@ -42,7 +42,7 @@ class Layer(object):
         else:
             self._logger = logger
 
-        self._matrix = np.zeros(shape=(self._height, self._width, 4), dtype=np.float)
+        self._matrix = np.zeros(shape=(self._height, self._width, 4), dtype=np.float64)
 
         self._bg_color = None
         self._blend_mode = BlendOp.screen

@@ -274,8 +274,8 @@ class DeviceProxy:
             return None
         if 'AvailableRenderers' not in self._cache:
             loop = self._get_loop()
-            self._cache['AvailableRenderers'] = loop.run_until_complete(
-                self._anim_iface.get_available_renderers())
+            raw = loop.run_until_complete(self._anim_iface.get_available_renderers())
+            self._cache['AvailableRenderers'] = self._unwrap_variants(raw)
         return self._cache['AvailableRenderers']
 
     @property
@@ -285,11 +285,11 @@ class DeviceProxy:
         loop = self._get_loop()
         return loop.run_until_complete(self._anim_iface.get_current_renderers())
 
-    def AddRenderer(self, name, zindex):
+    def AddRenderer(self, name, zindex, traits):
         if self._anim_iface is None:
             return None
         loop = self._get_loop()
-        return loop.run_until_complete(self._anim_iface.call_add_renderer(name, zindex))
+        return loop.run_until_complete(self._anim_iface.call_add_renderer(name, zindex, traits))
 
     def RemoveRenderer(self, zindex):
         if self._anim_iface is None:

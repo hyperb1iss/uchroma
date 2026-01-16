@@ -543,15 +543,22 @@ class AnimationCommand(AbstractCommand):
         if avail is None or len(avail) == 0:
             return None
 
+        def get_meta_field(meta, field, index):
+            """Get meta field by name (dict) or index (tuple)."""
+            if isinstance(meta, dict):
+                return meta.get(field, '')
+            return meta[index] if index < len(meta) else ''
+
         sar = OrderedDict(sorted(avail.items(),
-                                 key=lambda k_v: k_v[1]['meta']['display_name']))
+                                 key=lambda k_v: get_meta_field(k_v[1]['meta'], 'display_name', 0)))
         exploded = OrderedDict()
         for name, t_anim in sar.items():
             meta = t_anim['meta']
-            rt = RemoteTraits(meta['display_name'],
-                              meta['description'],
-                              meta['author'],
-                              meta['version'],
+            # meta can be a dict (new) or tuple (legacy): (display_name, description, author, version)
+            rt = RemoteTraits(get_meta_field(meta, 'display_name', 0),
+                              get_meta_field(meta, 'description', 1),
+                              get_meta_field(meta, 'author', 2),
+                              get_meta_field(meta, 'version', 3),
                               dict_as_class_traits(t_anim['traits']))
             exploded[name] = rt
             self._aliases[name] = rt.name.replace(' ', '_').lower()

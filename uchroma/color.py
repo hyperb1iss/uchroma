@@ -540,7 +540,7 @@ class ColorUtils(object):
         if bg_color is None:
             bg_color = np.array([0.0, 0.0, 0.0, 1.0])
         else:
-            bg_color = np.array(tuple(bg_color), dtype=np.float)
+            bg_color = np.array(tuple(bg_color), dtype=np.float64)
 
         alpha = arr[..., -1]
         channels = arr[..., :-1]

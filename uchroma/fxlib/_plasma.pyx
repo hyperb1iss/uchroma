@@ -23,4 +23,6 @@ def draw_plasma(double width, double height, np.ndarray matrix, double duration,
             val += sin(sqrt(20.0 * (cx * cx + cy * cy) + 1.0) + duration)
 
             pos = glen * ((1.0 + sin(pi * val)) / 2.0)
-            matrix[row][col] = tuple(gradient[int(pos) - 1])
+            # Color tuple is RGB, matrix expects RGBA - add alpha=1.0
+            rgb = tuple(gradient[int(pos) - 1])
+            matrix[row][col] = (rgb[0], rgb[1], rgb[2], 1.0)
