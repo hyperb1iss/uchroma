@@ -70,6 +70,7 @@ class Kaleidoscope(Renderer):
 
     @observe("color_scheme")
     def _scheme_changed(self, changed):
+        self.logger.debug("color_scheme changed: %s -> %s", changed.old, changed.new)
         self._gen_gradient()
 
     def init(self, frame):

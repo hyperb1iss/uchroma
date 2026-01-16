@@ -90,7 +90,7 @@ class Ripple(Renderer):
 
             rad = radius - circle_num
             a = Ripple._ease(1.0 - (rad / self._max_distance))
-            cc = (*colors[circle_num].rgb, colors[circle_num].alpha * a)
+            cc = (*colors[circle_num].rgb, colors[circle_num].alpha() * a)
 
             for coord in event.coords:
                 layer.ellipse(coord.y, coord.x, rad / 1.33, rad, color=cc)
