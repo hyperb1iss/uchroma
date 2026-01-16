@@ -8,7 +8,6 @@ import math
 import time
 
 import numpy as np
-
 from gi.repository import GLib
 
 
@@ -83,44 +82,44 @@ class PreviewRenderer:
         """Render current frame based on effect."""
         t = time.time() - self._start_time
 
-        if self._effect_id == 'disable' or self._effect_id is None:
+        if self._effect_id == "disable" or self._effect_id is None:
             self.frame.fill(0)
 
-        elif self._effect_id == 'static':
-            color = self._parse_color(self._effect_params.get('color', '#e135ff'))
+        elif self._effect_id == "static":
+            color = self._parse_color(self._effect_params.get("color", "#e135ff"))
             self.frame[:, :] = color
 
-        elif self._effect_id == 'wave':
+        elif self._effect_id == "wave":
             self._render_wave(t)
 
-        elif self._effect_id == 'spectrum':
+        elif self._effect_id == "spectrum":
             self._render_spectrum(t)
 
-        elif self._effect_id == 'breathe':
+        elif self._effect_id == "breathe":
             self._render_breathe(t)
 
-        elif self._effect_id == 'reactive':
+        elif self._effect_id == "reactive":
             # Static preview for reactive (pulses on interaction)
-            color = self._parse_color(self._effect_params.get('color', '#80ffea'))
+            color = self._parse_color(self._effect_params.get("color", "#80ffea"))
             brightness = 0.3 + 0.2 * math.sin(t * 4)
             self.frame[:, :] = [c * brightness for c in color]
 
-        elif self._effect_id == 'starlight':
+        elif self._effect_id == "starlight":
             self._render_starlight(t)
 
-        elif self._effect_id == 'plasma':
+        elif self._effect_id == "plasma":
             self._render_plasma(t)
 
-        elif self._effect_id == 'rainbow':
+        elif self._effect_id == "rainbow":
             self._render_rainbow(t)
 
     def _render_wave(self, t: float):
         """Render wave effect."""
-        direction = self._effect_params.get('direction', 'RIGHT')
-        speed = self._effect_params.get('speed', 2) * 2
+        direction = self._effect_params.get("direction", "RIGHT")
+        speed = self._effect_params.get("speed", 2) * 2
 
         for col in range(self.cols):
-            if direction == 'LEFT':
+            if direction == "LEFT":
                 phase = (col / self.cols + t * speed * 0.1) % 1.0
             else:
                 phase = (1 - col / self.cols + t * speed * 0.1) % 1.0
@@ -137,9 +136,9 @@ class PreviewRenderer:
 
     def _render_breathe(self, t: float):
         """Render breathing effect."""
-        color1 = self._parse_color(self._effect_params.get('color1', '#e135ff'))
-        color2 = self._parse_color(self._effect_params.get('color2', '#80ffea'))
-        speed = self._effect_params.get('speed', 2)
+        color1 = self._parse_color(self._effect_params.get("color1", "#e135ff"))
+        color2 = self._parse_color(self._effect_params.get("color2", "#80ffea"))
+        speed = self._effect_params.get("speed", 2)
 
         # Smooth sine wave between colors
         phase = (math.sin(t * speed * 0.5) + 1) / 2
@@ -153,8 +152,8 @@ class PreviewRenderer:
 
     def _render_starlight(self, t: float):
         """Render twinkling starlight effect."""
-        color1 = self._parse_color(self._effect_params.get('color1', '#e135ff'))
-        color2 = self._parse_color(self._effect_params.get('color2', '#80ffea'))
+        color1 = self._parse_color(self._effect_params.get("color1", "#e135ff"))
+        color2 = self._parse_color(self._effect_params.get("color2", "#80ffea"))
 
         # Base dim color
         self.frame[:, :] = [c * 0.1 for c in color1]
@@ -171,10 +170,10 @@ class PreviewRenderer:
     def _render_plasma(self, t: float):
         """Render plasma effect."""
         colors = [
-            self._parse_color(self._effect_params.get('color1', '#e135ff')),
-            self._parse_color(self._effect_params.get('color2', '#80ffea')),
-            self._parse_color(self._effect_params.get('color3', '#ff6ac1')),
-            self._parse_color(self._effect_params.get('color4', '#f1fa8c')),
+            self._parse_color(self._effect_params.get("color1", "#e135ff")),
+            self._parse_color(self._effect_params.get("color2", "#80ffea")),
+            self._parse_color(self._effect_params.get("color3", "#ff6ac1")),
+            self._parse_color(self._effect_params.get("color4", "#f1fa8c")),
         ]
 
         for row in range(self.rows):
@@ -204,7 +203,7 @@ class PreviewRenderer:
 
     def _render_rainbow(self, t: float):
         """Render flowing rainbow effect."""
-        speed = self._effect_params.get('speed', 1.0)
+        speed = self._effect_params.get("speed", 1.0)
 
         for col in range(self.cols):
             hue = (col / self.cols + t * speed * 0.1) % 1.0
@@ -213,7 +212,7 @@ class PreviewRenderer:
 
     def _parse_color(self, color_str: str) -> tuple:
         """Parse hex color to RGB floats."""
-        if color_str.startswith('#'):
+        if color_str.startswith("#"):
             color_str = color_str[1:]
         if len(color_str) == 6:
             r = int(color_str[0:2], 16) / 255

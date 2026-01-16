@@ -13,20 +13,19 @@
 import asyncio
 import functools
 import re
-
 from concurrent import futures
 from contextlib import contextmanager
 
-from uchroma.server import hidadapter as hidapi
 from wrapt import synchronized
 
 from uchroma.log import Log
-from uchroma.util import ensure_future, Signal, ValueAnimator
+from uchroma.server import hidadapter as hidapi
+from uchroma.util import Signal, ValueAnimator, ensure_future
 from uchroma.version import __version__
 
 from .anim import AnimationManager
-from .input import InputManager
 from .hardware import Hardware, Quirks
+from .input import InputManager
 from .prefs import PreferenceManager
 from .report import RazerReport
 from .types import BaseCommand
@@ -41,20 +40,27 @@ class BaseUChromaDevice:
         """
         Standard commands used by all Chroma devices
         """
+
         # info queries, class 0
         GET_FIRMWARE_VERSION = (0x00, 0x81, 0x02)
         GET_SERIAL = (0x00, 0x82, 0x16)
 
-
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, index: int,
-                 sys_path: str, input_devices=None, *args, **kwargs):
-
+    def __init__(
+        self,
+        hardware: Hardware,
+        devinfo: hidapi.DeviceInfo,
+        index: int,
+        sys_path: str,
+        input_devices=None,
+        *args,
+        **kwargs,
+    ):
         self._hardware = hardware
         self._devinfo = devinfo
         self._devindex = index
         self._sys_path = sys_path
 
-        self.logger = Log.get('uchroma.driver-%d' % index)
+        self.logger = Log.get("uchroma.driver-%d" % index)
 
         # needed for mixins
         super(BaseUChromaDevice, self).__init__(*args, **kwargs)
@@ -86,20 +92,18 @@ class BaseUChromaDevice:
         self._ref_count = 0
         self._executor = futures.ThreadPoolExecutor(max_workers=1)
 
-
     async def shutdown(self):
         """
         Shuts down all services associated with the device and closes the HID instance.
         """
         if asyncio.get_event_loop().is_running():
-            if hasattr(self, '_animation_manager') and self.animation_manager is not None:
+            if hasattr(self, "_animation_manager") and self.animation_manager is not None:
                 await self.animation_manager.shutdown()
 
-            if hasattr(self, '_input_manager') and self._input_manager is not None:
+            if hasattr(self, "_input_manager") and self._input_manager is not None:
                 await self._input_manager.shutdown()
 
         self.close(True)
-
 
     def close(self, force: bool = False):
         if not force:
@@ -109,14 +113,13 @@ class BaseUChromaDevice:
             if self._ref_count > 0:
                 return
 
-        if hasattr(self, '_dev') and self._dev is not None:
+        if hasattr(self, "_dev") and self._dev is not None:
             try:
                 self._dev.close()
             except Exception:
                 pass
 
             self._dev = None
-
 
     def has_fx(self, fx_type: str) -> bool:
         """
@@ -129,16 +132,14 @@ class BaseUChromaDevice:
             return False
         return fx_type in self.fx_manager.available_fx
 
-
     @property
     def animation_manager(self):
         """
         Animation manager for this device
         """
-        if hasattr(self, '_animation_manager'):
+        if hasattr(self, "_animation_manager"):
             return self._animation_manager
         return None
-
 
     @property
     def is_animating(self):
@@ -149,7 +150,6 @@ class BaseUChromaDevice:
             return self.animation_manager.running
         return False
 
-
     @property
     def fx_manager(self):
         """
@@ -157,14 +157,12 @@ class BaseUChromaDevice:
         """
         return self._fx_manager
 
-
     @property
     def input_manager(self):
         """
         Input manager service for this device
         """
         return self._input_manager
-
 
     @property
     def input_devices(self):
@@ -175,14 +173,12 @@ class BaseUChromaDevice:
             return None
         return self._input_manager.input_devices
 
-
     @property
     def hid(self):
         """
         The lower-layer hidapi device
         """
         return self._dev
-
 
     @property
     def last_cmd_time(self):
@@ -191,27 +187,25 @@ class BaseUChromaDevice:
         """
         return self._last_cmd_time
 
-
     @last_cmd_time.setter
     def last_cmd_time(self, last_cmd_time):
         self._last_cmd_time = last_cmd_time
 
-
     def _set_brightness(self, level: float) -> bool:
         return False
-
 
     def _get_brightness(self) -> float:
         return 0.0
 
-
     async def _update_brightness(self, level):
-        await ensure_future(asyncio.get_event_loop().run_in_executor( \
-                self._executor, functools.partial(self._set_brightness, level)))
+        await ensure_future(
+            asyncio.get_event_loop().run_in_executor(
+                self._executor, functools.partial(self._set_brightness, level)
+            )
+        )
 
         suspended = self.suspended and level == 0
         self.power_state_changed.fire(level, suspended)
-
 
     @property
     def suspended(self):
@@ -219,7 +213,6 @@ class BaseUChromaDevice:
         The power state of the device, true if suspended
         """
         return self._suspended
-
 
     def suspend(self, fast=False):
         """
@@ -236,11 +229,9 @@ class BaseUChromaDevice:
             self._set_brightness(0)
         else:
             if self._device_open():
-                self._brightness_animator.animate(self.brightness, 0,
-                                                  done_cb=self._done_cb)
+                self._brightness_animator.animate(self.brightness, 0, done_cb=self._done_cb)
 
         self._suspended = True
-
 
     def resume(self):
         """
@@ -255,7 +246,6 @@ class BaseUChromaDevice:
         self._suspended = False
         self.brightness = self.preferences.brightness
 
-
     @property
     def brightness(self):
         """
@@ -266,8 +256,6 @@ class BaseUChromaDevice:
 
         return self._get_brightness()
 
-
-
     @brightness.setter
     def brightness(self, level: float):
         """
@@ -277,11 +265,9 @@ class BaseUChromaDevice:
         """
         if not self._suspended:
             if self._device_open():
-                self._brightness_animator.animate(self.brightness, level,
-                                                  done_cb=self._done_cb)
+                self._brightness_animator.animate(self.brightness, level, done_cb=self._done_cb)
 
         self.preferences.brightness = level
-
 
     def _ensure_open(self) -> bool:
         try:
@@ -293,9 +279,15 @@ class BaseUChromaDevice:
 
         return True
 
-
-    def get_report(self, command_class: int, command_id: int, data_size: int,
-                   *args, transaction_id: int, remaining_packets: int = 0x00) -> RazerReport:
+    def get_report(
+        self,
+        command_class: int,
+        command_id: int,
+        data_size: int,
+        *args,
+        transaction_id: int,
+        remaining_packets: int = 0x00,
+    ) -> RazerReport:
         """
         Create and initialize a new RazerReport on this device
         """
@@ -307,11 +299,16 @@ class BaseUChromaDevice:
             else:
                 transaction_id = 0xFF
 
-        self.logger.debug('Transaction id: %d quirks: %s' % (transaction_id, self.hardware.quirks))
+        self.logger.debug("Transaction id: %d quirks: %s" % (transaction_id, self.hardware.quirks))
 
-        report = RazerReport(self, command_class, command_id, data_size,
-                             transaction_id=transaction_id,
-                             remaining_packets=remaining_packets)
+        report = RazerReport(
+            self,
+            command_class,
+            command_id,
+            data_size,
+            transaction_id=transaction_id,
+            remaining_packets=remaining_packets,
+        )
 
         if args is not None:
             for arg in args:
@@ -320,17 +317,20 @@ class BaseUChromaDevice:
 
         return report
 
-
     def _get_timeout_cb(self):
         """
         Getter for report timeout handler
         """
         return None
 
-
-    def run_with_result(self, command: BaseCommand, *args,
-                        transaction_id: int = None, delay: float = None,
-                        remaining_packets: int = 0x00) -> bytes:
+    def run_with_result(
+        self,
+        command: BaseCommand,
+        *args,
+        transaction_id: int = None,
+        delay: float = None,
+        remaining_packets: int = 0x00,
+    ) -> bytes:
         """
         Run a command and return the result
 
@@ -349,15 +349,18 @@ class BaseUChromaDevice:
 
         :return: The result report from the hardware
         """
-        report = self.get_report(*command.value, *args, transaction_id=transaction_id,
-                                 remaining_packets=remaining_packets)
+        report = self.get_report(
+            *command.value,
+            *args,
+            transaction_id=transaction_id,
+            remaining_packets=remaining_packets,
+        )
         result = None
 
         if self.run_report(report, delay=delay):
             result = report.result
 
         return result
-
 
     @synchronized
     def run_report(self, report: RazerReport, delay: float = None) -> bool:
@@ -371,9 +374,14 @@ class BaseUChromaDevice:
         with self.device_open():
             return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
 
-
-    def run_command(self, command: BaseCommand, *args, transaction_id: int = None,
-                    delay: float = None, remaining_packets: int = 0x00) -> bool:
+    def run_command(
+        self,
+        command: BaseCommand,
+        *args,
+        transaction_id: int = None,
+        delay: float = None,
+        remaining_packets: int = 0x00,
+    ) -> bool:
         """
         Run a command
 
@@ -390,11 +398,14 @@ class BaseUChromaDevice:
 
         :return: True if the command was successful
         """
-        report = self.get_report(*command.value, *args, transaction_id=transaction_id,
-                                 remaining_packets=remaining_packets)
+        report = self.get_report(
+            *command.value,
+            *args,
+            transaction_id=transaction_id,
+            remaining_packets=remaining_packets,
+        )
 
         return self.run_report(report, delay=delay)
-
 
     def _decode_serial(self, value: bytes) -> str:
         if value is not None:
@@ -405,7 +416,6 @@ class BaseUChromaDevice:
 
         return None
 
-
     def _get_serial_number(self) -> str:
         """
         Get the serial number from the hardware directly
@@ -415,7 +425,6 @@ class BaseUChromaDevice:
         """
         value = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
         return self._decode_serial(value)
-
 
     @property
     def serial_number(self) -> str:
@@ -430,17 +439,15 @@ class BaseUChromaDevice:
         serial = self._get_serial_number()
 
         if serial is not None:
-            self._serial_number = re.sub(r'\W+', r'', serial)
+            self._serial_number = re.sub(r"\W+", r"", serial)
 
         return self._serial_number
-
 
     def _get_firmware_version(self) -> str:
         """
         Get the firmware version from the hardware directly
         """
         return self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
-
 
     @property
     def firmware_version(self) -> str:
@@ -451,12 +458,11 @@ class BaseUChromaDevice:
             version = self._get_firmware_version()
 
             if version is None:
-                self._firmware_version = '(unknown)'
+                self._firmware_version = "(unknown)"
             else:
-                self._firmware_version = 'v%d.%d' % (int(version[0]), int(version[1]))
+                self._firmware_version = "v%d.%d" % (int(version[0]), int(version[1]))
 
         return self._firmware_version
-
 
     @property
     def is_offline(self) -> bool:
@@ -468,14 +474,12 @@ class BaseUChromaDevice:
         """
         return self._offline
 
-
     @property
     def name(self) -> str:
         """
         The name of this device
         """
         return self.hardware.name
-
 
     @property
     def device_index(self) -> int:
@@ -484,7 +488,6 @@ class BaseUChromaDevice:
         """
         return self._devindex
 
-
     @property
     def sys_path(self) -> str:
         """
@@ -492,14 +495,12 @@ class BaseUChromaDevice:
         """
         return self._sys_path
 
-
     @property
     def key(self) -> str:
         """
         Unique key which identifies this device to the device manager
         """
-        return '%04x:%04x.%02d' % (self.vendor_id, self.product_id, self.device_index)
-
+        return "%04x:%04x.%02d" % (self.vendor_id, self.product_id, self.device_index)
 
     @property
     def hardware(self) -> Hardware:
@@ -508,14 +509,12 @@ class BaseUChromaDevice:
         """
         return self._hardware
 
-
     @property
     def product_id(self) -> int:
         """
         The USB product identifier of this device
         """
         return self._devinfo.product_id
-
 
     @property
     def vendor_id(self) -> int:
@@ -524,14 +523,12 @@ class BaseUChromaDevice:
         """
         return self._devinfo.vendor_id
 
-
     @property
     def manufacturer(self) -> str:
         """
         The manufacturer of this device
         """
         return self._hardware.manufacturer
-
 
     @property
     def device_type(self) -> Hardware.Type:
@@ -540,14 +537,12 @@ class BaseUChromaDevice:
         """
         return self.hardware.type
 
-
     @property
     def driver_version(self):
         """
         Get the uChroma version
         """
         return __version__
-
 
     @property
     def width(self) -> int:
@@ -559,7 +554,6 @@ class BaseUChromaDevice:
 
         return self.hardware.dimensions.x
 
-
     @property
     def height(self) -> int:
         """
@@ -570,7 +564,6 @@ class BaseUChromaDevice:
 
         return self.hardware.dimensions.y
 
-
     @property
     def has_matrix(self) -> bool:
         """
@@ -578,13 +571,11 @@ class BaseUChromaDevice:
         """
         return self.hardware.has_matrix
 
-
     def has_quirk(self, quirk) -> bool:
         """
         True if the quirk is required for this device
         """
         return self.hardware.has_quirk(quirk)
-
 
     @property
     def key_mapping(self):
@@ -592,7 +583,6 @@ class BaseUChromaDevice:
         The mapping between keycodes and lighting matrix coordinates
         """
         return self.hardware.key_mapping
-
 
     @property
     def preferences(self):
@@ -603,44 +593,42 @@ class BaseUChromaDevice:
             self._prefs = PreferenceManager().get(self.serial_number)
         return self._prefs
 
-
     def reset(self) -> bool:
         """
         Reset effects and other configuration to defaults
         """
         return True
 
-
     def fire_restore_prefs(self):
         """
         Restore saved preferences
         """
         with self.preferences.observers_paused():
-            if hasattr(self, 'brightness') and self.preferences.brightness is not None:
-                setattr(self, 'brightness', self.preferences.brightness)
+            if hasattr(self, "brightness") and self.preferences.brightness is not None:
+                self.brightness = self.preferences.brightness
 
             self.restore_prefs.fire(self.preferences)
 
-
     def __repr__(self):
-        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d, quirks=%s)" % \
-            (self.__class__.__name__, self.name, self.device_type.value,
-             self.product_id, self.device_index, self.hardware.quirks)
-
+        return "%s(name=%s, type=%s, product_id=0x%04x, index=%d, quirks=%s)" % (
+            self.__class__.__name__,
+            self.name,
+            self.device_type.value,
+            self.product_id,
+            self.device_index,
+            self.hardware.quirks,
+        )
 
     def _device_open(self):
         self._ref_count += 1
         return self._ensure_open()
 
-
     def _device_close(self):
         self._ref_count -= 1
         self.close()
 
-
     def _done_cb(self, future):
         self._device_close()
-
 
     @contextmanager
     def device_open(self):
@@ -649,7 +637,6 @@ class BaseUChromaDevice:
                 yield
         finally:
             self._device_close()
-
 
     def __del__(self):
         self.close(force=True)

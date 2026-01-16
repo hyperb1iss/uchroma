@@ -14,6 +14,7 @@ import struct
 from enum import Enum
 
 import numpy as np
+
 from uchroma.colorlib import Color
 
 
@@ -22,6 +23,7 @@ class ByteArgs:
     Helper class for assembling byte arrays from
     argument lists of varying types
     """
+
     def __init__(self, size, data=None):
         self._data_ptr = 0
 
@@ -30,14 +32,12 @@ class ByteArgs:
         else:
             self._data = np.frombuffer(data, dtype=np.uint8)
 
-
     @property
     def data(self):
         """
         The byte array assembled from supplied arguments
         """
         return self._data
-
 
     @property
     def size(self):
@@ -46,12 +46,11 @@ class ByteArgs:
         """
         return len(self._data)
 
-
     def _ensure_space(self, size):
-        assert len(self._data) > size + self._data_ptr, \
-                ('Additional argument (len=%d) would exceed size limit %d (cur=%d)'
-                 % (size, len(self._data), self._data_ptr))
-
+        assert len(self._data) > size + self._data_ptr, (
+            "Additional argument (len=%d) would exceed size limit %d (cur=%d)"
+            % (size, len(self._data), self._data_ptr)
+        )
 
     def clear(self):
         """
@@ -63,7 +62,6 @@ class ByteArgs:
         self._data.fill(0)
         self._data_ptr = 0
         return self
-
 
     def put(self, arg, packing=None):
         """
@@ -97,7 +95,7 @@ class ByteArgs:
 
         if isinstance(data, int):
             if self._data_ptr + 1 > len(self._data):
-                raise ValueError('No space left in argument list')
+                raise ValueError("No space left in argument list")
 
             self._ensure_space(1)
             self._data[self._data_ptr] = data
@@ -106,21 +104,19 @@ class ByteArgs:
             datalen = len(data)
             if datalen > 0:
                 if self._data_ptr + datalen > len(self._data):
-                    raise ValueError('No space left in argument list')
+                    raise ValueError("No space left in argument list")
 
                 if not isinstance(data, np.ndarray):
                     data = np.frombuffer(data, dtype=np.uint8)
-                self._data[self._data_ptr:self._data_ptr+datalen] = data
+                self._data[self._data_ptr : self._data_ptr + datalen] = data
                 self._data_ptr += datalen
 
         return self
-
 
     def put_all(self, args, packing=None):
         for arg in args:
             self.put(arg, packing=packing)
         return self
-
 
     def put_short(self, arg):
         """
@@ -133,8 +129,7 @@ class ByteArgs:
         :return: This ByteArgs instance
         :rtype: ByteArgs
         """
-        return self.put(arg, '=H')
-
+        return self.put(arg, "=H")
 
     def put_int(self, arg):
         """
@@ -147,4 +142,4 @@ class ByteArgs:
         :return: This ByteArgs instance
         :rtype: ByteArgs
         """
-        return self.put(arg, '=I')
+        return self.put(arg, "=I")

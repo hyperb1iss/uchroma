@@ -14,7 +14,6 @@
 # pylint: disable=invalid-name, no-member
 
 import os
-
 from collections import OrderedDict
 from datetime import datetime
 from enum import Enum, IntEnum
@@ -24,7 +23,6 @@ import ruamel.yaml as yaml
 
 from .config import Configuration, FlowSequence, LowerCaseSeq, represent_flow_seq
 from .types import LEDType
-
 
 RAZER_VENDOR_ID = 0x1532
 
@@ -63,11 +61,14 @@ class Quirks(IntEnum):
 
 
 # Marker types for YAML output
-_Point = NamedTuple('_Point', [('y', int), ('x', int)])
+class _Point(NamedTuple):
+    y: int
+    x: int
+
 
 class Point(_Point):
     def __repr__(self):
-        return '(%s, %s)' % (self.y, self.x)
+        return "(%s, %s)" % (self.y, self.x)
 
 
 class PointList(FlowSequence):
@@ -84,40 +85,56 @@ class KeyMapping(OrderedDict):
     def __setitem__(self, key, value, **kwargs):
         super().__setitem__(key, PointList(value), **kwargs)
 
-_KeyFixupMapping = NamedTuple('_KeyFixupMapping', [('copy', PointList),
-                                                   ('delete', PointList),
-                                                   ('insert', PointList)])
+
+class _KeyFixupMapping(NamedTuple):
+    copy: PointList
+    delete: PointList
+    insert: PointList
+
+
 _KeyFixupMapping.__new__.__defaults__ = (None,) * len(_KeyFixupMapping._fields)
+
+
 class KeyFixupMapping(_KeyFixupMapping):
     def _asdict(self):
         return OrderedDict([x for x in zip(self._fields, self) if x[1] is not None])
 
-Zone = NamedTuple('Zone', [('name', str), ('coord', Point), ('width', int), ('height', int)])
+
+class Zone(NamedTuple):
+    name: str
+    coord: Point
+    width: int
+    height: int
+
 
 class HexQuad(int):
     pass
 
 
-
 # Configuration
-BaseHardware = Configuration.create("BaseHardware", [ \
-    ('name', str),
-    ('manufacturer', str),
-    ('type', 'Type'),
-    ('vendor_id', HexQuad),
-    ('product_id', HexQuad),
-    ('dimensions', Point),
-    ('supported_fx', LowerCaseSeq),
-    ('supported_leds', LEDType),
-    ('quirks', Quirks),
-    ('zones', Zone),
-    ('key_mapping', KeyMapping),
-    ('key_fixup_mapping', KeyFixupMapping),
-    ('key_row_offsets', tuple),
-    ('macro_keys', OrderedDict),
-    ('is_wireless', bool),
-    ('revision', int),
-    ('assets', dict)], yaml_name=u'!device-config')
+BaseHardware = Configuration.create(
+    "BaseHardware",
+    [
+        ("name", str),
+        ("manufacturer", str),
+        ("type", "Type"),
+        ("vendor_id", HexQuad),
+        ("product_id", HexQuad),
+        ("dimensions", Point),
+        ("supported_fx", LowerCaseSeq),
+        ("supported_leds", LEDType),
+        ("quirks", Quirks),
+        ("zones", Zone),
+        ("key_mapping", KeyMapping),
+        ("key_fixup_mapping", KeyFixupMapping),
+        ("key_row_offsets", tuple),
+        ("macro_keys", OrderedDict),
+        ("is_wireless", bool),
+        ("revision", int),
+        ("assets", dict),
+    ],
+    yaml_name="!device-config",
+)
 
 
 class Hardware(BaseHardware):
@@ -128,12 +145,12 @@ class Hardware(BaseHardware):
     """
 
     class Type(Enum):
-        HEADSET = 'Headset'
-        KEYBOARD = 'Keyboard'
-        KEYPAD = 'Keypad'
-        LAPTOP = 'Laptop'
-        MOUSE = 'Mouse'
-        MOUSEPAD = 'Mousepad'
+        HEADSET = "Headset"
+        KEYBOARD = "Keyboard"
+        KEYPAD = "Keypad"
+        LAPTOP = "Laptop"
+        MOUSE = "Mouse"
+        MOUSEPAD = "Mousepad"
 
     @property
     def has_matrix(self) -> bool:
@@ -141,7 +158,6 @@ class Hardware(BaseHardware):
         True if the device has an addressable key matrix
         """
         return self.dimensions is not None and self.dimensions.x > 1 and self.dimensions.y > 1
-
 
     def has_quirk(self, *quirks) -> bool:
         """
@@ -162,29 +178,27 @@ class Hardware(BaseHardware):
 
         return False
 
-
     @classmethod
-    def get_type(cls, hw_type) -> 'Hardware':
+    def get_type(cls, hw_type) -> "Hardware":
         if hw_type is None:
             return None
 
-        config_path = os.path.join(os.path.dirname(__file__), 'data')
-        yaml_path = os.path.join(config_path, '%s.yaml' % hw_type.name.lower())
+        config_path = os.path.join(os.path.dirname(__file__), "data")
+        yaml_path = os.path.join(config_path, "%s.yaml" % hw_type.name.lower())
 
         config = cls.load_yaml(yaml_path)
         assert config is not None
 
         return config
 
-
     @classmethod
-    def _get_device(cls, product_id: int, hw_type) -> 'Hardware':
+    def _get_device(cls, product_id: int, hw_type) -> "Hardware":
         if product_id is None:
             return None
 
         config = cls.get_type(hw_type)
 
-        result = config.search('product_id', product_id)
+        result = config.search("product_id", product_id)
         if not result:
             return None
 
@@ -193,9 +207,8 @@ class Hardware(BaseHardware):
 
         return result
 
-
     @classmethod
-    def get_device(cls, product_id: int, hw_type=None) -> 'Hardware':
+    def get_device(cls, product_id: int, hw_type=None) -> "Hardware":
         if hw_type is not None:
             return cls._get_device(product_id, hw_type)
 
@@ -206,25 +219,26 @@ class Hardware(BaseHardware):
 
         return None
 
-
     def _yaml_header(self) -> str:
-        header = '#\n#  uChroma device configuration\n#\n'
+        header = "#\n#  uChroma device configuration\n#\n"
         if self.name is not None:
-            header += '#  Model: %s (%s)\n' % (self.name, self.type.value)
+            header += "#  Model: %s (%s)\n" % (self.name, self.type.value)
         elif self.type is not None:
-            header += '#  Type: %s\n' % self.type.name.title()
-        header += '#  Updated on: %s\n' % datetime.now().isoformat(' ')
-        header += '#\n'
+            header += "#  Type: %s\n" % self.type.name.title()
+        header += "#  Updated on: %s\n" % datetime.now().isoformat(" ")
+        header += "#\n"
 
         return header
 
 
 # YAML library configuration
 def represent_hex_quad(dumper, data):
-    return dumper.represent_scalar(u'tag:yaml.org,2002:int', '0x%04x' % data)
+    return dumper.represent_scalar("tag:yaml.org,2002:int", "0x%04x" % data)
+
 
 def represent_namedtuple(dumper, data):
     return dumper.represent_ordereddict(data._asdict())
+
 
 yaml.RoundTripDumper.add_representer(HexQuad, represent_hex_quad)
 yaml.RoundTripDumper.add_representer(KeyFixupMapping, represent_namedtuple)

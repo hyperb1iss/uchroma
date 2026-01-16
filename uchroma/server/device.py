@@ -20,23 +20,30 @@ from .led import LED, LEDManager
 from .standard_fx import StandardFX
 from .types import LEDType
 
+
 class UChromaDevice(BaseUChromaDevice):
     """
     Class encapsulating all functionality available on standard Chroma devices
     """
 
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
-                 sys_path: str, input_devices=None, *args, **kwargs):
-
-        super(UChromaDevice, self).__init__(hardware, devinfo, devindex,
-                                            sys_path, input_devices,
-                                            *args, **kwargs)
+    def __init__(
+        self,
+        hardware: Hardware,
+        devinfo: hidapi.DeviceInfo,
+        devindex: int,
+        sys_path: str,
+        input_devices=None,
+        *args,
+        **kwargs,
+    ):
+        super(UChromaDevice, self).__init__(
+            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
+        )
 
         self._fx_manager = FXManager(self, StandardFX(self))
         self._led_manager = LEDManager(self)
 
         self._frame_control = None
-
 
     def get_led(self, led_type: LEDType) -> LED:
         """
@@ -49,7 +56,6 @@ class UChromaDevice(BaseUChromaDevice):
         if self.led_manager is None:
             return None
         return self.led_manager.get(led_type)
-
 
     @property
     def frame_control(self) -> Frame:
@@ -68,7 +74,6 @@ class UChromaDevice(BaseUChromaDevice):
 
         return self._frame_control
 
-
     def _set_brightness(self, level: float) -> bool:
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
             self.get_led(LEDType.SCROLL_WHEEL).brightness = level
@@ -81,7 +86,6 @@ class UChromaDevice(BaseUChromaDevice):
 
         return True
 
-
     def _get_brightness(self) -> float:
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
             return self.get_led(LEDType.SCROLL_WHEEL).brightness
@@ -91,16 +95,13 @@ class UChromaDevice(BaseUChromaDevice):
 
         return self.get_led(LEDType.BACKLIGHT).brightness
 
-
     @property
     def supported_leds(self) -> tuple:
         return self.hardware.supported_leds
 
-
     @property
     def led_manager(self) -> LEDManager:
         return self._led_manager
-
 
     def reset(self) -> bool:
         """
@@ -112,5 +113,5 @@ class UChromaDevice(BaseUChromaDevice):
             self.frame_control.background_color = None
             self.frame_control.reset()
 
-        if hasattr(self, 'fx_manager'):
+        if hasattr(self, "fx_manager"):
             self.fx_manager.disable()

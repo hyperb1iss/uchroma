@@ -15,27 +15,24 @@
 
 import asyncio
 import inspect
-
 from collections import OrderedDict
 from concurrent import futures
+from importlib.metadata import entry_points
 from types import ModuleType
 from typing import NamedTuple
 
-from importlib.metadata import entry_points
 from traitlets import Bool, HasTraits, List, observe
 
 from uchroma.log import LOG_TRACE
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
 from uchroma.traits import FrozenDict, get_args_dict
-from uchroma.util import ensure_future, Signal, Ticker
+from uchroma.util import Signal, Ticker, ensure_future
 
 from .frame import Frame
 
 
 class LayerHolder(HasTraits):
-
-    def __init__(self, renderer: Renderer, frame: Frame,
-                 blend_mode=None, *args, **kwargs):
+    def __init__(self, renderer: Renderer, frame: Frame, blend_mode=None, *args, **kwargs):
         super(LayerHolder, self).__init__(*args, **kwargs)
 
         self._renderer = renderer
@@ -47,26 +44,23 @@ class LayerHolder(HasTraits):
         self.task = None
 
         self.traits_changed = Signal()
-        self._renderer.observe(self._traits_changed, names=['all'])
+        self._renderer.observe(self._traits_changed, names=["all"])
 
         self._renderer._flush()
 
-        for buf in range(0, NUM_BUFFERS):
+        for buf in range(NUM_BUFFERS):
             layer = self._frame.create_layer()
             layer.blend_mode = self._blend_mode
             self._renderer._free_layer(layer)
 
-
     @property
     def type_string(self):
         cls = self._renderer.__class__
-        return '%s.%s' % (cls.__module__, cls.__name__)
-
+        return "%s.%s" % (cls.__module__, cls.__name__)
 
     @property
     def trait_values(self):
         return get_args_dict(self._renderer)
-
 
     def _traits_changed(self, change):
         if not self.renderer.running:
@@ -74,25 +68,20 @@ class LayerHolder(HasTraits):
 
         self.traits_changed.fire(self.zindex, self.trait_values, change.name, change.old)
 
-
     @property
     def zindex(self):
         return self._renderer.zindex
-
 
     @property
     def renderer(self):
         return self._renderer
 
-
     def start(self):
         if not self.renderer.running:
             self.task = ensure_future(self.renderer._run())
 
-
     async def stop(self):
         if self.renderer.running:
-
             tasks = []
             if self.task is not None and not self.task.done():
                 self.task.cancel()
@@ -131,8 +120,8 @@ class AnimationLoop(HasTraits):
     The design of this loop intends to be as CPU-efficient as possible and
     does not wake up spuriously or otherwise consume cycles while inactive.
     """
-    def __init__(self, frame: Frame, default_blend_mode: str = None,
-                 *args, **kwargs):
+
+    def __init__(self, frame: Frame, default_blend_mode: str = None, *args, **kwargs):
         super(AnimationLoop, self).__init__(*args, **kwargs)
 
         self._frame = frame
@@ -147,8 +136,7 @@ class AnimationLoop(HasTraits):
         self._error = False
         self.layers_changed = Signal()
 
-
-    @observe('layers')
+    @observe("layers")
     def _start_stop(self, change):
         old = 0
         if isinstance(change.old, list):
@@ -160,7 +148,6 @@ class AnimationLoop(HasTraits):
             self.start()
         elif new == 0 and old > 0 and self.running:
             self.stop()
-
 
     async def _dequeue(self, r_idx: int):
         """
@@ -185,7 +172,6 @@ class AnimationLoop(HasTraits):
         # put it on the active list
         layer.active_buf = buf
 
-
     def _dequeue_nowait(self, r_idx) -> bool:
         """
         Variation of _dequeue which does not yield.
@@ -202,7 +188,6 @@ class AnimationLoop(HasTraits):
         if not renderer._active_q.empty():
             buf = renderer._active_q.get_nowait()
             if buf is not None:
-
                 # return the last buffer
                 if layer.active_buf is not None:
                     renderer._free_layer(layer.active_buf)
@@ -212,7 +197,6 @@ class AnimationLoop(HasTraits):
                 return True
 
         return False
-
 
     async def _get_layers(self):
         """
@@ -236,7 +220,6 @@ class AnimationLoop(HasTraits):
             if _.waiter is not None and not _.waiter.done():
                 self._dequeue_nowait(r_idx)
 
-
     async def _commit_layers(self):
         """
         Merge layers from all renderers and commit to the hardware
@@ -244,19 +227,19 @@ class AnimationLoop(HasTraits):
         if self._logger.isEnabledFor(LOG_TRACE - 1):
             self._logger.debug("Layers: %s", self.layers)
 
-        active_bufs = [layer.active_buf for layer in \
-                sorted(self.layers, key=lambda z: z.zindex) \
-                if layer is not None and layer.active_buf is not None]
+        active_bufs = [
+            layer.active_buf
+            for layer in sorted(self.layers, key=lambda z: z.zindex)
+            if layer is not None and layer.active_buf is not None
+        ]
 
         try:
             if active_bufs:
                 self._frame.commit(active_bufs)
 
-        except (OSError, IOError):
+        except OSError:
             self._error = True
             await self._stop()
-
-
 
     async def _animate(self):
         """
@@ -289,7 +272,6 @@ class AnimationLoop(HasTraits):
                 # compose and display the frame
                 await self._commit_layers()
 
-
     def _renderer_done(self, future):
         """
         Invoked when the renderer exits
@@ -297,7 +279,6 @@ class AnimationLoop(HasTraits):
         self._logger.info("AnimationLoop is cleaning up")
 
         self._anim_task = None
-
 
     def _update_z(self, tmp_list):
         if tmp_list:
@@ -307,10 +288,8 @@ class AnimationLoop(HasTraits):
         # fires trait observer
         self.layers = tmp_list
 
-
     def _layer_traits_changed(self, *args):
-        self.layers_changed.fire('modify', *args)
-
+        self.layers_changed.fire("modify", *args)
 
     def add_layer(self, renderer: Renderer, zindex: int = None) -> bool:
         with self.hold_trait_notifications():
@@ -318,7 +297,7 @@ class AnimationLoop(HasTraits):
                 zindex = len(self.layers)
 
             if not renderer.init(self._frame):
-                self._logger.error('Renderer %s failed to initialize', renderer.name)
+                self._logger.error("Renderer %s failed to initialize", renderer.name)
                 return False
 
             layer = LayerHolder(renderer, self._frame, self._default_blend_mode)
@@ -331,13 +310,11 @@ class AnimationLoop(HasTraits):
             if self.running:
                 layer.start()
 
-        self._logger.info("Layer created, renderer=%s zindex=%d",
-                          layer.renderer, zindex)
+        self._logger.info("Layer created, renderer=%s zindex=%d", layer.renderer, zindex)
 
-        self.layers_changed.fire('add', zindex, layer.renderer, error=self._error)
+        self.layers_changed.fire("add", zindex, layer.renderer, error=self._error)
 
         return True
-
 
     async def remove_layer(self, layer_like):
         with self.hold_trait_notifications():
@@ -346,7 +323,7 @@ class AnimationLoop(HasTraits):
             elif isinstance(layer_like, int):
                 zindex = layer_like
             else:
-                raise TypeError('Layer should be a holder or an index')
+                raise TypeError("Layer should be a holder or an index")
 
             if zindex >= 0 and zindex < len(self.layers):
                 layer = self.layers[zindex]
@@ -357,10 +334,9 @@ class AnimationLoop(HasTraits):
                 del tmp[zindex]
                 self._update_z(tmp)
 
-                self.layers_changed.fire('remove', zindex, layer_id, error=self._error)
+                self.layers_changed.fire("remove", zindex, layer_id, error=self._error)
 
                 self._logger.info("Layer %d removed", zindex)
-
 
     async def clear_layers(self):
         if not self.layers:
@@ -368,7 +344,6 @@ class AnimationLoop(HasTraits):
         for layer in self.layers[::-1]:
             await self.remove_layer(layer)
         return True
-
 
     def start(self) -> bool:
         """
@@ -396,7 +371,6 @@ class AnimationLoop(HasTraits):
 
         return True
 
-
     async def _stop(self):
         """
         Stop this AnimationLoop
@@ -417,7 +391,6 @@ class AnimationLoop(HasTraits):
 
         self._logger.info("AnimationLoop stopped")
 
-
     def stop(self, cb=None):
         if not self.running:
             return False
@@ -426,7 +399,6 @@ class AnimationLoop(HasTraits):
         if cb is not None:
             task.add_done_callback(cb)
         return True
-
 
     def pause(self, paused):
         if paused != self._pause_event.is_set():
@@ -440,11 +412,13 @@ class AnimationLoop(HasTraits):
             self._pause_event.set()
 
 
-RendererInfo = NamedTuple('RendererInfo', [('module', ModuleType),
-                                           ('clazz', type),
-                                           ('key', str),
-                                           ('meta', RendererMeta),
-                                           ('traits', dict)])
+class RendererInfo(NamedTuple):
+    module: ModuleType
+    clazz: type
+    key: str
+    meta: RendererMeta
+    traits: dict
+
 
 class AnimationManager(HasTraits):
     """
@@ -472,44 +446,38 @@ class AnimationManager(HasTraits):
 
         self._shutting_down = False
 
-
-    @observe('paused')
+    @observe("paused")
     def _state_changed(self, change):
         # aggregate the trait notifications to a single signal
-        value = 'stopped'
-        if change.name == 'paused' and change.new and self.running:
-            value = 'paused'
-        elif change.name == 'running' and change.new and not self.paused:
-            value = 'running'
+        value = "stopped"
+        if change.name == "paused" and change.new and self.running:
+            value = "paused"
+        elif change.name == "running" and change.new and not self.paused:
+            value = "running"
 
         self.state_changed.fire(value)
-
 
     def _loop_running_changed(self, change):
         try:
             self._driver.reset()
-        except (OSError, IOError):
+        except OSError:
             self._error = True
         self._state_changed(change)
-
 
     def _loop_layers_changed(self, *args, error=False):
         self.layers_changed.fire(*args)
         if not error:
             self._update_prefs()
 
-
     def _power_state_changed(self, brightness, suspended):
         if self.running and self.paused != suspended:
             self.pause(suspended)
 
-
     def _create_loop(self):
         if self._loop is None:
             self._loop = AnimationLoop(self._driver.frame_control)
-            self._loop.observe(self._loop_running_changed, names=['running'])
+            self._loop.observe(self._loop_running_changed, names=["running"])
             self._loop.layers_changed.connect(self._loop_layers_changed)
-
 
     def _update_prefs(self):
         if self._loop is None or self._shutting_down:
@@ -524,18 +492,17 @@ class AnimationManager(HasTraits):
         else:
             self._driver.preferences.layers = None
 
-
     def _discover_renderers(self):
         infos = OrderedDict()
 
-        eps = entry_points(group='uchroma.plugins')
-        for ep_mod in eps.select(name='renderers'):
+        eps = entry_points(group="uchroma.plugins")
+        for ep_mod in eps.select(name="renderers"):
             obj = ep_mod.load()
             if not inspect.ismodule(obj):
                 self._logger.error("Plugin %s is not a module, skipping", ep_mod)
                 continue
 
-        for ep_cls in eps.select(name='renderer'):
+        for ep_cls in eps.select(name="renderer"):
             obj = ep_cls.load()
             if not issubclass(obj, Renderer):
                 self._logger.error("Plugin %s is not a renderer, skipping", ep_cls)
@@ -545,18 +512,15 @@ class AnimationManager(HasTraits):
             if inspect.isabstract(obj):
                 continue
 
-            if obj.meta.display_name == '_unknown_':
-                self._logger.error("Renderer %s did not set metadata, skipping",
-                                   obj.__name__)
+            if obj.meta.display_name == "_unknown_":
+                self._logger.error("Renderer %s did not set metadata, skipping", obj.__name__)
                 continue
 
-            key = '%s.%s' % (obj.__module__, obj.__name__)
-            infos[key] = RendererInfo(obj.__module__, obj, key,
-                                      obj.meta, obj.class_traits())
+            key = "%s.%s" % (obj.__module__, obj.__name__)
+            infos[key] = RendererInfo(obj.__module__, obj, key, obj.meta, obj.class_traits())
 
-        self._logger.debug("Loaded renderers: %s", ', '.join(infos.keys()))
+        self._logger.debug("Loaded renderers: %s", ", ".join(infos.keys()))
         return infos
-
 
     def _get_renderer(self, name, zindex: int = None, **traits) -> Renderer:
         """
@@ -572,10 +536,9 @@ class AnimationManager(HasTraits):
             return info.clazz(self._driver, **traits)
 
         except ImportError as err:
-            self._logger.exception('Invalid renderer: %s', name, exc_info=err)
+            self._logger.exception("Invalid renderer: %s", name, exc_info=err)
 
         return None
-
 
     def add_renderer(self, name, traits: dict, zindex: int = None) -> int:
         """
@@ -597,33 +560,33 @@ class AnimationManager(HasTraits):
         self._create_loop()
 
         if zindex is not None and zindex > len(self._loop.layers):
-            raise ValueError("Z-index out of range (requested %d max %d)" % \
-                    (zindex, len(self._loop.layers)))
+            raise ValueError(
+                "Z-index out of range (requested %d max %d)" % (zindex, len(self._loop.layers))
+            )
 
         renderer = self._get_renderer(name, **traits)
         if renderer is None:
-            self._logger.error('Renderer %s failed to load', renderer)
+            self._logger.error("Renderer %s failed to load", renderer)
             return -1
 
         if not self._loop.add_layer(renderer, zindex):
-            self._logger.error('Renderer %s failed to initialize', name)
+            self._logger.error("Renderer %s failed to initialize", name)
             return -1
 
         return renderer.zindex
-
 
     def remove_renderer(self, zindex: int) -> bool:
         if self._loop is None:
             return False
 
         if zindex is None or zindex < 0 or zindex > len(self._loop.layers):
-            self._logger.error("Z-index out of range (requested %d max %d)",
-                               zindex, len(self._loop.layers))
+            self._logger.error(
+                "Z-index out of range (requested %d max %d)", zindex, len(self._loop.layers)
+            )
             return False
 
         ensure_future(self._loop.remove_layer(zindex))
         return True
-
 
     def pause(self, state=None):
         if self._loop is not None:
@@ -637,13 +600,11 @@ class AnimationManager(HasTraits):
 
         return self.paused
 
-
     def stop(self, cb=None):
         if self._loop is not None:
             return self._loop.stop(cb=cb)
 
         return False
-
 
     async def shutdown(self):
         """
@@ -657,12 +618,11 @@ class AnimationManager(HasTraits):
 
         await self._loop.clear_layers()
 
-
     def _restore_prefs(self, prefs):
         """
         Restore active layers from preferences
         """
-        self._logger.debug('Restoring layers: %s', prefs.layers)
+        self._logger.debug("Restoring layers: %s", prefs.layers)
 
         if prefs.layers:
             try:
@@ -670,10 +630,10 @@ class AnimationManager(HasTraits):
                     self.add_renderer(name, args)
 
             except Exception as err:
-                self._logger.exception('Failed to add renderers, clearing! [%s]',
-                                       prefs.layers, exc_info=err)
+                self._logger.exception(
+                    "Failed to add renderers, clearing! [%s]", prefs.layers, exc_info=err
+                )
                 self.stop()
-
 
     @property
     def renderer_info(self):
@@ -682,7 +642,6 @@ class AnimationManager(HasTraits):
         """
         return self._renderer_info
 
-
     @property
     def running(self):
         """
@@ -690,7 +649,6 @@ class AnimationManager(HasTraits):
         """
         return self._loop is not None and self._loop.running
 
-
     def __del__(self):
-        if hasattr(self, '_loop') and self._loop is not None:
+        if hasattr(self, "_loop") and self._loop is not None:
             self._loop.stop()

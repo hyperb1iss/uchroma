@@ -11,13 +11,11 @@
 # License for more details.
 #
 from uchroma.server import hidadapter as hidapi
-
 from uchroma.util import scale_brightness
 
-from .keyboard import UChromaKeyboard
 from .hardware import Hardware
+from .keyboard import UChromaKeyboard
 from .types import BaseCommand
-
 
 # LED constants from Razer protocol
 VARSTORE = 0x01
@@ -35,31 +33,38 @@ class UChromaLaptop(UChromaKeyboard):
         """
         Enumeration of standard commands not handled elsewhere
         """
+
         SET_BRIGHTNESS = (0x03, 0x03, 0x03)
         GET_BRIGHTNESS = (0x03, 0x83, 0x03)
 
-
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo, devindex: int,
-                 sys_path: str, input_devices=None, *args, **kwargs):
-        super(UChromaLaptop, self).__init__(hardware, devinfo, devindex,
-                                            sys_path, input_devices,
-                                            *args, **kwargs)
-
+    def __init__(
+        self,
+        hardware: Hardware,
+        devinfo: hidapi.DeviceInfo,
+        devindex: int,
+        sys_path: str,
+        input_devices=None,
+        *args,
+        **kwargs,
+    ):
+        super(UChromaLaptop, self).__init__(
+            hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs
+        )
 
     def _get_serial_number(self):
         return self.name
 
-
     def _set_brightness(self, level: float):
         # Standard LED brightness: args = [VARSTORE, BACKLIGHT_LED, brightness]
-        return self.run_command(UChromaLaptop.Command.SET_BRIGHTNESS,
-                               VARSTORE, BACKLIGHT_LED, scale_brightness(level))
-
+        return self.run_command(
+            UChromaLaptop.Command.SET_BRIGHTNESS, VARSTORE, BACKLIGHT_LED, scale_brightness(level)
+        )
 
     def _get_brightness(self) -> float:
         # Standard LED brightness: args = [VARSTORE, BACKLIGHT_LED, 0x00]
-        value = self.run_with_result(UChromaLaptop.Command.GET_BRIGHTNESS,
-                                    VARSTORE, BACKLIGHT_LED, 0x00)
+        value = self.run_with_result(
+            UChromaLaptop.Command.GET_BRIGHTNESS, VARSTORE, BACKLIGHT_LED, 0x00
+        )
         if value is None:
             return 0.0
         # Response: brightness is in args[2]

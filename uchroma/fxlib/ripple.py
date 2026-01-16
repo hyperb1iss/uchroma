@@ -13,7 +13,6 @@
 
 # pylint: disable=invalid-name
 
-import asyncio
 import math
 import operator
 
@@ -24,21 +23,20 @@ from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorPresetTrait, ColorTrait
 from uchroma.util import clamp
 
-
 DEFAULT_SPEED = 5
 DEFAULT_WIDTH = 3
 
 EXPIRE_TIME_FACTOR = 0.15
 
-COLOR_KEY = 'ripple_color'
-SCHEME_KEY = 'color_scheme'
+COLOR_KEY = "ripple_color"
+SCHEME_KEY = "color_scheme"
 
 
 class Ripple(Renderer):
-
     # meta
-    meta = RendererMeta('Ripples', 'Ripples of color when keys are pressed',
-                        'Stefanie Kondik', '1.0')
+    meta = RendererMeta(
+        "Ripples", "Ripples of color when keys are pressed", "Stefanie Kondik", "1.0"
+    )
 
     # configurable traits
     ripple_width = Int(default_value=DEFAULT_WIDTH, min=1, max=5).tag(config=True)
@@ -47,9 +45,7 @@ class Ripple(Renderer):
     random = Bool(True).tag(config=True)
     color = ColorTrait().tag(config=True)
 
-
     def __init__(self, *args, **kwargs):
-
         super(Ripple, self).__init__(*args, **kwargs)
 
         self._generator = ColorUtils.rainbow_generator()
@@ -58,11 +54,9 @@ class Ripple(Renderer):
 
         self.fps = 30
 
-
-    @observe('speed')
+    @observe("speed")
     def _set_speed(self, change):
         self.key_expire_time = change.new * EXPIRE_TIME_FACTOR
-
 
     def _process_events(self, events):
         if self._generator is None:
@@ -71,7 +65,6 @@ class Ripple(Renderer):
         for event in events:
             if COLOR_KEY not in event.data:
                 event.data[COLOR_KEY] = next(self._generator)
-
 
     @staticmethod
     def _ease(n):
@@ -83,14 +76,13 @@ class Ripple(Renderer):
         n = n - 2
         return 0.5 * (n**5 + 2)
 
-
     def _draw_circles(self, layer, radius, event):
         width = self.ripple_width
         if COLOR_KEY not in event.data:
             return
 
         if event.coords is None or len(event.coords) == 0:
-            self.logger.error('No coordinates available: %s', event)
+            self.logger.error("No coordinates available: %s", event)
             return
 
         if SCHEME_KEY in event.data:
@@ -113,7 +105,6 @@ class Ripple(Renderer):
 
             for coord in event.coords:
                 layer.ellipse(coord.y, coord.x, rad / 1.33, rad, color=cc)
-
 
     async def draw(self, layer, timestamp):
         """
@@ -140,20 +131,19 @@ class Ripple(Renderer):
 
         return False
 
-
-    @observe('preset', 'color', 'background_color', 'random')
+    @observe("preset", "color", "background_color", "random")
     def _update_colors(self, change=None):
         with self.hold_trait_notifications():
             if change.new is None:
                 return
 
-            if change.name == 'preset':
-                self.color = 'black'
+            if change.name == "preset":
+                self.color = "black"
                 self.random = False
                 self._generator = ColorUtils.color_generator(list(change.new.value))
-            elif change.name == 'random' and change.new:
+            elif change.name == "random" and change.new:
                 self.preset = None
-                self.color = 'black'
+                self.color = "black"
                 self._generator = ColorUtils.rainbow_generator()
             else:
                 self.preset = None
@@ -162,11 +152,10 @@ class Ripple(Renderer):
                 if base_color == (0, 0, 0, 1):
                     base_color = None
                 self._generator = ColorUtils.scheme_generator(
-                    color=self.color, base_color=base_color)
-
+                    color=self.color, base_color=base_color
+                )
 
     def init(self, frame) -> bool:
-
         if not self.has_key_input:
             return False
 

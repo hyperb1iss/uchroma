@@ -15,24 +15,23 @@
 
 import asyncio
 import time
-
 from typing import NamedTuple
 
 from uchroma.log import LOG_TRACE
 from uchroma.util import clamp
 
 
-_KeyInputEvent = NamedTuple('KeyInputEvent', \
-    [('timestamp', float),
-     ('expire_time', float),
-     ('keycode', str),
-     ('scancode', str),
-     ('keystate', int),
-     ('coords', list),
-     ('data', dict)])
+class _KeyInputEvent(NamedTuple):
+    timestamp: float
+    expire_time: float
+    keycode: str
+    scancode: str
+    keystate: int
+    coords: list
+    data: dict
 
 
-class KeyInputEvent(_KeyInputEvent, object):
+class KeyInputEvent(_KeyInputEvent):
     """
     Container of all values of a keyboard input event
     with optional expiration time.
@@ -54,7 +53,7 @@ class KeyInputEvent(_KeyInputEvent, object):
         return clamp(self.time_remaining / duration, 0.0, 1.0)
 
 
-class InputQueue(object):
+class InputQueue:
     """
     Asynchronous input event queue
 
@@ -69,7 +68,6 @@ class InputQueue(object):
     KEY_HOLD = 4
 
     def __init__(self, driver, expire_time=None):
-
         self._logger = driver.logger
         self._input_manager = driver.input_manager
         self._key_mapping = driver.hardware.key_mapping
@@ -82,7 +80,6 @@ class InputQueue(object):
         self._events = []
         self._keystates = InputQueue.KEY_DOWN
 
-
     def attach(self) -> bool:
         """
         Start listening for input events
@@ -93,7 +90,7 @@ class InputQueue(object):
             return True
 
         if self._input_manager is None:
-            raise ValueError('Input events are not supported on this device')
+            raise ValueError("Input events are not supported on this device")
 
         if not self._input_manager.add_callback(self._input_callback):
             return False
@@ -101,7 +98,6 @@ class InputQueue(object):
         self._attached = True
         self._logger.debug("InputQueue attached")
         return True
-
 
     async def detach(self):
         """
@@ -113,7 +109,6 @@ class InputQueue(object):
         await self._input_manager.remove_callback(self._input_callback)
         self._attached = False
         self._logger.debug("InputQueue detached")
-
 
     async def get_events(self):
         """
@@ -136,14 +131,12 @@ class InputQueue(object):
 
         return self._events[:]
 
-
     @property
     def keystates(self) -> int:
         """
         The keystates to report as a bitmask
         """
         return self._keystates
-
 
     @keystates.setter
     def keystates(self, mask: int):
@@ -154,13 +147,11 @@ class InputQueue(object):
         """
         self._keystates = mask
 
-
     def get_events_nowait(self):
         """
         Version of get_events which returns immediately
         """
         return self._events[:]
-
 
     async def _input_callback(self, ev):
         """
@@ -177,21 +168,25 @@ class InputQueue(object):
         if ev.keystate == ev.key_hold and not self.keystates & InputQueue.KEY_HOLD:
             return
 
-
         coords = None
         if self._key_mapping is not None:
             coords = self._key_mapping.get(ev.keycode, None)
 
-        event = KeyInputEvent(ev.event.timestamp(),
-                              ev.event.timestamp() + self._expire_time,
-                              ev.keycode, ev.scancode,
-                              ev.keystate, coords, {})
+        event = KeyInputEvent(
+            ev.event.timestamp(),
+            ev.event.timestamp() + self._expire_time,
+            ev.keycode,
+            ev.scancode,
+            ev.keystate,
+            coords,
+            {},
+        )
 
         if self._logger.isEnabledFor(LOG_TRACE):
-            self._logger.debug('Input event: %s', event)
+            self._logger.debug("Input event: %s", event)
 
         if self._expire_time is not None:
-            for idx in range(0, len(self._events)):
+            for idx in range(len(self._events)):
                 if self._events[idx].keycode == event.keycode:
                     self._events[idx] = None
             self._events = [x for x in self._events if x is not None]
@@ -199,7 +194,6 @@ class InputQueue(object):
             self._events.append(event)
 
             await self._q.put(event)
-
 
     def _expire(self):
         """
@@ -218,14 +212,12 @@ class InputQueue(object):
         except IndexError:
             pass
 
-
     @property
     def expire_time(self):
         """
         Number of seconds to store entries for
         """
         return self._expire_time
-
 
     @expire_time.setter
     def expire_time(self, seconds):
@@ -234,8 +226,7 @@ class InputQueue(object):
         """
         self._expire_time = seconds
 
-
     def __del__(self):
-        if hasattr(self, '_input_manager'):
+        if hasattr(self, "_input_manager"):
             if self._input_manager is not None:
                 self.detach()

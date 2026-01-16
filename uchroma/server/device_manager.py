@@ -11,21 +11,19 @@
 # License for more details.
 #
 import asyncio
-
 from collections import OrderedDict
 from concurrent import futures
-
-from uchroma.server import hidadapter as hidapi
 
 from pyudev import Context, Monitor, MonitorObserver
 from pyudev._os import pipe
 
 from uchroma.log import Log
-from uchroma.util import ensure_future, Singleton, Signal
+from uchroma.server import hidadapter as hidapi
+from uchroma.util import Signal, Singleton, ensure_future
 
 from .device import UChromaDevice
 from .device_base import BaseUChromaDevice
-from .hardware import Hardware, Quirks, RAZER_VENDOR_ID
+from .hardware import RAZER_VENDOR_ID, Hardware, Quirks
 from .headset import UChromaHeadset
 from .keyboard import UChromaKeyboard
 from .keypad import UChromaKeypad
@@ -34,10 +32,9 @@ from .mouse import UChromaMouse, UChromaWirelessMouse
 
 
 class AsyncMonitorObserver:
-
     def __init__(self, monitor, callback=None, name=None, *args, **kwargs):
         if callback is None:
-            raise ValueError('callback missing')
+            raise ValueError("callback missing")
 
         self.monitor = monitor
         self._stop_event = None
@@ -46,19 +43,15 @@ class AsyncMonitorObserver:
         self._executor = futures.ThreadPoolExecutor(max_workers=2)
         self._task = None
 
-
     def _run(self):
         self._stop_event = pipe.Pipe.open()
         MonitorObserver.run(self)
 
-
     def _stop(self):
         MonitorObserver.send_stop(self)
 
-
     async def start(self):
         asyncio.get_event_loop().run_in_executor(self._executor, self._run)
-
 
     async def stop(self):
         asyncio.get_event_loop().run_in_executor(self._executor, self._stop)
@@ -79,7 +72,7 @@ class UChromaDeviceManager(metaclass=Singleton):
     """
 
     def __init__(self, *callbacks):
-        self._logger = Log.get('uchroma.devicemanager')
+        self._logger = Log.get("uchroma.devicemanager")
 
         self._devices = OrderedDict()
         self._monitor = False
@@ -97,14 +90,12 @@ class UChromaDeviceManager(metaclass=Singleton):
 
         self.discover()
 
-
     async def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
         # delay for udev setup
         await asyncio.sleep(0.2)
 
         for callback in self._callbacks:
             await callback(action, device)
-
 
     def discover(self):
         """
@@ -145,13 +136,11 @@ class UChromaDeviceManager(metaclass=Singleton):
                 # Blade laptops use interface 0 for control
                 if devinfo.interface_number != 0:
                     continue
-            elif hardware.type in (Hardware.Type.KEYBOARD,
-                                   Hardware.Type.KEYPAD):
+            elif hardware.type in (Hardware.Type.KEYBOARD, Hardware.Type.KEYPAD):
                 # Keyboards/keypads use interface 0
                 if devinfo.interface_number != 0:
                     continue
-            elif hardware.type in (Hardware.Type.MOUSE,
-                                   Hardware.Type.MOUSEPAD):
+            elif hardware.type in (Hardware.Type.MOUSE, Hardware.Type.MOUSEPAD):
                 if devinfo.interface_number != 1:
                     continue
             else:
@@ -166,8 +155,7 @@ class UChromaDeviceManager(metaclass=Singleton):
                     device.set_device_mode(0)
 
                 if self._monitor and self._callbacks:
-                    ensure_future(self._fire_callbacks('add', device), loop=self._loop)
-
+                    ensure_future(self._fire_callbacks("add", device), loop=self._loop)
 
     def _next_index(self):
         if not self._devices:
@@ -181,8 +169,7 @@ class UChromaDeviceManager(metaclass=Singleton):
             if _ + 1 == indexes[idx + 1]:
                 continue
             return _ + 1
-        raise ValueError('should not be here')
-
+        raise ValueError("should not be here")
 
     def _create_device(self, parent, hardware, devinfo):
         input_devs = self._get_input_devices(parent)
@@ -210,13 +197,11 @@ class UChromaDeviceManager(metaclass=Singleton):
 
         return UChromaDevice(hardware, devinfo, index, sys_path)
 
-
     def _key_for_path(self, path):
         for key, device in self._devices.items():
             if device.sys_path == path:
                 return key
         return None
-
 
     @property
     def devices(self):
@@ -227,7 +212,6 @@ class UChromaDeviceManager(metaclass=Singleton):
 
         return self._devices
 
-
     @property
     def callbacks(self):
         """
@@ -235,59 +219,51 @@ class UChromaDeviceManager(metaclass=Singleton):
         """
         return self._callbacks
 
-
     def _get_parent(self, product_id: int):
         pid = "%04x" % product_id
         vid = "%04x" % RAZER_VENDOR_ID
 
         # Try with uchroma tag first (requires udev rules installed)
-        devs = self._udev_context.list_devices(tag='uchroma', subsystem='usb',
-                                               ID_MODEL_ID=pid)
+        devs = self._udev_context.list_devices(tag="uchroma", subsystem="usb", ID_MODEL_ID=pid)
         for dev in devs:
-            if dev['DEVTYPE'] == 'usb_device':
+            if dev["DEVTYPE"] == "usb_device":
                 return dev
 
         # Fallback: search without tag (for testing without udev rules)
-        devs = self._udev_context.list_devices(subsystem='usb',
-                                               ID_VENDOR_ID=vid,
-                                               ID_MODEL_ID=pid)
+        devs = self._udev_context.list_devices(subsystem="usb", ID_VENDOR_ID=vid, ID_MODEL_ID=pid)
         for dev in devs:
-            if dev.get('DEVTYPE') == 'usb_device':
+            if dev.get("DEVTYPE") == "usb_device":
                 return dev
 
         return None
-
 
     def _get_input_devices(self, parent) -> list:
         inputs = []
         if parent is not None:
             for child in parent.children:
-                if child.subsystem == 'input' and 'DEVNAME' in child:
+                if child.subsystem == "input" and "DEVNAME" in child:
                     for link in child.device_links:
-                        if link.startswith('/dev/input/by-id/'):
+                        if link.startswith("/dev/input/by-id/"):
                             inputs.append(link)
                             continue
 
         return inputs
 
-
     def _udev_event(self, device):
-        self._logger.debug('Device event [%s]: %s', device.action, device)
+        self._logger.debug("Device event [%s]: %s", device.action, device)
 
-        if device.action == 'remove':
+        if device.action == "remove":
             key = self._key_for_path(device.sys_path)
             if key is not None:
                 removed = self._devices.pop(key, None)
                 if removed is not None:
                     removed.close()
                     if self._callbacks:
-                        ensure_future( \
-                            self._fire_callbacks('remove', removed), loop=self._loop)
+                        ensure_future(self._fire_callbacks("remove", removed), loop=self._loop)
 
         else:
             if self._key_for_path(device.sys_path) is None:
                 self.discover()
-
 
     async def close_devices(self):
         """
@@ -296,7 +272,6 @@ class UChromaDeviceManager(metaclass=Singleton):
         for device in self._devices.values():
             await device.shutdown()
         self._devices.clear()
-
 
     async def monitor_start(self):
         """
@@ -309,20 +284,20 @@ class UChromaDeviceManager(metaclass=Singleton):
             return
 
         udev_monitor = Monitor.from_netlink(self._udev_context)
-        udev_monitor.filter_by_tag('uchroma')
-        udev_monitor.filter_by(subsystem='usb', device_type=u'usb_device')
+        udev_monitor.filter_by_tag("uchroma")
+        udev_monitor.filter_by(subsystem="usb", device_type="usb_device")
 
-        self._udev_observer = AsyncMonitorObserver(udev_monitor, callback=self._udev_event,
-                                                   name='uchroma-monitor')
+        self._udev_observer = AsyncMonitorObserver(
+            udev_monitor, callback=self._udev_event, name="uchroma-monitor"
+        )
         ensure_future(self._udev_observer.start())
         self._monitor = True
 
         if self._callbacks:
             for device in self._devices.values():
-                ensure_future(self._fire_callbacks('add', device), loop=self._loop)
+                ensure_future(self._fire_callbacks("add", device), loop=self._loop)
 
-        self._logger.debug('Udev monitor started')
-
+        self._logger.debug("Udev monitor started")
 
     async def monitor_stop(self):
         """
@@ -334,4 +309,4 @@ class UChromaDeviceManager(metaclass=Singleton):
         await ensure_future(self._udev_observer.stop())
         self._monitor = False
 
-        self._logger.debug('Udev monitor stopped')
+        self._logger.debug("Udev monitor stopped")

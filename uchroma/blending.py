@@ -30,8 +30,7 @@ import numpy as np
 # Modified from blend_modes.py, https://github.com/flrs/blend_modes
 
 
-class BlendOp(object):
-
+class BlendOp:
     @staticmethod
     def soft_light(img_in, img_layer):
         """
@@ -47,9 +46,9 @@ class BlendOp(object):
         #   ratio_rs = np.reshape(np.repeat(ratio,3),comp.shape)
         #   img_out = comp*ratio_rs + img_in[:, :, :3] * (1.0-ratio_rs)
 
-        return (1.0 - img_in[:, :, :3]) * img_in[:, :, :3] * img_layer[:, :, :3] \
-            + img_in[:, :, :3] * (1.0 - (1.0-img_in[:, :, :3])*(1.0-img_layer[:, :, :3]))
-
+        return (1.0 - img_in[:, :, :3]) * img_in[:, :, :3] * img_layer[:, :, :3] + img_in[
+            :, :, :3
+        ] * (1.0 - (1.0 - img_in[:, :, :3]) * (1.0 - img_layer[:, :, :3]))
 
     @staticmethod
     def lighten_only(img_in, img_layer):
@@ -60,7 +59,6 @@ class BlendOp(object):
         """
         return np.maximum(img_in[:, :, :3], img_layer[:, :, :3])
 
-
     @staticmethod
     def screen(img_in, img_layer):
         """
@@ -70,7 +68,6 @@ class BlendOp(object):
         """
         return 1.0 - (1.0 - img_in[:, :, :3]) * (1.0 - img_layer[:, :, :3])
 
-
     @staticmethod
     def dodge(img_in, img_layer):
         """
@@ -78,8 +75,7 @@ class BlendOp(object):
 
         Find more information on `Wikipedia <https://en.wikipedia.org/w/index.php?title=Blend_modes&oldid=747749280#Dodge_and_burn>`__.
         """
-        return np.minimum(img_in[:, :, :3]/(1.0 - img_layer[:, :, :3]), 1.0)
-
+        return np.minimum(img_in[:, :, :3] / (1.0 - img_layer[:, :, :3]), 1.0)
 
     @staticmethod
     def addition(img_in, img_layer):
@@ -88,14 +84,12 @@ class BlendOp(object):
         """
         return img_in[:, :, :3] + img_layer[:, :, :3]
 
-
     @staticmethod
     def darken_only(img_in, img_layer):
         """
         Apply darken only blending mode of a layer on an image.
         """
         return np.minimum(img_in[:, :, :3], img_layer[:, :, :3])
-
 
     @staticmethod
     def multiply(img_in, img_layer):
@@ -104,7 +98,6 @@ class BlendOp(object):
         """
         return np.clip(img_layer[:, :, :3] * img_in[:, :, :3], 0.0, 1.0)
 
-
     @staticmethod
     def hard_light(img_in, img_layer):
         """
@@ -112,12 +105,12 @@ class BlendOp(object):
 
         Find more information on `Wikipedia <https://en.wikipedia.org/w/index.php?title=Blend_modes&oldid=747749280#Hard_Light>`__.
         """
-        comp = np.greater(img_layer[:, :, :3], 0.5)*np.minimum(1.0-((1.0 - img_in[:, :, :3]) \
-            * (1.0 - (img_layer[:, :, :3] - 0.5) * 2.0)), 1.0) \
-            + np.logical_not(np.greater(img_layer[:, :, :3], 0.5))*np.minimum(img_in[:, :, :3] \
-            * (img_layer[:, :, :3] * 2.0), 1.0)
+        comp = np.greater(img_layer[:, :, :3], 0.5) * np.minimum(
+            1.0 - ((1.0 - img_in[:, :, :3]) * (1.0 - (img_layer[:, :, :3] - 0.5) * 2.0)), 1.0
+        ) + np.logical_not(np.greater(img_layer[:, :, :3], 0.5)) * np.minimum(
+            img_in[:, :, :3] * (img_layer[:, :, :3] * 2.0), 1.0
+        )
         return comp
-
 
     @staticmethod
     def difference(img_in, img_layer):
@@ -131,7 +124,6 @@ class BlendOp(object):
 
         return comp
 
-
     @staticmethod
     def subtract(img_in, img_layer):
         """
@@ -140,7 +132,6 @@ class BlendOp(object):
         Find more information on `Wikipedia <https://en.wikipedia.org/w/index.php?title=Blend_modes&oldid=747749280#Subtract>`__.
         """
         return img_in[:, :, :3] - img_layer[:, :, :3]
-
 
     @staticmethod
     def grain_extract(img_in, img_layer):
@@ -151,7 +142,6 @@ class BlendOp(object):
         """
         return np.clip(img_in[:, :, :3] - img_layer[:, :, :3] + 0.5, 0.0, 1.0)
 
-
     @staticmethod
     def grain_merge(img_in, img_layer):
         """
@@ -161,7 +151,6 @@ class BlendOp(object):
         """
         return np.clip(img_in[:, :, :3] + img_layer[:, :, :3] - 0.5, 0.0, 1.0)
 
-
     @staticmethod
     def divide(img_in, img_layer):
         """
@@ -169,33 +158,36 @@ class BlendOp(object):
 
         Find more information on `Wikipedia <https://en.wikipedia.org/w/index.php?title=Blend_modes&oldid=747749280#Divide>`__.
         """
-        return np.minimum((256.0 / 255.0 * img_in[:, :, :3]) / (1.0 / 255.0 + img_layer[:, :, :3]), 1.0)
-
+        return np.minimum(
+            (256.0 / 255.0 * img_in[:, :, :3]) / (1.0 / 255.0 + img_layer[:, :, :3]), 1.0
+        )
 
     @classmethod
     def get_modes(cls):
-        return sorted([x for x in dir(cls) if not x.startswith('_') and x != 'get_modes'])
+        return sorted([x for x in dir(cls) if not x.startswith("_") and x != "get_modes"])
 
 
-def _compose_alpha(img_in, img_layer, opacity: float=1.0):
+def _compose_alpha(img_in, img_layer, opacity: float = 1.0):
     """
     Calculate alpha composition ratio between two images.
     """
     comp_alpha = np.minimum(img_in[:, :, 3], img_layer[:, :, 3]) * opacity
     new_alpha = img_in[:, :, 3] + (1.0 - img_in[:, :, 3]) * comp_alpha
-    np.seterr(divide='ignore', invalid='ignore')
+    np.seterr(divide="ignore", invalid="ignore")
     ratio = comp_alpha / new_alpha
     ratio[np.isnan(ratio)] = 0.0
     return ratio
 
 
-def blend(img_in: np.ndarray, img_layer: np.ndarray, blend_op: None, opacity: float=1.0):
+def blend(img_in: np.ndarray, img_layer: np.ndarray, blend_op: None, opacity: float = 1.0):
     # sanity check of inputs
-    assert img_in.dtype == np.float64, 'Input variable img_in should be of numpy.float64 type.'
-    assert img_layer.dtype == np.float64, 'Input variable img_layer should be of numpy.float64 type.'
-    assert img_in.shape[2] == 4, 'Input variable img_in should be of shape [:, :,4].'
-    assert img_layer.shape[2] == 4, 'Input variable img_layer should be of shape [:, :,4].'
-    assert 0.0 <= opacity <= 1.0, 'Opacity needs to be between 0.0 and 1.0.'
+    assert img_in.dtype == np.float64, "Input variable img_in should be of numpy.float64 type."
+    assert img_layer.dtype == np.float64, (
+        "Input variable img_layer should be of numpy.float64 type."
+    )
+    assert img_in.shape[2] == 4, "Input variable img_in should be of shape [:, :,4]."
+    assert img_layer.shape[2] == 4, "Input variable img_layer should be of shape [:, :,4]."
+    assert 0.0 <= opacity <= 1.0, "Opacity needs to be between 0.0 and 1.0."
 
     ratio = _compose_alpha(img_in, img_layer, opacity)
 
@@ -205,13 +197,13 @@ def blend(img_in: np.ndarray, img_layer: np.ndarray, blend_op: None, opacity: fl
         if hasattr(BlendOp, blend_op):
             blend_op = getattr(BlendOp, blend_op)
         else:
-            raise ValueError('Invalid blend mode: %s' % blend_op)
+            raise ValueError("Invalid blend mode: %s" % blend_op)
 
     comp = blend_op(img_in, img_layer)
 
     ratio_rs = np.reshape(np.repeat(ratio, 3), [comp.shape[0], comp.shape[1], comp.shape[2]])
-    img_out = comp*ratio_rs + img_in[:, :, :3] * (1.0-ratio_rs)
-    img_out = np.nan_to_num(np.dstack((img_out, img_in[:, :, 3])))  # add alpha channel and replace nans
+    img_out = comp * ratio_rs + img_in[:, :, :3] * (1.0 - ratio_rs)
+    img_out = np.nan_to_num(
+        np.dstack((img_out, img_in[:, :, 3]))
+    )  # add alpha channel and replace nans
     return img_out
-
-

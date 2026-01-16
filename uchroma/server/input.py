@@ -15,7 +15,6 @@
 
 import asyncio
 import functools
-
 from concurrent import futures
 
 import evdev
@@ -29,8 +28,8 @@ class InputManager:
     allows for callback registration. Reader loop is fully asynchronous.
     See the InputQueue class for a higher level API.
     """
-    def __init__(self, driver, input_devices: list):
 
+    def __init__(self, driver, input_devices: list):
         self._driver = driver
         self._input_devices = input_devices
         self._event_devices = []
@@ -42,7 +41,6 @@ class InputManager:
         self._closing = False
 
         self._tasks = []
-
 
     async def _evdev_callback(self, device):
         async for event in device.async_read_loop():
@@ -59,14 +57,12 @@ class InputManager:
                 if not self._opened:
                     return
 
-            except (OSError, IOError) as err:
+            except OSError as err:
                 self._logger.exception("Event device error", exc_info=err)
                 break
 
-
     def _evdev_close(self, event_device, future):
-        self._logger.info('Closing event device %s', event_device)
-
+        self._logger.info("Closing event device %s", event_device)
 
     def _open_input_devices(self):
         if self._opened:
@@ -81,7 +77,7 @@ class InputManager:
                 task.add_done_callback(functools.partial(self._evdev_close, event_device))
                 self._tasks.append(task)
 
-                self._logger.info('Opened event device %s', event_device)
+                self._logger.info("Opened event device %s", event_device)
 
             except Exception as err:
                 self._logger.exception("Failed to open device: %s", input_device, exc_info=err)
@@ -91,9 +87,8 @@ class InputManager:
 
         return self._opened
 
-
     async def _close_input_devices(self):
-        if not hasattr(self, '_opened') or not self._opened:
+        if not hasattr(self, "_opened") or not self._opened:
             return
 
         self._opened = False
@@ -110,7 +105,6 @@ class InputManager:
 
         await asyncio.wait(tasks, return_when=futures.ALL_COMPLETED)
         self._event_devices.clear()
-
 
     def add_callback(self, callback) -> bool:
         """
@@ -130,7 +124,6 @@ class InputManager:
         self._event_callbacks.append(callback)
         return True
 
-
     async def remove_callback(self, callback):
         """
         Removes a previously registered callback
@@ -145,14 +138,12 @@ class InputManager:
         if not self._event_callbacks:
             await self._close_input_devices()
 
-
     async def shutdown(self):
         """
         Shuts down the InputManager and disconnects any active callbacks
         """
         for callback in self._event_callbacks:
             await ensure_future(self.remove_callback(callback))
-
 
     def grab(self, excl: bool):
         """
@@ -174,14 +165,12 @@ class InputManager:
             else:
                 event_device.ungrab()
 
-
     @property
     def input_devices(self):
         """
         List of input devices associated with the parent device
         """
         return self._input_devices
-
 
     def __del__(self):
         self.shutdown()

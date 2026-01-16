@@ -19,12 +19,11 @@ from uchroma.color import ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorTrait
 
-
 DEFAULT_SPEED = 6
 MAX_SPEED = 9
 EXPIRE_TIME_FACTOR = 0.25
 
-REACT_COLOR_KEY = 'reaction_color'
+REACT_COLOR_KEY = "reaction_color"
 
 
 class Reaction(Renderer):
@@ -35,10 +34,8 @@ class Reaction(Renderer):
      - color: the color the key will change to when pressed
      - speed: (1 - 9) how fast the keys will change back. 9 is the fastest.
     """
-    meta = RendererMeta('Reaction',
-                        'Keys change color when pressed',
-                        'Ryan Burns',
-                        '1.0')
+
+    meta = RendererMeta("Reaction", "Keys change color when pressed", "Ryan Burns", "1.0")
 
     # Configuration options
     speed = Int(default_value=DEFAULT_SPEED, min=1, max=MAX_SPEED).tag(config=True)
@@ -51,13 +48,13 @@ class Reaction(Renderer):
 
         # It seems like observers can be called before __init__
         # How is this possible?
-        if not hasattr(self, 'init_speed'):
+        if not hasattr(self, "init_speed"):
             self._set_speed(DEFAULT_SPEED)
 
-        if not hasattr(self, 'init_colors'):
+        if not hasattr(self, "init_colors"):
             self._set_colors("#000000", "#FFFFFF")
 
-    @observe('speed')
+    @observe("speed")
     def _change_speed(self, change):
         """
         responds to speed changes made by the user
@@ -70,8 +67,7 @@ class Reaction(Renderer):
         self.key_expire_time = expire * EXPIRE_TIME_FACTOR
 
     def _set_colors(self, bg_color, color):
-        self._gradient = ColorUtils.color_scheme(
-            color=color, base_color=bg_color, steps=100)
+        self._gradient = ColorUtils.color_scheme(color=color, base_color=bg_color, steps=100)
         self._gradient_count = len(self._gradient)
 
     def _process_events(self, layer, events):
@@ -85,7 +81,7 @@ class Reaction(Renderer):
             if REACT_COLOR_KEY not in events:
                 # percent_complete appears to go from 1 to 0.
                 # perhaps it should be renamed percent_remaining?
-                idx = int(self._gradient_count - (event.percent_complete*self._gradient_count))
+                idx = int(self._gradient_count - (event.percent_complete * self._gradient_count))
                 if event.percent_complete <= 0.15:
                     # TODO: Is there a better way to know if this will be
                     # the last event for this key press?
@@ -100,7 +96,7 @@ class Reaction(Renderer):
         updates all the coordinates for an event with the appropriate color
         """
         if event.coords is None or len(event.coords) == 0:
-            self.logger.error('No coordinates available: %s', event)
+            self.logger.error("No coordinates available: %s", event)
             return
 
         react_color = event.data[REACT_COLOR_KEY]
@@ -119,7 +115,7 @@ class Reaction(Renderer):
             return True
         return False
 
-    @observe('background_color', 'color')
+    @observe("background_color", "color")
     def _update_colors(self, change=None):
         """
         responds to color changes made by the user

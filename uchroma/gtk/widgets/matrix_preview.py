@@ -7,20 +7,19 @@ Animated LED matrix visualization using Cairo.
 import math
 
 import cairo
-
 import gi
-gi.require_version('Gtk', '4.0')
-gi.require_version('Gdk', '4.0')
 
-from gi.repository import Gdk, GLib, Gtk
+gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 
 import numpy as np
+from gi.repository import Gtk
 
 
 class MatrixPreview(Gtk.DrawingArea):
     """Animated LED matrix preview with glow effects."""
 
-    __gtype_name__ = 'UChromaMatrixPreview'
+    __gtype_name__ = "UChromaMatrixPreview"
 
     # SilkCircuit colors
     BACKGROUND = (0.05, 0.05, 0.05)
@@ -47,7 +46,7 @@ class MatrixPreview(Gtk.DrawingArea):
         self.set_draw_func(self._draw)
 
         # Styling
-        self.add_css_class('matrix-preview')
+        self.add_css_class("matrix-preview")
 
     def set_matrix_size(self, rows: int, cols: int):
         """Update matrix dimensions."""
@@ -91,7 +90,11 @@ class MatrixPreview(Gtk.DrawingArea):
                 y = padding + row * cell_h
 
                 # Get color
-                if self.frame_data is not None and row < self.frame_data.shape[0] and col < self.frame_data.shape[1]:
+                if (
+                    self.frame_data is not None
+                    and row < self.frame_data.shape[0]
+                    and col < self.frame_data.shape[1]
+                ):
                     pixel = self.frame_data[row, col]
                     if self.frame_data.dtype == np.uint8:
                         r, g, b = pixel[0] / 255, pixel[1] / 255, pixel[2] / 255
@@ -161,21 +164,31 @@ class MatrixPreview(Gtk.DrawingArea):
         # Main cell color
         cr.set_source_rgb(r, g, b)
         inset = gap + 1
-        self._rounded_rect(cr, x + inset, y + inset, cell_w - inset * 2, cell_h - inset * 2, radius - 1)
+        self._rounded_rect(
+            cr, x + inset, y + inset, cell_w - inset * 2, cell_h - inset * 2, radius - 1
+        )
         cr.fill()
 
         # Highlight (top-left shine)
         if r + g + b > 0.2:
             cr.set_source_rgba(1, 1, 1, 0.15)
-            self._rounded_rect(cr, x + inset, y + inset, (cell_w - inset * 2) * 0.6, (cell_h - inset * 2) * 0.4, radius - 1)
+            self._rounded_rect(
+                cr,
+                x + inset,
+                y + inset,
+                (cell_w - inset * 2) * 0.6,
+                (cell_h - inset * 2) * 0.4,
+                radius - 1,
+            )
             cr.fill()
 
     def _draw_border(self, cr, width, height, padding):
         """Draw subtle border frame."""
         cr.set_source_rgba(1, 1, 1, 0.05)
         cr.set_line_width(1)
-        self._rounded_rect(cr, padding - 2, padding - 2,
-                          width - padding * 2 + 4, height - padding * 2 + 4, 8)
+        self._rounded_rect(
+            cr, padding - 2, padding - 2, width - padding * 2 + 4, height - padding * 2 + 4, 8
+        )
         cr.stroke()
 
     def _rounded_rect(self, cr, x, y, w, h, r):

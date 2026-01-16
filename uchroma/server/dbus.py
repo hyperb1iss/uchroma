@@ -39,10 +39,10 @@ from .types import LEDType
 
 
 def dev_mode_enabled():
-    return os.environ.get('UCHROMA_DEV') is not None
+    return os.environ.get("UCHROMA_DEV") is not None
 
 
-BUS_NAME = 'org.chemlab.UChroma'
+BUS_NAME = "org.chemlab.UChroma"
 
 
 class DeviceInterface(ServiceInterface):
@@ -51,7 +51,7 @@ class DeviceInterface(ServiceInterface):
     """
 
     def __init__(self, driver, device_api):
-        super().__init__('org.chemlab.UChroma.Device')
+        super().__init__("org.chemlab.UChroma.Device")
         self._driver = driver
         self._device_api = device_api
         self._logger = driver.logger
@@ -61,111 +61,111 @@ class DeviceInterface(ServiceInterface):
 
     # Read-only properties
     @dbus_property(access=PropertyAccess.READ)
-    def Name(self) -> 's':
-        return self._driver.name or ''
+    def Name(self) -> "s":
+        return self._driver.name or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def DeviceType(self) -> 's':
+    def DeviceType(self) -> "s":
         dt = self._driver.device_type
         return dt.name.lower() if isinstance(dt, Enum) else str(dt)
 
     @dbus_property(access=PropertyAccess.READ)
-    def DriverVersion(self) -> 's':
-        return getattr(self._driver, 'driver_version', '') or ''
+    def DriverVersion(self) -> "s":
+        return getattr(self._driver, "driver_version", "") or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def FirmwareVersion(self) -> 's':
-        return getattr(self._driver, 'firmware_version', '') or ''
+    def FirmwareVersion(self) -> "s":
+        return getattr(self._driver, "firmware_version", "") or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def SerialNumber(self) -> 's':
-        return getattr(self._driver, 'serial_number', '') or ''
+    def SerialNumber(self) -> "s":
+        return getattr(self._driver, "serial_number", "") or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def Manufacturer(self) -> 's':
-        return getattr(self._driver, 'manufacturer', '') or ''
+    def Manufacturer(self) -> "s":
+        return getattr(self._driver, "manufacturer", "") or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def VendorId(self) -> 'u':
+    def VendorId(self) -> "u":
         return self._driver.vendor_id or 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def ProductId(self) -> 'u':
+    def ProductId(self) -> "u":
         return self._driver.product_id or 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def DeviceIndex(self) -> 'u':
-        return getattr(self._driver, 'device_index', 0) or 0
+    def DeviceIndex(self) -> "u":
+        return getattr(self._driver, "device_index", 0) or 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def HasMatrix(self) -> 'b':
-        return getattr(self._driver, 'has_matrix', False)
+    def HasMatrix(self) -> "b":
+        return getattr(self._driver, "has_matrix", False)
 
     @dbus_property(access=PropertyAccess.READ)
-    def Width(self) -> 'i':
-        return getattr(self._driver, 'width', 0) or 0
+    def Width(self) -> "i":
+        return getattr(self._driver, "width", 0) or 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def Height(self) -> 'i':
-        return getattr(self._driver, 'height', 0) or 0
+    def Height(self) -> "i":
+        return getattr(self._driver, "height", 0) or 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def SysPath(self) -> 's':
-        return getattr(self._driver, 'sys_path', '') or ''
+    def SysPath(self) -> "s":
+        return getattr(self._driver, "sys_path", "") or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def Key(self) -> 's':
-        return getattr(self._driver, 'key', '') or ''
+    def Key(self) -> "s":
+        return getattr(self._driver, "key", "") or ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def BusPath(self) -> 'o':
+    def BusPath(self) -> "o":
         return self._device_api.bus_path
 
     @dbus_property(access=PropertyAccess.READ)
-    def IsWireless(self) -> 'b':
-        return getattr(self._driver, 'is_wireless', False)
+    def IsWireless(self) -> "b":
+        return getattr(self._driver, "is_wireless", False)
 
     @dbus_property(access=PropertyAccess.READ)
-    def IsCharging(self) -> 'b':
-        return getattr(self._driver, 'is_charging', False)
+    def IsCharging(self) -> "b":
+        return getattr(self._driver, "is_charging", False)
 
     @dbus_property(access=PropertyAccess.READ)
-    def BatteryLevel(self) -> 'd':
-        return getattr(self._driver, 'battery_level', 0.0) or 0.0
+    def BatteryLevel(self) -> "d":
+        return getattr(self._driver, "battery_level", 0.0) or 0.0
 
     @dbus_property(access=PropertyAccess.READ)
-    def SupportedLeds(self) -> 'as':
-        leds = getattr(self._driver, 'supported_leds', [])
+    def SupportedLeds(self) -> "as":
+        leds = getattr(self._driver, "supported_leds", [])
         return [x.name.lower() for x in leds]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Zones(self) -> 'as':
-        zones = getattr(self._driver, 'zones', [])
+    def Zones(self) -> "as":
+        zones = getattr(self._driver, "zones", [])
         if isinstance(zones, (list, tuple)):
             return [str(z) for z in zones]
         return []
 
     # Read-write properties
     @dbus_property()
-    def Brightness(self) -> 'd':
-        return getattr(self._driver, 'brightness', 0.0) or 0.0
+    def Brightness(self) -> "d":
+        return getattr(self._driver, "brightness", 0.0) or 0.0
 
     @Brightness.setter
-    def Brightness(self, value: 'd'):
+    def Brightness(self, value: "d"):
         if value < 0.0 or value > 100.0:
             return
         old = self._driver.brightness
         self._driver.brightness = value
         if old != self._driver.brightness:
-            self.emit_properties_changed({'Brightness': value})
+            self.emit_properties_changed({"Brightness": value})
 
     @dbus_property()
-    def Suspended(self) -> 'b':
-        return getattr(self._driver, 'suspended', False)
+    def Suspended(self) -> "b":
+        return getattr(self._driver, "suspended", False)
 
     @Suspended.setter
-    def Suspended(self, value: 'b'):
-        current = getattr(self._driver, 'suspended', False)
+    def Suspended(self, value: "b"):
+        current = getattr(self._driver, "suspended", False)
         if value == current:
             return
         if value:
@@ -173,20 +173,21 @@ class DeviceInterface(ServiceInterface):
         else:
             self._driver.resume()
         if current != self._driver.suspended:
-            self.emit_properties_changed({'Suspended': self._driver.suspended})
+            self.emit_properties_changed({"Suspended": self._driver.suspended})
 
     @method()
     def Reset(self):
         self._driver.reset()
 
     @signal()
-    def PropertiesChanged(self, interface_name: 's', changed_properties: 'a{sv}',
-                          invalidated_properties: 'as') -> 'sa{sv}as':
+    def PropertiesChanged(
+        self, interface_name: "s", changed_properties: "a{sv}", invalidated_properties: "as"
+    ) -> "sa{sv}as":
         return [interface_name, changed_properties, invalidated_properties]
 
     def emit_properties_changed(self, changed: dict):
-        props = {k: Variant('d' if isinstance(v, float) else 'b', v) for k, v in changed.items()}
-        self.PropertiesChanged('org.chemlab.UChroma.Device', props, [])
+        props = {k: Variant("d" if isinstance(v, float) else "b", v) for k, v in changed.items()}
+        self.PropertiesChanged("org.chemlab.UChroma.Device", props, [])
 
 
 class LEDManagerInterface(ServiceInterface):
@@ -195,7 +196,7 @@ class LEDManagerInterface(ServiceInterface):
     """
 
     def __init__(self, driver):
-        super().__init__('org.chemlab.UChroma.LEDManager')
+        super().__init__("org.chemlab.UChroma.LEDManager")
         self._driver = driver
         self._logger = driver.logger
         self._driver.led_manager.led_changed.connect(self._led_changed)
@@ -204,17 +205,17 @@ class LEDManagerInterface(ServiceInterface):
         self.LEDChanged(led.led_type.name.lower())
 
     @dbus_property(access=PropertyAccess.READ)
-    def AvailableLEDs(self) -> 'a{sa{sv}}':
+    def AvailableLEDs(self) -> "a{sa{sv}}":
         leds = {}
         for led in self._driver.led_manager.supported_leds:
             led_obj = self._driver.led_manager.get(led)
-            traits = led_obj._trait_values if hasattr(led_obj, '_trait_values') else {}
+            traits = led_obj._trait_values if hasattr(led_obj, "_trait_values") else {}
             # Inner dict values need to be Variants for a{sv} signature
             leds[led.name.lower()] = dbus_prepare(traits, variant=True)[0]
         return leds
 
     @method()
-    def GetLED(self, name: 's') -> 'a{sv}':
+    def GetLED(self, name: "s") -> "a{sv}":
         try:
             ledtype = LEDType[name.upper()]
         except KeyError:
@@ -224,7 +225,7 @@ class LEDManagerInterface(ServiceInterface):
         return dbus_prepare(led._trait_values, variant=True)[0]
 
     @method()
-    def SetLED(self, name: 's', properties: 'a{sv}') -> 'b':
+    def SetLED(self, name: "s", properties: "a{sv}") -> "b":
         try:
             ledtype = LEDType[name.upper()]
         except KeyError:
@@ -233,7 +234,7 @@ class LEDManagerInterface(ServiceInterface):
 
         led = self._driver.led_manager.get(ledtype)
         with led.hold_trait_notifications():
-            self._logger.debug('Set LED property [%s]: %s', ledtype, properties)
+            self._logger.debug("Set LED property [%s]: %s", ledtype, properties)
             for k, v in properties.items():
                 if led.has_trait(k):
                     # Extract value from Variant if needed
@@ -242,7 +243,7 @@ class LEDManagerInterface(ServiceInterface):
         return True
 
     @signal()
-    def LEDChanged(self, led: 's') -> 's':
+    def LEDChanged(self, led: "s") -> "s":
         return led
 
 
@@ -252,7 +253,7 @@ class FXManagerInterface(ServiceInterface):
     """
 
     def __init__(self, driver):
-        super().__init__('org.chemlab.UChroma.FXManager')
+        super().__init__("org.chemlab.UChroma.FXManager")
         self._driver = driver
         self._logger = driver.logger
         self._fx_manager = driver.fx_manager
@@ -263,41 +264,45 @@ class FXManagerInterface(ServiceInterface):
         for fx_name, fx_class in self._fx_manager.available_fx.items():
             # Use trait_as_dict to serialize class traits without instantiating
             from uchroma.traits import trait_as_dict
+
             fx_traits = {}
             for trait_name, trait in fx_class.class_traits().items():
                 trait_dict = trait_as_dict(trait)
                 if trait_dict:
                     obj, sig = dbus_prepare(trait_dict, variant=True)
-                    fx_traits[trait_name] = Variant('a{sv}', obj)
+                    fx_traits[trait_name] = Variant("a{sv}", obj)
             self._available_fx[fx_name] = fx_traits
 
-        self._fx_manager.observe(self._fx_changed, names=['current_fx'])
+        self._fx_manager.observe(self._fx_changed, names=["current_fx"])
 
     def _fx_changed(self, change):
         self._logger.info("Effects changed: %s", change)
-        self._current_fx = (change.new[0].lower(),
-                           dbus_prepare(change.new[1]._trait_values, variant=True)[0])
-        self.emit_properties_changed({'CurrentFX': self.CurrentFX})
+        self._current_fx = (
+            change.new[0].lower(),
+            dbus_prepare(change.new[1]._trait_values, variant=True)[0],
+        )
+        self.emit_properties_changed({"CurrentFX": self.CurrentFX})
 
     @dbus_property(access=PropertyAccess.READ)
-    def AvailableFX(self) -> 'a{sa{sv}}':
+    def AvailableFX(self) -> "a{sa{sv}}":
         return self._available_fx
 
     @dbus_property(access=PropertyAccess.READ)
-    def CurrentFX(self) -> '(sa{sv})':
+    def CurrentFX(self) -> "(sa{sv})":
         if self._current_fx is None:
-            return ('disable', {})
+            return ("disable", {})
         return self._current_fx
 
     @method()
-    def SetFX(self, name: 's', args: 'a{sv}') -> 'b':
+    def SetFX(self, name: "s", args: "a{sv}") -> "b":
         # Extract values from variants
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in args.items()}
         return self._fx_manager.activate(name, **kwargs)
 
     @signal()
-    def PropertiesChanged(self, interface_name: 's', changed_properties: 'a{sv}',
-                          invalidated_properties: 'as') -> 'sa{sv}as':
+    def PropertiesChanged(
+        self, interface_name: "s", changed_properties: "a{sv}", invalidated_properties: "as"
+    ) -> "sa{sv}as":
         return [interface_name, changed_properties, invalidated_properties]
 
     def emit_properties_changed(self, changed: dict):
@@ -305,10 +310,10 @@ class FXManagerInterface(ServiceInterface):
         props = {}
         for k, v in changed.items():
             if isinstance(v, tuple) and len(v) == 2:
-                props[k] = Variant('(sa{sv})', v)
+                props[k] = Variant("(sa{sv})", v)
             else:
-                props[k] = Variant('s', str(v))
-        self.PropertiesChanged('org.chemlab.UChroma.FXManager', props, [])
+                props[k] = Variant("s", str(v))
+        self.PropertiesChanged("org.chemlab.UChroma.FXManager", props, [])
 
 
 class AnimationManagerInterface(ServiceInterface):
@@ -317,7 +322,7 @@ class AnimationManagerInterface(ServiceInterface):
     """
 
     def __init__(self, driver, device_api):
-        super().__init__('org.chemlab.UChroma.AnimationManager')
+        super().__init__("org.chemlab.UChroma.AnimationManager")
         self._driver = driver
         self._device_api = device_api
         self._logger = driver.logger
@@ -329,43 +334,45 @@ class AnimationManagerInterface(ServiceInterface):
         self._animgr.state_changed.connect(self._state_changed)
 
     def _layers_changed(self, action, zindex=None, layer=None):
-        if action == 'add' and layer is not None:
+        if action == "add" and layer is not None:
             layer_info = {
-                'type': '%s.%s' % (layer.__class__.__module__, layer.__class__.__name__),
-                'zindex': layer.zindex,
-                'layer': layer
+                "type": "%s.%s" % (layer.__class__.__module__, layer.__class__.__name__),
+                "zindex": layer.zindex,
+                "layer": layer,
             }
             self._layers.append(layer_info)
 
-        self.emit_properties_changed({'CurrentRenderers': self.CurrentRenderers})
+        self.emit_properties_changed({"CurrentRenderers": self.CurrentRenderers})
 
     def _state_changed(self, state):
         self._state = state
         self._logger.debug("_state_changed: %s", state)
-        self.emit_properties_changed({'AnimationState': state})
+        self.emit_properties_changed({"AnimationState": state})
 
     @dbus_property(access=PropertyAccess.READ)
-    def AvailableRenderers(self) -> 'a{sa{sv}}':
+    def AvailableRenderers(self) -> "a{sa{sv}}":
         avail = {}
         infos = self._animgr.renderer_info
         for key, info in infos.items():
             # Inner dict values need to be Variants for a{sv} signature
-            avail[key] = dbus_prepare({'meta': info.meta, 'traits': info.traits}, variant=True)[0]
+            avail[key] = dbus_prepare({"meta": info.meta, "traits": info.traits}, variant=True)[0]
         return avail
 
     @dbus_property(access=PropertyAccess.READ)
-    def CurrentRenderers(self) -> 'a(so)':
+    def CurrentRenderers(self) -> "a(so)":
         path = self._device_api.bus_path
-        return [(info['type'], '%s/layer/%d' % (path, info['zindex']))
-                for info in sorted(self._layers, key=lambda z: z['zindex'])]
+        return [
+            (info["type"], "%s/layer/%d" % (path, info["zindex"]))
+            for info in sorted(self._layers, key=lambda z: z["zindex"])
+        ]
 
     @dbus_property(access=PropertyAccess.READ)
-    def AnimationState(self) -> 's':
-        return self._state or ''
+    def AnimationState(self) -> "s":
+        return self._state or ""
 
     @method()
-    def AddRenderer(self, name: 's', zindex: 'i', traits: 'a{sv}') -> 'o':
-        self._logger.debug('AddRenderer: name=%s zindex=%d traits=%s', name, zindex, traits)
+    def AddRenderer(self, name: "s", zindex: "i", traits: "a{sv}") -> "o":
+        self._logger.debug("AddRenderer: name=%s zindex=%d traits=%s", name, zindex, traits)
         if zindex < 0:
             zindex = None
 
@@ -373,34 +380,35 @@ class AnimationManagerInterface(ServiceInterface):
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in traits.items()}
         z = self._animgr.add_renderer(name, traits=kwargs, zindex=zindex)
         if z >= 0:
-            return '%s/layer/%d' % (self._device_api.bus_path, z)
-        return '/'
+            return "%s/layer/%d" % (self._device_api.bus_path, z)
+        return "/"
 
     @method()
-    def RemoveRenderer(self, zindex: 'i') -> 'b':
+    def RemoveRenderer(self, zindex: "i") -> "b":
         return self._animgr.remove_renderer(zindex)
 
     @method()
-    def StopAnimation(self) -> 'b':
+    def StopAnimation(self) -> "b":
         return self._animgr.stop()
 
     @method()
-    def PauseAnimation(self) -> 'b':
+    def PauseAnimation(self) -> "b":
         return self._animgr.pause()
 
     @signal()
-    def PropertiesChanged(self, interface_name: 's', changed_properties: 'a{sv}',
-                          invalidated_properties: 'as') -> 'sa{sv}as':
+    def PropertiesChanged(
+        self, interface_name: "s", changed_properties: "a{sv}", invalidated_properties: "as"
+    ) -> "sa{sv}as":
         return [interface_name, changed_properties, invalidated_properties]
 
     def emit_properties_changed(self, changed: dict):
         props = {}
         for k, v in changed.items():
             if isinstance(v, list):
-                props[k] = Variant('a(so)', v)
+                props[k] = Variant("a(so)", v)
             else:
-                props[k] = Variant('s', str(v))
-        self.PropertiesChanged('org.chemlab.UChroma.AnimationManager', props, [])
+                props[k] = Variant("s", str(v))
+        self.PropertiesChanged("org.chemlab.UChroma.AnimationManager", props, [])
 
 
 class DeviceManagerInterface(ServiceInterface):
@@ -409,18 +417,18 @@ class DeviceManagerInterface(ServiceInterface):
     """
 
     def __init__(self):
-        super().__init__('org.chemlab.UChroma.DeviceManager')
+        super().__init__("org.chemlab.UChroma.DeviceManager")
         self._device_paths = []
 
     def set_device_paths(self, paths: list):
         self._device_paths = paths
 
     @method()
-    def GetDevices(self) -> 'ao':
+    def GetDevices(self) -> "ao":
         return self._device_paths
 
     @signal()
-    def DevicesChanged(self, action: 's', device: 'o') -> 'so':
+    def DevicesChanged(self, action: "s", device: "o") -> "so":
         return [action, device]
 
 
@@ -440,9 +448,12 @@ class DeviceAPI:
 
     @property
     def bus_path(self):
-        return '/org/chemlab/UChroma/%s/%04x_%04x_%02d' % (
-            self._driver.device_type.value, self._driver.vendor_id,
-            self._driver.product_id, self._driver.device_index)
+        return "/org/chemlab/UChroma/%s/%04x_%04x_%02d" % (
+            self._driver.device_type.value,
+            self._driver.vendor_id,
+            self._driver.product_id,
+            self._driver.device_index,
+        )
 
     @property
     def driver(self):
@@ -457,13 +468,16 @@ class DeviceAPI:
         self._interfaces.append(device_iface)
 
         # Add optional manager interfaces
-        if hasattr(self._driver, 'fx_manager') and self._driver.fx_manager is not None:
+        if hasattr(self._driver, "fx_manager") and self._driver.fx_manager is not None:
             self._interfaces.append(FXManagerInterface(self._driver))
 
-        if hasattr(self._driver, 'animation_manager') and self._driver.animation_manager is not None:
+        if (
+            hasattr(self._driver, "animation_manager")
+            and self._driver.animation_manager is not None
+        ):
             self._interfaces.append(AnimationManagerInterface(self._driver, self))
 
-        if hasattr(self._driver, 'led_manager') and self._driver.led_manager is not None:
+        if hasattr(self._driver, "led_manager") and self._driver.led_manager is not None:
             self._interfaces.append(LEDManagerInterface(self._driver))
 
         # Export all interfaces on same path
@@ -521,15 +535,15 @@ class DeviceManagerAPI:
             self._manager_iface.set_device_paths([x.bus_path for x in self._devs.values()])
 
     async def _dm_callback(self, action, device):
-        self._logger.info('%s: %s', action, device)
+        self._logger.info("%s: %s", action, device)
 
         path = None
 
-        if action == 'add':
+        if action == "add":
             path = self._publish_device(device)
             device.fire_restore_prefs()
 
-        elif action == 'remove':
+        elif action == "remove":
             path = self._unpublish_device(device)
 
         else:
@@ -546,7 +560,7 @@ class DeviceManagerAPI:
 
         # Create and export manager interface
         self._manager_iface = DeviceManagerInterface()
-        self._bus.export('/org/chemlab/UChroma', self._manager_iface)
+        self._bus.export("/org/chemlab/UChroma", self._manager_iface)
 
         # Request the bus name
         await self._bus.request_name(BUS_NAME)

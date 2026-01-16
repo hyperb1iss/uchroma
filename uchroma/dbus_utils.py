@@ -27,9 +27,15 @@ from uchroma.log import Log
 from uchroma.traits import ColorSchemeTrait, ColorTrait, class_traits_as_dict, trait_as_dict
 from uchroma.util import camel_to_snake, snake_to_camel
 
-ArgSpec = NamedTuple('ArgSpec', [('direction', str), ('name', str), ('type', str)])
 
-logger = Log.get('uchroma.util')
+class ArgSpec(NamedTuple):
+    direction: str
+    name: str
+    type: str
+
+
+logger = Log.get("uchroma.util")
+
 
 def _check_variance(items: list):
     if len(items) == 0:
@@ -43,7 +49,7 @@ def _check_variance(items: list):
     return not all(dbus_prepare(x)[1] == first_sig for x in items)
 
 
-def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
+def dbus_prepare(obj, variant: bool = False, camel_keys: bool = False) -> tuple:
     """
     Recursively walks obj and builds a D-Bus signature
     by inspecting types. Variant types are created as
@@ -53,32 +59,32 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
     :param variant: Force wrapping contained objects with variants
     :param camel_keys: Convert dict keys to CamelCase
     """
-    sig = ''
+    sig = ""
     use_variant = variant
 
     try:
         if isinstance(obj, Variant):
-            sig = 'v'
+            sig = "v"
 
         elif isinstance(obj, bool):
-            sig = 'b'
+            sig = "b"
 
         elif isinstance(obj, str):
-            sig = 's'
+            sig = "s"
 
         elif isinstance(obj, int):
             if obj < pow(2, 16):
-                sig = 'n'
+                sig = "n"
             elif obj < pow(2, 32):
-                sig = 'i'
+                sig = "i"
             else:
-                sig = 'x'
+                sig = "x"
 
         elif isinstance(obj, float):
-            sig = 'd'
+            sig = "d"
 
         elif isinstance(obj, Color):
-            sig = 's'
+            sig = "s"
             obj = obj.html
 
         elif isinstance(obj, TraitType):
@@ -87,29 +93,31 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
         elif isinstance(obj, HasTraits):
             obj, sig = dbus_prepare(class_traits_as_dict(obj), variant=True)
 
-        elif hasattr(obj, '_asdict') and (hasattr(obj, '_field_types') or hasattr(obj, '__annotations__')):
+        elif hasattr(obj, "_asdict") and (
+            hasattr(obj, "_field_types") or hasattr(obj, "__annotations__")
+        ):
             # typing.NamedTuple (Python 3.13+ uses __annotations__, older used _field_types)
             obj, sig = dbus_prepare(obj._asdict(), variant=True)
 
         elif isinstance(obj, type) and issubclass(obj, enum.Enum):
             # top level enum, tuple of string keys
             obj = tuple(obj.__members__.keys())
-            sig = '(%s)' % ('s' * len(obj))
+            sig = "(%s)" % ("s" * len(obj))
 
         elif isinstance(obj, enum.Enum):
             obj = obj.name
-            sig = 's'
+            sig = "s"
 
         elif isinstance(obj, np.ndarray):
             dtype = obj.dtype.kind
-            if dtype == 'f':
-                dtype = 'd'
-            sig = 'a' * obj.ndim + dtype
+            if dtype == "f":
+                dtype = "d"
+            sig = "a" * obj.ndim + dtype
             obj = obj.tolist()
 
         elif isinstance(obj, tuple):
             tmp = []
-            sig = '('
+            sig = "("
 
             for item in obj:
                 if item is None and use_variant:
@@ -121,15 +129,15 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
                 sig += r_sig
                 tmp.append(r_obj)
             if len(tmp) > 0:
-                sig += ')'
+                sig += ")"
                 obj = tuple(tmp)
             else:
-                sig = ''
+                sig = ""
                 obj = None
 
         elif isinstance(obj, list):
             tmp = []
-            sig = 'a'
+            sig = "a"
             is_variant = use_variant or _check_variance(obj)
 
             for item in obj:
@@ -142,7 +150,7 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
                 tmp.append(r_obj)
 
             if is_variant:
-                sig += 'v'
+                sig += "v"
             else:
                 sig += dbus_prepare(tmp[0])[1]
 
@@ -153,7 +161,7 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
                 tmp = {}
             else:
                 tmp = obj.__class__()
-            sig = 'a{s'
+            sig = "a{s"
             vals = [x for x in obj.values() if x is not None]
             is_variant = use_variant or _check_variance(vals)
 
@@ -171,31 +179,32 @@ def dbus_prepare(obj, variant: bool=False, camel_keys: bool=False) -> tuple:
                     tmp[k] = r_obj
 
             if is_variant:
-                sig += 'v'
+                sig += "v"
             else:
                 sig += dbus_prepare(vals[0])[1]
 
             obj = tmp
-            sig += '}'
+            sig += "}"
 
         elif isinstance(obj, type):
             obj = obj.__name__
-            sig = 's'
+            sig = "s"
 
     except Exception as err:
-        logger.exception('obj: %s  sig: %s variant: %s', obj, sig, variant, exc_info=err)
+        logger.exception("obj: %s  sig: %s variant: %s", obj, sig, variant, exc_info=err)
         raise
 
     return obj, sig
 
 
-class DescriptorBuilder(object):
+class DescriptorBuilder:
     """
     Helper class for creating D-BUS XML descriptors
 
     Introspects traitlets and generates XML descriptors dynamically.
     Useful for creating interfaces based on runtime class inspection.
     """
+
     def __init__(self, obj, interface_name, exclude=None):
         self._interface_name = interface_name
         self._obj = obj
@@ -208,34 +217,30 @@ class DescriptorBuilder(object):
         if isinstance(obj, HasTraits):
             self._parse_traits()
 
-
-    def add_property(self, name: str, signature: str, writable: bool=False):
+    def add_property(self, name: str, signature: str, writable: bool = False):
         if writable:
             self._rw_props[name] = signature
         else:
             self._ro_props[name] = signature
         return self
 
-
     def add_method(self, method, *argspecs):
         opts = {}
-        opts['name'] = method
+        opts["name"] = method
         if argspecs is not None and len(argspecs) > 0:
-            opts['args'] = argspecs
+            opts["args"] = argspecs
 
         self._methods.append(opts)
         return self
 
-
     def add_signal(self, signal, *argspecs):
         opts = {}
-        opts['name'] = signal
+        opts["name"] = signal
         if argspecs is not None and len(argspecs) > 0:
-            opts['args'] = argspecs
+            opts["args"] = argspecs
 
         self._signals.append(opts)
         return self
-
 
     def _parse_traits(self):
         for name, trait in self._obj.traits().items():
@@ -247,57 +252,64 @@ class DescriptorBuilder(object):
                 sig = dbus_prepare(getattr(self._obj, name))[1]
 
             write_once = False
-            if hasattr(trait, 'write_once'):
+            if hasattr(trait, "write_once"):
                 write_once = trait.write_once
 
             self.add_property(snake_to_camel(name), sig, not (trait.read_only or write_once))
-
 
     def build(self) -> str:
         val = "<node>\n  <interface name='%s'>\n" % self._interface_name
 
         for name, sig in self._ro_props.items():
-            val += "    <property name='%s' type='%s' access='read' />\n" % \
-                (snake_to_camel(name), sig)
+            val += "    <property name='%s' type='%s' access='read' />\n" % (
+                snake_to_camel(name),
+                sig,
+            )
 
         for name, sig in self._rw_props.items():
-            val += "    <property name='%s' type='%s' access='readwrite'>\n" % \
-                (snake_to_camel(name), sig)
+            val += "    <property name='%s' type='%s' access='readwrite'>\n" % (
+                snake_to_camel(name),
+                sig,
+            )
             val += "      <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='true' />\n"
             val += "    </property>\n"
 
         for method in self._methods:
-            name = snake_to_camel(method['name'])
-            if 'args' not in method:
+            name = snake_to_camel(method["name"])
+            if "args" not in method:
                 val += "    <method name='%s' />\n" % name
             else:
                 val += "    <method name='%s'>\n" % name
-                for argspec in method['args']:
-                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % \
-                        (argspec.direction, argspec.type, argspec.name)
+                for argspec in method["args"]:
+                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % (
+                        argspec.direction,
+                        argspec.type,
+                        argspec.name,
+                    )
                 val += "    </method>\n"
 
         for signal in self._signals:
-            name = snake_to_camel(signal['name'])
-            if 'args' not in signal:
+            name = snake_to_camel(signal["name"])
+            if "args" not in signal:
                 val += "    <signal name='%s' />\n" % name
             else:
                 val += "    <signal name='%s'>\n" % name
-                for argspec in signal['args']:
-                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % \
-                        (argspec.direction, argspec.type, argspec.name)
+                for argspec in signal["args"]:
+                    val += "      <arg direction='%s' type='%s' name='%s' />\n" % (
+                        argspec.direction,
+                        argspec.type,
+                        argspec.name,
+                    )
                 val += "    </signal>\n"
-
 
         val += "  </interface>\n</node>"
 
         return val
 
 
-class TraitsPropertiesMixin(object):
+class TraitsPropertiesMixin:
     def __init__(self, *args, **kwargs):
         super(TraitsPropertiesMixin, self).__init__(*args, **kwargs)
-
 
     def __getattribute__(self, name):
         # Intercept everything and delegate to the device class by converting
@@ -312,14 +324,13 @@ class TraitsPropertiesMixin(object):
                 return [x.html for x in value]
             if isinstance(trait, ColorTrait):
                 if value is None or value is Undefined:
-                    return ''
+                    return ""
                 return value.html
-            if isinstance(trait, tuple) and hasattr(trait, '_asdict'):
+            if isinstance(trait, tuple) and hasattr(trait, "_asdict"):
                 return trait._asdict()
             return value
 
         return super(TraitsPropertiesMixin, self).__getattribute__(name)
-
 
     def __setattr__(self, name, value):
         prop_name = camel_to_snake(name)
@@ -327,4 +338,3 @@ class TraitsPropertiesMixin(object):
             return self._delegate.set_trait(prop_name, value)
 
         return super(TraitsPropertiesMixin, self).__setattr__(name, value)
-

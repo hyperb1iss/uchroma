@@ -24,59 +24,63 @@ class DeviceInfo:
     """
     Device info wrapper matching the old hidapi-cffi API.
     """
+
     def __init__(self, info_dict: dict):
         self._info = info_dict
 
     @property
     def path(self) -> bytes:
-        return self._info['path']
+        return self._info["path"]
 
     @property
     def vendor_id(self) -> int:
-        return self._info['vendor_id']
+        return self._info["vendor_id"]
 
     @property
     def product_id(self) -> int:
-        return self._info['product_id']
+        return self._info["product_id"]
 
     @property
     def serial_number(self) -> str:
-        return self._info.get('serial_number', '')
+        return self._info.get("serial_number", "")
 
     @property
     def release_number(self) -> int:
-        return self._info.get('release_number', 0)
+        return self._info.get("release_number", 0)
 
     @property
     def manufacturer_string(self) -> str:
-        return self._info.get('manufacturer_string', '')
+        return self._info.get("manufacturer_string", "")
 
     @property
     def product_string(self) -> str:
-        return self._info.get('product_string', '')
+        return self._info.get("product_string", "")
 
     @property
     def usage_page(self) -> int:
-        return self._info.get('usage_page', 0)
+        return self._info.get("usage_page", 0)
 
     @property
     def usage(self) -> int:
-        return self._info.get('usage', 0)
+        return self._info.get("usage", 0)
 
     @property
     def interface_number(self) -> int:
-        return self._info.get('interface_number', -1)
+        return self._info.get("interface_number", -1)
 
     def __repr__(self):
-        return (f"DeviceInfo(vendor_id=0x{self.vendor_id:04x}, "
-                f"product_id=0x{self.product_id:04x}, "
-                f"interface={self.interface_number})")
+        return (
+            f"DeviceInfo(vendor_id=0x{self.vendor_id:04x}, "
+            f"product_id=0x{self.product_id:04x}, "
+            f"interface={self.interface_number})"
+        )
 
 
 class Device:
     """
     HID device wrapper matching the old hidapi-cffi API.
     """
+
     def __init__(self, devinfo: DeviceInfo, blocking: bool = True):
         self._devinfo = devinfo
         self._blocking = blocking

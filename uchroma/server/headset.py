@@ -13,22 +13,20 @@
 
 # pylint: disable=protected-access
 
-from uchroma.server import hidadapter as hidapi
-
 from traitlets import Unicode
 from wrapt import synchronized
 
 from uchroma.color import to_color, to_rgb
 from uchroma.log import LOG_PROTOCOL_TRACE
+from uchroma.server import hidadapter as hidapi
 from uchroma.traits import ColorSchemeTrait, ColorTrait
-from uchroma.util import smart_delay, set_bits, scale_brightness, test_bit, to_byte
+from uchroma.util import scale_brightness, set_bits, smart_delay, test_bit, to_byte
 
 from .byte_args import ByteArgs
 from .device_base import BaseUChromaDevice
 from .fx import BaseFX, FXManager, FXModule
 from .hardware import Hardware
 from .types import BaseCommand
-
 
 # Output report 4, input report 5
 REPORT_ID_OUT = 4
@@ -46,7 +44,7 @@ WRITE_RAM = 0x40
 
 # EEPROM
 ADDR_FIRMWARE_VERSION = 0x0030
-ADDR_SERIAL_NUMBER = 0x7f00
+ADDR_SERIAL_NUMBER = 0x7F00
 
 # RAM
 ADDR_KYLIE_LED_MODE = 0x172D
@@ -64,6 +62,7 @@ class EffectBits:
     integer. This class assists with managing the bits of
     this value.
     """
+
     def __init__(self, value: int = 0):
         self.on = test_bit(value, 0)
         self.breathe_single = test_bit(value, 1)
@@ -72,15 +71,20 @@ class EffectBits:
         self.breathe_double = test_bit(value, 4)
         self.breathe_triple = test_bit(value, 5)
 
-
     @property
     def value(self) -> int:
         """
         Return the state as an integer
         """
-        return set_bits(0, self.on, self.breathe_single, self.spectrum,
-                        self.sync, self.breathe_double, self.breathe_triple)
-
+        return set_bits(
+            0,
+            self.on,
+            self.breathe_single,
+            self.spectrum,
+            self.sync,
+            self.breathe_double,
+            self.breathe_triple,
+        )
 
     @property
     def color_count(self) -> int:
@@ -99,13 +103,11 @@ class EffectBits:
 
 
 class KrakenFX(FXModule):
-
     def __init__(self, *args, **kwargs):
         super(KrakenFX, self).__init__(*args, **kwargs)
 
-
     class DisableFX(BaseFX):
-        description = Unicode('Disable all effects')
+        description = Unicode("Disable all effects")
 
         def apply(self) -> bool:
             """
@@ -117,9 +119,8 @@ class KrakenFX(FXModule):
             bits.spectrum = True
             return self._driver._set_led_mode(bits)
 
-
     class SpectrumFX(BaseFX):
-        description = Unicode('Cycle thru all colors of the spectrum')
+        description = Unicode("Cycle thru all colors of the spectrum")
 
         def apply(self) -> bool:
             """
@@ -131,10 +132,9 @@ class KrakenFX(FXModule):
             bits.on = bits.spectrum = True
             return self._driver._set_led_mode(bits)
 
-
     class StaticFX(BaseFX):
         description = Unicode("Static color")
-        color = ColorTrait(default_value='green').tag(config=True)
+        color = ColorTrait(default_value="green").tag(config=True)
 
         def apply(self) -> bool:
             """
@@ -152,10 +152,11 @@ class KrakenFX(FXModule):
 
             return False
 
-
     class BreatheFX(BaseFX):
-        description = Unicode('Colors pulse in and out')
-        colors = ColorSchemeTrait(minlen=1, maxlen=3, default_value=('red', 'green', 'blue')).tag(config=True)
+        description = Unicode("Colors pulse in and out")
+        colors = ColorSchemeTrait(minlen=1, maxlen=3, default_value=("red", "green", "blue")).tag(
+            config=True
+        )
 
         def apply(self) -> bool:
             """
@@ -185,7 +186,6 @@ class KrakenFX(FXModule):
             return False
 
 
-
 class UChromaHeadset(BaseUChromaDevice):
     """
     Additional functionality for Chroma Headsets
@@ -201,6 +201,7 @@ class UChromaHeadset(BaseUChromaDevice):
         1: Length
         2-3: Address
         """
+
         GET_SERIAL = (READ_EEPROM, 0x16, ADDR_SERIAL_NUMBER)
         GET_FIRMWARE_VERSION = (READ_EEPROM, 0x02, ADDR_FIRMWARE_VERSION)
 
@@ -220,33 +221,33 @@ class UChromaHeadset(BaseUChromaDevice):
         RAINIE_GET_RGB = (WRITE_RAM, 0x04, ADDR_RAINIE_BREATHING1_START)
         RAINIE_SET_RGB = (WRITE_RAM, 0x04, ADDR_RAINIE_BREATHING1_START)
 
-
         def __init__(self, destination, length, address):
             self._destination = destination
             self._length = length
             self._address = address
 
-
         @property
         def destination(self):
             return self._destination
-
 
         @property
         def length(self):
             return self._length
 
-
         @property
         def address(self):
             return self._address
 
-
-
-    def __init__(self, hardware: Hardware, devinfo: hidapi.DeviceInfo,
-                 devindex: int, sys_path: str, *args, **kwargs):
-        super(UChromaHeadset, self).__init__(hardware, devinfo, devindex,
-                                             sys_path, *args, **kwargs)
+    def __init__(
+        self,
+        hardware: Hardware,
+        devinfo: hidapi.DeviceInfo,
+        devindex: int,
+        sys_path: str,
+        *args,
+        **kwargs,
+    ):
+        super(UChromaHeadset, self).__init__(hardware, devinfo, devindex, sys_path, *args, **kwargs)
 
         self._last_cmd_time = None
 
@@ -259,26 +260,29 @@ class UChromaHeadset(BaseUChromaDevice):
         elif self.hardware.revision == 2:
             self._cmd_get_led = UChromaHeadset.Command.KYLIE_GET_LED_MODE
             self._cmd_set_led = UChromaHeadset.Command.KYLIE_SET_LED_MODE
-            self._cmd_get_rgb = [UChromaHeadset.Command.KYLIE_GET_RGB_1,
-                                 UChromaHeadset.Command.KYLIE_GET_RGB_2,
-                                 UChromaHeadset.Command.KYLIE_GET_RGB_3]
-            self._cmd_set_rgb = [UChromaHeadset.Command.KYLIE_SET_RGB_1,
-                                 UChromaHeadset.Command.KYLIE_SET_RGB_2,
-                                 UChromaHeadset.Command.KYLIE_SET_RGB_3]
+            self._cmd_get_rgb = [
+                UChromaHeadset.Command.KYLIE_GET_RGB_1,
+                UChromaHeadset.Command.KYLIE_GET_RGB_2,
+                UChromaHeadset.Command.KYLIE_GET_RGB_3,
+            ]
+            self._cmd_set_rgb = [
+                UChromaHeadset.Command.KYLIE_SET_RGB_1,
+                UChromaHeadset.Command.KYLIE_SET_RGB_2,
+                UChromaHeadset.Command.KYLIE_SET_RGB_3,
+            ]
         else:
-            raise ValueError('Incompatible model (%s)' % repr(self.hardware))
+            raise ValueError("Incompatible model (%s)" % repr(self.hardware))
 
         self._fx_manager = FXManager(self, KrakenFX(self))
         self._rgb = None
         self._mode = None
-
 
     @staticmethod
     def _pack_request(command: BaseCommand, *args) -> bytes:
         req = ByteArgs(REPORT_LENGTH_OUT)
         req.put(command.destination)
         req.put(command.length)
-        req.put(command.address, packing='>H')
+        req.put(command.address, packing=">H")
 
         if args is not None:
             for arg in args:
@@ -287,25 +291,22 @@ class UChromaHeadset(BaseUChromaDevice):
 
         return req.data
 
-
     def _hexdump(self, data: bytes, tag=""):
         if data is not None and self.logger.isEnabledFor(LOG_PROTOCOL_TRACE):
-            self.logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
-
+            self.logger.debug("%s%s", tag, "".join("%02x " % b for b in data))
 
     def _run_command(self, command: BaseCommand, *args) -> bool:
         try:
             data = UChromaHeadset._pack_request(command, *args)
-            self._hexdump(data, '--> ')
+            self._hexdump(data, "--> ")
             self._last_cmd_time = smart_delay(DELAY_TIME, self._last_cmd_time, 0)
             self._dev.write(data, report_id=to_byte(REPORT_ID_OUT))
             return True
 
-        except (OSError, IOError) as err:
-            self.logger.exception('Caught exception running command', exc_info=err)
+        except OSError as err:
+            self.logger.exception("Caught exception running command", exc_info=err)
 
         return False
-
 
     @synchronized
     def run_command(self, command: BaseCommand, *args) -> bool:
@@ -319,7 +320,6 @@ class UChromaHeadset(BaseUChromaDevice):
         """
         with self.device_open():
             return self._run_command(command, *args)
-
 
     @synchronized
     def run_with_result(self, command: BaseCommand, *args) -> bytes:
@@ -338,30 +338,28 @@ class UChromaHeadset(BaseUChromaDevice):
 
                 self._last_cmd_time = smart_delay(DELAY_TIME, self._last_cmd_time, 0)
                 resp = self._dev.read(REPORT_LENGTH_IN, timeout_ms=500)
-                self._hexdump(resp, '<-- ')
+                self._hexdump(resp, "<-- ")
 
                 if not resp:
                     return None
 
-                assert resp[0] == REPORT_ID_IN, \
-                    'Inbound report should have id %02x (was %02x)' % \
-                    (REPORT_ID_IN, resp[0])
+                assert resp[0] == REPORT_ID_IN, "Inbound report should have id %02x (was %02x)" % (
+                    REPORT_ID_IN,
+                    resp[0],
+                )
 
-                return resp[1:command.length+1]
+                return resp[1 : command.length + 1]
 
-        except (OSError, IOError) as err:
-            self.logger.exception('Caught exception running command', exc_info=err)
+        except OSError as err:
+            self.logger.exception("Caught exception running command", exc_info=err)
 
         return None
-
 
     def _get_serial_number(self) -> str:
         """
         Get the serial number from the hardware directly
         """
-        return self._decode_serial(
-            self.run_with_result(UChromaHeadset.Command.GET_SERIAL))
-
+        return self._decode_serial(self.run_with_result(UChromaHeadset.Command.GET_SERIAL))
 
     def _get_firmware_version(self) -> str:
         """
@@ -369,8 +367,7 @@ class UChromaHeadset(BaseUChromaDevice):
         """
         return self.run_with_result(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
 
-
-    def _get_led_mode(self) -> 'UChromaHeadset.EffectBits':
+    def _get_led_mode(self) -> "UChromaHeadset.EffectBits":
         if self._mode is None:
             with self.device_open():
                 value = self.run_with_result(self._cmd_get_led)
@@ -380,14 +377,12 @@ class UChromaHeadset(BaseUChromaDevice):
                 self._mode = EffectBits(bits)
         return self._mode
 
-
     def _set_led_mode(self, bits: EffectBits) -> bool:
         status = self.run_command(self._cmd_set_led, bits.value)
         if status:
             self._mode = bits
 
         return status
-
 
     def _get_rgb(self) -> list:
         with self.device_open():
@@ -404,14 +399,13 @@ class UChromaHeadset(BaseUChromaDevice):
 
             return [to_color(x) for x in values]
 
-
     def _set_rgb(self, *colors, brightness: float = None) -> bool:
         if not colors:
-            self.logger.error('RGB group out of range')
+            self.logger.error("RGB group out of range")
             return False
 
         # only allow what the hardware permits
-        colors = colors[0:len(self._cmd_set_rgb)]
+        colors = colors[0 : len(self._cmd_set_rgb)]
 
         with self.device_open():
             if brightness is None:
@@ -428,7 +422,6 @@ class UChromaHeadset(BaseUChromaDevice):
 
             return self.run_command(self._cmd_set_rgb[len(colors) - 1], *args)
 
-
     def get_current_effect(self) -> EffectBits:
         """
         Gets the current effects configuration
@@ -436,7 +429,6 @@ class UChromaHeadset(BaseUChromaDevice):
         :return: EffectBits populated from the hardware
         """
         return self._get_led_mode()
-
 
     def get_current_colors(self) -> list:
         """
@@ -449,7 +441,6 @@ class UChromaHeadset(BaseUChromaDevice):
             return None
 
         return [to_rgb(color) for color in colors]
-
 
     def _get_brightness(self) -> float:
         """
@@ -468,7 +459,6 @@ class UChromaHeadset(BaseUChromaDevice):
 
             return scale_brightness(value[3], True)
 
-
     def _set_brightness(self, brightness: float) -> bool:
         """
         Set the brightness level
@@ -485,7 +475,7 @@ class UChromaHeadset(BaseUChromaDevice):
             level = scale_brightness(brightness)
 
             data = bytearray(value)
-            for num in range(0, bits.color_count):
+            for num in range(bits.color_count):
                 data[(num * 4) + 3] = level
 
-            return self.run_command(self._cmd_set_rgb[bits.color_count -1], data)
+            return self.run_command(self._cmd_set_rgb[bits.color_count - 1], data)

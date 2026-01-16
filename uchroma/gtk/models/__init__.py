@@ -2,4 +2,4 @@
 from .device import DeviceModel
 from .store import DeviceStore
 
-__all__ = ['DeviceModel', 'DeviceStore']
+__all__ = ["DeviceModel", "DeviceStore"]

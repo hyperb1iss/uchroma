@@ -5,20 +5,21 @@ Horizontal flow of effect cards for hardware FX selection.
 """
 
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 
 from gi.repository import GObject, Gtk
 
-from ..widgets.effect_card import EffectCard, EFFECTS
+from ..widgets.effect_card import EFFECTS, EffectCard
 
 
 class EffectSelector(Gtk.Box):
     """Horizontal effect card selector."""
 
-    __gtype_name__ = 'UChromaEffectSelector'
+    __gtype_name__ = "UChromaEffectSelector"
 
     __gsignals__ = {
-        'effect-selected': (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "effect-selected": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     def __init__(self):
@@ -27,7 +28,7 @@ class EffectSelector(Gtk.Box):
         self._selected_effect = None
         self._cards = {}
 
-        self.add_css_class('effect-selector')
+        self.add_css_class("effect-selector")
         self.set_margin_start(16)
         self.set_margin_end(16)
 
@@ -54,15 +55,15 @@ class EffectSelector(Gtk.Box):
         # Add effect cards
         for effect in EFFECTS:
             card = EffectCard(
-                effect_id=effect['id'],
-                name=effect['name'],
-                icon=effect['icon'],
-                preview_class=effect.get('preview', 'default')
+                effect_id=effect["id"],
+                name=effect["name"],
+                icon=effect["icon"],
+                preview_class=effect.get("preview", "default"),
             )
-            card.connect('effect-activated', self._on_card_activated)
+            card.connect("effect-activated", self._on_card_activated)
 
             self._flow.append(card)
-            self._cards[effect['id']] = card
+            self._cards[effect["id"]] = card
 
         scroll.set_child(self._flow)
         self.append(scroll)
@@ -70,7 +71,7 @@ class EffectSelector(Gtk.Box):
     def _on_card_activated(self, card, effect_id):
         """Handle card click."""
         self.select_effect(effect_id)
-        self.emit('effect-selected', effect_id)
+        self.emit("effect-selected", effect_id)
 
     def select_effect(self, effect_id: str):
         """Select an effect (update visual state)."""

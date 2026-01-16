@@ -16,6 +16,7 @@
 """
 Fixups are mixins which adjust input/output data in some form.
 """
+
 import numpy as np
 from numpy import array
 
@@ -24,12 +25,12 @@ class KeyboardFixup:
     """
     Fixup which adjusts key coordinates in order to achieve a linear matrix.
     """
+
     def __init__(self, *args, **kwargs):
         super(KeyboardFixup, self).__init__(*args, **kwargs)
 
         self._alignment_map = self._hardware.key_fixup_mapping
         self._row_offsets = self._hardware.key_row_offsets
-
 
     @staticmethod
     def _insert(rowdata: array, col: int) -> array:
@@ -43,7 +44,6 @@ class KeyboardFixup:
         """
         return np.insert(rowdata, col, [0, 0, 0], axis=0)
 
-
     @staticmethod
     def _delete(rowdata: array, col: int) -> array:
         """
@@ -55,7 +55,6 @@ class KeyboardFixup:
         :return: The updated row data
         """
         return np.delete(rowdata, col, axis=0)
-
 
     @staticmethod
     def _copy(matrix: array, src: tuple, dst: tuple) -> array:
@@ -74,10 +73,10 @@ class KeyboardFixup:
 
         return matrix
 
-
     @staticmethod
-    def _update_debug_info(frame, debug_position: tuple,
-                           in_data: array = None, out_data: array = None):
+    def _update_debug_info(
+        frame, debug_position: tuple, in_data: array = None, out_data: array = None
+    ):
         """
         Used by the alignment utility.
         """
@@ -85,10 +84,9 @@ class KeyboardFixup:
             row = debug_position[0]
 
             if in_data is not None:
-                frame.debug_opts['in_data'] = np.copy(in_data[row])
+                frame.debug_opts["in_data"] = np.copy(in_data[row])
             if out_data is not None:
-                frame.debug_opts['out_data'] = np.copy(out_data[row])
-
+                frame.debug_opts["out_data"] = np.copy(out_data[row])
 
     def _align_matrix(self, frame, matrix: array) -> array:
         """
@@ -99,13 +97,12 @@ class KeyboardFixup:
 
         :return: The updated matrix
         """
-        skip_fixups = frame.debug_opts.get('skip_fixups', False)
-        debug_position = frame.debug_opts.get('debug_position', None)
+        skip_fixups = frame.debug_opts.get("skip_fixups", False)
+        debug_position = frame.debug_opts.get("debug_position", None)
 
         KeyboardFixup._update_debug_info(frame, debug_position, in_data=matrix)
 
         if self._alignment_map is not None and not skip_fixups:
-
             inserts = self._alignment_map.insert
             if inserts is not None:
                 for insert in inserts:
@@ -128,7 +125,6 @@ class KeyboardFixup:
 
         return matrix
 
-
     def get_row_offset(self, frame, row: int) -> int:
         """
         Get the offset for the given row. This effectively pads the entire
@@ -138,11 +134,10 @@ class KeyboardFixup:
 
         :return: Column offset for the given row
         """
-        if self._row_offsets is None or frame.debug_opts.get('skip_fixups'):
+        if self._row_offsets is None or frame.debug_opts.get("skip_fixups"):
             return 0
 
         return self._row_offsets[row]
-
 
     def align_key_matrix(self, frame, matrix: array) -> array:
         """

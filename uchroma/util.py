@@ -24,14 +24,13 @@ import re
 import struct
 import time
 import typing
-
 from collections import OrderedDict
 
 from numpy import interp
-from wrapt import decorator, synchronized
-
+from wrapt import decorator
 
 AUTOCAST_CACHE = {}
+
 
 def autocast_decorator(type_hint, fix_arg_func):
     """
@@ -44,19 +43,22 @@ def autocast_decorator(type_hint, fix_arg_func):
 
     :return: decorator
     """
+
     @decorator
     def wrapper(wrapped, instance, args, kwargs):
         hinted_args = names = None
-        cache_key = '%s-%s-%s' % (wrapped.__class__.__name__,
-                                  wrapped.__name__, str(type_hint))
+        cache_key = "%s-%s-%s" % (wrapped.__class__.__name__, wrapped.__name__, str(type_hint))
 
         if cache_key in AUTOCAST_CACHE:
             hinted_args, names = AUTOCAST_CACHE[cache_key]
         else:
             sig = inspect.signature(wrapped)
             names = list(sig.parameters.keys())
-            hinted_args = [x[0] for x in typing.get_type_hints(wrapped).items() \
-                    if x[1] == type_hint or x[1] == typing.Union[type_hint, None]]
+            hinted_args = [
+                x[0]
+                for x in typing.get_type_hints(wrapped).items()
+                if x[1] == type_hint or x[1] == typing.Union[type_hint, None]
+            ]
             AUTOCAST_CACHE[cache_key] = hinted_args, names
 
         if len(hinted_args) == 0:
@@ -81,15 +83,15 @@ def snake_to_camel(name: str) -> str:
     """
     Returns a CamelCaseName from a snake_case_name
     """
-    return re.sub(r'(?:^|_)([a-z])', lambda x: x.group(1).upper(), name)
+    return re.sub(r"(?:^|_)([a-z])", lambda x: x.group(1).upper(), name)
 
 
 def camel_to_snake(name: str) -> str:
     """
     Returns a snake_case_name from a CamelCaseName
     """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 def max_keylen(d) -> int:
@@ -146,7 +148,7 @@ def scale_brightness(brightness, from_hw=False):
     """
     if from_hw:
         if brightness < 0 or brightness > 255:
-            raise ValueError('Integer brightness must be between 0 and 255 (%d)' % brightness)
+            raise ValueError("Integer brightness must be between 0 and 255 (%d)" % brightness)
 
         if brightness is None:
             return 0.0
@@ -154,7 +156,7 @@ def scale_brightness(brightness, from_hw=False):
         return round(float(brightness) * (100.0 / 255.0), 2)
 
     if brightness < 0.0 or brightness > 100.0:
-        raise ValueError('Float brightness must be between 0 and 100 (%f)' % brightness)
+        raise ValueError("Float brightness must be between 0 and 100 (%f)" % brightness)
 
     if brightness is None:
         return 0
@@ -166,10 +168,10 @@ def to_byte(value: int) -> bytes:
     """
     Convert a single int to a single byte
     """
-    return struct.pack('=B', value)
+    return struct.pack("=B", value)
 
 
-def smart_delay(delay: float, last_cmd: float, remain: int=0) -> float:
+def smart_delay(delay: float, last_cmd: float, remain: int = 0) -> float:
     """
     A "smart" delay mechanism which tries to reduce the
     delay as much as possible based on the time the last
@@ -184,7 +186,6 @@ def smart_delay(delay: float, last_cmd: float, remain: int=0) -> float:
     now = time.monotonic()
 
     if remain == 0 and last_cmd is not None and delay > 0.0:
-
         delta = now - last_cmd
         if delta < delay:
             sleep = delay - delta
@@ -215,7 +216,7 @@ def set_bits(value: int, *bits) -> int:
 
     :return: Integer with bits set or cleared
     """
-    for bit in range(0, len(bits)):
+    for bit in range(len(bits)):
         if bits[bit]:
             value |= 1 << bit
         else:
@@ -262,17 +263,21 @@ def ensure_future(coro, loop=None):
     if loop is None:
         loop = asyncio.get_event_loop()
     fut = asyncio.ensure_future(coro, loop=loop)
+
     def exception_logging_done_cb(fut):
         try:
             e = fut.exception()
         except asyncio.CancelledError:
             return
         if e is not None:
-            loop.call_exception_handler({
-                'message': 'Unhandled exception in async future',
-                'future': fut,
-                'exception': e,
-            })
+            loop.call_exception_handler(
+                {
+                    "message": "Unhandled exception in async future",
+                    "future": fut,
+                    "exception": e,
+                }
+            )
+
     fut.add_done_callback(exception_logging_done_cb)
     return fut
 
@@ -283,6 +288,7 @@ class ArgsDict(OrderedDict):
 
     FIXME: Get rid of this
     """
+
     def __init__(self, *args, **kwargs):
         super(ArgsDict, self).__init__(*args, **kwargs)
         empty_keys = []
@@ -293,16 +299,16 @@ class ArgsDict(OrderedDict):
             self.pop(empty_key)
 
 
-class Signal(object):
+class Signal:
     """
     A simple signalling construct.
 
     Listeners may connect() to this signal, and their handlers will
     be invoked when fire() is called.
     """
+
     def __init__(self):
         self._handlers = set()
-
 
     def connect(self, handler):
         """
@@ -311,7 +317,6 @@ class Signal(object):
         :param handler: Function to invoke when the signal fires
         """
         self._handlers.add(handler)
-
 
     def fire(self, *args, **kwargs):
         """
@@ -327,6 +332,7 @@ class Singleton(type):
     """
     Metaclass for creating singletons
     """
+
     def __call__(cls, *args, **kwargs):
         try:
             return cls.__instance
@@ -335,7 +341,7 @@ class Singleton(type):
             return cls.__instance
 
 
-class Ticker(object):
+class Ticker:
     """
     Framerate synchronizer
 
@@ -344,6 +350,7 @@ class Ticker(object):
     and sleeps for the remainder of the interval on exit. If
     the interval was missed, sync to the next interval.
     """
+
     def __init__(self, interval: float):
         self._interval = interval
         self._tick_start = 0.0
@@ -353,7 +360,6 @@ class Ticker(object):
         self._tick_start = time.monotonic()
         return self
 
-
     def __exit__(self, *args):
         next_tick = time.monotonic() - self._tick_start
 
@@ -362,22 +368,18 @@ class Ticker(object):
         else:
             self._next_tick = self._interval - next_tick
 
-
     async def tick(self):
         """
         Sleep until the next tick
         """
         await asyncio.sleep(self._next_tick)
 
-
     async def __aenter__(self):
         return self.__enter__()
-
 
     async def __aexit__(self, *args):
         self.__exit__(self, *args)
         await self.tick()
-
 
     @property
     def interval(self):
@@ -386,26 +388,30 @@ class Ticker(object):
         """
         return self._interval
 
-
     @interval.setter
     def interval(self, value: float):
         self._interval = value
 
 
-class ValueAnimator(object):
+class ValueAnimator:
     """
     Animates a value over a duration from a start to end,
     invoking a callback at each interval.
     """
-    def __init__(self, callback, min_value: float=0.0,
-                 max_value: float=100.0, max_time: float=1.5,
-                 fps: float=30.0):
+
+    def __init__(
+        self,
+        callback,
+        min_value: float = 0.0,
+        max_value: float = 100.0,
+        max_time: float = 1.5,
+        fps: float = 30.0,
+    ):
         self._callback = callback
         self._range = max_value - min_value
         self._max_time = max_time
         self._fps = 1.0 / float(fps)
         self._task = None
-
 
     async def _animate(self, start, end):
         # animation duration
@@ -428,7 +434,6 @@ class ValueAnimator(object):
                 await self._callback(current)
 
         self._task = None
-
 
     def animate(self, start: float, end: float, done_cb=None):
         """

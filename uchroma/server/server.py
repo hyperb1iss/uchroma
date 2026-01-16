@@ -23,14 +23,13 @@ from .power import PowerMonitor
 
 
 class UChromaServer:
-
     def __init__(self):
-        parser = argparse.ArgumentParser(description='UChroma daemon')
-        parser.add_argument('-v', "--version", action='version', version='self.version')
-        parser.add_argument('-d', "--debug", action='append_const', const=True,
-                            help="Increase logging verbosity")
-        parser.add_argument('-C', "--colorlog", action='store_true',
-                            help="Use colored log output")
+        parser = argparse.ArgumentParser(description="UChroma daemon")
+        parser.add_argument("-v", "--version", action="version", version="self.version")
+        parser.add_argument(
+            "-d", "--debug", action="append_const", const=True, help="Increase logging verbosity"
+        )
+        parser.add_argument("-C", "--colorlog", action="store_true", help="Use colored log output")
 
         args = parser.parse_args()
 
@@ -44,7 +43,7 @@ class UChromaServer:
             colorlog = args.colorlog
 
         Log.enable_color(colorlog)
-        self._logger = Log.get('uchroma.server')
+        self._logger = Log.get("uchroma.server")
 
         if args.debug is not None:
             if len(args.debug) > 2:

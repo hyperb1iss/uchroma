@@ -17,22 +17,20 @@ import itertools
 import math
 import random
 import re
-
+from collections.abc import Iterable
 from enum import Enum
-from typing import Iterable, List, Union
+from typing import Union
 
 import numpy as np
-
-from uchroma.colorlib import Color
 from hsluv import hsluv_to_rgb, rgb_to_hsluv
 from skimage.util import dtype
 
+from uchroma.colorlib import Color
 from uchroma.util import autocast_decorator, clamp, lerp, lerp_degrees
-
 
 # Type hint for decorated color arguments
 ColorType = Union[Color, str, Iterable[int], Iterable[float], None]
-ColorList = List[ColorType]
+ColorList = list[ColorType]
 
 
 class ColorScheme(Enum):
@@ -42,17 +40,17 @@ class ColorScheme(Enum):
     TODO: Implement support for fetching from ColourLovers
     """
 
-    Emma = ('#320d6d', '#ffbfb7', '#ffd447', '#700353', '#4c1c00')
-    Best = ('#247ba0', '#70c1b3', '#b2dbbf', '#f3ffbd', '#ff1654')
-    Variety = ('#db5461', '#ffd9ce', '#593c8f', '#8ef9f3', '#171738')
-    Redd = ('#d7263d', '#f46036', '#2e294e', '#1b998b', '#c5d86d')
-    Bluticas = ('#006ba6', '#0496ff', '#ffbc42', '#d81159', '#8f2d56')
-    Newer = ('#0d0630', '#18314f', '#384e77', '#8bbeb2', '#e6f9af')
-    Bright = ('#ffbe0b', '#fb5607', '#ff006e', '#8338ec', '#3a86ff')
-    Qap = ('#004777', '#a30000', '#ff7700', '#efd28d', '#00afb5')
-    Rainbow = ('red', 'yellow', 'lime', 'aqua', 'blue', 'magenta')
+    Emma = ("#320d6d", "#ffbfb7", "#ffd447", "#700353", "#4c1c00")
+    Best = ("#247ba0", "#70c1b3", "#b2dbbf", "#f3ffbd", "#ff1654")
+    Variety = ("#db5461", "#ffd9ce", "#593c8f", "#8ef9f3", "#171738")
+    Redd = ("#d7263d", "#f46036", "#2e294e", "#1b998b", "#c5d86d")
+    Bluticas = ("#006ba6", "#0496ff", "#ffbc42", "#d81159", "#8f2d56")
+    Newer = ("#0d0630", "#18314f", "#384e77", "#8bbeb2", "#e6f9af")
+    Bright = ("#ffbe0b", "#fb5607", "#ff006e", "#8338ec", "#3a86ff")
+    Qap = ("#004777", "#a30000", "#ff7700", "#efd28d", "#00afb5")
+    Rainbow = ("red", "yellow", "lime", "aqua", "blue", "magenta")
 
-    def gradient(self, length: int=360) -> list:
+    def gradient(self, length: int = 360) -> list:
         """
         Interpolate this ColorScheme to a gradient of the
         specified length.
@@ -68,13 +66,13 @@ class ColorPair(Enum):
     Predefined color pairs
     """
 
-    EARTH = ('green', '#8b4513')
-    AIR = ('white', 'skyblue')
-    FIRE = ('red', 'orange')
-    WATER = ('blue', 'white')
-    SUN = ('white', 'yellow')
-    MOON = ('grey', 'cyan')
-    HOTPINK = ('hotpink', 'purple')
+    EARTH = ("green", "#8b4513")
+    AIR = ("white", "skyblue")
+    FIRE = ("red", "orange")
+    WATER = ("blue", "white")
+    SUN = ("white", "yellow")
+    MOON = ("grey", "cyan")
+    HOTPINK = ("hotpink", "purple")
 
     def __init__(self, first, second):
         self.first = Color.NewFromHtml(first)
@@ -110,7 +108,7 @@ def rgb_from_tuple(arg: tuple) -> Color:
         if all(isinstance(n, float) for n in arg):
             return Color.NewFromRgb(*arg)
 
-    raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
+    raise TypeError("Unable to convert %s (%s) to color" % (arg, type(arg[0])))
 
 
 def rgb_to_int_tuple(arg: tuple) -> tuple:
@@ -122,13 +120,13 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
     :return: Tuple of RGB ints
     """
     if len(arg) >= 3:
-
         return tuple([clamp(round(x), 0, 255) for x in arg[:3]])
 
-    raise TypeError('Unable to convert %s (%s) to color' % (arg, type(arg[0])))
+    raise TypeError("Unable to convert %s (%s) to color" % (arg, type(arg[0])))
 
 
-COLOR_TUPLE_STR = re.compile(r'\((.*, .*, .*, .*)\)')
+COLOR_TUPLE_STR = re.compile(r"\((.*, .*, .*, .*)\)")
+
 
 def to_color(*color_args) -> Color:
     """
@@ -145,18 +143,17 @@ def to_color(*color_args) -> Color:
             if isinstance(arg, Color):
                 value = arg
             elif isinstance(arg, str):
-                if arg != '':
+                if arg != "":
                     # grapefruit's default str() spews a string repr of a tuple
                     strtuple = COLOR_TUPLE_STR.match(arg)
                     if strtuple:
-                        value = Color.NewFromRgb(*[float(x) \
-                                for x in strtuple.group(1).split(', ')])
+                        value = Color.NewFromRgb(*[float(x) for x in strtuple.group(1).split(", ")])
                     else:
                         value = Color.NewFromHtml(arg)
             elif isinstance(arg, Iterable):
                 value = rgb_from_tuple(arg)
             else:
-                raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+                raise TypeError("Unable to parse color from '%s' (%s)" % (arg, type(arg)))
         colors.append(value)
 
     if len(colors) == 0:
@@ -183,12 +180,16 @@ def to_rgb(arg) -> tuple:
         if arg[0] is None:
             return (0, 0, 0)
 
-        if isinstance(arg[0], list) or isinstance(arg[0], tuple) \
-                or isinstance(arg[0], str) or isinstance(arg[0], Color):
+        if (
+            isinstance(arg[0], list)
+            or isinstance(arg[0], tuple)
+            or isinstance(arg[0], str)
+            or isinstance(arg[0], Color)
+        ):
             return [to_rgb(item) for item in arg]
         return rgb_to_int_tuple(arg)
 
-    raise TypeError('Unable to parse color from \'%s\' (%s)' % (arg, type(arg)))
+    raise TypeError("Unable to parse color from '%s' (%s)" % (arg, type(arg)))
 
 
 """
@@ -206,8 +207,7 @@ def frobizzle(self, speed, color1: ColorType=None, color2: ColorType=None)
 colorarg = autocast_decorator(ColorType, to_color)
 
 
-
-class ColorUtils(object):
+class ColorUtils:
     """
     Various helpers and utilities for working with colors
     """
@@ -225,9 +225,8 @@ class ColorUtils(object):
         a = lerp(a1, a2, amount)
         return (h, s, v, a)
 
-
     @staticmethod
-    def hue_gradient(start: float=0.0, length: int=360) -> list:
+    def hue_gradient(start: float = 0.0, length: int = 360) -> list:
         """
         Generate a gradient which spans all hues
 
@@ -236,13 +235,11 @@ class ColorUtils(object):
         :return: list of colors
         """
         step = 360 / length
-        return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(0, length)]
-
+        return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(length)]
 
     @staticmethod
     def _hsva(color: Color) -> Color:
         return (*rgb_to_hsluv(color.rgb), color.alpha)
-
 
     @staticmethod
     @colorarg
@@ -261,13 +258,12 @@ class ColorUtils(object):
         end = ColorUtils._hsva(color2)
 
         gradient = []
-        for x in range(0, steps):
+        for x in range(steps):
             amount = float(x) / float(steps - 1)
             i = ColorUtils._circular_interp(start, end, amount)
             gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]]), i[3]))
 
         return gradient
-
 
     @staticmethod
     def gradient(length: int, *colors, loop=True) -> list:
@@ -287,21 +283,21 @@ class ColorUtils(object):
 
         steps = max(len(luv_colors), math.floor(length / (len(luv_colors) - 1)))
         gradient = []
-        for color_idx in range(0, len(luv_colors) - 1):
+        for color_idx in range(len(luv_colors) - 1):
             start = luv_colors[color_idx]
             end = luv_colors[(color_idx + 1)]
 
-            for interp in range(0, steps):
+            for interp in range(steps):
                 amount = float(interp) / float(steps)
                 i = ColorUtils._circular_interp(start, end, amount)
                 gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]]), i[3]))
 
         return gradient
 
-
     @staticmethod
-    def color_generator(gradient: list, randomize: bool=False,
-                        alternate: bool=False, rgb: bool=False):
+    def color_generator(
+        gradient: list, randomize: bool = False, alternate: bool = False, rgb: bool = False
+    ):
         """
         Create a generator which returns colors from the given gradient,
         optionally randomizing, or moving across the gradient in alternating
@@ -340,10 +336,9 @@ class ColorUtils(object):
                 if alternate:
                     yield next(cycle2)
 
-
     @staticmethod
     @colorarg
-    def color_scheme(color: ColorType=None, base_color: ColorType=None, steps: int=11):
+    def color_scheme(color: ColorType = None, base_color: ColorType = None, steps: int = 11):
         """
         Generator which produces a continuous stream of colors based on a
         color scheme of two overlapping colors.
@@ -365,11 +360,16 @@ class ColorUtils(object):
 
         return ColorUtils.gradient(steps, c0, c1)
 
-
     @staticmethod
     @colorarg
-    def scheme_generator(color: ColorType=None, base_color: ColorType=None, randomize: bool=False,
-                         alternate: bool=False, steps: int=11, rgb: bool=False):
+    def scheme_generator(
+        color: ColorType = None,
+        base_color: ColorType = None,
+        randomize: bool = False,
+        alternate: bool = False,
+        steps: int = 11,
+        rgb: bool = False,
+    ):
         """
         Generator which produces a continuous stream of colors based on a
         color scheme of two overlapping colors.
@@ -385,11 +385,18 @@ class ColorUtils(object):
         gradient = ColorUtils.color_scheme(color, base_color, steps)
         return ColorUtils.color_generator(gradient, randomize, alternate, rgb)
 
-
     @staticmethod
-    def interference(length, freq1: float=0.3, freq2: float=0.3, freq3: float=0.3,
-                     phase1: float=0.0, phase2: float=2.0, phase3: float=4.0,
-                     center: float=128.0, width: float=127.0):
+    def interference(
+        length,
+        freq1: float = 0.3,
+        freq2: float = 0.3,
+        freq3: float = 0.3,
+        phase1: float = 0.0,
+        phase2: float = 2.0,
+        phase3: float = 4.0,
+        center: float = 128.0,
+        width: float = 127.0,
+    ):
         """
         Creates an interference pattern of three sine waves
         """
@@ -402,7 +409,7 @@ class ColorUtils(object):
 
         gradient = []
 
-        for i in range(0, length):
+        for i in range(length):
             r = math.sin(freq1 * i + phase1) * width + center
             g = math.sin(freq2 * i + phase2) * width + center
             b = math.sin(freq3 * i + phase3) * width + center
@@ -410,10 +417,10 @@ class ColorUtils(object):
 
         return gradient
 
-
     @staticmethod
-    def rainbow_generator(randomize: bool=False, alternate: bool=False,
-                          steps: int=33, rgb: bool=False):
+    def rainbow_generator(
+        randomize: bool = False, alternate: bool = False, steps: int = 33, rgb: bool = False
+    ):
         """
         Generate a smooth rainbow gradient
 
@@ -428,9 +435,8 @@ class ColorUtils(object):
 
         return ColorUtils.color_generator(gradient, randomize, alternate, rgb)
 
-
     @staticmethod
-    def random_generator(rgb: bool=False):
+    def random_generator(rgb: bool = False):
         """
         Generate random colors using the golden ratio conjugate
 
@@ -449,7 +455,6 @@ class ColorUtils(object):
                 yield to_rgb(value)
             else:
                 yield value
-
 
     @staticmethod
     @colorarg
@@ -472,7 +477,6 @@ class ColorUtils(object):
         L = 0.2126 * vals[0] + 0.7152 * vals[1] + 0.0722 * vals[2]
         return L
 
-
     @staticmethod
     @colorarg
     def contrast_ratio(color1: ColorType, color2: ColorType) -> float:
@@ -485,12 +489,10 @@ class ColorUtils(object):
         :param color2: a color
         :return: the calculated contrast ratio
         """
-        ratio = (0.05 + ColorUtils.luminance(color1)) / \
-                (0.05 + ColorUtils.luminance(color2))
+        ratio = (0.05 + ColorUtils.luminance(color1)) / (0.05 + ColorUtils.luminance(color2))
         if ratio < 1:
             return 1 / ratio
         return ratio
-
 
     @staticmethod
     @colorarg
@@ -503,7 +505,6 @@ class ColorUtils(object):
         """
         rgb = color.rgb
         return Color.NewFromRgb(1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2], color.alpha)
-
 
     @staticmethod
     @colorarg
@@ -522,10 +523,9 @@ class ColorUtils(object):
             color = Color.NewFromHsl(*hsl, color.alpha)
         return color
 
-
     @staticmethod
     @colorarg
-    def rgba2rgb(arr: np.ndarray, bg_color: ColorType=None) -> np.ndarray:
+    def rgba2rgb(arr: np.ndarray, bg_color: ColorType = None) -> np.ndarray:
         """
         Alpha-composites data in the numpy array against the given
         background color and returns a new buffer without the
@@ -549,7 +549,7 @@ class ColorUtils(object):
 
         for ichan in range(channels.shape[-1]):
             out_buf[..., ichan] = np.clip(
-                (1 - alpha) * bg_color[ichan] + alpha * channels[..., ichan],
-                a_min=0, a_max=1)
+                (1 - alpha) * bg_color[ichan] + alpha * channels[..., ichan], a_min=0, a_max=1
+            )
 
         return dtype.img_as_ubyte(out_buf)

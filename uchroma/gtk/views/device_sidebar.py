@@ -5,26 +5,27 @@ List of connected UChroma devices with selection.
 """
 
 import gi
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
 
-from gi.repository import Adw, GLib, GObject, Gtk
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+
+from gi.repository import GObject, Gtk
 
 
 class DeviceRow(Gtk.Box):
     """Row widget for a device in the sidebar."""
 
-    __gtype_name__ = 'UChromaDeviceRow'
+    __gtype_name__ = "UChromaDeviceRow"
 
     def __init__(self, device):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         self.device = device
 
-        self.add_css_class('device-row')
+        self.add_css_class("device-row")
 
         # Device icon
         self.icon = Gtk.Image.new_from_icon_name(device.icon_name)
-        self.icon.add_css_class('device-icon')
+        self.icon.add_css_class("device-icon")
         self.append(self.icon)
 
         # Text box
@@ -34,14 +35,14 @@ class DeviceRow(Gtk.Box):
 
         # Device name
         self.name_label = Gtk.Label(label=device.name)
-        self.name_label.add_css_class('device-name')
+        self.name_label.add_css_class("device-name")
         self.name_label.set_xalign(0)
         self.name_label.set_ellipsize(3)  # PANGO_ELLIPSIZE_END
         text_box.append(self.name_label)
 
         # Subtitle (product ID)
         self.subtitle_label = Gtk.Label(label=device.product_id_hex)
-        self.subtitle_label.add_css_class('device-subtitle')
+        self.subtitle_label.add_css_class("device-subtitle")
         self.subtitle_label.set_xalign(0)
         text_box.append(self.subtitle_label)
 
@@ -57,21 +58,21 @@ class DeviceRow(Gtk.Box):
         self.append(self.brightness_bar)
 
         # Bind brightness
-        device.bind_property('brightness', self.brightness_bar, 'value',
-                            GObject.BindingFlags.SYNC_CREATE)
+        device.bind_property(
+            "brightness", self.brightness_bar, "value", GObject.BindingFlags.SYNC_CREATE
+        )
 
         # Bind name
-        device.bind_property('name', self.name_label, 'label',
-                            GObject.BindingFlags.SYNC_CREATE)
+        device.bind_property("name", self.name_label, "label", GObject.BindingFlags.SYNC_CREATE)
 
 
 class DeviceSidebar(Gtk.ListBox):
     """Sidebar showing connected devices."""
 
-    __gtype_name__ = 'UChromaDeviceSidebar'
+    __gtype_name__ = "UChromaDeviceSidebar"
 
     __gsignals__ = {
-        'device-selected': (GObject.SignalFlags.RUN_FIRST, None, (object,)),
+        "device-selected": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
     }
 
     def __init__(self, device_store=None):
@@ -80,12 +81,12 @@ class DeviceSidebar(Gtk.ListBox):
         self.device_store = device_store
         self._rows = {}
 
-        self.add_css_class('device-sidebar')
-        self.add_css_class('navigation-sidebar')
+        self.add_css_class("device-sidebar")
+        self.add_css_class("navigation-sidebar")
         self.set_selection_mode(Gtk.SelectionMode.SINGLE)
 
         # Connect selection signal
-        self.connect('row-selected', self._on_row_selected)
+        self.connect("row-selected", self._on_row_selected)
 
         # Populate from store
         if device_store:
@@ -99,7 +100,7 @@ class DeviceSidebar(Gtk.ListBox):
             self._add_device_row(device)
 
         # Subscribe to changes
-        store.connect('items-changed', self._on_items_changed)
+        store.connect("items-changed", self._on_items_changed)
 
     def _on_items_changed(self, store, position, removed, added):
         """Handle store changes."""
@@ -124,7 +125,7 @@ class DeviceSidebar(Gtk.ListBox):
         row_widget = DeviceRow(device)
         row = Gtk.ListBoxRow()
         row.set_child(row_widget)
-        row.add_css_class('animate-in')
+        row.add_css_class("animate-in")
 
         if position >= 0:
             self.insert(row, position)
@@ -137,9 +138,9 @@ class DeviceSidebar(Gtk.ListBox):
         """Handle row selection."""
         if row:
             device = row.get_child().device
-            self.emit('device-selected', device)
+            self.emit("device-selected", device)
         else:
-            self.emit('device-selected', None)
+            self.emit("device-selected", None)
 
     def select_device(self, device):
         """Programmatically select a device."""

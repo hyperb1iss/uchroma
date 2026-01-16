@@ -5,21 +5,22 @@ GObject-based reactive model for device state, synchronized with D-Bus.
 """
 
 import gi
-gi.require_version('Gtk', '4.0')
 
-from gi.repository import GLib, GObject
+gi.require_version("Gtk", "4.0")
+
+from gi.repository import GObject
 
 
 class DeviceModel(GObject.Object):
     """Reactive model for a UChroma device."""
 
-    __gtype_name__ = 'UChromaDeviceModel'
+    __gtype_name__ = "UChromaDeviceModel"
 
     # Device properties (read-only from D-Bus)
-    name = GObject.Property(type=str, default='Unknown Device')
-    device_type = GObject.Property(type=str, default='Unknown')
-    serial_number = GObject.Property(type=str, default='')
-    firmware_version = GObject.Property(type=str, default='')
+    name = GObject.Property(type=str, default="Unknown Device")
+    device_type = GObject.Property(type=str, default="Unknown")
+    serial_number = GObject.Property(type=str, default="")
+    firmware_version = GObject.Property(type=str, default="")
     vendor_id = GObject.Property(type=int, default=0)
     product_id = GObject.Property(type=int, default=0)
 
@@ -38,7 +39,7 @@ class DeviceModel(GObject.Object):
     suspended = GObject.Property(type=bool, default=False)
 
     # Effect state
-    current_fx = GObject.Property(type=str, default='')
+    current_fx = GObject.Property(type=str, default="")
     is_animating = GObject.Property(type=bool, default=False)
 
     def __init__(self, dbus_path: str, dbus_service=None):
@@ -66,14 +67,14 @@ class DeviceModel(GObject.Object):
     def icon_name(self) -> str:
         """Get icon name based on device type."""
         icons = {
-            'Laptop': 'computer-symbolic',
-            'Keyboard': 'input-keyboard-symbolic',
-            'Mouse': 'input-mouse-symbolic',
-            'Headset': 'audio-headset-symbolic',
-            'Mousepad': 'input-tablet-symbolic',
-            'Keypad': 'input-dialpad-symbolic',
+            "Laptop": "computer-symbolic",
+            "Keyboard": "input-keyboard-symbolic",
+            "Mouse": "input-mouse-symbolic",
+            "Headset": "audio-headset-symbolic",
+            "Mousepad": "input-tablet-symbolic",
+            "Keypad": "input-dialpad-symbolic",
         }
-        return icons.get(self.device_type, 'preferences-desktop-keyboard-symbolic')
+        return icons.get(self.device_type, "preferences-desktop-keyboard-symbolic")
 
     async def sync_from_dbus(self, device_proxy, fx_proxy=None, anim_proxy=None):
         """Synchronize model state from D-Bus proxies."""
@@ -134,7 +135,7 @@ class DeviceModel(GObject.Object):
             if anim_proxy:
                 try:
                     state = await anim_proxy.get_animation_state()
-                    self.is_animating = state == 'running'
+                    self.is_animating = state == "running"
                 except Exception:
                     pass
 
@@ -150,8 +151,8 @@ class DeviceModel(GObject.Object):
             return
 
         # When model changes, push to D-Bus
-        self.connect('notify::brightness', self._on_brightness_changed)
-        self.connect('notify::suspended', self._on_suspended_changed)
+        self.connect("notify::brightness", self._on_brightness_changed)
+        self.connect("notify::suspended", self._on_suspended_changed)
 
     def _on_brightness_changed(self, obj, pspec):
         """Push brightness change to D-Bus."""
@@ -159,6 +160,7 @@ class DeviceModel(GObject.Object):
             return
 
         import asyncio
+
         asyncio.create_task(self._set_brightness_async())
 
     async def _set_brightness_async(self):
@@ -174,6 +176,7 @@ class DeviceModel(GObject.Object):
             return
 
         import asyncio
+
         asyncio.create_task(self._set_suspended_async())
 
     async def _set_suspended_async(self):
@@ -187,12 +190,12 @@ class DeviceModel(GObject.Object):
         """Handle D-Bus property changes."""
         self._syncing = True
         try:
-            if 'Brightness' in changed:
-                self.brightness = changed['Brightness'].value
-            if 'Suspended' in changed:
-                self.suspended = changed['Suspended'].value
-            if 'AnimationState' in changed:
-                self.is_animating = changed['AnimationState'].value == 'running'
+            if "Brightness" in changed:
+                self.brightness = changed["Brightness"].value
+            if "Suspended" in changed:
+                self.suspended = changed["Suspended"].value
+            if "AnimationState" in changed:
+                self.is_animating = changed["AnimationState"].value == "running"
         finally:
             self._syncing = False
 

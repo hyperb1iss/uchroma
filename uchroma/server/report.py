@@ -15,7 +15,6 @@
 
 import struct
 import time
-
 from enum import Enum
 
 import numpy as np
@@ -23,8 +22,8 @@ import numpy as np
 from uchroma.log import LOG_PROTOCOL_TRACE
 from uchroma.util import smart_delay
 
-from .byte_args import ByteArgs
 from ._crc import fast_crc
+from .byte_args import ByteArgs
 
 
 # response codes
@@ -32,6 +31,7 @@ class Status(Enum):
     """
     Enumeration of status codes returned by the hardware
     """
+
     UNKNOWN = 0x00
     BUSY = 0x01
     OK = 0x02
@@ -40,6 +40,7 @@ class Status(Enum):
     UNSUPPORTED = 0x05
     BAD_CRC = 0xFE
     OSERROR = 0xFF
+
 
 class RazerReport:
     """
@@ -67,13 +68,14 @@ class RazerReport:
     The status byte is 0x00 when sending, and contains the result code
     when receiving.
     """
+
     # Request and response have same structure
-    REQ_HEADER = '=BBHBBBB'  # status, trans_id, remaining, proto, size, class, cmd
-    RSP_HEADER = '=BBHBBBB'
+    REQ_HEADER = "=BBHBBBB"  # status, trans_id, remaining, proto, size, class, cmd
+    RSP_HEADER = "=BBHBBBB"
 
     # OpenRazer uses report ID 0 for both send and receive
-    REQ_REPORT_ID = b'\x00'
-    RSP_REPORT_ID = b'\x00'
+    REQ_REPORT_ID = b"\x00"
+    RSP_REPORT_ID = b"\x00"
 
     BUF_SIZE = 90
     DATA_BUF_SIZE = 80
@@ -81,10 +83,20 @@ class RazerReport:
     # Time to sleep between requests, needed to avoid BUSY replies
     CMD_DELAY_TIME = 0.007
 
-    def __init__(self, driver, command_class, command_id, data_size,
-                 status=0x00, transaction_id=0xFF, remaining_packets=0x00,
-                 protocol_type=0x00, data=None, crc=None, reserved=None):
-
+    def __init__(
+        self,
+        driver,
+        command_class,
+        command_id,
+        data_size,
+        status=0x00,
+        transaction_id=0xFF,
+        remaining_packets=0x00,
+        protocol_type=0x00,
+        data=None,
+        crc=None,
+        reserved=None,
+    ):
         self._logger = driver.logger
 
         self._driver = driver
@@ -114,11 +126,9 @@ class RazerReport:
         else:
             self._crc = crc
 
-
     def _hexdump(self, data, tag=""):
         if self._logger.isEnabledFor(LOG_PROTOCOL_TRACE):
-            self._logger.debug('%s%s', tag, "".join('%02x ' % b for b in data))
-
+            self._logger.debug("%s%s", tag, "".join("%02x " % b for b in data))
 
     def clear(self):
         self._buf.fill(0)
@@ -126,7 +136,6 @@ class RazerReport:
         self._status = 0x00
         self._remaining_packets = 0x00
         self._result = None
-
 
     def run(self, delay: float = None, timeout_cb=None) -> bool:
         """
@@ -154,45 +163,46 @@ class RazerReport:
             while retry_count > 0:
                 try:
                     req = self._pack_request()
-                    self._hexdump(req, '--> ')
+                    self._hexdump(req, "--> ")
                     if self._remaining_packets == 0:
-                        self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
-                                                                 self._remaining_packets)
+                        self._driver.last_cmd_time = smart_delay(
+                            delay, self._driver.last_cmd_time, self._remaining_packets
+                        )
                     self._driver.hid.send_feature_report(req, self.REQ_REPORT_ID)
                     if self._remaining_packets > 0:
                         return True
 
-                    self._driver.last_cmd_time = smart_delay(delay, self._driver.last_cmd_time,
-                                                             self._remaining_packets)
+                    self._driver.last_cmd_time = smart_delay(
+                        delay, self._driver.last_cmd_time, self._remaining_packets
+                    )
                     resp = self._driver.hid.get_feature_report(self.RSP_REPORT_ID, self.BUF_SIZE)
-                    self._hexdump(resp, '<-- ')
+                    self._hexdump(resp, "<-- ")
                     if self._unpack_response(resp):
                         if timeout_cb is not None:
                             timeout_cb(self.status, None)
                         return True
 
                     if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
-                        self._logger.error("Command failed with status %s",
-                                           self.status.name)
+                        self._logger.error("Command failed with status %s", self.status.name)
                         return False
 
                     if timeout_cb is not None and self.status == Status.TIMEOUT:
                         timeout_cb(self.status, self.result)
                         return False
 
-                    self._logger.warning("Retrying request due to status %s (%d)",
-                                         self.status.name, retry_count)
+                    self._logger.warning(
+                        "Retrying request due to status %s (%d)", self.status.name, retry_count
+                    )
 
                     time.sleep(0.1)
 
                     retry_count -= 1
 
-                except (OSError, IOError):
+                except OSError:
                     self._status = Status.OSERROR
                     raise
 
         return False
-
 
     @property
     def args(self) -> ByteArgs:
@@ -202,14 +212,12 @@ class RazerReport:
         """
         return self._data
 
-
     @property
     def status(self) -> int:
         """
         Status code of this report.
         """
         return self._status
-
 
     @property
     def result(self) -> bytes:
@@ -218,27 +226,31 @@ class RazerReport:
         """
         return self._result.tobytes()
 
-
     @property
     def remaining_packets(self) -> int:
         return self._remaining_packets
 
-
     @remaining_packets.setter
     def remaining_packets(self, num):
         self._remaining_packets = num
-
 
     def _pack_request(self) -> bytes:
         # Use actual args size if data_size was None
         data_size = self._data_size if self._data_size is not None else self._data._data_ptr
 
         # Pack header: status=0x00 for requests, then transaction_id, etc.
-        struct.pack_into(RazerReport.REQ_HEADER, self._buf, 0,
-                         0x00,  # status byte (0 for requests)
-                         self._transaction_id,
-                         self._remaining_packets, self._protocol_type, data_size,
-                         self._command_class, self._command_id)
+        struct.pack_into(
+            RazerReport.REQ_HEADER,
+            self._buf,
+            0,
+            0x00,  # status byte (0 for requests)
+            self._transaction_id,
+            self._remaining_packets,
+            self._protocol_type,
+            data_size,
+            self._command_class,
+            self._command_id,
+        )
 
         # Args at offset 8 (after 8-byte header)
         self._buf[8:88] = self.args.data
@@ -248,10 +260,11 @@ class RazerReport:
 
         return self._buf.tobytes()
 
-
     def _unpack_response(self, buf: bytes) -> bool:
-        assert len(buf) == self.BUF_SIZE, \
-                'Packed struct should be %d bytes, got %d' % (self.BUF_SIZE, len(buf))
+        assert len(buf) == self.BUF_SIZE, "Packed struct should be %d bytes, got %d" % (
+            self.BUF_SIZE,
+            len(buf),
+        )
 
         header = struct.unpack(self.RSP_HEADER, buf[:8])
         status = header[0]
@@ -262,7 +275,7 @@ class RazerReport:
         command_class = header[5]
         command_id = header[6]
 
-        data = np.frombuffer(buf[8:8 + data_size], dtype=np.uint8)
+        data = np.frombuffer(buf[8 : 8 + data_size], dtype=np.uint8)
         crc = buf[88]
         reserved = buf[89]
 
@@ -277,8 +290,12 @@ class RazerReport:
             # on successful responses. This matches razer-laptop-control behavior.
             return True
 
-        self._logger.error("Got error %s for command %02x,%02x",
-                           self._status.name, self._command_class, self._command_id)
+        self._logger.error(
+            "Got error %s for command %02x,%02x",
+            self._status.name,
+            self._command_class,
+            self._command_id,
+        )
         self._hexdump(data, "raw response: ")
 
         return False

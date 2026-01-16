@@ -5,7 +5,8 @@ Gio.ListStore wrapper for managing devices.
 """
 
 import gi
-gi.require_version('Gtk', '4.0')
+
+gi.require_version("Gtk", "4.0")
 
 from gi.repository import Gio, GLib, GObject
 
@@ -15,7 +16,7 @@ from .device import DeviceModel
 class DeviceStore(GObject.Object, Gio.ListModel):
     """ListStore for UChroma devices."""
 
-    __gtype_name__ = 'UChromaDeviceStore'
+    __gtype_name__ = "UChromaDeviceStore"
 
     def __init__(self):
         super().__init__()

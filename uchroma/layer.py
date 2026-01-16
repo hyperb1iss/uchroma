@@ -16,18 +16,17 @@
 import math
 
 import numpy as np
-from uchroma.colorlib import Color
 from skimage import draw
 
+from uchroma._layer import color_to_np, set_color
 from uchroma.blending import BlendOp
-from uchroma.color import colorarg, ColorType, to_color
+from uchroma.color import ColorType, colorarg, to_color
+from uchroma.colorlib import Color
 from uchroma.log import Log
 from uchroma.util import clamp
 
-from uchroma._layer import color_to_np, set_color
 
-
-class Layer(object):
+class Layer:
     """
     Provides utilities and constructs for drawing a single layer of a
     custom display frame. Layers may be stacked and composited together.
@@ -38,7 +37,7 @@ class Layer(object):
         self._height = height
 
         if logger is None:
-            self._logger = Log.get('uchroma.frame')
+            self._logger = Log.get("uchroma.frame")
         else:
             self._logger = logger
 
@@ -48,7 +47,6 @@ class Layer(object):
         self._blend_mode = BlendOp.screen
         self._opacity = 1.0
 
-
     @property
     def blend_mode(self) -> str:
         """
@@ -57,7 +55,6 @@ class Layer(object):
         Defaults to BlendOp.screen
         """
         return self._blend_mode.__name__
-
 
     @blend_mode.setter
     def blend_mode(self, mode: str):
@@ -73,14 +70,12 @@ class Layer(object):
             if mode in BlendOp.get_modes():
                 self._blend_mode = getattr(BlendOp, mode)
 
-
     @property
     def opacity(self) -> float:
         """
         The opacity of this layer (when stacked)
         """
         return self._opacity
-
 
     @opacity.setter
     def opacity(self, alpha: float):
@@ -89,7 +84,6 @@ class Layer(object):
         """
         self._opacity = alpha
 
-
     @property
     def width(self) -> int:
         """
@@ -97,14 +91,12 @@ class Layer(object):
         """
         return self._width
 
-
     @property
     def height(self) -> int:
         """
         The height of this layer in pixels
         """
         return self._height
-
 
     @property
     def matrix(self) -> np.ndarray:
@@ -115,14 +107,12 @@ class Layer(object):
         """
         return self._matrix
 
-
     @property
     def background_color(self) -> Color:
         """
         The background color of this layer
         """
         return self._bg_color
-
 
     @background_color.setter
     def background_color(self, color):
@@ -133,8 +123,7 @@ class Layer(object):
         """
         self._bg_color = to_color(color)
 
-
-    def lock(self, lock) -> 'Layer':
+    def lock(self, lock) -> "Layer":
         """
         Sets the writable state of the buffer. A locked
         buffer becomes read-only and acts as a safety mechanism
@@ -147,8 +136,7 @@ class Layer(object):
         self.matrix.setflags(write=not lock)
         return self
 
-
-    def clear(self) -> 'Layer':
+    def clear(self) -> "Layer":
         """
         Clears this frame
 
@@ -157,7 +145,6 @@ class Layer(object):
         if self._matrix is not None:
             self._matrix.fill(0)
         return self
-
 
     def get(self, row: int, col: int) -> Color:
         """
@@ -170,9 +157,8 @@ class Layer(object):
         """
         return to_color(tuple(self.matrix[row][col]))
 
-
     @colorarg
-    def put(self, row: int, col: int, *color: ColorType) -> 'Layer':
+    def put(self, row: int, col: int, *color: ColorType) -> "Layer":
         """
         Set the color of an individual pixel
 
@@ -183,33 +169,41 @@ class Layer(object):
         :return: This layer instance
         """
         set_color(
-            self.matrix, (np.array([row,] * len(color)), np.arange(col, col + len(color))),
-            color_to_np(*color))
+            self.matrix,
+            (
+                np.array(
+                    [
+                        row,
+                    ]
+                    * len(color)
+                ),
+                np.arange(col, col + len(color)),
+            ),
+            color_to_np(*color),
+        )
 
         return self
 
-
-    def put_all(self, data: list) -> 'Layer':
+    def put_all(self, data: list) -> "Layer":
         """
         Set the color of all pixels
 
         :param data: List of lists (row * col) of colors
         """
-        for row in range(0, len(data)):
+        for row in range(len(data)):
             self.put(row, 0, *data[row])
 
         return self
-
 
     def _draw(self, rr, cc, color, alpha):
         if rr is None or rr.ndim == 0:
             return
         set_color(self.matrix, (rr, cc), color_to_np(color), alpha)
 
-
     @colorarg
-    def circle(self, row: int, col: int, radius: float,
-               color: ColorType, fill: bool=False, alpha=1.0) -> 'Layer':
+    def circle(
+        self, row: int, col: int, radius: float, color: ColorType, fill: bool = False, alpha=1.0
+    ) -> "Layer":
         """
         Draw a circle centered on the specified row and column,
         with the given radius.
@@ -232,10 +226,17 @@ class Layer(object):
 
         return self
 
-
     @colorarg
-    def ellipse(self, row: int, col: int, radius_r: float, radius_c: float,
-                color: ColorType, fill: bool=False, alpha: float=1.0) -> 'Layer':
+    def ellipse(
+        self,
+        row: int,
+        col: int,
+        radius_r: float,
+        radius_c: float,
+        color: ColorType,
+        fill: bool = False,
+        alpha: float = 1.0,
+    ) -> "Layer":
         """
         Draw an ellipse centered on the specified row and column,
         with the given radiuses.
@@ -250,21 +251,29 @@ class Layer(object):
         :return: This frame instance
         """
         if fill:
-            rr, cc = draw.ellipse(row, col, math.floor(radius_r), math.floor(radius_c),
-                                  shape=self.matrix.shape)
+            rr, cc = draw.ellipse(
+                row, col, math.floor(radius_r), math.floor(radius_c), shape=self.matrix.shape
+            )
             self._draw(rr, cc, color, alpha)
 
         else:
-            rr, cc = draw.ellipse_perimeter(row, col, math.floor(radius_r), math.floor(radius_c),
-                                            shape=self.matrix.shape)
+            rr, cc = draw.ellipse_perimeter(
+                row, col, math.floor(radius_r), math.floor(radius_c), shape=self.matrix.shape
+            )
             self._draw(rr, cc, color, alpha)
 
         return self
 
-
     @colorarg
-    def line(self, row1: int, col1: int, row2: int, col2: int,
-             color: ColorType=None, alpha: float=1.0) -> 'Layer':
+    def line(
+        self,
+        row1: int,
+        col1: int,
+        row2: int,
+        col2: int,
+        color: ColorType = None,
+        alpha: float = 1.0,
+    ) -> "Layer":
         """
         Draw a line between two points
 
@@ -274,8 +283,12 @@ class Layer(object):
         :param col2: End column
         :param color: Color to draw with
         """
-        rr, cc, aa = draw.line_aa(clamp(0, self.height, row1), clamp(0, self.width, col1),
-                                  clamp(0, self.height, row2), clamp(0, self.width, col2))
+        rr, cc, aa = draw.line_aa(
+            clamp(0, self.height, row1),
+            clamp(0, self.width, col1),
+            clamp(0, self.height, row2),
+            clamp(0, self.width, col2),
+        )
         self._draw(rr, cc, color, aa)
 
         return self

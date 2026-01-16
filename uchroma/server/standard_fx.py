@@ -31,6 +31,7 @@ class FX(Enum):
 
     Not all effects are available on all devices.
     """
+
     DISABLE = 0x00
     WAVE = 0x01
     REACTIVE = 0x02
@@ -61,6 +62,7 @@ class ExtendedFX(Enum):
     effects. Should not normally be used as part of the API.
 
     """
+
     DISABLE = 0x00
     STATIC = 0x01
     BREATHE = 0x02
@@ -69,7 +71,6 @@ class ExtendedFX(Enum):
     REACTIVE = 0x05
     STARLIGHT = 0x07
     CUSTOM_FRAME = 0x08
-
 
 
 # Modes for the Wave effect
@@ -81,6 +82,7 @@ class Direction(Enum):
     on devices with an illuminated trackpad such as the Blade Pro, and
     produce a rotating animation around the trackpad.
     """
+
     RIGHT = 1
     LEFT = 2
 
@@ -91,6 +93,7 @@ class Mode(Enum):
     Enumeration of modes and arguments for some animated effects which
     accept a variable number of colors.
     """
+
     RANDOM = 0
     SINGLE = 1
     DUAL = 2
@@ -106,30 +109,34 @@ class StandardFX(FXModule):
         Commands used to apply effects
 
         """
+
         SET_EFFECT = (0x03, 0x0A, None)
         SET_EFFECT_EXTENDED = (0x0F, 0x02, None)
-
 
     def __init__(self, *args, **kwargs):
         super(StandardFX, self).__init__(*args, **kwargs)
         self._report = None
 
-
     def _set_effect_basic(self, effect: FX, *args, transaction_id: int = None) -> bool:
         if self._report is None:
-            self._report = self._driver.get_report( \
-                *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id)
+            self._report = self._driver.get_report(
+                *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id
+            )
 
         self._report.args.clear()
         self._report.args.put_all([effect.value, *args])
 
         return self._driver.run_report(self._report)
 
-
     def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:
-        return self._driver.run_command(StandardFX.Command.SET_EFFECT_EXTENDED, 0x01,
-                                        LEDType.BACKLIGHT, effect, *args, transaction_id=0x3F)
-
+        return self._driver.run_command(
+            StandardFX.Command.SET_EFFECT_EXTENDED,
+            0x01,
+            LEDType.BACKLIGHT,
+            effect,
+            *args,
+            transaction_id=0x3F,
+        )
 
     def set_effect(self, effect: Enum, *args) -> bool:
         if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
@@ -138,9 +145,8 @@ class StandardFX(FXModule):
             return False
         return self._set_effect_basic(effect, *args)
 
-
     class DisableFX(BaseFX):
-        description = Unicode('Disable all effects')
+        description = Unicode("Disable all effects")
 
         def apply(self) -> bool:
             """
@@ -150,10 +156,9 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.DISABLE)
 
-
     class StaticFX(BaseFX):
-        description = Unicode('Static color')
-        color = ColorTrait(default_value='green').tag(config=True)
+        description = Unicode("Static color")
+        color = ColorTrait(default_value="green").tag(config=True)
 
         def apply(self) -> bool:
             """
@@ -165,11 +170,11 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.STATIC, self.color)
 
-
     class WaveFX(BaseFX):
-        description = Unicode('Waves of color')
-        direction = UseEnumCaseless(enum_class=Direction, \
-                default_value=Direction.RIGHT).tag(config=True)
+        description = Unicode("Waves of color")
+        direction = UseEnumCaseless(enum_class=Direction, default_value=Direction.RIGHT).tag(
+            config=True
+        )
         trackpad_effect = Bool(default_value=False).tag(config=True)
 
         def apply(self) -> bool:
@@ -190,9 +195,8 @@ class StandardFX(FXModule):
 
             return self._fxmod.set_effect(FX.WAVE, direction)
 
-
     class SpectrumFX(BaseFX):
-        description = Unicode('Cycle thru all colors of the spectrum')
+        description = Unicode("Cycle thru all colors of the spectrum")
 
         def apply(self) -> bool:
             """
@@ -202,10 +206,9 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.SPECTRUM)
 
-
     class ReactiveFX(BaseFX):
-        description = Unicode('Keys light up when pressed')
-        color = ColorTrait(default_value='skyblue').tag(config=True)
+        description = Unicode("Keys light up when pressed")
+        color = ColorTrait(default_value="skyblue").tag(config=True)
         speed = Int(1, min=1, max=4).tag(config=True)
 
         def apply(self) -> bool:
@@ -219,14 +222,14 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.REACTIVE, self.speed, self.color)
 
-
     class SweepFX(BaseFX):
-        description = Unicode('Colors sweep across the device')
-        color = ColorTrait(default_value='green').tag(config=True)
+        description = Unicode("Colors sweep across the device")
+        color = ColorTrait(default_value="green").tag(config=True)
         base_color = ColorTrait().tag(config=True)
         speed = Int(default_value=15, min=1, max=30).tag(config=True)
-        direction = UseEnumCaseless(enum_class=Direction, \
-                default_value=Direction.RIGHT).tag(config=True)
+        direction = UseEnumCaseless(enum_class=Direction, default_value=Direction.RIGHT).tag(
+            config=True
+        )
 
         def apply(self) -> bool:
             """
@@ -240,14 +243,14 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return self._fxmod.set_effect(FX.SWEEP, self.direction, self.speed,
-                                          self.base_color, self.color)
-
+            return self._fxmod.set_effect(
+                FX.SWEEP, self.direction, self.speed, self.base_color, self.color
+            )
 
     class MorphFX(BaseFX):
-        description = Unicode('Morphing colors when keys are pressed')
-        color = ColorTrait(default_value='magenta').tag(config=True)
-        base_color = ColorTrait(default_value='darkblue').tag(config=True)
+        description = Unicode("Morphing colors when keys are pressed")
+        color = ColorTrait(default_value="magenta").tag(config=True)
+        base_color = ColorTrait(default_value="darkblue").tag(config=True)
         speed = Int(default_value=2, min=1, max=4).tag(config=True)
 
         def apply(self) -> bool:
@@ -263,10 +266,9 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.MORPH, 0x04, self.speed, self.color, self.base_color)
 
-
     class FireFX(BaseFX):
-        description = Unicode('Keys on fire')
-        color = ColorTrait(default_value='red').tag(config=True)
+        description = Unicode("Keys on fire")
+        color = ColorTrait(default_value="red").tag(config=True)
         speed = Int(default_value=0x40, min=0x10, max=0x80).tag(config=True)
 
         def apply(self) -> bool:
@@ -280,28 +282,24 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.FIRE, 0x01, self.speed, self.color)
 
-
     class RippleFX(BaseFX):
-        description = Unicode('Ripple effect when keys are pressed')
-        color = ColorTrait(default_value='green').tag(config=True)
+        description = Unicode("Ripple effect when keys are pressed")
+        color = ColorTrait(default_value="green").tag(config=True)
         speed = Int(default_value=3, min=1, max=8).tag(config=True)
 
         def apply(self) -> bool:
             return self._fxmod.set_effect(FX.RIPPLE, 0x01, self.speed * 10, self.color)
 
-
     class RippleSolidFX(BaseFX):
-        description = Unicode('Ripple effect on a solid background')
-        color = ColorTrait(default_value='green').tag(config=True)
+        description = Unicode("Ripple effect on a solid background")
+        color = ColorTrait(default_value="green").tag(config=True)
         speed = Int(default_value=3, min=1, max=8).tag(config=True)
 
         def apply(self) -> bool:
             return self._fxmod.set_effect(FX.RIPPLE_SOLID, 0x01, self.speed * 10, self.color)
 
-
-
     class StarlightFX(BaseFX):
-        description = Unicode('Keys sparkle with color')
+        description = Unicode("Keys sparkle with color")
         colors = ColorSchemeTrait(minlen=0, maxlen=2).tag(config=True)
         speed = Int(default_value=1, min=1, max=4).tag(config=True)
 
@@ -319,12 +317,12 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return self._fxmod.set_effect(FX.STARLIGHT, Mode(len(self.colors)),
-                                          self.speed, *self.colors)
-
+            return self._fxmod.set_effect(
+                FX.STARLIGHT, Mode(len(self.colors)), self.speed, *self.colors
+            )
 
     class BreatheFX(BaseFX):
-        description = Unicode('Colors pulse in and out')
+        description = Unicode("Colors pulse in and out")
         colors = ColorSchemeTrait(minlen=0, maxlen=2).tag(config=True)
 
         def apply(self) -> bool:
@@ -342,9 +340,8 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.BREATHE, Mode(len(self.colors)), *self.colors)
 
-
     class CustomFrameFX(BaseFX):
-        description = Unicode('Display custom frame')
+        description = Unicode("Display custom frame")
         hidden = Bool(True, read_only=True)
 
         def apply(self) -> bool:
@@ -364,9 +361,8 @@ class StandardFX(FXModule):
                 tid = 0x80
             return self._fxmod.set_effect(FX.CUSTOM_FRAME, varstore)
 
-
     class RainbowFX(BaseFX):
-        description = Unicode('Rainbow of hues')
+        description = Unicode("Rainbow of hues")
         stagger = Int(default_value=4, min=0, max=100).tag(config=True)
         length = Int(default_value=75, min=20, max=360).tag(config=True)
 
@@ -384,33 +380,33 @@ class StandardFX(FXModule):
             layer = frame.create_layer()
 
             data = []
-            gradient = ColorUtils.hue_gradient( \
-                self.length, layer.width + (layer.height * self.stagger))
-            for row in range(0, layer.height):
-                data.append([gradient[(row * self.stagger) + col] for col in range(0, layer.width)])
+            gradient = ColorUtils.hue_gradient(
+                self.length, layer.width + (layer.height * self.stagger)
+            )
+            for row in range(layer.height):
+                data.append([gradient[(row * self.stagger) + col] for col in range(layer.width)])
 
             layer.put_all(data)
             frame.commit([layer])
 
             return True
 
-
     class AlignmentFX(BaseFX):
-        description = Unicode('Alignment test pattern')
+        description = Unicode("Alignment test pattern")
         hidden = Bool(True, read_only=True)
         cur_row = Int(min=0, default_value=0)
         cur_col = Int(min=0, default_value=0)
 
         def apply(self) -> bool:
-            first = 'red'
-            single = 'white'
-            colors = ['yellow', 'green', 'purple', 'blue']
+            first = "red"
+            single = "white"
+            colors = ["yellow", "green", "purple", "blue"]
 
             frame = self._driver.frame_control
             layer = frame.create_layer()
 
-            for row in range(0, layer.height):
-                for col in range(0, layer.width):
+            for row in range(layer.height):
+                for col in range(layer.width):
                     if col == 0:
                         color = first
                     else:
@@ -418,7 +414,7 @@ class StandardFX(FXModule):
                     layer.put(row, col, color)
 
             layer.put(self.cur_row, self.cur_col, single)
-            frame.debug_opts['debug_position'] = (self.cur_row, self.cur_col)
+            frame.debug_opts["debug_position"] = (self.cur_row, self.cur_col)
 
             frame.commit([layer])
 

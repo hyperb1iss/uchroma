@@ -19,8 +19,8 @@ import re
 from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 
-BASE_PATH = '/org/chemlab/UChroma'
-SERVICE = 'org.chemlab.UChroma'
+BASE_PATH = "/org/chemlab/UChroma"
+SERVICE = "org.chemlab.UChroma"
 
 
 class UChromaClientAsync:
@@ -51,7 +51,7 @@ class UChromaClientAsync:
     async def get_device_paths(self) -> list:
         """Get list of device object paths."""
         proxy = await self._get_proxy(BASE_PATH)
-        dm = proxy.get_interface('org.chemlab.UChroma.DeviceManager')
+        dm = proxy.get_interface("org.chemlab.UChroma.DeviceManager")
         return await dm.call_get_devices()
 
     async def get_device(self, identifier, loop=None):
@@ -65,9 +65,9 @@ class UChromaClientAsync:
                 proxy = await self._get_proxy(identifier)
                 return DeviceProxy(proxy, loop=loop)
 
-            if re.match(r'\w{4}:\w{4}.\d{2}', identifier):
+            if re.match(r"\w{4}:\w{4}.\d{2}", identifier):
                 use_key = True
-            elif re.match(r'\d+', identifier):
+            elif re.match(r"\d+", identifier):
                 identifier = int(identifier)
             else:
                 return None
@@ -88,7 +88,7 @@ class UChromaClientAsync:
     async def get_layer(self, device_path, layer_idx):
         """Get a layer proxy by device and index."""
         proxy = await self._get_proxy(device_path)
-        anim = proxy.get_interface('org.chemlab.UChroma.AnimationManager')
+        anim = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
         layers = await anim.get_current_renderers()
 
         if layer_idx >= len(layers):
@@ -105,7 +105,7 @@ class DeviceProxy:
 
     def __init__(self, proxy, loop=None):
         self._proxy = proxy
-        self._device_iface = proxy.get_interface('org.chemlab.UChroma.Device')
+        self._device_iface = proxy.get_interface("org.chemlab.UChroma.Device")
         self._cache = {}
         self._loop = loop
 
@@ -114,15 +114,15 @@ class DeviceProxy:
         self._anim_iface = None
         self._led_iface = None
         try:
-            self._fx_iface = proxy.get_interface('org.chemlab.UChroma.FXManager')
+            self._fx_iface = proxy.get_interface("org.chemlab.UChroma.FXManager")
         except Exception:
             pass
         try:
-            self._anim_iface = proxy.get_interface('org.chemlab.UChroma.AnimationManager')
+            self._anim_iface = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
         except Exception:
             pass
         try:
-            self._led_iface = proxy.get_interface('org.chemlab.UChroma.LEDManager')
+            self._led_iface = proxy.get_interface("org.chemlab.UChroma.LEDManager")
         except Exception:
             pass
 
@@ -141,10 +141,8 @@ class DeviceProxy:
         if name not in self._cache:
             loop = self._get_loop()
             # Convert CamelCase to snake_case for dbus-fast
-            snake_name = ''.join(
-                f'_{c.lower()}' if c.isupper() else c for c in name
-            ).lstrip('_')
-            getter = getattr(self._device_iface, f'get_{snake_name}')
+            snake_name = "".join(f"_{c.lower()}" if c.isupper() else c for c in name).lstrip("_")
+            getter = getattr(self._device_iface, f"get_{snake_name}")
             self._cache[name] = loop.run_until_complete(getter())
         return self._cache[name]
 
@@ -152,100 +150,99 @@ class DeviceProxy:
         """Set property synchronously."""
         loop = self._get_loop()
         # Convert CamelCase to snake_case for dbus-fast
-        snake_name = ''.join(
-            f'_{c.lower()}' if c.isupper() else c for c in name
-        ).lstrip('_')
-        setter = getattr(self._device_iface, f'set_{snake_name}')
+        snake_name = "".join(f"_{c.lower()}" if c.isupper() else c for c in name).lstrip("_")
+        setter = getattr(self._device_iface, f"set_{snake_name}")
         loop.run_until_complete(setter(value))
         self._cache[name] = value
 
     @property
     def Name(self):
-        return self._get_prop('Name')
+        return self._get_prop("Name")
 
     @property
     def Key(self):
-        return self._get_prop('Key')
+        return self._get_prop("Key")
 
     @property
     def DeviceType(self):
-        return self._get_prop('DeviceType')
+        return self._get_prop("DeviceType")
 
     @property
     def DeviceIndex(self):
-        return self._get_prop('DeviceIndex')
+        return self._get_prop("DeviceIndex")
 
     @property
     def SerialNumber(self):
-        return self._get_prop('SerialNumber')
+        return self._get_prop("SerialNumber")
 
     @property
     def FirmwareVersion(self):
-        return self._get_prop('FirmwareVersion')
+        return self._get_prop("FirmwareVersion")
 
     @property
     def Manufacturer(self):
-        return self._get_prop('Manufacturer')
+        return self._get_prop("Manufacturer")
 
     @property
     def VendorId(self):
-        return self._get_prop('VendorId')
+        return self._get_prop("VendorId")
 
     @property
     def ProductId(self):
-        return self._get_prop('ProductId')
+        return self._get_prop("ProductId")
 
     @property
     def Brightness(self):
-        return self._get_prop('Brightness')
+        return self._get_prop("Brightness")
 
     @Brightness.setter
     def Brightness(self, value):
-        self._set_prop('Brightness', value)
+        self._set_prop("Brightness", value)
 
     @property
     def Suspended(self):
-        return self._get_prop('Suspended')
+        return self._get_prop("Suspended")
 
     @Suspended.setter
     def Suspended(self, value):
-        self._set_prop('Suspended', value)
+        self._set_prop("Suspended", value)
 
     @property
     def HasMatrix(self):
-        return self._get_prop('HasMatrix')
+        return self._get_prop("HasMatrix")
 
     @property
     def Width(self):
-        return self._get_prop('Width')
+        return self._get_prop("Width")
 
     @property
     def Height(self):
-        return self._get_prop('Height')
+        return self._get_prop("Height")
 
     @property
     def SupportedLeds(self):
-        return self._get_prop('SupportedLeds')
+        return self._get_prop("SupportedLeds")
 
     @property
     def BusPath(self):
-        return self._get_prop('BusPath')
+        return self._get_prop("BusPath")
 
     # FX Manager properties
     @property
     def AvailableFX(self):
         if self._fx_iface is None:
             return None
-        if 'AvailableFX' not in self._cache:
+        if "AvailableFX" not in self._cache:
             loop = self._get_loop()
             raw = loop.run_until_complete(self._fx_iface.get_available_fx())
             # Unwrap dbus_fast Variants
-            self._cache['AvailableFX'] = self._unwrap_variants(raw)
-        return self._cache['AvailableFX']
+            self._cache["AvailableFX"] = self._unwrap_variants(raw)
+        return self._cache["AvailableFX"]
 
     def _unwrap_variants(self, obj):
         """Recursively unwrap dbus_fast Variants."""
         from dbus_fast import Variant
+
         if isinstance(obj, Variant):
             return self._unwrap_variants(obj.value)
         elif isinstance(obj, dict):
@@ -272,11 +269,11 @@ class DeviceProxy:
     def AvailableRenderers(self):
         if self._anim_iface is None:
             return None
-        if 'AvailableRenderers' not in self._cache:
+        if "AvailableRenderers" not in self._cache:
             loop = self._get_loop()
             raw = loop.run_until_complete(self._anim_iface.get_available_renderers())
-            self._cache['AvailableRenderers'] = self._unwrap_variants(raw)
-        return self._cache['AvailableRenderers']
+            self._cache["AvailableRenderers"] = self._unwrap_variants(raw)
+        return self._cache["AvailableRenderers"]
 
     @property
     def CurrentRenderers(self):
@@ -302,11 +299,12 @@ class DeviceProxy:
     def AvailableLEDs(self):
         if self._led_iface is None:
             return None
-        if 'AvailableLEDs' not in self._cache:
+        if "AvailableLEDs" not in self._cache:
             loop = self._get_loop()
-            self._cache['AvailableLEDs'] = loop.run_until_complete(
-                self._led_iface.get_available_le_ds())
-        return self._cache['AvailableLEDs']
+            self._cache["AvailableLEDs"] = loop.run_until_complete(
+                self._led_iface.get_available_le_ds()
+            )
+        return self._cache["AvailableLEDs"]
 
     def get_interface(self, name):
         """Get a specific interface from the proxy."""
@@ -315,10 +313,24 @@ class DeviceProxy:
     def GetAll(self, interface_name=None):
         """Get all properties as a dictionary (for dump command compatibility)."""
         props = {}
-        for attr in ['Name', 'Key', 'DeviceType', 'DeviceIndex', 'SerialNumber',
-                     'FirmwareVersion', 'Manufacturer', 'VendorId', 'ProductId',
-                     'Brightness', 'Suspended', 'HasMatrix', 'Width', 'Height',
-                     'SupportedLeds', 'BusPath']:
+        for attr in [
+            "Name",
+            "Key",
+            "DeviceType",
+            "DeviceIndex",
+            "SerialNumber",
+            "FirmwareVersion",
+            "Manufacturer",
+            "VendorId",
+            "ProductId",
+            "Brightness",
+            "Suspended",
+            "HasMatrix",
+            "Width",
+            "Height",
+            "SupportedLeds",
+            "BusPath",
+        ]:
             try:
                 props[attr] = getattr(self, attr)
             except Exception:
@@ -373,10 +385,10 @@ async def main():
     try:
         for dev_path in await client.get_device_paths():
             dev = await client.get_device(dev_path)
-            print(f'[{dev.Key}]: {dev.Name} ({dev.SerialNumber} / {dev.FirmwareVersion})')
+            print(f"[{dev.Key}]: {dev.Name} ({dev.SerialNumber} / {dev.FirmwareVersion})")
     finally:
         await client.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

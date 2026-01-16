@@ -14,11 +14,10 @@
 # pylint: disable=invalid-name, too-many-instance-attributes, too-many-function-args
 
 import asyncio
-
 from abc import abstractmethod
 from typing import NamedTuple
 
-from traitlets import Bool, CaselessStrEnum, HasTraits, Float, Int, observe, Unicode
+from traitlets import Bool, Float, HasTraits, Int, observe
 
 from uchroma.blending import BlendOp
 from uchroma.input_queue import InputQueue
@@ -27,28 +26,30 @@ from uchroma.log import Log
 from uchroma.traits import ColorTrait, DefaultCaselessStrEnum, WriteOnceInt
 from uchroma.util import Ticker
 
-
 MAX_FPS = 30
 DEFAULT_FPS = 15
 NUM_BUFFERS = 2
 
 
-RendererMeta = NamedTuple('RendererMeta', [('display_name', str), ('description', str),
-                                           ('author', str), ('version', str)])
+class RendererMeta(NamedTuple):
+    display_name: str
+    description: str
+    author: str
+    version: str
 
 
-
-class Renderer(HasTraits, object):
+class Renderer(HasTraits):
     """
     Base class for custom effects renderers.
     """
 
     # traits
-    meta = RendererMeta('_unknown_', 'Unimplemented', 'Unknown', '0')
+    meta = RendererMeta("_unknown_", "Unimplemented", "Unknown", "0")
 
     fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS).tag(config=True)
-    blend_mode = DefaultCaselessStrEnum(BlendOp.get_modes(), default_value='screen',
-                                 allow_none=False).tag(config=True)
+    blend_mode = DefaultCaselessStrEnum(
+        BlendOp.get_modes(), default_value="screen", allow_none=False
+    ).tag(config=True)
     opacity = Float(min=0.0, max=1.0, default_value=1.0).tag(config=True)
     background_color = ColorTrait().tag(config=True)
 
@@ -56,7 +57,6 @@ class Renderer(HasTraits, object):
     width = WriteOnceInt()
     zindex = Int(default_value=-1)
     running = Bool(False)
-
 
     def __init__(self, driver, *args, **kwargs):
         self._avail_q = asyncio.Queue(maxsize=NUM_BUFFERS)
@@ -70,20 +70,18 @@ class Renderer(HasTraits, object):
         self._tick = Ticker(1 / DEFAULT_FPS)
 
         self._input_queue = None
-        if hasattr(driver, 'input_manager') and driver.input_manager is not None:
+        if hasattr(driver, "input_manager") and driver.input_manager is not None:
             self._input_queue = InputQueue(driver)
 
-        self._logger = Log.get('uchroma.%s.%d' % (self.__class__.__name__, self.zindex))
+        self._logger = Log.get("uchroma.%s.%d" % (self.__class__.__name__, self.zindex))
         super(Renderer, self).__init__(*args, **kwargs)
 
-
-    @observe('zindex')
+    @observe("zindex")
     def _z_changed(self, change):
         if change.old == change.new and change.new >= 0:
             return
 
-        self._logger = Log.get('uchroma.%s.%d' % (self.__class__.__name__, change.new))
-
+        self._logger = Log.get("uchroma.%s.%d" % (self.__class__.__name__, change.new))
 
     def init(self, frame) -> bool:
         """
@@ -97,16 +95,13 @@ class Renderer(HasTraits, object):
         """
         return False
 
-
-    def finish(self, frame ):
+    def finish(self, frame):
         """
         Invoked by AnimationLoop when the effect is deactivated.
         An implementation should perform cleanup tasks here.
 
         :param frame: The frame instance being shut down
         """
-        pass
-
 
     @abstractmethod
     async def draw(self, layer: Layer, timestamp: float) -> bool:
@@ -123,14 +118,12 @@ class Renderer(HasTraits, object):
         """
         return False
 
-
     @property
     def has_key_input(self) -> bool:
         """
         True if the device is capable of producing key events
         """
         return self._input_queue is not None
-
 
     @property
     def key_expire_time(self) -> float:
@@ -139,7 +132,6 @@ class Renderer(HasTraits, object):
         available.
         """
         return self._input_queue.expire_time
-
 
     @key_expire_time.setter
     def key_expire_time(self, expire_time: float):
@@ -151,7 +143,6 @@ class Renderer(HasTraits, object):
         """
         self._input_queue.expire_time = expire_time
 
-
     async def get_input_events(self):
         """
         Gets input events, yielding until at least one event is
@@ -160,16 +151,14 @@ class Renderer(HasTraits, object):
         is returned.
         """
         if not self.has_key_input or not self._input_queue.attach():
-            raise ValueError('Input events are not supported for this device')
+            raise ValueError("Input events are not supported for this device")
 
         events = await self._input_queue.get_events()
         return events
 
-
-    @observe('fps')
+    @observe("fps")
     def _fps_changed(self, change):
         self._tick.interval = 1 / self.fps
-
 
     @property
     def logger(self):
@@ -177,7 +166,6 @@ class Renderer(HasTraits, object):
         The logger for this instance
         """
         return self._logger
-
 
     def _free_layer(self, layer):
         """
@@ -189,7 +177,6 @@ class Renderer(HasTraits, object):
         layer.lock(False)
         layer.clear()
         self._avail_q.put_nowait(layer)
-
 
     async def _run(self):
         """
@@ -214,7 +201,7 @@ class Renderer(HasTraits, object):
                     status = await self.draw(layer, asyncio.get_event_loop().time())
                 except Exception as err:
                     self.logger.exception("Exception in renderer, exiting now!", exc_info=err)
-                    self.logger.error('Renderer traits: %s', self._trait_values)
+                    self.logger.error("Renderer traits: %s", self._trait_values)
                     break
 
                 if not self.running:
@@ -227,15 +214,13 @@ class Renderer(HasTraits, object):
 
         await self._stop()
 
-
     def _flush(self):
         if self.running:
             return
-        for qlen in range(0, self._avail_q.qsize()):
+        for qlen in range(self._avail_q.qsize()):
             self._avail_q.get_nowait()
-        for qlen in range(0, self._active_q.qsize()):
+        for qlen in range(self._active_q.qsize()):
             self._active_q.get_nowait()
-
 
     async def _stop(self):
         if not self.running:

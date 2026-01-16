@@ -22,12 +22,14 @@ from uchroma.util import Singleton
 
 from .device_manager import UChromaDeviceManager
 
-SCREENSAVERS = (('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver'),
-                ('org.gnome.ScreenSaver', '/org/gnome/ScreenSaver'),
-                ('org.mate.ScreenSaver', '/org/mate/ScreenSaver'),
-                ('com.canonical.Unity', '/org/gnome/ScreenSaver'))
+SCREENSAVERS = (
+    ("org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver"),
+    ("org.gnome.ScreenSaver", "/org/gnome/ScreenSaver"),
+    ("org.mate.ScreenSaver", "/org/mate/ScreenSaver"),
+    ("com.canonical.Unity", "/org/gnome/ScreenSaver"),
+)
 
-LOGIN_SERVICE = 'org.freedesktop.login1'
+LOGIN_SERVICE = "org.freedesktop.login1"
 
 
 class PowerMonitor(metaclass=Singleton):
@@ -35,8 +37,9 @@ class PowerMonitor(metaclass=Singleton):
     Watches for changes to the system's suspend state and
     screensaver, signalling devices to suspend if necessary.
     """
+
     def __init__(self):
-        self._logger = Log.get('uchroma.power')
+        self._logger = Log.get("uchroma.power")
         self._running = False
         self._sleeping = False
         self._user_active = False
@@ -98,11 +101,13 @@ class PowerMonitor(metaclass=Singleton):
         """Connect to login1 for suspend/resume signals."""
         try:
             introspection = await self._system_bus.introspect(
-                LOGIN_SERVICE, '/org/freedesktop/login1')
+                LOGIN_SERVICE, "/org/freedesktop/login1"
+            )
             self._login1_proxy = self._system_bus.get_proxy_object(
-                LOGIN_SERVICE, '/org/freedesktop/login1', introspection)
+                LOGIN_SERVICE, "/org/freedesktop/login1", introspection
+            )
 
-            manager = self._login1_proxy.get_interface('org.freedesktop.login1.Manager')
+            manager = self._login1_proxy.get_interface("org.freedesktop.login1.Manager")
 
             # Connect to PrepareForSleep signal
             manager.on_prepare_for_sleep(self._on_prepare_for_sleep)
@@ -124,13 +129,13 @@ class PowerMonitor(metaclass=Singleton):
 
             # Try to get ScreenSaver interface
             try:
-                screensaver = proxy.get_interface('org.freedesktop.ScreenSaver')
+                screensaver = proxy.get_interface("org.freedesktop.ScreenSaver")
                 screensaver.on_active_changed(self._on_active_changed)
                 self._logger.info("Connected screensaver: %s:%s", bus_name, object_path)
             except Exception:
                 # Try alternate interface name
                 try:
-                    screensaver = proxy.get_interface('org.gnome.ScreenSaver')
+                    screensaver = proxy.get_interface("org.gnome.ScreenSaver")
                     screensaver.on_active_changed(self._on_active_changed)
                     self._logger.info("Connected screensaver: %s:%s", bus_name, object_path)
                 except Exception:
