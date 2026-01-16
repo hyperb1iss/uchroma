@@ -96,6 +96,9 @@ class BaseUChromaDevice:
                 await self._input_manager.shutdown()
 
         self.close(True)
+        if hasattr(self, "_executor") and self._executor is not None:
+            self._executor.shutdown(wait=False, cancel_futures=True)
+            self._executor = None
 
     def close(self, force: bool = False):
         if not force:
@@ -614,4 +617,7 @@ class BaseUChromaDevice:
             self._device_close()
 
     def __del__(self):
+        if hasattr(self, "_executor") and self._executor is not None:
+            self._executor.shutdown(wait=False, cancel_futures=True)
+            self._executor = None
         self.close(force=True)

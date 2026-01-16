@@ -163,4 +163,9 @@ class InputManager:
         return self._input_devices
 
     def __del__(self):
-        self.shutdown()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+
+        ensure_future(self.shutdown(), loop=loop)
