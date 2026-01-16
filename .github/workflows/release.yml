@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.2.0). Leave empty to auto-bump."
+        required: false
+        type: string
+      bump:
+        description: "Version bump type (if version not specified)"
+        required: false
+        type: choice
+        default: "patch"
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: "Dry run (skip actual release)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version
+        id: version
+        run: |
+          # Extract version from pyproject.toml
+          CURRENT=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "Current version: $CURRENT"
+
+          if [ -n "${{ inputs.version }}" ]; then
+            NEW="${{ inputs.version }}"
+          else
+            IFS='.' read -r major minor patch <<< "$CURRENT"
+            case "${{ inputs.bump }}" in
+              major) NEW="$((major + 1)).0.0" ;;
+              minor) NEW="$major.$((minor + 1)).0" ;;
+              patch) NEW="$major.$minor.$((patch + 1))" ;;
+            esac
+          fi
+
+          echo "New version: $NEW"
+
+          # Validate semver
+          if ! [[ "$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "Error: Invalid version format: $NEW"
+            exit 1
+          fi
+
+          # Check if tag exists
+          if git rev-parse "v$NEW" >/dev/null 2>&1; then
+            echo "Error: Tag v$NEW already exists"
+            exit 1
+          fi
+
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        uses: hyperb1iss/git-iris@v2
+        with:
+          command: release-notes
+          provider: anthropic
+          model: claude-sonnet-4-5-20250929
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Update pyproject.toml version
+        if: ${{ !inputs.dry_run }}
+        run: |
+          sed -i 's/^version = .*/version = "${{ steps.version.outputs.version }}"/' pyproject.toml
+
+      - name: Commit and tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add pyproject.toml
+          git commit -m "🔖 Release v${{ steps.version.outputs.version }}"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+
+          git push origin HEAD
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.release-notes }}
+          draft: false
+          prerelease: false
+
+      - name: Trigger publish workflow
+        if: ${{ !inputs.dry_run }}
+        run: |
+          gh workflow run publish.yml -f tag=v${{ steps.version.outputs.version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🔖 Release v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "**This was a dry run. No changes were made.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Release created successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Packages will be published to:" >> $GITHUB_STEP_SUMMARY
+            echo "- [PyPI](https://pypi.org/project/uchroma/)" >> $GITHUB_STEP_SUMMARY
+            echo "- [AUR](https://aur.archlinux.org/packages/uchroma)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Release Notes" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.release_notes.outputs.release-notes }}" >> $GITHUB_STEP_SUMMARY

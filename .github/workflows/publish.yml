@@ -1,0 +1,264 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g., v1.2.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run (build only, don't publish)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-python:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libhidapi-dev libudev-dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build package
+        run: uv build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build-python
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    environment:
+      name: pypi
+      url: https://pypi.org/project/uchroma/
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  build-debian:
+    name: Build Debian Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            devscripts \
+            debhelper \
+            dh-python \
+            python3-all \
+            python3-dev \
+            python3-setuptools \
+            python3-build \
+            cython3 \
+            libhidapi-dev \
+            libudev-dev
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-packages
+          path: |
+            ../*.deb
+            ../*.buildinfo
+            ../*.changes
+
+  build-arch:
+    name: Build Arch Package
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install base dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git python python-build python-installer python-wheel cython
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Build package
+        run: |
+          # Create non-root user for makepkg
+          useradd -m builder
+          chown -R builder:builder .
+
+          cd packaging/arch
+          # Update PKGBUILD version from tag
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+          sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
+
+          # Build package
+          su builder -c "makepkg -s --noconfirm"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-packages
+          path: packaging/arch/*.pkg.tar.zst
+
+  build-snap:
+    name: Build Snap Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Update snap version
+        run: |
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+          sed -i "s/^version:.*/version: '$VERSION'/" snap/snapcraft.yaml
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: snapcraft
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-packages
+          path: ${{ steps.snapcraft.outputs.snap }}
+
+  publish-snap:
+    name: Publish to Snap Store
+    needs: build-snap
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: snap-packages
+
+      - name: Publish to Snap Store
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN }}
+        with:
+          snap: "*.snap"
+          release: stable
+
+  update-aur:
+    name: Update AUR Package
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          echo "Host aur.archlinux.org" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/aur" >> ~/.ssh/config
+          echo "  User aur" >> ~/.ssh/config
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
+      - name: Clone AUR repo
+        run: |
+          git clone ssh://aur@aur.archlinux.org/uchroma.git aur-repo
+          cd aur-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update PKGBUILD
+        run: |
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+
+          cd aur-repo
+
+          # Update version
+          sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
+
+          # Update checksums (fetch from PyPI)
+          TARBALL_URL="https://files.pythonhosted.org/packages/source/u/uchroma/uchroma-${VERSION}.tar.gz"
+          SHA256=$(curl -sL "$TARBALL_URL" | sha256sum | cut -d' ' -f1)
+          sed -i "s/^sha256sums=.*/sha256sums=('$SHA256')/" PKGBUILD
+
+          # Regenerate .SRCINFO
+          makepkg --printsrcinfo > .SRCINFO
+
+      - name: Push to AUR
+        run: |
+          cd aur-repo
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to v${{ inputs.tag }}"
+          git push
+
+  summary:
+    name: Publish Summary
+    needs: [publish-pypi, build-debian, build-arch, publish-snap, update-aur]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## 📦 Publish Results for ${{ inputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "**This was a dry run. Packages were built but not published.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Published to:" >> $GITHUB_STEP_SUMMARY
+            echo "- [PyPI](https://pypi.org/project/uchroma/)" >> $GITHUB_STEP_SUMMARY
+            echo "- [Snap Store](https://snapcraft.io/uchroma)" >> $GITHUB_STEP_SUMMARY
+            echo "- [AUR](https://aur.archlinux.org/packages/uchroma)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Artifacts available:" >> $GITHUB_STEP_SUMMARY
+            echo "- Debian packages (.deb)" >> $GITHUB_STEP_SUMMARY
+            echo "- Arch packages (.pkg.tar.zst)" >> $GITHUB_STEP_SUMMARY
+          fi
