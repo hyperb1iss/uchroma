@@ -130,7 +130,7 @@ install-udev: ## Install udev rules (requires sudo)
 
 .PHONY: install-service
 install-service: ## Install systemd user service
-	install -m 644 -v -D install/dbus/org.chemlab.UChroma.service $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
+	install -m 644 -v -D install/dbus/io.uchroma.service $(DESTDIR)/usr/share/dbus-1/services/io.uchroma.service
 	install -m 644 -v -D install/systemd/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 	@echo -e "\033[38;2;80;250;123m✓ systemd service installed. Run: systemctl --user daemon-reload\033[0m"
 
@@ -140,7 +140,7 @@ uninstall-udev: ## Uninstall udev rules
 
 .PHONY: uninstall-service
 uninstall-service: ## Uninstall systemd service
-	rm -v -f $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
+	rm -v -f $(DESTDIR)/usr/share/dbus-1/services/io.uchroma.service
 	rm -v -f $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 
 # ─────────────────────────────────────────────────────────────────────────────

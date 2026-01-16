@@ -48,6 +48,6 @@ package() {
     "$pkgdir/usr/lib/udev/rules.d/70-uchroma.rules"
   install -Dm644 install/systemd/uchromad.service \
     "$pkgdir/usr/lib/systemd/user/uchromad.service"
-  install -Dm644 install/dbus/org.chemlab.UChroma.service \
-    "$pkgdir/usr/share/dbus-1/services/org.chemlab.UChroma.service"
+  install -Dm644 install/dbus/io.uchroma.service \
+    "$pkgdir/usr/share/dbus-1/services/io.uchroma.service"
 }

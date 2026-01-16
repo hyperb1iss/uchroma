@@ -1,4 +1,4 @@
 [D-BUS Service]
-Name=org.chemlab.UChroma
+Name=io.uchroma
 Exec=/usr/bin/uchromad
 SystemdService=uchromad.service

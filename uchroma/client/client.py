@@ -272,7 +272,7 @@ class DumpCommand(AbstractCommand):
         return sub
 
     def parse(self, args):
-        result = self.driver.GetAll("org.chemlab.UChroma.Device")
+        result = self.driver.GetAll("io.uchroma.Device")
         keylen = max_keylen(result)
         props = OrderedDict(sorted({camel_to_snake(k): v for k, v in result.items()}.items()))
 
@@ -557,7 +557,7 @@ class AnimationCommand(AbstractCommand):
             if hasattr(self.driver, "CurrentRenderers"):
                 renderers = self.driver.CurrentRenderers
                 for renderer_type, _path in renderers:
-                    # Extract zindex from path (e.g., "/org/chemlab/UChroma/device/0/layer/1")
+                    # Extract zindex from path (e.g., "/io/uchroma/device/0/layer/1")
                     zindex = int(_path.split("/")[-1])
                     try:
                         props = self.client.get_layer_info(self.driver, zindex)

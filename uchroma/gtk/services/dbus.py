@@ -10,8 +10,8 @@ from collections.abc import Callable
 from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
 
-SERVICE_NAME = "org.chemlab.UChroma"  # TODO: migrate to tech.hyperbliss.UChroma
-ROOT_PATH = "/org/chemlab/UChroma"
+SERVICE_NAME = "io.uchroma"
+ROOT_PATH = "/io/uchroma"
 
 
 class DBusService:
@@ -36,7 +36,7 @@ class DBusService:
         introspection = await self._bus.introspect(SERVICE_NAME, ROOT_PATH)
         proxy = self._bus.get_proxy_object(SERVICE_NAME, ROOT_PATH, introspection)
 
-        self._manager_proxy = proxy.get_interface("org.chemlab.UChroma.DeviceManager")
+        self._manager_proxy = proxy.get_interface("io.uchroma.DeviceManager")
 
         # Subscribe to device changes
         await self._subscribe_device_changes()
@@ -82,7 +82,7 @@ class DBusService:
             proxy = self._bus.get_proxy_object(SERVICE_NAME, path, introspection)
 
             self._device_proxies[path] = {
-                "device": proxy.get_interface("org.chemlab.UChroma.Device"),
+                "device": proxy.get_interface("io.uchroma.Device"),
                 "fx": None,
                 "anim": None,
                 "led": None,
@@ -91,17 +91,17 @@ class DBusService:
             # Try to get additional interfaces
             with contextlib.suppress(Exception):
                 self._device_proxies[path]["fx"] = proxy.get_interface(
-                    "org.chemlab.UChroma.FXManager"
+                    "io.uchroma.FXManager"
                 )
 
             with contextlib.suppress(Exception):
                 self._device_proxies[path]["anim"] = proxy.get_interface(
-                    "org.chemlab.UChroma.AnimationManager"
+                    "io.uchroma.AnimationManager"
                 )
 
             with contextlib.suppress(Exception):
                 self._device_proxies[path]["led"] = proxy.get_interface(
-                    "org.chemlab.UChroma.LEDManager"
+                    "io.uchroma.LEDManager"
                 )
 
             return self._device_proxies[path]["device"]
@@ -245,6 +245,19 @@ class DBusService:
         fx_proxy = await self.get_fx_proxy(path)
         if not fx_proxy:
             return False
+
+    async def get_key_mapping(self, path: str) -> dict:
+        """Fetch key mapping layout for a device."""
+        device_proxy = await self.get_device_proxy(path)
+        if not device_proxy:
+            return {}
+
+        try:
+            raw = await device_proxy.get_key_mapping()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get key mapping: {e}")
+            return {}
 
         try:
             # Convert params to D-Bus variants

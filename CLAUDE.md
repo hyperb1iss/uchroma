@@ -136,13 +136,13 @@ Device types: `KEYBOARD`, `MOUSE`, `MOUSEPAD`, `HEADSET`, `KEYPAD`, `LAPTOP`
 
 ## D-Bus Interface
 
-**Bus name**: `org.chemlab.UChroma`
-**Base path**: `/org/chemlab/UChroma`
+**Bus name**: `io.uchroma`
+**Base path**: `/io/uchroma`
 
 Key interfaces:
-- `org.chemlab.UChroma.DeviceManager` — device enumeration
-- `org.chemlab.UChroma.Device` — brightness, effects, properties
-- `org.chemlab.UChroma.Animation` — layer management
+- `io.uchroma.DeviceManager` — device enumeration
+- `io.uchroma.Device` — brightness, effects, properties
+- `io.uchroma.AnimationManager` — layer management
 
 Client usage:
 ```python

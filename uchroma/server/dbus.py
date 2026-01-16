@@ -41,7 +41,7 @@ def dev_mode_enabled():
     return os.environ.get("UCHROMA_DEV") is not None
 
 
-BUS_NAME = "org.chemlab.UChroma"
+BUS_NAME = "io.uchroma"
 
 
 class DeviceInterface(ServiceInterface):
@@ -50,7 +50,7 @@ class DeviceInterface(ServiceInterface):
     """
 
     def __init__(self, driver, device_api):
-        super().__init__("org.chemlab.UChroma.Device")
+        super().__init__("io.uchroma.Device")
         self._driver = driver
         self._device_api = device_api
         self._logger = driver.logger
@@ -212,7 +212,7 @@ class DeviceInterface(ServiceInterface):
             k: Variant("d" if isinstance(v, float) else "b", v)
             for k, v in changed_properties.items()
         }
-        self.PropertiesChanged("org.chemlab.UChroma.Device", props, invalidated_properties or [])
+        self.PropertiesChanged("io.uchroma.Device", props, invalidated_properties or [])
 
 
 class LEDManagerInterface(ServiceInterface):
@@ -221,7 +221,7 @@ class LEDManagerInterface(ServiceInterface):
     """
 
     def __init__(self, driver):
-        super().__init__("org.chemlab.UChroma.LEDManager")
+        super().__init__("io.uchroma.LEDManager")
         self._driver = driver
         self._logger = driver.logger
         self._driver.led_manager.led_changed.connect(self._led_changed)
@@ -278,7 +278,7 @@ class FXManagerInterface(ServiceInterface):
     """
 
     def __init__(self, driver):
-        super().__init__("org.chemlab.UChroma.FXManager")
+        super().__init__("io.uchroma.FXManager")
         self._driver = driver
         self._logger = driver.logger
         self._fx_manager = driver.fx_manager
@@ -340,7 +340,7 @@ class FXManagerInterface(ServiceInterface):
                 props[k] = Variant("(sa{sv})", v)
             else:
                 props[k] = Variant("s", str(v))
-        self.PropertiesChanged("org.chemlab.UChroma.FXManager", props, invalidated_properties or [])
+        self.PropertiesChanged("io.uchroma.FXManager", props, invalidated_properties or [])
 
 
 class AnimationManagerInterface(ServiceInterface):
@@ -349,7 +349,7 @@ class AnimationManagerInterface(ServiceInterface):
     """
 
     def __init__(self, driver, device_api):
-        super().__init__("org.chemlab.UChroma.AnimationManager")
+        super().__init__("io.uchroma.AnimationManager")
         self._driver = driver
         self._device_api = device_api
         self._logger = driver.logger
@@ -483,7 +483,7 @@ class AnimationManagerInterface(ServiceInterface):
             else:
                 props[k] = Variant("s", str(v))
         self.PropertiesChanged(
-            "org.chemlab.UChroma.AnimationManager", props, invalidated_properties or []
+            "io.uchroma.AnimationManager", props, invalidated_properties or []
         )
 
 
@@ -493,7 +493,7 @@ class DeviceManagerInterface(ServiceInterface):
     """
 
     def __init__(self):
-        super().__init__("org.chemlab.UChroma.DeviceManager")
+        super().__init__("io.uchroma.DeviceManager")
         self._device_paths = []
 
     def set_device_paths(self, paths: list):
@@ -524,7 +524,7 @@ class DeviceAPI:
 
     @property
     def bus_path(self):
-        return f"/org/chemlab/UChroma/{self._driver.device_type.value}/{self._driver.vendor_id:04x}_{self._driver.product_id:04x}_{self._driver.device_index:02d}"
+        return f"/io/uchroma/{self._driver.device_type.value}/{self._driver.vendor_id:04x}_{self._driver.product_id:04x}_{self._driver.device_index:02d}"
 
     @property
     def driver(self):
@@ -631,7 +631,7 @@ class DeviceManagerAPI:
 
         # Create and export manager interface
         self._manager_iface = DeviceManagerInterface()
-        self._bus.export("/org/chemlab/UChroma", self._manager_iface)
+        self._bus.export("/io/uchroma", self._manager_iface)
 
         # Request the bus name
         await self._bus.request_name(BUS_NAME)

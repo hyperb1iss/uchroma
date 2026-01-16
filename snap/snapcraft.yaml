@@ -14,13 +14,13 @@ plugs:
   dbus:
     bus: session
     interface: dbus
-    name: org.chemlab.UChroma
+    name: io.uchroma
 
 slots:
   session-dbus-interface:
     bus: session
     interface: dbus
-    name: org.chemlab.UChroma
+    name: io.uchroma
 
 apps:
   uchroma:

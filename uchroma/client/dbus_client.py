@@ -20,8 +20,8 @@ import re
 from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
 
-BASE_PATH = "/org/chemlab/UChroma"
-SERVICE = "org.chemlab.UChroma"
+BASE_PATH = "/io/uchroma"
+SERVICE = "io.uchroma"
 
 
 class UChromaClientAsync:
@@ -52,7 +52,7 @@ class UChromaClientAsync:
     async def get_device_paths(self) -> list:
         """Get list of device object paths."""
         proxy = await self._get_proxy(BASE_PATH)
-        dm = proxy.get_interface("org.chemlab.UChroma.DeviceManager")
+        dm = proxy.get_interface("io.uchroma.DeviceManager")
         return await dm.call_get_devices()
 
     async def get_device(self, identifier, loop=None):
@@ -95,7 +95,7 @@ class UChromaClientAsync:
         if isinstance(device_path, DeviceProxy):
             device_path = device_path._proxy.path
         proxy = await self._get_proxy(device_path)
-        anim = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
+        anim = proxy.get_interface("io.uchroma.AnimationManager")
         return await anim.call_get_layer_info(zindex)
 
 
@@ -107,7 +107,7 @@ class DeviceProxy:
 
     def __init__(self, proxy, loop=None):
         self._proxy = proxy
-        self._device_iface = proxy.get_interface("org.chemlab.UChroma.Device")
+        self._device_iface = proxy.get_interface("io.uchroma.Device")
         self._cache = {}
         self._loop = loop
 
@@ -116,11 +116,11 @@ class DeviceProxy:
         self._anim_iface = None
         self._led_iface = None
         with contextlib.suppress(Exception):
-            self._fx_iface = proxy.get_interface("org.chemlab.UChroma.FXManager")
+            self._fx_iface = proxy.get_interface("io.uchroma.FXManager")
         with contextlib.suppress(Exception):
-            self._anim_iface = proxy.get_interface("org.chemlab.UChroma.AnimationManager")
+            self._anim_iface = proxy.get_interface("io.uchroma.AnimationManager")
         with contextlib.suppress(Exception):
-            self._led_iface = proxy.get_interface("org.chemlab.UChroma.LEDManager")
+            self._led_iface = proxy.get_interface("io.uchroma.LEDManager")
 
     async def _prefetch_identity(self):
         """Pre-fetch Key and DeviceIndex for sync access during device lookup."""
