@@ -2120,7 +2120,7 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 ```
 [2026-01-16] [DONE] [1] Add missing quirks to hardware.py
 [2026-01-16] [DONE] [1] Update get_report() with new transaction codes
-[2026-01-15] [TODO] [1] Add BlackWidow V4 series to keyboard.yaml
+[2026-01-16] [DONE] [1] Add BlackWidow V4 series to keyboard.yaml
 [2026-01-15] [TODO] [1] Add Huntsman V3 Pro series to keyboard.yaml
 [2026-01-15] [TODO] [1] Add DeathStalker V2 series to keyboard.yaml
 [2026-01-15] [TODO] [1] Add wireless keyboard entries with 0x9F

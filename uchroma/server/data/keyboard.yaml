@@ -159,3 +159,49 @@ children:
     product_id: 0x021e
     dimensions: [6, 22]
     quirks: EXTENDED_FX_CMDS
+
+# Modern keyboards (V3+, V4) using 0x1F transaction code and extended FX
+- !device-config
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
+    rainbow, starlight]
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+  children:
+
+  # BlackWidow V4 Series
+  - !device-config
+    name: BlackWidow V4
+    product_id: 0x0287
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow V4 X
+    product_id: 0x028d
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow V4 75%
+    product_id: 0x028e
+    dimensions: [6, 16]
+
+  - !device-config
+    name: BlackWidow V4 Mini
+    product_id: 0x0283
+    dimensions: [5, 15]
+
+  # BlackWidow V3 Series
+  - !device-config
+    name: BlackWidow V3
+    product_id: 0x024e
+    dimensions: [6, 22]
+    quirks: []  # Uses default 0xFF, override parent
+
+  - !device-config
+    name: BlackWidow V3 Mini
+    product_id: 0x0258
+    dimensions: [5, 15]
+
+  - !device-config
+    name: BlackWidow V3 TKL
+    product_id: 0x0a24
+    dimensions: [6, 18]
+    quirks: []  # Uses default 0xFF, override parent
