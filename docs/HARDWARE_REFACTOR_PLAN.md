@@ -2125,8 +2125,8 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 [2026-01-16] [DONE] [1] Add DeathStalker V2 series to keyboard.yaml
 [2026-01-16] [DONE] [1] Add wireless keyboard entries with 0x9F
 [2026-01-16] [DONE] [1] Add modern mice with NO_LED quirk
-[2026-01-15] [TODO] [1] Add missing mousepads to mousepad.yaml
-[2026-01-15] [TODO] [1] Add missing accessories
+[2026-01-16] [DONE] [1] Add missing mousepads to mousepad.yaml
+[2026-01-16] [TODO] [1] Add missing accessories
 
 [2026-01-15] [TODO] [2] Create protocol.py with ProtocolVersion
 [2026-01-15] [TODO] [2] Add get_protocol_from_quirks()

@@ -15,3 +15,32 @@ children:
 - !device-config
   name: Firefly
   product_id: 0x0c00
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Firefly V2
+  product_id: 0x0c04
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Firefly V2 Pro
+  product_id: 0x0c08
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Goliathus Extended Chroma
+  product_id: 0x0c01
+  dimensions: [1, 1]
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Goliathus Chroma
+  product_id: 0x0c02
+  dimensions: [1, 1]
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Goliathus Chroma 3XL
+  product_id: 0x0c03
+  dimensions: [1, 1]
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
