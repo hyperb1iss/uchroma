@@ -22,6 +22,7 @@ class MockDeviceProxy:
         self.Brightness = brightness
         self._fx_iface = True  # Has FX support
         self._anim_iface = True
+        self._led_iface = True
         # Additional properties for dump command
         self.DeviceType = "keyboard"
         self.Key = "1532:0203.00"
@@ -34,7 +35,41 @@ class MockDeviceProxy:
         self.Height = 6
         self.Width = 22
         self.SupportedLeds = ["backlight", "logo"]
-        self.AvailableFX = {"static": {}, "wave": {}, "spectrum": {}}
+        # FX with trait dicts (matching real D-Bus format)
+        self.AvailableFX = {
+            "static": {
+                "description": {
+                    "__class__": ("traitlets", "Unicode"),
+                    "default_value": "Static color",
+                    "metadata": {},
+                },
+                "color": {
+                    "__class__": ("uchroma.traits", "ColorTrait"),
+                    "default_value": "green",
+                    "metadata": {"config": True},
+                },
+            },
+            "wave": {
+                "description": {
+                    "__class__": ("traitlets", "Unicode"),
+                    "default_value": "Waves of color",
+                    "metadata": {},
+                },
+                "direction": {
+                    "__class__": ("traitlets", "CaselessStrEnum"),
+                    "values": ["right", "left"],
+                    "default_value": "right",
+                    "metadata": {"config": True},
+                },
+            },
+            "spectrum": {
+                "description": {
+                    "__class__": ("traitlets", "Unicode"),
+                    "default_value": "Cycle thru all colors",
+                    "metadata": {},
+                },
+            },
+        }
         self.AvailableRenderers = {
             "uchroma.fxlib.plasma.Plasma": {
                 "meta": {
@@ -44,6 +79,22 @@ class MockDeviceProxy:
                     "version": "1.0",
                 },
                 "traits": {},
+            }
+        }
+        self.AvailableLEDs = {
+            "logo": {
+                "brightness": {
+                    "__class__": ("traitlets", "Float"),
+                    "min": 0.0,
+                    "max": 1.0,
+                    "default_value": 1.0,
+                    "metadata": {"config": True},
+                },
+                "color": {
+                    "__class__": ("uchroma.traits", "ColorTrait"),
+                    "default_value": "green",
+                    "metadata": {"config": True},
+                },
             }
         }
         self.CurrentRenderers = []
@@ -62,6 +113,15 @@ class MockDeviceProxy:
         return True
 
     def SetLayerTraits(self, zindex, traits):
+        return True
+
+    def SetFX(self, name, props):
+        return True
+
+    def GetLED(self, led_name):
+        return {"brightness": 1.0, "color": "green"}
+
+    def SetLED(self, led_name, props):
         return True
 
 
@@ -141,6 +201,8 @@ def mock_device_service(monkeypatch):
     monkeypatch.setattr("uchroma.client.commands.devices.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.brightness.get_device_service", lambda: mock)
     monkeypatch.setattr("uchroma.client.commands.anim.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.fx.get_device_service", lambda: mock)
+    monkeypatch.setattr("uchroma.client.commands.led.get_device_service", lambda: mock)
     return mock
 
 
@@ -304,31 +366,31 @@ class TestFxCommand:
         subparsers = cli.add_subparsers()
         cmd = FxCommand.register(cli, subparsers)
 
-        args = cli.parse_args(["fx", "static", "-c", "red"])
+        # Static effect with color via dynamic subparser
+        args = cli.parse_args(["fx", "static", "--color", "red"])
         result = cmd.run(args)
 
         assert result == 0
-        assert args.effect == "static"
-        assert args.color == "red"
 
     def test_fx_set_wave(self):
         cli = UChromaCLI()
         subparsers = cli.add_subparsers()
-        FxCommand.register(cli, subparsers)
+        cmd = FxCommand.register(cli, subparsers)
 
         args = cli.parse_args(["fx", "wave", "--direction", "left"])
+        result = cmd.run(args)
 
-        assert args.effect == "wave"
-        assert args.direction == "left"
+        assert result == 0
 
-    def test_fx_speed_options(self):
+    def test_fx_list_subcommand(self):
         cli = UChromaCLI()
         subparsers = cli.add_subparsers()
-        FxCommand.register(cli, subparsers)
+        cmd = FxCommand.register(cli, subparsers)
 
-        args = cli.parse_args(["fx", "reactive", "--speed", "3"])
+        args = cli.parse_args(["fx", "list"])
+        result = cmd.run(args)
 
-        assert args.speed == 3
+        assert result == 0
 
 
 class TestDumpCommand:
