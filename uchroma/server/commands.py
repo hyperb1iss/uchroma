@@ -338,11 +338,21 @@ class Commands:
     # ─────────────────────────────────────────────────────────────────────────
 
     SET_FAN_MODE: ClassVar[CommandDef] = CommandDef(
-        0x0D, 0x02, None, "SET_FAN_MODE", "Fan control mode"
+        0x0D, 0x02, None, "SET_FAN_MODE", "Fan control mode and RPM"
     )
     GET_FAN_RPM: ClassVar[CommandDef] = CommandDef(
         0x0D, 0x82, None, "GET_FAN_RPM", "Query fan speed"
     )
+    SET_POWER_MODE: ClassVar[CommandDef] = CommandDef(
+        0x0D, 0x0B, 0x02, "SET_POWER_MODE", "Set power profile (balanced/gaming/creator/custom)"
+    )
+    GET_POWER_MODE: ClassVar[CommandDef] = CommandDef(
+        0x0D, 0x8B, 0x02, "GET_POWER_MODE", "Query power profile"
+    )
+    SET_BOOST: ClassVar[CommandDef] = CommandDef(
+        0x0D, 0x0D, None, "SET_BOOST", "CPU/GPU boost control"
+    )
+    GET_BOOST: ClassVar[CommandDef] = CommandDef(0x0D, 0x8D, None, "GET_BOOST", "Query boost state")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Class 0x0F - Extended Matrix Effects

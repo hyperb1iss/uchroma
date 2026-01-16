@@ -9,7 +9,7 @@ import re
 import sys
 
 # SilkCircuit Neon palette
-COLORS = {
+COLORS: dict[str, tuple[int, int, int]] = {
     "electric_purple": (225, 53, 255),
     "neon_cyan": (128, 255, 234),
     "coral": (255, 106, 193),

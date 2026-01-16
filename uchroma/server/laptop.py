@@ -15,6 +15,7 @@ from uchroma.util import scale_brightness
 
 from .hardware import Hardware
 from .keyboard import UChromaKeyboard
+from .system_control import SystemControlMixin
 from .types import BaseCommand
 
 # LED constants from Razer protocol
@@ -22,7 +23,7 @@ VARSTORE = 0x01
 BACKLIGHT_LED = 0x05
 
 
-class UChromaLaptop(UChromaKeyboard):
+class UChromaLaptop(SystemControlMixin, UChromaKeyboard):
     """
     Commands required for Blade laptops
     """

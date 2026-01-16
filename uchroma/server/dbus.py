@@ -34,6 +34,7 @@ from dbus_fast.service import ServiceInterface, dbus_property, method, signal
 from uchroma.dbus_utils import dbus_prepare
 from uchroma.util import Signal
 
+from .system_control import BoostMode, PowerMode
 from .types import LEDType
 
 
@@ -428,17 +429,17 @@ class AnimationManagerInterface(ServiceInterface):
             if info["zindex"] == zindex:
                 layer = info["layer"]
                 result = {
-                    "Key": Variant("s", info["type"]),
-                    "ZIndex": Variant("i", zindex),
-                    "Type": Variant("s", info["type"]),
+                    "Key": info["type"],
+                    "ZIndex": zindex,
+                    "Type": info["type"],
                 }
                 # Add trait values
                 if hasattr(layer, "traits"):
                     from uchroma.traits import get_args_dict  # noqa: PLC0415
 
-                    for k, v in get_args_dict(layer).items():
-                        result[k] = dbus_prepare(v, variant=True)[0]
-                return result
+                    result.update(get_args_dict(layer))
+                prepared, _sig = dbus_prepare(result, variant=True)
+                return prepared
         return {}
 
     @method()
@@ -482,9 +483,125 @@ class AnimationManagerInterface(ServiceInterface):
                 props[k] = Variant("a(so)", v)
             else:
                 props[k] = Variant("s", str(v))
-        self.PropertiesChanged(
-            "io.uchroma.AnimationManager", props, invalidated_properties or []
-        )
+        self.PropertiesChanged("io.uchroma.AnimationManager", props, invalidated_properties or [])
+
+
+class SystemControlInterface(ServiceInterface):
+    """
+    D-Bus interface for laptop system control (fan, power modes, boost).
+    Only available on Razer Blade laptops.
+    """
+
+    def __init__(self, driver):
+        super().__init__("io.uchroma.SystemControl")
+        self._driver = driver
+        self._logger = driver.logger
+
+        # Note: D-Bus property changes are handled automatically by dbus-fast
+        # when properties are set through D-Bus setters. The driver signals
+        # (fan_changed, power_mode_changed) are for internal use and don't
+        # need to trigger D-Bus notifications when the change came from D-Bus.
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Fan Control
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @dbus_property(access=PropertyAccess.READ)
+    def FanRPM(self) -> "ai":
+        """Current fan RPM(s). Returns [fan1] or [fan1, fan2] for dual-fan models."""
+        rpm1, rpm2 = self._driver.fan_rpm
+        if rpm2 is not None:
+            return [rpm1, rpm2]
+        return [rpm1]
+
+    @dbus_property(access=PropertyAccess.READ)
+    def FanMode(self) -> "s":
+        """Current fan mode: 'auto' or 'manual'."""
+        return self._driver.fan_mode.name.lower()
+
+    @dbus_property(access=PropertyAccess.READ)
+    def FanLimits(self) -> "a{sv}":
+        """Fan RPM limits for this model."""
+        limits = self._driver.fan_limits
+        return {
+            "min_rpm": Variant("i", limits.min_rpm),
+            "min_manual_rpm": Variant("i", limits.min_manual_rpm),
+            "max_rpm": Variant("i", limits.max_rpm),
+            "supports_dual_fan": Variant("b", limits.supports_dual_fan),
+        }
+
+    @method()
+    def SetFanAuto(self) -> "b":
+        """Set fans to automatic EC control."""
+        return self._driver.set_fan_auto()
+
+    @method()
+    def SetFanRPM(self, rpm: "i", fan2_rpm: "i") -> "b":
+        """Set manual fan RPM. Use fan2_rpm=-1 to ignore second fan."""
+        try:
+            fan2 = fan2_rpm if fan2_rpm >= 0 else None
+            return self._driver.set_fan_rpm(rpm, fan2)
+        except ValueError as e:
+            self._logger.warning("SetFanRPM failed: %s", e)
+            return False
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Power Modes
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @dbus_property()
+    def PowerMode(self) -> "s":
+        """Current power mode: balanced, gaming, creator, or custom."""
+        return self._driver.power_mode.name.lower()
+
+    @PowerMode.setter
+    def PowerMode(self, mode: "s"):
+        """Set power mode by name."""
+        try:
+            self._driver.power_mode = PowerMode[mode.upper()]
+        except KeyError:
+            self._logger.warning("Unknown power mode: %s", mode)
+
+    @dbus_property(access=PropertyAccess.READ)
+    def AvailablePowerModes(self) -> "as":
+        """List of available power modes."""
+        return [m.name.lower() for m in PowerMode]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Boost Control
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @dbus_property()
+    def CPUBoost(self) -> "s":
+        """Current CPU boost mode: low, medium, high, or boost."""
+        return self._driver.cpu_boost.name.lower()
+
+    @CPUBoost.setter
+    def CPUBoost(self, mode: "s"):
+        """Set CPU boost mode (requires custom power mode)."""
+        try:
+            self._driver.cpu_boost = BoostMode[mode.upper()]
+        except KeyError:
+            self._logger.warning("Unknown boost mode: %s", mode)
+
+    @dbus_property()
+    def GPUBoost(self) -> "s":
+        """Current GPU boost mode: low, medium, high, or boost."""
+        return self._driver.gpu_boost.name.lower()
+
+    @GPUBoost.setter
+    def GPUBoost(self, mode: "s"):
+        """Set GPU boost mode (requires custom power mode)."""
+        try:
+            self._driver.gpu_boost = BoostMode[mode.upper()]
+        except KeyError:
+            self._logger.warning("Unknown boost mode: %s", mode)
+
+    @dbus_property(access=PropertyAccess.READ)
+    def AvailableBoostModes(self) -> "as":
+        """List of available boost modes."""
+        return [m.name.lower() for m in BoostMode]
+
 
 
 class DeviceManagerInterface(ServiceInterface):
@@ -550,6 +667,13 @@ class DeviceAPI:
 
         if hasattr(self._driver, "led_manager") and self._driver.led_manager is not None:
             self._interfaces.append(LEDManagerInterface(self._driver))
+
+        # Add system control interface for laptops
+        if (
+            hasattr(self._driver, "supports_system_control")
+            and self._driver.supports_system_control
+        ):
+            self._interfaces.append(SystemControlInterface(self._driver))
 
         # Export all interfaces on same path
         for iface in self._interfaces:
