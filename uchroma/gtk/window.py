@@ -367,7 +367,7 @@ class UChromaWindow(Adw.ApplicationWindow):
                     f"{effect_data['name'].upper()} SETTINGS",
                     self._effect_params,
                 )
-            self._preview_renderer.set_effect(self._selected_effect, self._effect_params)
+                self._preview_renderer.set_effect(self._selected_effect, self._effect_params)
         elif self._mode == self.MODE_HARDWARE:
             self._param_inspector.clear()
             self._preview_renderer.set_effect("disable", {})
