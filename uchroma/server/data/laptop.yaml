@@ -10,114 +10,30 @@ type: LAPTOP
 vendor_id: 0x1532
 quirks: CUSTOM_FRAME_80
 supported_leds: [logo]
-supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight, custom_frame,
-  rainbow, alignment, gradient, sweep, circle, highlight, morph, fire, ripple_solid,
-  ripple, spectrum_blade]
+supported_fx:
+  [
+    disable,
+    wave,
+    reactive,
+    breathe,
+    spectrum,
+    static,
+    starlight,
+    custom_frame,
+    rainbow,
+    alignment,
+    gradient,
+    sweep,
+    circle,
+    highlight,
+    morph,
+    fire,
+    ripple_solid,
+    ripple,
+    spectrum_blade,
+  ]
 key_mapping: !!omap
-- KEY_ESC: [[0, 1]]
-- KEY_F1: [[0, 3]]
-- KEY_F2: [[0, 4]]
-- KEY_F3: [[0, 5]]
-- KEY_F4: [[0, 6]]
-- KEY_F5: [[0, 7]]
-- KEY_F6: [[0, 8]]
-- KEY_F7: [[0, 9]]
-- KEY_F8: [[0, 10]]
-- KEY_F9: [[0, 11]]
-- KEY_F10: [[0, 12]]
-- KEY_F11: [[0, 13]]
-- KEY_F12: [[0, 14]]
-- KEY_SYSRQ: [[0, 15]]
-- KEY_SCROLLLOCK: [[0, 16]]
-- KEY_PAUSE: [[0, 17]]
-- KEY_GRAVE: [[1, 1]]
-- KEY_1: [[1, 2]]
-- KEY_2: [[1, 3]]
-- KEY_3: [[1, 4]]
-- KEY_4: [[1, 5]]
-- KEY_5: [[1, 6]]
-- KEY_6: [[1, 7]]
-- KEY_7: [[1, 8]]
-- KEY_8: [[1, 9]]
-- KEY_9: [[1, 10]]
-- KEY_0: [[1, 11]]
-- KEY_MINUS: [[1, 12]]
-- KEY_EQUAL: [[1, 13]]
-- KEY_BACKSPACE: [[1, 14]]
-- KEY_INSERT: [[1, 15]]
-- KEY_HOME: [[1, 16]]
-- KEY_PAGEUP: [[1, 17]]
-- KEY_TAB: [[2, 1]]
-- KEY_Q: [[2, 2]]
-- KEY_W: [[2, 3]]
-- KEY_E: [[2, 4]]
-- KEY_R: [[2, 5]]
-- KEY_T: [[2, 6]]
-- KEY_Y: [[2, 7]]
-- KEY_U: [[2, 8]]
-- KEY_I: [[2, 9]]
-- KEY_O: [[2, 10]]
-- KEY_P: [[2, 11]]
-- KEY_LEFTBRACE: [[2, 12]]
-- KEY_RIGHTBRACE: [[2, 13]]
-- KEY_BACKSLASH: [[2, 14]]
-- KEY_DELETE: [[2, 15]]
-- KEY_END: [[2, 16]]
-- KEY_PAGEDOWN: [[2, 17]]
-- KEY_CAPSLOCK: [[3, 1]]
-- KEY_A: [[3, 2]]
-- KEY_S: [[3, 3]]
-- KEY_D: [[3, 4]]
-- KEY_F: [[3, 5]]
-- KEY_G: [[3, 6]]
-- KEY_H: [[3, 7]]
-- KEY_J: [[3, 8]]
-- KEY_K: [[3, 9]]
-- KEY_L: [[3, 10]]
-- KEY_SEMICOLON: [[3, 11]]
-- KEY_APOSTROPHE: [[3, 12]]
-- KEY_ENTER: [[3, 13], [3, 14]]
-- KEY_LEFTSHIFT: [[4, 1], [4, 2]]
-- KEY_Z: [[4, 3]]
-- KEY_X: [[4, 4]]
-- KEY_C: [[4, 5]]
-- KEY_V: [[4, 6]]
-- KEY_B: [[4, 7]]
-- KEY_N: [[4, 8]]
-- KEY_M: [[4, 9]]
-- KEY_COMMA: [[4, 10]]
-- KEY_DOT: [[4, 11]]
-- KEY_SLASH: [[4, 12]]
-- KEY_RIGHTSHIFT: [[4, 13], [4, 14]]
-- KEY_UP: [[4, 16]]
-- KEY_LEFTCTRL: [[5, 1]]
-- KEY_LEFTMETA: [[5, 2]]
-- KEY_LEFTALT: [[5, 3]]
-- KEY_SPACE: [[5, 6], [5, 7], [5, 8]]
-- KEY_RIGHTALT: [[5, 11]]
-- KEY_MENU: [[5, 13]]
-- KEY_RIGHTCTRL: [[5, 14]]
-- KEY_LEFT: [[5, 15]]
-- KEY_DOWN: [[5, 16]]
-- KEY_RIGHT: [[5, 17]]
-children:
-
-- !device-config
-  name: Blade Stealth
-  product_id: 0x0205
-  dimensions: [6, 22]
-
-- !device-config
-  name: Blade Stealth (QHD)
-  product_id: 0x020f
-  dimensions: [6, 22]
-
-- !device-config
-  name: Blade Pro (Late 2016)
-  product_id: 0x0210
-  dimensions: [6, 25]
-  key_mapping: !!omap
-  - KEY_ESC: [[0, 2]]
+  - KEY_ESC: [[0, 1]]
   - KEY_F1: [[0, 3]]
   - KEY_F2: [[0, 4]]
   - KEY_F3: [[0, 5]]
@@ -130,103 +46,9 @@ children:
   - KEY_F10: [[0, 12]]
   - KEY_F11: [[0, 13]]
   - KEY_F12: [[0, 14]]
-  - KEY_INSERT: [[0, 15]]
-  - KEY_DELETE: [[0, 17]]
-  - KEY_PREVIOUSSONG: [[0, 19]]
-  - KEY_NEXTSONG: [[0, 20]]
-  - KEY_PLAYPAUSE: [[0, 23]]
-  - KEY_MIN_INTERESTING: [[0, 24]]
-  - KEY_MUTE: [[0, 24]]
-  - KEY_GRAVE: [[1, 2]]
-  - KEY_1: [[1, 3]]
-  - KEY_2: [[1, 4]]
-  - KEY_3: [[1, 5]]
-  - KEY_4: [[1, 6]]
-  - KEY_5: [[1, 7]]
-  - KEY_6: [[1, 8]]
-  - KEY_7: [[1, 9]]
-  - KEY_8: [[1, 10]]
-  - KEY_9: [[1, 11]]
-  - KEY_0: [[1, 12]]
-  - KEY_MINUS: [[1, 13]]
-  - KEY_EQUAL: [[1, 14]]
-  - KEY_BACKSPACE: [[1, 15], [1, 16], [1, 17], [1, 18]]
-  - KEY_TAB: [[2, 2], [2, 3]]
-  - KEY_Q: [[2, 4]]
-  - KEY_W: [[2, 5]]
-  - KEY_E: [[2, 6]]
-  - KEY_R: [[2, 7]]
-  - KEY_T: [[2, 8]]
-  - KEY_Y: [[2, 9]]
-  - KEY_U: [[2, 10]]
-  - KEY_I: [[2, 11]]
-  - KEY_O: [[2, 12]]
-  - KEY_P: [[2, 13]]
-  - KEY_LEFTBRACE: [[2, 14]]
-  - KEY_RIGHTBRACE: [[2, 15]]
-  - KEY_BACKSLASH: [[2, 16], [2, 17]]
-  - KEY_CAPSLOCK: [[3, 1], [3, 2], [3, 3]]
-  - KEY_A: [[3, 4]]
-  - KEY_S: [[3, 5]]
-  - KEY_D: [[3, 6]]
-  - KEY_F: [[3, 7]]
-  - KEY_G: [[3, 8]]
-  - KEY_H: [[3, 9]]
-  - KEY_J: [[3, 10]]
-  - KEY_K: [[3, 11]]
-  - KEY_L: [[3, 12]]
-  - KEY_SEMICOLON: [[3, 13]]
-  - KEY_APOSTROPHE: [[3, 14]]
-  - KEY_ENTER: [[3, 15], [3, 16], [3, 17], [3, 18]]
-  - KEY_LEFTSHIFT: [[4, 0], [4, 1], [4, 2], [4, 3]]
-  - KEY_Z: [[4, 4]]
-  - KEY_X: [[4, 5]]
-  - KEY_C: [[4, 6]]
-  - KEY_V: [[4, 7]]
-  - KEY_B: [[4, 8]]
-  - KEY_N: [[4, 9]]
-  - KEY_DOT: [[4, 12]]
-  - KEY_SLASH: [[4, 13]]
-  - KEY_UP: [[4, 14]]
-  - KEY_RIGHTSHIFT: [[4, 15], [4, 16], [4, 17], [4, 18]]
-  - KEY_COMMA: [[4, 11]]
-  - KEY_M: [[4, 10]]
-  - KEY_LEFTCTRL: [[5, 1]]
-  - KEY_LEFTMETA: [[5, 4]]
-  - KEY_LEFTALT: [[5, 5]]
-  - KEY_SPACE: [[5, 6], [5, 7], [5, 8], [5, 9], [5, 10]]
-  - KEY_RIGHTALT: [[5, 11]]
-  - KEY_RIGHTCTRL: [[5, 12]]
-  - KEY_LEFT: [[5, 13]]
-  - KEY_DOWN: [[5, 14]]
-  - KEY_RIGHT: [[5, 15]]
-  key_fixup_mapping: !!omap
-  - copy:
-    - [[5, 11], [5, 10]]    # right alt misaligned under spacebar
-    - [[0, 22], [2, 22]]    # mouse wheel is under the trackpad
-    - [[0, 21], [0, 22]]    # ..and backwards
-
-- !device-config
-  name: Blade Stealth (Late 2016)
-  product_id: 0x0220
-  dimensions: [6, 16]
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, alignment,
-    ripple_solid, spectrum_blade, custom_frame]
-  key_mapping: !!omap
-  - KEY_ESC: [[0, 1]]
-  - KEY_F1: [[0, 2]]
-  - KEY_F2: [[0, 3]]
-  - KEY_F3: [[0, 4]]
-  - KEY_F4: [[0, 5]]
-  - KEY_F5: [[0, 6]]
-  - KEY_F6: [[0, 7]]
-  - KEY_F7: [[0, 8]]
-  - KEY_F8: [[0, 9]]
-  - KEY_F9: [[0, 10]]
-  - KEY_F10: [[0, 11]]
-  - KEY_F11: [[0, 12]]
-  - KEY_F12: [[0, 13]]
-  - KEY_PAUSE: [[0, 7]]
+  - KEY_SYSRQ: [[0, 15]]
+  - KEY_SCROLLLOCK: [[0, 16]]
+  - KEY_PAUSE: [[0, 17]]
   - KEY_GRAVE: [[1, 1]]
   - KEY_1: [[1, 2]]
   - KEY_2: [[1, 3]]
@@ -240,8 +62,10 @@ children:
   - KEY_0: [[1, 11]]
   - KEY_MINUS: [[1, 12]]
   - KEY_EQUAL: [[1, 13]]
-  - KEY_BACKSPACE: [[1, 14], [1, 15]]
-  - KEY_INSERT: [[0, 14]]
+  - KEY_BACKSPACE: [[1, 14]]
+  - KEY_INSERT: [[1, 15]]
+  - KEY_HOME: [[1, 16]]
+  - KEY_PAGEUP: [[1, 17]]
   - KEY_TAB: [[2, 1]]
   - KEY_Q: [[2, 2]]
   - KEY_W: [[2, 3]]
@@ -255,8 +79,10 @@ children:
   - KEY_P: [[2, 11]]
   - KEY_LEFTBRACE: [[2, 12]]
   - KEY_RIGHTBRACE: [[2, 13]]
-  - KEY_BACKSLASH: [[2, 14], [2, 15]]
-  - KEY_DELETE: [[0, 15]]
+  - KEY_BACKSLASH: [[2, 14]]
+  - KEY_DELETE: [[2, 15]]
+  - KEY_END: [[2, 16]]
+  - KEY_PAGEDOWN: [[2, 17]]
   - KEY_CAPSLOCK: [[3, 1]]
   - KEY_A: [[3, 2]]
   - KEY_S: [[3, 3]]
@@ -269,106 +95,7 @@ children:
   - KEY_L: [[3, 10]]
   - KEY_SEMICOLON: [[3, 11]]
   - KEY_APOSTROPHE: [[3, 12]]
-  - KEY_ENTER: [[3, 13], [3, 14], [3, 15]]
-  - KEY_LEFTSHIFT: [[4, 1], [4, 2]]
-  - KEY_Z: [[4, 3]]
-  - KEY_X: [[4, 4]]
-  - KEY_C: [[4, 5]]
-  - KEY_V: [[4, 6]]
-  - KEY_B: [[4, 7]]
-  - KEY_N: [[4, 8]]
-  - KEY_M: [[4, 9]]
-  - KEY_COMMA: [[4, 10]]
-  - KEY_DOT: [[4, 11]]
-  - KEY_SLASH: [[4, 12]]
-  - KEY_RIGHTSHIFT: [[4, 13], [4, 14], [4, 15]]
-  - KEY_UP: [[5, 14]]
-  - KEY_LEFTCTRL: [[5, 1]]
-  - KEY_LEFTMETA: [[5, 2]]
-  - KEY_LEFTALT: [[5, 4]]
-  - KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8]]
-  - KEY_RIGHTALT: [[5, 10]]
-  - KEY_RIGHTMETA: [[5, 11]]
-  - KEY_RIGHTCTRL: [[5, 12]]
-  - KEY_MENU: [[5, 3]]
-  - KEY_LEFT: [[5, 13]]
-  - KEY_DOWN: [[5, 14]]
-  - KEY_RIGHT: [[5, 15]]
-  key_fixup_mapping: !!omap
-  - copy:
-    - [[5, 10], [5,9]]    # The keys to the right of the keyboard
-    - [[5, 11], [5, 10]]  # are offset by one, this slides them
-    - [[5, 12], [5, 11]]  # all over by one, except for the right
-    - [[5, 13], [5, 12]]  # arrow which stays where it is because
-    - [[5, 14], [5, 13]]  # the up & down keys are the same cell.
-
-# 2021+ Blade models - use transaction ID 0x1F and standard LED commands
-# EC fan control works, but NOT fan_speed reading or boost
-- !device-config
-  name: Blade 15 Advanced (Mid 2021)
-  product_id: 0x0276
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, starlight,
-    custom_frame, ripple_solid, ripple]
-  key_mapping: !!omap
-  - KEY_ESC: [[0, 1]]
-  - KEY_F1: [[0, 2]]
-  - KEY_F2: [[0, 3]]
-  - KEY_F3: [[0, 4]]
-  - KEY_F4: [[0, 5]]
-  - KEY_F5: [[0, 6]]
-  - KEY_F6: [[0, 7]]
-  - KEY_F7: [[0, 8]]
-  - KEY_F8: [[0, 9]]
-  - KEY_F9: [[0, 10]]
-  - KEY_F10: [[0, 11]]
-  - KEY_F11: [[0, 12]]
-  - KEY_F12: [[0, 13]]
-  - KEY_DELETE: [[0, 14]]
-  - KEY_POWER: [[0, 15]]
-  - KEY_GRAVE: [[1, 1]]
-  - KEY_1: [[1, 2]]
-  - KEY_2: [[1, 3]]
-  - KEY_3: [[1, 4]]
-  - KEY_4: [[1, 5]]
-  - KEY_5: [[1, 6]]
-  - KEY_6: [[1, 7]]
-  - KEY_7: [[1, 8]]
-  - KEY_8: [[1, 9]]
-  - KEY_9: [[1, 10]]
-  - KEY_0: [[1, 11]]
-  - KEY_MINUS: [[1, 12]]
-  - KEY_EQUAL: [[1, 13]]
-  - KEY_BACKSPACE: [[1, 14], [1, 15]]
-  - KEY_TAB: [[2, 1]]
-  - KEY_Q: [[2, 2]]
-  - KEY_W: [[2, 3]]
-  - KEY_E: [[2, 4]]
-  - KEY_R: [[2, 5]]
-  - KEY_T: [[2, 6]]
-  - KEY_Y: [[2, 7]]
-  - KEY_U: [[2, 8]]
-  - KEY_I: [[2, 9]]
-  - KEY_O: [[2, 10]]
-  - KEY_P: [[2, 11]]
-  - KEY_LEFTBRACE: [[2, 12]]
-  - KEY_RIGHTBRACE: [[2, 13]]
-  - KEY_BACKSLASH: [[2, 14], [2, 15]]
-  - KEY_CAPSLOCK: [[3, 1]]
-  - KEY_A: [[3, 2]]
-  - KEY_S: [[3, 3]]
-  - KEY_D: [[3, 4]]
-  - KEY_F: [[3, 5]]
-  - KEY_G: [[3, 6]]
-  - KEY_H: [[3, 7]]
-  - KEY_J: [[3, 8]]
-  - KEY_K: [[3, 9]]
-  - KEY_L: [[3, 10]]
-  - KEY_SEMICOLON: [[3, 11]]
-  - KEY_APOSTROPHE: [[3, 12]]
-  - KEY_ENTER: [[3, 13], [3, 14], [3, 15]]
+  - KEY_ENTER: [[3, 13], [3, 14]]
   - KEY_LEFTSHIFT: [[4, 1], [4, 2]]
   - KEY_Z: [[4, 3]]
   - KEY_X: [[4, 4]]
@@ -381,181 +108,493 @@ children:
   - KEY_DOT: [[4, 11]]
   - KEY_SLASH: [[4, 12]]
   - KEY_RIGHTSHIFT: [[4, 13], [4, 14]]
-  - KEY_UP: [[4, 15]]
+  - KEY_UP: [[4, 16]]
   - KEY_LEFTCTRL: [[5, 1]]
-  - KEY_FN: [[5, 2]]
-  - KEY_LEFTMETA: [[5, 3]]
-  - KEY_LEFTALT: [[5, 4]]
-  - KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8], [5, 9]]
-  - KEY_RIGHTALT: [[5, 10]]
-  - KEY_RIGHTCTRL: [[5, 11]]
-  - KEY_LEFT: [[5, 13]]
-  - KEY_DOWN: [[5, 14]]
-  - KEY_RIGHT: [[5, 15]]
+  - KEY_LEFTMETA: [[5, 2]]
+  - KEY_LEFTALT: [[5, 3]]
+  - KEY_SPACE: [[5, 6], [5, 7], [5, 8]]
+  - KEY_RIGHTALT: [[5, 11]]
+  - KEY_MENU: [[5, 13]]
+  - KEY_RIGHTCTRL: [[5, 14]]
+  - KEY_LEFT: [[5, 15]]
+  - KEY_DOWN: [[5, 16]]
+  - KEY_RIGHT: [[5, 17]]
+children:
+  - !device-config
+    name: Blade Stealth
+    product_id: 0x0205
+    dimensions: [6, 22]
 
-# 2021 Blade models - support basic fan/power control but NOT fan_speed or boost
-- !device-config
-  name: Blade 15 Advanced (Early 2021)
-  product_id: 0x026D
-  dimensions: [6, 16]
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade Stealth (QHD)
+    product_id: 0x020f
+    dimensions: [6, 22]
 
-- !device-config
-  name: Blade 17 Pro (Early 2021)
-  product_id: 0x026E
-  dimensions: [6, 16]
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade Pro (Late 2016)
+    product_id: 0x0210
+    dimensions: [6, 25]
+    key_mapping: !!omap
+      - KEY_ESC: [[0, 2]]
+      - KEY_F1: [[0, 3]]
+      - KEY_F2: [[0, 4]]
+      - KEY_F3: [[0, 5]]
+      - KEY_F4: [[0, 6]]
+      - KEY_F5: [[0, 7]]
+      - KEY_F6: [[0, 8]]
+      - KEY_F7: [[0, 9]]
+      - KEY_F8: [[0, 10]]
+      - KEY_F9: [[0, 11]]
+      - KEY_F10: [[0, 12]]
+      - KEY_F11: [[0, 13]]
+      - KEY_F12: [[0, 14]]
+      - KEY_INSERT: [[0, 15]]
+      - KEY_DELETE: [[0, 17]]
+      - KEY_PREVIOUSSONG: [[0, 19]]
+      - KEY_NEXTSONG: [[0, 20]]
+      - KEY_PLAYPAUSE: [[0, 23]]
+      - KEY_MIN_INTERESTING: [[0, 24]]
+      - KEY_MUTE: [[0, 24]]
+      - KEY_GRAVE: [[1, 2]]
+      - KEY_1: [[1, 3]]
+      - KEY_2: [[1, 4]]
+      - KEY_3: [[1, 5]]
+      - KEY_4: [[1, 6]]
+      - KEY_5: [[1, 7]]
+      - KEY_6: [[1, 8]]
+      - KEY_7: [[1, 9]]
+      - KEY_8: [[1, 10]]
+      - KEY_9: [[1, 11]]
+      - KEY_0: [[1, 12]]
+      - KEY_MINUS: [[1, 13]]
+      - KEY_EQUAL: [[1, 14]]
+      - KEY_BACKSPACE: [[1, 15], [1, 16], [1, 17], [1, 18]]
+      - KEY_TAB: [[2, 2], [2, 3]]
+      - KEY_Q: [[2, 4]]
+      - KEY_W: [[2, 5]]
+      - KEY_E: [[2, 6]]
+      - KEY_R: [[2, 7]]
+      - KEY_T: [[2, 8]]
+      - KEY_Y: [[2, 9]]
+      - KEY_U: [[2, 10]]
+      - KEY_I: [[2, 11]]
+      - KEY_O: [[2, 12]]
+      - KEY_P: [[2, 13]]
+      - KEY_LEFTBRACE: [[2, 14]]
+      - KEY_RIGHTBRACE: [[2, 15]]
+      - KEY_BACKSLASH: [[2, 16], [2, 17]]
+      - KEY_CAPSLOCK: [[3, 1], [3, 2], [3, 3]]
+      - KEY_A: [[3, 4]]
+      - KEY_S: [[3, 5]]
+      - KEY_D: [[3, 6]]
+      - KEY_F: [[3, 7]]
+      - KEY_G: [[3, 8]]
+      - KEY_H: [[3, 9]]
+      - KEY_J: [[3, 10]]
+      - KEY_K: [[3, 11]]
+      - KEY_L: [[3, 12]]
+      - KEY_SEMICOLON: [[3, 13]]
+      - KEY_APOSTROPHE: [[3, 14]]
+      - KEY_ENTER: [[3, 15], [3, 16], [3, 17], [3, 18]]
+      - KEY_LEFTSHIFT: [[4, 0], [4, 1], [4, 2], [4, 3]]
+      - KEY_Z: [[4, 4]]
+      - KEY_X: [[4, 5]]
+      - KEY_C: [[4, 6]]
+      - KEY_V: [[4, 7]]
+      - KEY_B: [[4, 8]]
+      - KEY_N: [[4, 9]]
+      - KEY_DOT: [[4, 12]]
+      - KEY_SLASH: [[4, 13]]
+      - KEY_UP: [[4, 14]]
+      - KEY_RIGHTSHIFT: [[4, 15], [4, 16], [4, 17], [4, 18]]
+      - KEY_COMMA: [[4, 11]]
+      - KEY_M: [[4, 10]]
+      - KEY_LEFTCTRL: [[5, 1]]
+      - KEY_LEFTMETA: [[5, 4]]
+      - KEY_LEFTALT: [[5, 5]]
+      - KEY_SPACE: [[5, 6], [5, 7], [5, 8], [5, 9], [5, 10]]
+      - KEY_RIGHTALT: [[5, 11]]
+      - KEY_RIGHTCTRL: [[5, 12]]
+      - KEY_LEFT: [[5, 13]]
+      - KEY_DOWN: [[5, 14]]
+      - KEY_RIGHT: [[5, 15]]
+    key_fixup_mapping: !!omap
+      - copy:
+          - [[5, 11], [5, 10]] # right alt misaligned under spacebar
+          - [[0, 22], [2, 22]] # mouse wheel is under the trackpad
+          - [[0, 21], [0, 22]] # ..and backwards
 
-- !device-config
-  name: Blade 15 Base (Early 2021)
-  product_id: 0x026F
-  dimensions: [6, 16]
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade Stealth (Late 2016)
+    product_id: 0x0220
+    dimensions: [6, 16]
+    supported_fx:
+      [
+        disable,
+        wave,
+        reactive,
+        breathe,
+        spectrum,
+        static,
+        alignment,
+        ripple_solid,
+        spectrum_blade,
+        custom_frame,
+      ]
+    key_mapping: !!omap
+      - KEY_ESC: [[0, 1]]
+      - KEY_F1: [[0, 2]]
+      - KEY_F2: [[0, 3]]
+      - KEY_F3: [[0, 4]]
+      - KEY_F4: [[0, 5]]
+      - KEY_F5: [[0, 6]]
+      - KEY_F6: [[0, 7]]
+      - KEY_F7: [[0, 8]]
+      - KEY_F8: [[0, 9]]
+      - KEY_F9: [[0, 10]]
+      - KEY_F10: [[0, 11]]
+      - KEY_F11: [[0, 12]]
+      - KEY_F12: [[0, 13]]
+      - KEY_PAUSE: [[0, 7]]
+      - KEY_GRAVE: [[1, 1]]
+      - KEY_1: [[1, 2]]
+      - KEY_2: [[1, 3]]
+      - KEY_3: [[1, 4]]
+      - KEY_4: [[1, 5]]
+      - KEY_5: [[1, 6]]
+      - KEY_6: [[1, 7]]
+      - KEY_7: [[1, 8]]
+      - KEY_8: [[1, 9]]
+      - KEY_9: [[1, 10]]
+      - KEY_0: [[1, 11]]
+      - KEY_MINUS: [[1, 12]]
+      - KEY_EQUAL: [[1, 13]]
+      - KEY_BACKSPACE: [[1, 14], [1, 15]]
+      - KEY_INSERT: [[0, 14]]
+      - KEY_TAB: [[2, 1]]
+      - KEY_Q: [[2, 2]]
+      - KEY_W: [[2, 3]]
+      - KEY_E: [[2, 4]]
+      - KEY_R: [[2, 5]]
+      - KEY_T: [[2, 6]]
+      - KEY_Y: [[2, 7]]
+      - KEY_U: [[2, 8]]
+      - KEY_I: [[2, 9]]
+      - KEY_O: [[2, 10]]
+      - KEY_P: [[2, 11]]
+      - KEY_LEFTBRACE: [[2, 12]]
+      - KEY_RIGHTBRACE: [[2, 13]]
+      - KEY_BACKSLASH: [[2, 14], [2, 15]]
+      - KEY_DELETE: [[0, 15]]
+      - KEY_CAPSLOCK: [[3, 1]]
+      - KEY_A: [[3, 2]]
+      - KEY_S: [[3, 3]]
+      - KEY_D: [[3, 4]]
+      - KEY_F: [[3, 5]]
+      - KEY_G: [[3, 6]]
+      - KEY_H: [[3, 7]]
+      - KEY_J: [[3, 8]]
+      - KEY_K: [[3, 9]]
+      - KEY_L: [[3, 10]]
+      - KEY_SEMICOLON: [[3, 11]]
+      - KEY_APOSTROPHE: [[3, 12]]
+      - KEY_ENTER: [[3, 13], [3, 14], [3, 15]]
+      - KEY_LEFTSHIFT: [[4, 1], [4, 2]]
+      - KEY_Z: [[4, 3]]
+      - KEY_X: [[4, 4]]
+      - KEY_C: [[4, 5]]
+      - KEY_V: [[4, 6]]
+      - KEY_B: [[4, 7]]
+      - KEY_N: [[4, 8]]
+      - KEY_M: [[4, 9]]
+      - KEY_COMMA: [[4, 10]]
+      - KEY_DOT: [[4, 11]]
+      - KEY_SLASH: [[4, 12]]
+      - KEY_RIGHTSHIFT: [[4, 13], [4, 14], [4, 15]]
+      - KEY_UP: [[5, 14]]
+      - KEY_LEFTCTRL: [[5, 1]]
+      - KEY_LEFTMETA: [[5, 2]]
+      - KEY_LEFTALT: [[5, 4]]
+      - KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8]]
+      - KEY_RIGHTALT: [[5, 10]]
+      - KEY_RIGHTMETA: [[5, 11]]
+      - KEY_RIGHTCTRL: [[5, 12]]
+      - KEY_MENU: [[5, 3]]
+      - KEY_LEFT: [[5, 13]]
+      - KEY_DOWN: [[5, 14]]
+      - KEY_RIGHT: [[5, 15]]
+    key_fixup_mapping: !!omap
+      - copy:
+          - [[5, 10], [5, 9]] # The keys to the right of the keyboard
+          - [[5, 11], [5, 10]] # are offset by one, this slides them
+          - [[5, 12], [5, 11]] # all over by one, except for the right
+          - [[5, 13], [5, 12]] # arrow which stays where it is because
+          - [[5, 14], [5, 13]] # the up & down keys are the same cell.
 
-- !device-config
-  name: Blade 14 (2021)
-  product_id: 0x0270
-  dimensions: [6, 16]
-  capabilities: [ec_fan_control]
+  # 2021+ Blade models - use transaction ID 0x1F and standard LED commands
+  # EC fan control works, but NOT fan_speed reading or boost
+  - !device-config
+    name: Blade 15 Advanced (Mid 2021)
+    product_id: 0x0276
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
+    supported_fx:
+      [
+        disable,
+        wave,
+        reactive,
+        breathe,
+        spectrum,
+        static,
+        starlight,
+        custom_frame,
+        ripple_solid,
+        ripple,
+      ]
+    key_mapping: !!omap
+      - KEY_ESC: [[0, 1]]
+      - KEY_F1: [[0, 2]]
+      - KEY_F2: [[0, 3]]
+      - KEY_F3: [[0, 4]]
+      - KEY_F4: [[0, 5]]
+      - KEY_F5: [[0, 6]]
+      - KEY_F6: [[0, 7]]
+      - KEY_F7: [[0, 8]]
+      - KEY_F8: [[0, 9]]
+      - KEY_F9: [[0, 10]]
+      - KEY_F10: [[0, 11]]
+      - KEY_F11: [[0, 12]]
+      - KEY_F12: [[0, 13]]
+      - KEY_DELETE: [[0, 14]]
+      - KEY_POWER: [[0, 15]]
+      - KEY_GRAVE: [[1, 1]]
+      - KEY_1: [[1, 2]]
+      - KEY_2: [[1, 3]]
+      - KEY_3: [[1, 4]]
+      - KEY_4: [[1, 5]]
+      - KEY_5: [[1, 6]]
+      - KEY_6: [[1, 7]]
+      - KEY_7: [[1, 8]]
+      - KEY_8: [[1, 9]]
+      - KEY_9: [[1, 10]]
+      - KEY_0: [[1, 11]]
+      - KEY_MINUS: [[1, 12]]
+      - KEY_EQUAL: [[1, 13]]
+      - KEY_BACKSPACE: [[1, 14], [1, 15]]
+      - KEY_TAB: [[2, 1]]
+      - KEY_Q: [[2, 2]]
+      - KEY_W: [[2, 3]]
+      - KEY_E: [[2, 4]]
+      - KEY_R: [[2, 5]]
+      - KEY_T: [[2, 6]]
+      - KEY_Y: [[2, 7]]
+      - KEY_U: [[2, 8]]
+      - KEY_I: [[2, 9]]
+      - KEY_O: [[2, 10]]
+      - KEY_P: [[2, 11]]
+      - KEY_LEFTBRACE: [[2, 12]]
+      - KEY_RIGHTBRACE: [[2, 13]]
+      - KEY_BACKSLASH: [[2, 14], [2, 15]]
+      - KEY_CAPSLOCK: [[3, 1]]
+      - KEY_A: [[3, 2]]
+      - KEY_S: [[3, 3]]
+      - KEY_D: [[3, 4]]
+      - KEY_F: [[3, 5]]
+      - KEY_G: [[3, 6]]
+      - KEY_H: [[3, 7]]
+      - KEY_J: [[3, 8]]
+      - KEY_K: [[3, 9]]
+      - KEY_L: [[3, 10]]
+      - KEY_SEMICOLON: [[3, 11]]
+      - KEY_APOSTROPHE: [[3, 12]]
+      - KEY_ENTER: [[3, 13], [3, 14], [3, 15]]
+      - KEY_LEFTSHIFT: [[4, 1], [4, 2]]
+      - KEY_Z: [[4, 3]]
+      - KEY_X: [[4, 4]]
+      - KEY_C: [[4, 5]]
+      - KEY_V: [[4, 6]]
+      - KEY_B: [[4, 7]]
+      - KEY_N: [[4, 8]]
+      - KEY_M: [[4, 9]]
+      - KEY_COMMA: [[4, 10]]
+      - KEY_DOT: [[4, 11]]
+      - KEY_SLASH: [[4, 12]]
+      - KEY_RIGHTSHIFT: [[4, 13], [4, 14]]
+      - KEY_UP: [[4, 15]]
+      - KEY_LEFTCTRL: [[5, 1]]
+      - KEY_FN: [[5, 2]]
+      - KEY_LEFTMETA: [[5, 3]]
+      - KEY_LEFTALT: [[5, 4]]
+      - KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8], [5, 9]]
+      - KEY_RIGHTALT: [[5, 10]]
+      - KEY_RIGHTCTRL: [[5, 11]]
+      - KEY_LEFT: [[5, 13]]
+      - KEY_DOWN: [[5, 14]]
+      - KEY_RIGHT: [[5, 15]]
 
-- !device-config
-  name: Blade 17 Pro (Mid 2021)
-  product_id: 0x0279
-  dimensions: [6, 16]
-  capabilities: [ec_fan_control]
+  # 2021 Blade models - support basic fan/power control but NOT fan_speed or boost
+  - !device-config
+    name: Blade 15 Advanced (Early 2021)
+    product_id: 0x026D
+    dimensions: [6, 16]
+    capabilities: [ec_fan_control]
 
-# Older Blade Stealth / Pro models
-- !device-config
-  name: Blade Stealth (2017)
-  product_id: 0x022D
-  dimensions: [6, 16]
+  - !device-config
+    name: Blade 17 Pro (Early 2021)
+    product_id: 0x026E
+    dimensions: [6, 16]
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade Pro (2017)
-  product_id: 0x0225
-  dimensions: [6, 25]
+  - !device-config
+    name: Blade 15 Base (Early 2021)
+    product_id: 0x026F
+    dimensions: [6, 16]
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade Pro (2019)
-  product_id: 0x0233
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
+  - !device-config
+    name: Blade 14 (2021)
+    product_id: 0x0270
+    dimensions: [6, 16]
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade Stealth (2019)
-  product_id: 0x0239
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
+  - !device-config
+    name: Blade 17 Pro (Mid 2021)
+    product_id: 0x0279
+    dimensions: [6, 16]
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade Stealth (2020)
-  product_id: 0x0252
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
+  # Older Blade Stealth / Pro models
+  - !device-config
+    name: Blade Stealth (2017)
+    product_id: 0x022D
+    dimensions: [6, 16]
 
-- !device-config
-  name: Blade 15 (2018)
-  product_id: 0x0234
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
+  - !device-config
+    name: Blade Pro (2017)
+    product_id: 0x0225
+    dimensions: [6, 25]
 
-- !device-config
-  name: Blade 15 (2019)
-  product_id: 0x0240
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
+  - !device-config
+    name: Blade Pro (2019)
+    product_id: 0x0233
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
 
-- !device-config
-  name: Blade 15 (2020)
-  product_id: 0x0253
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
+  - !device-config
+    name: Blade Stealth (2019)
+    product_id: 0x0239
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
 
-# 2022+ Blade models
-- !device-config
-  name: Blade 14 (2022)
-  product_id: 0x027A
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade Stealth (2020)
+    product_id: 0x0252
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
 
-- !device-config
-  name: Blade 15 (2022)
-  product_id: 0x027B
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 15 (2018)
+    product_id: 0x0234
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
 
-- !device-config
-  name: Blade 17 (2022)
-  product_id: 0x027C
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 15 (2019)
+    product_id: 0x0240
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
 
-# 2023 Blade models
-- !device-config
-  name: Blade 14 (2023)
-  product_id: 0x029D
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 15 (2020)
+    product_id: 0x0253
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
 
-- !device-config
-  name: Blade 16 (2023)
-  product_id: 0x029E
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  # 2022+ Blade models
+  - !device-config
+    name: Blade 14 (2022)
+    product_id: 0x027A
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade 18 (2023)
-  product_id: 0x029F
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 15 (2022)
+    product_id: 0x027B
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-# 2024 Blade models
-- !device-config
-  name: Blade 14 (2024)
-  product_id: 0x02A4
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 17 (2022)
+    product_id: 0x027C
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade 16 (2024)
-  product_id: 0x02B4
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  # 2023 Blade models
+  - !device-config
+    name: Blade 14 (2023)
+    product_id: 0x029D
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade 18 (2024)
-  product_id: 0x02B5
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 16 (2023)
+    product_id: 0x029E
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-# 2025 Blade models
-- !device-config
-  name: Blade 14 (2025)
-  product_id: 0x02C5
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 18 (2023)
+    product_id: 0x029F
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade 16 (2025)
-  product_id: 0x02C6
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  # 2024 Blade models
+  - !device-config
+    name: Blade 14 (2024)
+    product_id: 0x02A4
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
-- !device-config
-  name: Blade 18 (2025)
-  product_id: 0x02C7
-  dimensions: [6, 16]
-  quirks: TRANSACTION_CODE_1F
-  capabilities: [ec_fan_control]
+  - !device-config
+    name: Blade 16 (2024)
+    product_id: 0x02B4
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
 
+  - !device-config
+    name: Blade 18 (2024)
+    product_id: 0x02B5
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
+
+  # 2025 Blade models
+  - !device-config
+    name: Blade 14 (2025)
+    product_id: 0x02C5
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
+
+  - !device-config
+    name: Blade 16 (2025)
+    product_id: 0x02C6
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]
+
+  - !device-config
+    name: Blade 18 (2025)
+    product_id: 0x02C7
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+    capabilities: [ec_fan_control]

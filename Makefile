@@ -68,6 +68,14 @@ check: lint fmt-check typecheck ## Run all checks (lint + format + types)
 .PHONY: fix
 fix: lint-fix fmt ## Fix all auto-fixable issues (lint + format)
 
+.PHONY: prettier
+prettier: ## Format markdown and yaml files with prettier
+	npx prettier --write '**/*.md' '**/*.yaml' '**/*.yml'
+
+.PHONY: prettier-check
+prettier-check: ## Check markdown and yaml formatting
+	npx prettier --check '**/*.md' '**/*.yaml' '**/*.yml'
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Run
 # ─────────────────────────────────────────────────────────────────────────────

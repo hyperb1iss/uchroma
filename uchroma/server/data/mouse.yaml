@@ -11,323 +11,331 @@ vendor_id: 0x1532
 supported_fx: [disable, wave, reactive, breathe, spectrum, static]
 supported_leds: [backlight]
 children:
-- !device-config
-  name: Imperator 2012
-  product_id: 0x002f
-
-- !device-config
-  name: Abyssus 2014
-  product_id: 0x0042
-
-- !device-config
-  name: DeathAdder Chroma
-  product_id: 0x0043
-
-- !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame, rainbow]
-  children:
+  - !device-config
+    name: Imperator 2012
+    product_id: 0x002f
 
   - !device-config
-    name: Mamba (Wired)
-    product_id: 0x0044
-    dimensions: [1, 15]
+    name: Abyssus 2014
+    product_id: 0x0042
 
   - !device-config
-    name: Mamba (Wireless)
-    product_id: 0x0045
-    dimensions: [1, 15]
-    supported_leds: [backlight, battery]
-    quirks: WIRELESS
+    name: DeathAdder Chroma
+    product_id: 0x0043
 
   - !device-config
-    name: Mamba Tournament Edition
-    product_id: 0x0046
-    dimensions: [1, 16]
+    supported_fx:
+      [
+        disable,
+        wave,
+        reactive,
+        breathe,
+        spectrum,
+        static,
+        custom_frame,
+        rainbow,
+      ]
+    children:
+      - !device-config
+        name: Mamba (Wired)
+        product_id: 0x0044
+        dimensions: [1, 15]
 
-- !device-config
-  name: Orochi (Wired)
-  product_id: 0x0048
-  supported_leds: [scroll_wheel]
-  quirks: SCROLL_WHEEL_BRIGHTNESS
+      - !device-config
+        name: Mamba (Wireless)
+        product_id: 0x0045
+        dimensions: [1, 15]
+        supported_leds: [backlight, battery]
+        quirks: WIRELESS
 
-- !device-config
-  name: Naga Hex V2
-  product_id: 0x0050
-  quirks:
-  - EXTENDED_FX_CMDS
-  - TRANSACTION_CODE_3F
-
-- !device-config
-  name: DeathAdder Elite
-  product_id: 0x005c
-  quirks: TRANSACTION_CODE_3F
-
-- !device-config
-  name: Naga Epic Chroma
-  product_id: 0x003e
-
-- !device-config
-  name: Naga Trinity
-  product_id: 0x0067
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Naga Left-Handed
-  product_id: 0x008d
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Naga Pro (Wired)
-  product_id: 0x008f
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS, WIRELESS]
-
-- !device-config
-  name: Naga Pro (Wireless)
-  product_id: 0x0090
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS, WIRELESS]
-
-- !device-config
-  name: Naga X
-  product_id: 0x0096
-  quirks: TRANSACTION_CODE_08
-
-- !device-config
-  name: DeathAdder Essential
-  product_id: 0x006e
-
-- !device-config
-  name: DeathAdder Essential (White)
-  product_id: 0x0071
-
-- !device-config
-  name: DeathAdder V2
-  product_id: 0x0084
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: DeathAdder V2 Mini
-  product_id: 0x008c
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: DeathAdder V2 Pro (Wired)
-  product_id: 0x007c
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: DeathAdder V2 Pro (Wireless)
-  product_id: 0x007d
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: Basilisk
-  product_id: 0x0064
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Basilisk Essential
-  product_id: 0x0065
-
-- !device-config
-  name: Basilisk V2
-  product_id: 0x0085
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Basilisk Ultimate (Wired)
-  product_id: 0x0086
-  dimensions: [1, 14]
-  quirks: [TRANSACTION_CODE_1F, WIRELESS]
-
-- !device-config
-  name: Basilisk Ultimate (Wireless)
-  product_id: 0x0088
-  dimensions: [1, 14]
-  quirks: [TRANSACTION_CODE_1F, WIRELESS]
-
-- !device-config
-  name: Viper
-  product_id: 0x0078
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Viper Mini
-  product_id: 0x008a
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Viper Ultimate (Wired)
-  product_id: 0x007a
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: Viper Ultimate (Wireless)
-  product_id: 0x007b
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: Mamba Elite
-  product_id: 0x006c
-  dimensions: [1, 20]
-  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
-
-- !device-config
-  name: Mamba Wireless (Wired)
-  product_id: 0x0072
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: Mamba Wireless (Wireless)
-  product_id: 0x0073
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: Atheris
-  product_id: 0x0062
-  quirks: [TRANSACTION_CODE_3F, WIRELESS]
-
-- !device-config
-  name: Orochi V2
-  product_id: 0x0094
-  quirks: [TRANSACTION_CODE_1F, WIRELESS]
-
-# Modern mice with LEDs using 0x1F transaction code
-- !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame]
-  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
-  children:
+      - !device-config
+        name: Mamba Tournament Edition
+        product_id: 0x0046
+        dimensions: [1, 16]
 
   - !device-config
-    name: Basilisk V3
-    product_id: 0x0099
-    dimensions: [1, 11]
+    name: Orochi (Wired)
+    product_id: 0x0048
+    supported_leds: [scroll_wheel]
+    quirks: SCROLL_WHEEL_BRIGHTNESS
 
   - !device-config
-    name: Basilisk V3 Pro (Wired)
-    product_id: 0x00aa
-    dimensions: [1, 11]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    name: Naga Hex V2
+    product_id: 0x0050
+    quirks:
+      - EXTENDED_FX_CMDS
+      - TRANSACTION_CODE_3F
 
   - !device-config
-    name: Basilisk V3 Pro (Wireless)
-    product_id: 0x00ab
-    dimensions: [1, 11]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    name: DeathAdder Elite
+    product_id: 0x005c
+    quirks: TRANSACTION_CODE_3F
 
   - !device-config
-    name: Cobra
-    product_id: 0x00af
-    dimensions: [1, 1]
+    name: Naga Epic Chroma
+    product_id: 0x003e
 
   - !device-config
-    name: Cobra Pro (Wired)
-    product_id: 0x00b0
-    dimensions: [1, 10]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    name: Naga Trinity
+    product_id: 0x0067
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
 
   - !device-config
-    name: Cobra Pro (Wireless)
-    product_id: 0x00b1
-    dimensions: [1, 10]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    name: Naga Left-Handed
+    product_id: 0x008d
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
 
   - !device-config
-    name: Naga V2 Pro (Wired)
-    product_id: 0x00c4
-    dimensions: [1, 2]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+    name: Naga Pro (Wired)
+    product_id: 0x008f
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS, WIRELESS]
 
   - !device-config
-    name: Naga V2 Pro (Wireless)
-    product_id: 0x00c5
-    dimensions: [1, 2]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
-
-# Modern mice WITHOUT LEDs (NO_LED quirk)
-- !device-config
-  supported_fx: []
-  supported_leds: []
-  quirks: [TRANSACTION_CODE_1F, NO_LED]
-  children:
-
-  # DeathAdder V3 Series (no LEDs)
-  - !device-config
-    name: DeathAdder V3
-    product_id: 0x00b2
+    name: Naga Pro (Wireless)
+    product_id: 0x0090
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS, WIRELESS]
 
   - !device-config
-    name: DeathAdder V3 Pro (Wired)
-    product_id: 0x00b6
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: Naga X
+    product_id: 0x0096
+    quirks: TRANSACTION_CODE_08
 
   - !device-config
-    name: DeathAdder V3 Pro (Wireless)
-    product_id: 0x00b7
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: DeathAdder Essential
+    product_id: 0x006e
 
   - !device-config
-    name: DeathAdder V3 HyperSpeed
-    product_id: 0x00c3
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: DeathAdder Essential (White)
+    product_id: 0x0071
 
   - !device-config
-    name: DeathAdder V2 X HyperSpeed
-    product_id: 0x009c
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
-
-  # Viper V2/V3 Series (no LEDs)
-  - !device-config
-    name: Viper V2 Pro (Wired)
-    product_id: 0x00a6
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: DeathAdder V2
+    product_id: 0x0084
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
 
   - !device-config
-    name: Viper V2 Pro (Wireless)
-    product_id: 0x00a7
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: DeathAdder V2 Mini
+    product_id: 0x008c
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
 
   - !device-config
-    name: Viper V3 Pro (Wired)
-    product_id: 0x00c0
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: DeathAdder V2 Pro (Wired)
+    product_id: 0x007c
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
 
   - !device-config
-    name: Viper V3 Pro (Wireless)
-    product_id: 0x00c1
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: DeathAdder V2 Pro (Wireless)
+    product_id: 0x007d
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
 
   - !device-config
-    name: Viper V3 HyperSpeed
-    product_id: 0x00c2
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
-
-  # Other mice without LEDs
-  - !device-config
-    name: Basilisk V3 X HyperSpeed
-    product_id: 0x00b9
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: Basilisk
+    product_id: 0x0064
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
 
   - !device-config
-    name: Basilisk X HyperSpeed
-    product_id: 0x0083
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: Basilisk Essential
+    product_id: 0x0065
 
   - !device-config
-    name: Naga V2 HyperSpeed
-    product_id: 0x00b4
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+    name: Basilisk V2
+    product_id: 0x0085
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
 
   - !device-config
-    name: Pro Click
-    product_id: 0x0089
-    quirks: [TRANSACTION_CODE_3F, NO_LED]
+    name: Basilisk Ultimate (Wired)
+    product_id: 0x0086
+    dimensions: [1, 14]
+    quirks: [TRANSACTION_CODE_1F, WIRELESS]
 
   - !device-config
-    name: Pro Click V2
-    product_id: 0x00bd
+    name: Basilisk Ultimate (Wireless)
+    product_id: 0x0088
+    dimensions: [1, 14]
+    quirks: [TRANSACTION_CODE_1F, WIRELESS]
+
+  - !device-config
+    name: Viper
+    product_id: 0x0078
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+  - !device-config
+    name: Viper Mini
+    product_id: 0x008a
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+  - !device-config
+    name: Viper Ultimate (Wired)
+    product_id: 0x007a
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
+
+  - !device-config
+    name: Viper Ultimate (Wireless)
+    product_id: 0x007b
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
+
+  - !device-config
+    name: Mamba Elite
+    product_id: 0x006c
+    dimensions: [1, 20]
+    quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+  - !device-config
+    name: Mamba Wireless (Wired)
+    product_id: 0x0072
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
+
+  - !device-config
+    name: Mamba Wireless (Wireless)
+    product_id: 0x0073
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
+
+  - !device-config
+    name: Atheris
+    product_id: 0x0062
+    quirks: [TRANSACTION_CODE_3F, WIRELESS]
+
+  - !device-config
+    name: Orochi V2
+    product_id: 0x0094
+    quirks: [TRANSACTION_CODE_1F, WIRELESS]
+
+  # Modern mice with LEDs using 0x1F transaction code
+  - !device-config
+    supported_fx:
+      [disable, wave, reactive, breathe, spectrum, static, custom_frame]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+    children:
+      - !device-config
+        name: Basilisk V3
+        product_id: 0x0099
+        dimensions: [1, 11]
+
+      - !device-config
+        name: Basilisk V3 Pro (Wired)
+        product_id: 0x00aa
+        dimensions: [1, 11]
+        quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+      - !device-config
+        name: Basilisk V3 Pro (Wireless)
+        product_id: 0x00ab
+        dimensions: [1, 11]
+        quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+      - !device-config
+        name: Cobra
+        product_id: 0x00af
+        dimensions: [1, 1]
+
+      - !device-config
+        name: Cobra Pro (Wired)
+        product_id: 0x00b0
+        dimensions: [1, 10]
+        quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+      - !device-config
+        name: Cobra Pro (Wireless)
+        product_id: 0x00b1
+        dimensions: [1, 10]
+        quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+      - !device-config
+        name: Naga V2 Pro (Wired)
+        product_id: 0x00c4
+        dimensions: [1, 2]
+        quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+      - !device-config
+        name: Naga V2 Pro (Wireless)
+        product_id: 0x00c5
+        dimensions: [1, 2]
+        quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+  # Modern mice WITHOUT LEDs (NO_LED quirk)
+  - !device-config
+    supported_fx: []
+    supported_leds: []
     quirks: [TRANSACTION_CODE_1F, NO_LED]
+    children:
+      # DeathAdder V3 Series (no LEDs)
+      - !device-config
+        name: DeathAdder V3
+        product_id: 0x00b2
 
-  - !device-config
-    name: DeathAdder V4 Pro
-    product_id: 0x00ce
-    quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+      - !device-config
+        name: DeathAdder V3 Pro (Wired)
+        product_id: 0x00b6
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: DeathAdder V3 Pro (Wireless)
+        product_id: 0x00b7
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: DeathAdder V3 HyperSpeed
+        product_id: 0x00c3
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: DeathAdder V2 X HyperSpeed
+        product_id: 0x009c
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      # Viper V2/V3 Series (no LEDs)
+      - !device-config
+        name: Viper V2 Pro (Wired)
+        product_id: 0x00a6
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Viper V2 Pro (Wireless)
+        product_id: 0x00a7
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Viper V3 Pro (Wired)
+        product_id: 0x00c0
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Viper V3 Pro (Wireless)
+        product_id: 0x00c1
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Viper V3 HyperSpeed
+        product_id: 0x00c2
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      # Other mice without LEDs
+      - !device-config
+        name: Basilisk V3 X HyperSpeed
+        product_id: 0x00b9
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Basilisk X HyperSpeed
+        product_id: 0x0083
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Naga V2 HyperSpeed
+        product_id: 0x00b4
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]
+
+      - !device-config
+        name: Pro Click
+        product_id: 0x0089
+        quirks: [TRANSACTION_CODE_3F, NO_LED]
+
+      - !device-config
+        name: Pro Click V2
+        product_id: 0x00bd
+        quirks: [TRANSACTION_CODE_1F, NO_LED]
+
+      - !device-config
+        name: DeathAdder V4 Pro
+        product_id: 0x00ce
+        quirks: [TRANSACTION_CODE_1F, NO_LED, WIRELESS]

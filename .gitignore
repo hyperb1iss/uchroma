@@ -19,6 +19,9 @@ debian/python3-uchroma.uchroma.udev
 dist
 uchroma.egg-info
 docs/archive
+.venv
+.claude
+.pytest_cache
 
 # Coverage
 .coverage

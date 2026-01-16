@@ -10,354 +10,383 @@ type: KEYBOARD
 vendor_id: 0x1532
 supported_leds: [backlight, logo]
 key_mapping: !!omap
-- KEY_ESC: [[0, 1]]
-- KEY_F1: [[0, 3]]
-- KEY_F2: [[0, 4]]
-- KEY_F3: [[0, 5]]
-- KEY_F4: [[0, 6]]
-- KEY_F5: [[0, 7]]
-- KEY_F6: [[0, 8]]
-- KEY_F7: [[0, 9]]
-- KEY_F8: [[0, 10]]
-- KEY_F9: [[0, 11]]
-- KEY_F10: [[0, 12]]
-- KEY_F11: [[0, 13]]
-- KEY_F12: [[0, 14]]
-- KEY_SYSRQ: [[0, 15]]
-- KEY_SCROLLLOCK: [[0, 16]]
-- KEY_PAUSE: [[0, 17]]
-- KEY_GRAVE: [[1, 1]]
-- KEY_1: [[1, 2]]
-- KEY_2: [[1, 3]]
-- KEY_3: [[1, 4]]
-- KEY_4: [[1, 5]]
-- KEY_5: [[1, 6]]
-- KEY_6: [[1, 7]]
-- KEY_7: [[1, 8]]
-- KEY_8: [[1, 9]]
-- KEY_9: [[1, 10]]
-- KEY_0: [[1, 11]]
-- KEY_MINUS: [[1, 12]]
-- KEY_EQUAL: [[1, 13]]
-- KEY_BACKSPACE: [[1, 14]]
-- KEY_INSERT: [[1, 15]]
-- KEY_HOME: [[1, 16]]
-- KEY_PAGEUP: [[1, 17]]
-- KEY_TAB: [[2, 1]]
-- KEY_Q: [[2, 2]]
-- KEY_W: [[2, 3]]
-- KEY_E: [[2, 4]]
-- KEY_R: [[2, 5]]
-- KEY_T: [[2, 6]]
-- KEY_Y: [[2, 7]]
-- KEY_U: [[2, 8]]
-- KEY_I: [[2, 9]]
-- KEY_O: [[2, 10]]
-- KEY_P: [[2, 11]]
-- KEY_LEFTBRACE: [[2, 12]]
-- KEY_RIGHTBRACE: [[2, 13]]
-- KEY_BACKSLASH: [[2, 14]]
-- KEY_DELETE: [[2, 15]]
-- KEY_END: [[2, 16]]
-- KEY_PAGEDOWN: [[2, 17]]
-- KEY_CAPSLOCK: [[3, 1]]
-- KEY_A: [[3, 2]]
-- KEY_S: [[3, 3]]
-- KEY_D: [[3, 4]]
-- KEY_F: [[3, 5]]
-- KEY_G: [[3, 6]]
-- KEY_H: [[3, 7]]
-- KEY_J: [[3, 8]]
-- KEY_K: [[3, 9]]
-- KEY_L: [[3, 10]]
-- KEY_SEMICOLON: [[3, 11]]
-- KEY_APOSTROPHE: [[3, 12]]
-- KEY_ENTER: [[3, 13], [3, 14]]
-- KEY_LEFTSHIFT: [[4, 1], [4, 2]]
-- KEY_Z: [[4, 3]]
-- KEY_X: [[4, 4]]
-- KEY_C: [[4, 5]]
-- KEY_V: [[4, 6]]
-- KEY_B: [[4, 7]]
-- KEY_N: [[4, 8]]
-- KEY_M: [[4, 9]]
-- KEY_COMMA: [[4, 10]]
-- KEY_DOT: [[4, 11]]
-- KEY_SLASH: [[4, 12]]
-- KEY_RIGHTSHIFT: [[4, 13], [4, 14]]
-- KEY_UP: [[4, 16]]
-- KEY_LEFTCTRL: [[5, 1]]
-- KEY_LEFTMETA: [[5, 2]]
-- KEY_LEFTALT: [[5, 3]]
-- KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8], [5, 9]]
-- KEY_RIGHTALT: [[5, 11]]
-- KEY_MENU: [[5, 13]]
-- KEY_RIGHTCTRL: [[5, 14]]
-- KEY_LEFT: [[5, 15]]
-- KEY_DOWN: [[5, 16]]
-- KEY_RIGHT: [[5, 17]]
+  - KEY_ESC: [[0, 1]]
+  - KEY_F1: [[0, 3]]
+  - KEY_F2: [[0, 4]]
+  - KEY_F3: [[0, 5]]
+  - KEY_F4: [[0, 6]]
+  - KEY_F5: [[0, 7]]
+  - KEY_F6: [[0, 8]]
+  - KEY_F7: [[0, 9]]
+  - KEY_F8: [[0, 10]]
+  - KEY_F9: [[0, 11]]
+  - KEY_F10: [[0, 12]]
+  - KEY_F11: [[0, 13]]
+  - KEY_F12: [[0, 14]]
+  - KEY_SYSRQ: [[0, 15]]
+  - KEY_SCROLLLOCK: [[0, 16]]
+  - KEY_PAUSE: [[0, 17]]
+  - KEY_GRAVE: [[1, 1]]
+  - KEY_1: [[1, 2]]
+  - KEY_2: [[1, 3]]
+  - KEY_3: [[1, 4]]
+  - KEY_4: [[1, 5]]
+  - KEY_5: [[1, 6]]
+  - KEY_6: [[1, 7]]
+  - KEY_7: [[1, 8]]
+  - KEY_8: [[1, 9]]
+  - KEY_9: [[1, 10]]
+  - KEY_0: [[1, 11]]
+  - KEY_MINUS: [[1, 12]]
+  - KEY_EQUAL: [[1, 13]]
+  - KEY_BACKSPACE: [[1, 14]]
+  - KEY_INSERT: [[1, 15]]
+  - KEY_HOME: [[1, 16]]
+  - KEY_PAGEUP: [[1, 17]]
+  - KEY_TAB: [[2, 1]]
+  - KEY_Q: [[2, 2]]
+  - KEY_W: [[2, 3]]
+  - KEY_E: [[2, 4]]
+  - KEY_R: [[2, 5]]
+  - KEY_T: [[2, 6]]
+  - KEY_Y: [[2, 7]]
+  - KEY_U: [[2, 8]]
+  - KEY_I: [[2, 9]]
+  - KEY_O: [[2, 10]]
+  - KEY_P: [[2, 11]]
+  - KEY_LEFTBRACE: [[2, 12]]
+  - KEY_RIGHTBRACE: [[2, 13]]
+  - KEY_BACKSLASH: [[2, 14]]
+  - KEY_DELETE: [[2, 15]]
+  - KEY_END: [[2, 16]]
+  - KEY_PAGEDOWN: [[2, 17]]
+  - KEY_CAPSLOCK: [[3, 1]]
+  - KEY_A: [[3, 2]]
+  - KEY_S: [[3, 3]]
+  - KEY_D: [[3, 4]]
+  - KEY_F: [[3, 5]]
+  - KEY_G: [[3, 6]]
+  - KEY_H: [[3, 7]]
+  - KEY_J: [[3, 8]]
+  - KEY_K: [[3, 9]]
+  - KEY_L: [[3, 10]]
+  - KEY_SEMICOLON: [[3, 11]]
+  - KEY_APOSTROPHE: [[3, 12]]
+  - KEY_ENTER: [[3, 13], [3, 14]]
+  - KEY_LEFTSHIFT: [[4, 1], [4, 2]]
+  - KEY_Z: [[4, 3]]
+  - KEY_X: [[4, 4]]
+  - KEY_C: [[4, 5]]
+  - KEY_V: [[4, 6]]
+  - KEY_B: [[4, 7]]
+  - KEY_N: [[4, 8]]
+  - KEY_M: [[4, 9]]
+  - KEY_COMMA: [[4, 10]]
+  - KEY_DOT: [[4, 11]]
+  - KEY_SLASH: [[4, 12]]
+  - KEY_RIGHTSHIFT: [[4, 13], [4, 14]]
+  - KEY_UP: [[4, 16]]
+  - KEY_LEFTCTRL: [[5, 1]]
+  - KEY_LEFTMETA: [[5, 2]]
+  - KEY_LEFTALT: [[5, 3]]
+  - KEY_SPACE: [[5, 5], [5, 6], [5, 7], [5, 8], [5, 9]]
+  - KEY_RIGHTALT: [[5, 11]]
+  - KEY_MENU: [[5, 13]]
+  - KEY_RIGHTCTRL: [[5, 14]]
+  - KEY_LEFT: [[5, 15]]
+  - KEY_DOWN: [[5, 16]]
+  - KEY_RIGHT: [[5, 17]]
 children:
-- !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static]
-  children:
+  - !device-config
+    supported_fx: [disable, wave, reactive, breathe, spectrum, static]
+    children:
+      - !device-config
+        name: Anansi
+        product_id: 0x010f
+        quirks: BACKLIGHT_LED_FX_ONLY
 
   - !device-config
-    name: Anansi
-    product_id: 0x010f
-    quirks: BACKLIGHT_LED_FX_ONLY
+    supported_fx:
+      [
+        disable,
+        wave,
+        reactive,
+        breathe,
+        spectrum,
+        static,
+        custom_frame,
+        rainbow,
+        alignment,
+      ]
+    children:
+      - !device-config
+        name: BlackWidow Ultimate 2012
+        product_id: 0x010d
+        dimensions: [6, 22]
+        quirks: LOGO_LED_BRIGHTNESS
 
-- !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
-    rainbow, alignment]
-  children:
+      - !device-config
+        name: BlackWidow Ultimate 2013
+        product_id: 0x011a
+        dimensions: [6, 22]
+        quirks: LOGO_LED_BRIGHTNESS
 
+      - !device-config
+        name: BlackWidow Ultimate 2013 (Alt)
+        product_id: 0x010e
+        dimensions: [6, 22]
+        quirks: LOGO_LED_BRIGHTNESS
+
+      - !device-config
+        name: BlackWidow Classic
+        product_id: 0x011b
+        dimensions: [6, 22]
+        quirks: LOGO_LED_BRIGHTNESS
+
+      - !device-config
+        name: BlackWidow Chroma
+        product_id: 0x0203
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow Chroma Tournament Edition
+        product_id: 0x0209
+        dimensions: [6, 18]
+
+      - !device-config
+        name: BlackWidow Ultimate 2016
+        product_id: 0x0214
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow X Chroma
+        product_id: 0x0216
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow X Chroma Tournament Edition
+        product_id: 0x021a
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow X Chroma TE
+        product_id: 0x0217
+        dimensions: [6, 18]
+
+      - !device-config
+        name: BlackWidow X Ultimate
+        product_id: 0x0223
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow Chroma V2
+        product_id: 0x0221
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow Elite
+        product_id: 0x0228
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Ornata Chroma
+        product_id: 0x021e
+        dimensions: [6, 22]
+        quirks: EXTENDED_FX_CMDS
+
+      - !device-config
+        name: Ornata V2
+        product_id: 0x024a
+        dimensions: [6, 22]
+
+      - !device-config
+        name: DeathStalker Chroma
+        product_id: 0x0204
+        dimensions: [1, 12]
+
+      - !device-config
+        name: Cynosa Chroma
+        product_id: 0x022a
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Cynosa V2
+        product_id: 0x025e
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Cynosa Lite
+        product_id: 0x023f
+        dimensions: [1, 1]
+        quirks: SINGLE_LED
+
+      - !device-config
+        name: Huntsman
+        product_id: 0x0227
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Huntsman Elite
+        product_id: 0x0226
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Huntsman TE
+        product_id: 0x022c
+        dimensions: [6, 18]
+
+  # Modern keyboards (V3+, V4) using 0x1F transaction code and extended FX
   - !device-config
-    name: BlackWidow Ultimate 2012
-    product_id: 0x010d
-    dimensions: [6, 22]
-    quirks: LOGO_LED_BRIGHTNESS
+    supported_fx:
+      [
+        disable,
+        wave,
+        reactive,
+        breathe,
+        spectrum,
+        static,
+        custom_frame,
+        rainbow,
+        starlight,
+      ]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, CONTROL_IFACE_3]
+    children:
+      # BlackWidow V4 Series
+      - !device-config
+        name: BlackWidow V4
+        product_id: 0x0287
+        dimensions: [6, 22]
 
+      - !device-config
+        name: BlackWidow V4 X
+        product_id: 0x028d
+        dimensions: [6, 22]
+
+      - !device-config
+        name: BlackWidow V4 75%
+        product_id: 0x028e
+        dimensions: [6, 16]
+
+      - !device-config
+        name: BlackWidow V4 Mini
+        product_id: 0x0283
+        dimensions: [5, 15]
+
+      # BlackWidow V3 Series
+      - !device-config
+        name: BlackWidow V3
+        product_id: 0x024e
+        dimensions: [6, 22]
+        quirks: [] # Uses default 0xFF, override parent
+
+      - !device-config
+        name: BlackWidow V3 Mini
+        product_id: 0x0258
+        dimensions: [5, 15]
+
+      - !device-config
+        name: BlackWidow V3 TKL
+        product_id: 0x0a24
+        dimensions: [6, 18]
+        quirks: [] # Uses default 0xFF, override parent
+
+      # Huntsman V3 Pro Series
+      - !device-config
+        name: Huntsman V3 Pro
+        product_id: 0x02a6
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Huntsman V3 Pro TKL
+        product_id: 0x02b0
+        dimensions: [6, 18]
+
+      - !device-config
+        name: Huntsman V3 Pro Mini
+        product_id: 0x02b1
+        dimensions: [5, 15]
+
+      # Huntsman V2 Series
+      - !device-config
+        name: Huntsman V2
+        product_id: 0x026b
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Huntsman V2 TKL
+        product_id: 0x026c
+        dimensions: [6, 18]
+
+      - !device-config
+        name: Huntsman Mini
+        product_id: 0x0257
+        dimensions: [5, 15]
+
+      - !device-config
+        name: Huntsman Mini Analog
+        product_id: 0x0266
+        dimensions: [5, 15]
+
+      # DeathStalker V2 Series
+      - !device-config
+        name: DeathStalker V2
+        product_id: 0x0295
+        dimensions: [6, 22]
+
+      - !device-config
+        name: DeathStalker V2 Pro (Wired)
+        product_id: 0x0296
+        dimensions: [6, 22]
+        quirks:
+          [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
+
+      - !device-config
+        name: DeathStalker V2 Pro TKL
+        product_id: 0x029c
+        dimensions: [6, 18]
+        quirks:
+          [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
+
+      # Ornata V3 Series
+      - !device-config
+        name: Ornata V3
+        product_id: 0x0292
+        dimensions: [6, 22]
+
+      - !device-config
+        name: Ornata V3 TKL
+        product_id: 0x02b3
+        dimensions: [6, 18]
+
+  # Wireless keyboards using 0x9F transaction code
   - !device-config
-    name: BlackWidow Ultimate 2013
-    product_id: 0x011a
-    dimensions: [6, 22]
-    quirks: LOGO_LED_BRIGHTNESS
+    supported_fx:
+      [
+        disable,
+        wave,
+        reactive,
+        breathe,
+        spectrum,
+        static,
+        custom_frame,
+        rainbow,
+        starlight,
+      ]
+    quirks: [TRANSACTION_CODE_9F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
+    children:
+      - !device-config
+        name: BlackWidow V3 Pro (Wired)
+        product_id: 0x025a
+        dimensions: [6, 22]
+        quirks:
+          [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
 
-  - !device-config
-    name: BlackWidow Ultimate 2013 (Alt)
-    product_id: 0x010e
-    dimensions: [6, 22]
-    quirks: LOGO_LED_BRIGHTNESS
+      - !device-config
+        name: BlackWidow V3 Pro (Wireless)
+        product_id: 0x025c
+        dimensions: [6, 22]
 
-  - !device-config
-    name: BlackWidow Classic
-    product_id: 0x011b
-    dimensions: [6, 22]
-    quirks: LOGO_LED_BRIGHTNESS
-
-  - !device-config
-    name: BlackWidow Chroma
-    product_id: 0x0203
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow Chroma Tournament Edition
-    product_id: 0x0209
-    dimensions: [6, 18]
-
-  - !device-config
-    name: BlackWidow Ultimate 2016
-    product_id: 0x0214
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow X Chroma
-    product_id: 0x0216
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow X Chroma Tournament Edition
-    product_id: 0x021a
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow X Chroma TE
-    product_id: 0x0217
-    dimensions: [6, 18]
-
-  - !device-config
-    name: BlackWidow X Ultimate
-    product_id: 0x0223
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow Chroma V2
-    product_id: 0x0221
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow Elite
-    product_id: 0x0228
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Ornata Chroma
-    product_id: 0x021e
-    dimensions: [6, 22]
-    quirks: EXTENDED_FX_CMDS
-
-  - !device-config
-    name: Ornata V2
-    product_id: 0x024a
-    dimensions: [6, 22]
-
-  - !device-config
-    name: DeathStalker Chroma
-    product_id: 0x0204
-    dimensions: [1, 12]
-
-  - !device-config
-    name: Cynosa Chroma
-    product_id: 0x022a
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Cynosa V2
-    product_id: 0x025e
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Cynosa Lite
-    product_id: 0x023f
-    dimensions: [1, 1]
-    quirks: SINGLE_LED
-
-  - !device-config
-    name: Huntsman
-    product_id: 0x0227
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Huntsman Elite
-    product_id: 0x0226
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Huntsman TE
-    product_id: 0x022c
-    dimensions: [6, 18]
-
-# Modern keyboards (V3+, V4) using 0x1F transaction code and extended FX
-- !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
-    rainbow, starlight]
-  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, CONTROL_IFACE_3]
-  children:
-
-  # BlackWidow V4 Series
-  - !device-config
-    name: BlackWidow V4
-    product_id: 0x0287
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow V4 X
-    product_id: 0x028d
-    dimensions: [6, 22]
-
-  - !device-config
-    name: BlackWidow V4 75%
-    product_id: 0x028e
-    dimensions: [6, 16]
-
-  - !device-config
-    name: BlackWidow V4 Mini
-    product_id: 0x0283
-    dimensions: [5, 15]
-
-  # BlackWidow V3 Series
-  - !device-config
-    name: BlackWidow V3
-    product_id: 0x024e
-    dimensions: [6, 22]
-    quirks: []  # Uses default 0xFF, override parent
-
-  - !device-config
-    name: BlackWidow V3 Mini
-    product_id: 0x0258
-    dimensions: [5, 15]
-
-  - !device-config
-    name: BlackWidow V3 TKL
-    product_id: 0x0a24
-    dimensions: [6, 18]
-    quirks: []  # Uses default 0xFF, override parent
-
-  # Huntsman V3 Pro Series
-  - !device-config
-    name: Huntsman V3 Pro
-    product_id: 0x02a6
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Huntsman V3 Pro TKL
-    product_id: 0x02b0
-    dimensions: [6, 18]
-
-  - !device-config
-    name: Huntsman V3 Pro Mini
-    product_id: 0x02b1
-    dimensions: [5, 15]
-
-  # Huntsman V2 Series
-  - !device-config
-    name: Huntsman V2
-    product_id: 0x026b
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Huntsman V2 TKL
-    product_id: 0x026c
-    dimensions: [6, 18]
-
-  - !device-config
-    name: Huntsman Mini
-    product_id: 0x0257
-    dimensions: [5, 15]
-
-  - !device-config
-    name: Huntsman Mini Analog
-    product_id: 0x0266
-    dimensions: [5, 15]
-
-  # DeathStalker V2 Series
-  - !device-config
-    name: DeathStalker V2
-    product_id: 0x0295
-    dimensions: [6, 22]
-
-  - !device-config
-    name: DeathStalker V2 Pro (Wired)
-    product_id: 0x0296
-    dimensions: [6, 22]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
-
-  - !device-config
-    name: DeathStalker V2 Pro TKL
-    product_id: 0x029c
-    dimensions: [6, 18]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
-
-  # Ornata V3 Series
-  - !device-config
-    name: Ornata V3
-    product_id: 0x0292
-    dimensions: [6, 22]
-
-  - !device-config
-    name: Ornata V3 TKL
-    product_id: 0x02b3
-    dimensions: [6, 18]
-
-# Wireless keyboards using 0x9F transaction code
-- !device-config
-  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
-    rainbow, starlight]
-  quirks: [TRANSACTION_CODE_9F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
-  children:
-
-  - !device-config
-    name: BlackWidow V3 Pro (Wired)
-    product_id: 0x025a
-    dimensions: [6, 22]
-    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS, CONTROL_IFACE_3]
-
-  - !device-config
-    name: BlackWidow V3 Pro (Wireless)
-    product_id: 0x025c
-    dimensions: [6, 22]
-
-  - !device-config
-    name: DeathStalker V2 Pro (Wireless)
-    product_id: 0x0298
-    dimensions: [6, 22]
+      - !device-config
+        name: DeathStalker V2 Pro (Wireless)
+        product_id: 0x0298
+        dimensions: [6, 22]

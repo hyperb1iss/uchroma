@@ -19,6 +19,7 @@ make fix          # Auto-fix lint + format
 **Package manager**: uv (not pip/poetry). All commands use `uv run`.
 
 **Linting**: ruff — configured in `pyproject.toml [tool.ruff]`
+
 - `make lint` / `make lint-fix`
 - Line length: 100, target Python 3.10+
 - Rules: E, F, I, UP, B, SIM, RUF, C4, PIE, PT, PLC, PLE
@@ -26,10 +27,12 @@ make fix          # Auto-fix lint + format
 **Formatting**: ruff format — `make fmt` / `make fmt-check`
 
 **Type checking**: ty — `make typecheck` or `make tc`
+
 - Configured in `pyproject.toml [tool.ty]`
 - Currently warnings-only for gradual adoption
 
 **Cython**: Three `.pyx` modules require rebuild after changes:
+
 - `uchroma/_layer.pyx` — layer pixel operations
 - `uchroma/fxlib/_plasma.pyx` — plasma effect hot path
 - `uchroma/server/_crc.pyx` — USB report CRC
@@ -57,18 +60,18 @@ make fix          # Auto-fix lint + format
 
 ### Key Components
 
-| Module | Purpose |
-|--------|---------|
-| `uchroma/server/server.py` | Daemon entry, signal handling, lifecycle |
-| `uchroma/server/device_manager.py` | USB hotplug via pyudev, device enumeration |
-| `uchroma/server/device_base.py` | Base device class, HID communication |
-| `uchroma/server/anim.py` | AnimationLoop, AnimationManager, layer compositing |
-| `uchroma/server/frame.py` | Framebuffer, hardware commit, layer composition |
-| `uchroma/server/dbus.py` | D-Bus interfaces (dbus-fast) |
-| `uchroma/renderer.py` | Base Renderer class with traitlets |
-| `uchroma/layer.py` | Layer with drawing primitives (circle, line, etc.) |
-| `uchroma/blending.py` | Blend modes (screen, soft_light, dodge, etc.) |
-| `uchroma/fxlib/*.py` | Built-in renderers (plasma, rainbow, ripple, reaction) |
+| Module                             | Purpose                                                |
+| ---------------------------------- | ------------------------------------------------------ |
+| `uchroma/server/server.py`         | Daemon entry, signal handling, lifecycle               |
+| `uchroma/server/device_manager.py` | USB hotplug via pyudev, device enumeration             |
+| `uchroma/server/device_base.py`    | Base device class, HID communication                   |
+| `uchroma/server/anim.py`           | AnimationLoop, AnimationManager, layer compositing     |
+| `uchroma/server/frame.py`          | Framebuffer, hardware commit, layer composition        |
+| `uchroma/server/dbus.py`           | D-Bus interfaces (dbus-fast)                           |
+| `uchroma/renderer.py`              | Base Renderer class with traitlets                     |
+| `uchroma/layer.py`                 | Layer with drawing primitives (circle, line, etc.)     |
+| `uchroma/blending.py`              | Blend modes (screen, soft_light, dodge, etc.)          |
+| `uchroma/fxlib/*.py`               | Built-in renderers (plasma, rainbow, ripple, reaction) |
 
 ## Animation System
 
@@ -82,6 +85,7 @@ make fix          # Auto-fix lint + format
 6. Old buffers returned to renderers via `_avail_q`
 
 **Key constants** (`uchroma/renderer.py`):
+
 - `MAX_FPS = 30` — animation loop cap
 - `DEFAULT_FPS = 15` — default renderer FPS
 - `NUM_BUFFERS = 2` — double-buffering
@@ -111,6 +115,7 @@ class MyEffect(Renderer):
 ```
 
 Register in `pyproject.toml`:
+
 ```toml
 [project.entry-points."uchroma.plugins"]
 renderers = "your_module"
@@ -125,11 +130,11 @@ YAML files in `uchroma/server/data/` define hardware:
 manufacturer: Razer
 type: KEYBOARD
 vendor_id: 0x1532
-dimensions: [6, 22]  # [rows, cols] = [height, width]
+dimensions: [6, 22] # [rows, cols] = [height, width]
 supported_leds: [backlight, logo]
 key_mapping: !!omap
   - KEY_ESC: [[0, 1]]
-  - KEY_SPACE: [[5, 5], [5, 6], [5, 7]]  # Multi-cell keys
+  - KEY_SPACE: [[5, 5], [5, 6], [5, 7]] # Multi-cell keys
 ```
 
 Device types: `KEYBOARD`, `MOUSE`, `MOUSEPAD`, `HEADSET`, `KEYPAD`, `LAPTOP`
@@ -140,11 +145,13 @@ Device types: `KEYBOARD`, `MOUSE`, `MOUSEPAD`, `HEADSET`, `KEYPAD`, `LAPTOP`
 **Base path**: `/io/uchroma`
 
 Key interfaces:
+
 - `io.uchroma.DeviceManager` — device enumeration
 - `io.uchroma.Device` — brightness, effects, properties
 - `io.uchroma.AnimationManager` — layer management
 
 Client usage:
+
 ```python
 from uchroma.client.dbus_client import UChromaClientAsync
 
@@ -252,11 +259,11 @@ UCHROMA_LOG_LEVEL=DEBUG uv run python -m uchroma.gtk
 
 ## File Locations
 
-| Path | Purpose |
-|------|---------|
-| `~/.config/uchroma/` | User preferences |
-| `/etc/udev/rules.d/70-uchroma.rules` | Device permissions |
-| `/usr/lib/systemd/user/uchromad.service` | Systemd service |
+| Path                                     | Purpose            |
+| ---------------------------------------- | ------------------ |
+| `~/.config/uchroma/`                     | User preferences   |
+| `/etc/udev/rules.d/70-uchroma.rules`     | Device permissions |
+| `/usr/lib/systemd/user/uchromad.service` | Systemd service    |
 
 ## Common Tasks
 

@@ -1,14 +1,13 @@
 name: uchroma
-version: '1.1.0'
+version: "1.1.0"
 summary: Razer Chroma peripheral manager
 description: |
- An advanced driver for the Razer Chroma line of peripherals.
- Supports lighting effects, custom animations, and more.
+  An advanced driver for the Razer Chroma line of peripherals.
+  Supports lighting effects, custom animations, and more.
 
 base: core22
 grade: stable
 confinement: strict
-
 
 plugs:
   dbus:
