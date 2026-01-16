@@ -32,32 +32,76 @@ class Quirks(IntEnum):
     Various "quirks" that are found across hardware models.
     """
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # Transaction codes
+    # ─────────────────────────────────────────────────────────────────────────
+
     # Always use transaction code 0x3F
     TRANSACTION_CODE_3F = 1
 
-    # Use "extended" commands
+    # Use transaction code 0x1F (Blade 2021+, modern devices)
+    TRANSACTION_CODE_1F = 9
+
+    # Use transaction code 0x9F (wireless keyboards)
+    TRANSACTION_CODE_9F = 10
+
+    # Use transaction code 0x08 (Naga X special case)
+    TRANSACTION_CODE_08 = 11
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Command sets
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # Use "extended" commands (class 0x0F instead of 0x03)
     EXTENDED_FX_CMDS = 2
 
-    # Use transaction code 0x1F (Blade 2021+)
-    TRANSACTION_CODE_1F = 9
+    # ─────────────────────────────────────────────────────────────────────────
+    # Brightness control
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Control device brightness with the scroll wheel LED
     SCROLL_WHEEL_BRIGHTNESS = 3
 
-    # Device has charge and dock controls
+    # Control device brightness with the logo LED
+    LOGO_LED_BRIGHTNESS = 6
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Device features
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # Device has charge and dock controls (wireless capability)
     WIRELESS = 4
 
     # Needs transaction code 0x80 for custom frame data
     CUSTOM_FRAME_80 = 5
-
-    # Control device brightness with the logo LED
-    LOGO_LED_BRIGHTNESS = 6
 
     # Device has individual "profile" LEDs
     PROFILE_LEDS = 7
 
     # Device only supports spectrum effect on the backlight LED
     BACKLIGHT_LED_FX_ONLY = 8
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # New quirks for modern devices
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # Device has no RGB LEDs (e.g., Viper V3 Pro, DeathAdder V3)
+    NO_LED = 12
+
+    # Device has only one LED zone
+    SINGLE_LED = 13
+
+    # Device supports HyperPolling (4000/8000Hz)
+    HYPERPOLLING = 14
+
+    # Device has analog key actuation support
+    ANALOG_KEYS = 15
+
+    # Device firmware lacks hardware effects (needs software rendering)
+    SOFTWARE_EFFECTS = 16
+
+    # Skip CRC validation on successful responses
+    CRC_SKIP_ON_OK = 17
 
 
 # Marker types for YAML output
