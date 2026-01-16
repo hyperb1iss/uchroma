@@ -81,8 +81,12 @@ class Kaleidoscope(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         width = layer.width
-        grad_len = len(self._gradient)
+        grad_len = len(gradient)
 
         t = self._time
         sym = self.symmetry
@@ -118,7 +122,7 @@ class Kaleidoscope(Renderer):
 
             # Color from symmetric angle + time rotation
             hue_idx = int((sym_angle / wedge) * grad_len * 0.5 + t * hue_rot) % grad_len
-            color = self._gradient[hue_idx]
+            color = gradient[hue_idx]
             r, g, b = color.rgb
 
             # Brightness: never fully dark (0.3 to 1.0)

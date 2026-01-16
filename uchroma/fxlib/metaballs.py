@@ -92,9 +92,13 @@ class Metaballs(Renderer):
         return True
 
     async def draw(self, layer, timestamp):
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         width = layer.width
         height = layer.height
-        grad_len = len(self._gradient)
+        grad_len = len(gradient)
         thresh = self.threshold
         falloff = self.glow_falloff
         base_bright = self.base_brightness
@@ -138,7 +142,7 @@ class Metaballs(Renderer):
                 if field > thresh:
                     brightness = min(1.0, (field - thresh) * falloff * 0.5 + 0.5)
                     hue_idx = int(weighted_hue / total_weight) % grad_len
-                    color = self._gradient[hue_idx]
+                    color = gradient[hue_idx]
                     r, g, b = color.rgb
                     layer.matrix[row][col] = (
                         r * brightness,
@@ -151,7 +155,7 @@ class Metaballs(Renderer):
                     glow = (field - thresh * 0.5) / (thresh * 0.5)
                     brightness = base_bright + glow * 0.3
                     hue_idx = int(weighted_hue / total_weight) % grad_len
-                    color = self._gradient[hue_idx]
+                    color = gradient[hue_idx]
                     r, g, b = color.rgb
                     layer.matrix[row][col] = (
                         r * brightness,

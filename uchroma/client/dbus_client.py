@@ -72,7 +72,8 @@ class UChromaClientAsync:
 
             if use_key:
                 # Support partial key matching (1532:026c matches 1532:026c.01)
-                if dev.Key == identifier or dev.Key.startswith(identifier + "."):
+                # Note: when use_key=True, identifier is always a str
+                if dev.Key == identifier or dev.Key.startswith(f"{identifier}."):
                     return dev
             else:
                 if identifier == dev.DeviceIndex:

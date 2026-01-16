@@ -655,9 +655,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         )
         if not has_layers:
             return False
-        if self._anim_state in {"running", "paused", ""}:
-            return True
-        return False
+        return self._anim_state in {"running", "paused", ""}
 
     def _start_live_preview(self):
         if self._live_preview_source is not None or not self._device:

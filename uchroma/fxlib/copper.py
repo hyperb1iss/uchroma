@@ -64,7 +64,11 @@ class CopperBars(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps * self.speed
 
-        grad_len = len(self._gradient)
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
+        grad_len = len(gradient)
         width = layer.width
         height = layer.height
 
@@ -85,11 +89,11 @@ class CopperBars(Renderer):
                 for col in range(width):
                     h_mod = math.sin(col * 0.3 + t * 1.5) * band_w * 0.3
                     idx = int(base_idx + h_mod) % grad_len
-                    layer.matrix[row][col] = (*self._gradient[idx].rgb, 1.0)
+                    layer.matrix[row][col] = (*gradient[idx].rgb, 1.0)
             else:
                 # Uniform row color (classic copper bar look)
                 idx = int(base_idx) % grad_len
-                color = (*self._gradient[idx].rgb, 1.0)
+                color = (*gradient[idx].rgb, 1.0)
                 for col in range(width):
                     layer.matrix[row][col] = color
 

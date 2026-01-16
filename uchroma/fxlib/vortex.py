@@ -79,8 +79,12 @@ class Vortex(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         width = layer.width
-        grad_len = len(self._gradient)
+        grad_len = len(gradient)
 
         t = self._time
         arms = self.arm_count
@@ -109,7 +113,7 @@ class Vortex(Renderer):
 
             # Color: hue from angle
             hue_idx = int((angle / math.pi + 1.0) * 180 + t * 30) % grad_len
-            color = self._gradient[hue_idx]
+            color = gradient[hue_idx]
             r, g, b = color.rgb
 
             # Brightness from combined value (0.4 to 1.0)

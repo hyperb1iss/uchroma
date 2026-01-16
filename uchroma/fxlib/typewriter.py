@@ -74,6 +74,10 @@ class Typewriter(Renderer):
         return True
 
     async def draw(self, layer, timestamp):
+        brightness = self._brightness
+        if brightness is None:
+            return False
+
         events = await self.get_input_events()
         height = layer.height
         width = layer.width
@@ -87,7 +91,7 @@ class Typewriter(Renderer):
             for coord in event.coords:
                 row, col = coord.y, coord.x
                 if 0 <= row < height and 0 <= col < width:
-                    self._brightness[row, col] = peak
+                    brightness[row, col] = peak
 
                     # Spread to neighbors
                     if spread > 0:
@@ -97,13 +101,13 @@ class Typewriter(Renderer):
                                     continue
                                 ny, nx = row + dy, col + dx
                                 if 0 <= ny < height and 0 <= nx < width:
-                                    self._brightness[ny, nx] = max(
-                                        self._brightness[ny, nx],
+                                    brightness[ny, nx] = max(
+                                        brightness[ny, nx],
                                         peak * spread,
                                     )
 
         # Decay all brightness values
-        self._brightness *= self._decay_factor
+        brightness *= self._decay_factor
 
         # Render
         base = self.base_brightness
@@ -112,7 +116,7 @@ class Typewriter(Renderer):
 
         for row in range(height):
             for col in range(width):
-                b = max(base, self._brightness[row, col])
+                b = max(base, brightness[row, col])
 
                 # Color temperature: brighter = warmer (shift toward white)
                 if b > 0.7 and warmth > 0:

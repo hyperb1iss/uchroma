@@ -56,8 +56,10 @@ class Nebula(Renderer):
 
     def _sample_noise(self, x: float, y: float) -> float:
         """Bilinear interpolation of noise table."""
-        size = self._noise_size
         table = self._noise_table
+        if table is None:
+            return 0.0
+        size = self._noise_size
 
         # Wrap coordinates
         x = x % size
@@ -114,9 +116,13 @@ class Nebula(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         width = layer.width
         height = layer.height
-        grad_len = len(self._gradient)
+        grad_len = len(gradient)
 
         t = self._time * self.drift_speed
         scale = self.scale * 10  # Scale up for noise table sampling
@@ -147,7 +153,7 @@ class Nebula(Renderer):
                     shift = int((n2 - 0.5) * color_shift * grad_len * 0.5)
                     color_idx = (color_idx + shift) % grad_len
 
-                color = self._gradient[color_idx]
+                color = gradient[color_idx]
                 r, g, b = color.rgb
 
                 # Brightness modulated by noise

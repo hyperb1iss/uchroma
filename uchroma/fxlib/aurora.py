@@ -69,9 +69,13 @@ class Aurora(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         width = layer.width
         height = layer.height
-        grad_len = len(self._gradient)
+        grad_len = len(gradient)
 
         t = self._time
         speed = self.speed
@@ -105,7 +109,7 @@ class Aurora(Renderer):
                 if intensity > 0.01:
                     # Gradient shifts slightly per row for depth
                     color_idx = (base_color_idx + row * 2) % grad_len
-                    color = self._gradient[color_idx]
+                    color = gradient[color_idx]
                     layer.matrix[row][col] = (*color.rgb, intensity)
                 else:
                     layer.matrix[row][col] = (0.0, 0.0, 0.0, 0.0)

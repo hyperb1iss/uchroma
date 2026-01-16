@@ -60,9 +60,13 @@ class Ocean(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         width = layer.width
         height = layer.height
-        grad_len = len(self._gradient)
+        grad_len = len(gradient)
 
         t = self._time * self.wave_speed
         wave_h = self.wave_height
@@ -93,7 +97,7 @@ class Ocean(Renderer):
 
                 # Base color from gradient (deep to surface)
                 grad_idx = int((1.0 - depth) * (grad_len - 1))
-                color = self._gradient[grad_idx]
+                color = gradient[grad_idx]
                 r, g, b = color.rgb
 
                 # Brightness: surface is brighter
