@@ -13,7 +13,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Gdk, GLib, GObject, Gtk, Pango  # noqa: E402
+from gi.repository import Gdk, GObject, Gtk, Pango  # noqa: E402
 
 from uchroma.blending import BlendOp  # noqa: E402
 
@@ -166,8 +166,7 @@ class LayerRow(Gtk.ListBoxRow):
     def _on_drag_prepare(self, source, x, y):
         """Prepare drag data - return content provider with row index."""
         # Store the row's current index in the value
-        value = GLib.Variant.new_int32(self.zindex)
-        return Gdk.ContentProvider.new_for_value(value)
+        return Gdk.ContentProvider.new_for_value(self.zindex)
 
     def _on_drag_begin(self, source, drag):
         """Handle drag start - create visual feedback."""

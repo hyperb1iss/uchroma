@@ -142,7 +142,7 @@ class LayerPanel(Gtk.Box):
 
     def _setup_drop_target(self):
         """Setup drop target for layer reordering."""
-        drop_target = Gtk.DropTarget.new(GLib.VariantType.new("i"), Gdk.DragAction.MOVE)  # type: ignore[arg-type]
+        drop_target = Gtk.DropTarget.new(GObject.TYPE_INT, Gdk.DragAction.MOVE)
         drop_target.connect("drop", self._on_drop)
         drop_target.connect("motion", self._on_drag_motion)
         drop_target.connect("leave", self._on_drag_leave)
@@ -183,7 +183,14 @@ class LayerPanel(Gtk.Box):
 
     def _on_drop(self, target, value, x, y):
         """Handle drop - reorder layers."""
-        from_index = value.get_int32()
+        if value is None:
+            self._on_drag_leave(target)
+            return False
+
+        if isinstance(value, GLib.Variant):
+            from_index = value.get_int32()
+        else:
+            from_index = int(value)
 
         drop_row = self._list.get_row_at_y(int(y))
         if not drop_row or not isinstance(drop_row, LayerRow):
