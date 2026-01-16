@@ -1,6 +1,7 @@
 # Developer Guide
 
-Welcome to the uchroma Developer Guide. This documentation covers everything you need to build custom lighting effects, integrate with the D-Bus API, and extend uchroma's functionality.
+Welcome to the uchroma Developer Guide. This documentation covers everything you need to build
+custom lighting effects, integrate with the D-Bus API, and extend uchroma's functionality.
 
 ## Who This Guide Is For
 
@@ -60,15 +61,14 @@ Extend the GTK frontend with custom widgets and panels.
 
 ## Quick Links
 
-| Topic | Description |
-|-------|-------------|
-| [Architecture](./architecture) | System overview and component interactions |
+| Topic                                  | Description                                |
+| -------------------------------------- | ------------------------------------------ |
+| [Architecture](./architecture)         | System overview and component interactions |
 | [Creating Effects](./creating-effects) | Step-by-step tutorial for custom renderers |
-| [D-Bus Modernization Plan](./dbus-modernization-plan) | Roadmap for 2026 D-Bus alignment |
-| [Layer API](./layer-api) | Drawing primitives and pixel operations |
-| [Traits](./traits) | Configurable parameters with traitlets |
-| [Colors](./colors) | Color handling, gradients, and schemes |
-| [Advanced](./advanced) | Input events, Cython, D-Bus API |
+| [Layer API](./layer-api)               | Drawing primitives and pixel operations    |
+| [Traits](./traits)                     | Configurable parameters with traitlets     |
+| [Colors](./colors)                     | Color handling, gradients, and schemes     |
+| [Advanced](./advanced)                 | Input events, Cython, D-Bus API            |
 
 ## Development Setup
 
@@ -135,4 +135,5 @@ uchroma/
 
 ## Next Steps
 
-Start with the [Architecture](./architecture) guide to understand how the components fit together, then follow the [Creating Effects](./creating-effects) tutorial to build your first custom effect.
+Start with the [Architecture](./architecture) guide to understand how the components fit together,
+then follow the [Creating Effects](./creating-effects) tutorial to build your first custom effect.

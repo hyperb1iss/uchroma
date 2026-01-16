@@ -18,6 +18,7 @@ debian/python3-uchroma-doc
 debian/python3-uchroma.uchroma.udev
 dist
 uchroma.egg-info
+docs/archive
 
 # Coverage
 .coverage
