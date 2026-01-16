@@ -32,9 +32,15 @@ dependencies = [
     "wrapt",
 ]
 
+[project.optional-dependencies]
+gtk = [
+    "pygobject>=3.50",
+]
+
 [project.scripts]
 uchroma = "uchroma.client.client:run_client"
 uchromad = "uchroma.server.server:run_server"
+uchroma-gtk = "uchroma.gtk:main"
 
 [project.entry-points."uchroma.plugins"]
 renderers = "uchroma.fxlib"
@@ -44,11 +50,23 @@ requires = ["setuptools>=61", "cython>=3.0", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["uchroma", "uchroma.fxlib", "uchroma.client", "uchroma.server"]
+packages = [
+    "uchroma",
+    "uchroma.fxlib",
+    "uchroma.client",
+    "uchroma.server",
+    "uchroma.gtk",
+    "uchroma.gtk.models",
+    "uchroma.gtk.views",
+    "uchroma.gtk.views.widgets",
+    "uchroma.gtk.services",
+    "uchroma.gtk.resources",
+]
 include-package-data = true
 
 [tool.setuptools.package-data]
 "uchroma.server" = ["data/*.yaml"]
+"uchroma.gtk.resources" = ["*.css"]
 
 [dependency-groups]
 dev = [
