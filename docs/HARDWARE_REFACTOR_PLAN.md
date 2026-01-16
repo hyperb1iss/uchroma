@@ -2130,7 +2130,7 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 
 [2026-01-16] [DONE] [2] Create protocol.py with ProtocolVersion
 [2026-01-16] [DONE] [2] Add get_protocol_from_quirks()
-[2026-01-15] [TODO] [2] Update device_base.py to use ProtocolConfig
+[2026-01-16] [DONE] [2] Update device_base.py to use ProtocolConfig
 
 [2026-01-15] [TODO] [3] Create commands.py with CommandDef
 [2026-01-15] [TODO] [3] Add all commands from protocol reference

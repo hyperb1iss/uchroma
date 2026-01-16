@@ -24,9 +24,10 @@ from uchroma.util import Signal, ValueAnimator, ensure_future
 from uchroma.version import __version__
 
 from .anim import AnimationManager
-from .hardware import Hardware, Quirks
+from .hardware import Hardware
 from .input import InputManager
 from .prefs import PreferenceManager
+from .protocol import get_transaction_id
 from .report import RazerReport
 from .types import BaseCommand
 
@@ -289,18 +290,9 @@ class BaseUChromaDevice:
         Create and initialize a new RazerReport on this device
         """
         if transaction_id is None:
-            if self.has_quirk(Quirks.TRANSACTION_CODE_9F):
-                transaction_id = 0x9F
-            elif self.has_quirk(Quirks.TRANSACTION_CODE_08):
-                transaction_id = 0x08
-            elif self.has_quirk(Quirks.TRANSACTION_CODE_3F):
-                transaction_id = 0x3F
-            elif self.has_quirk(Quirks.TRANSACTION_CODE_1F):
-                transaction_id = 0x1F
-            else:
-                transaction_id = 0xFF
+            transaction_id = get_transaction_id(self.hardware)
 
-        self.logger.debug(f"Transaction id: {transaction_id} quirks: {self.hardware.quirks}")
+        self.logger.debug(f"Transaction id: 0x{transaction_id:02X} quirks: {self.hardware.quirks}")
 
         report = RazerReport(
             self,
