@@ -206,6 +206,32 @@ class DBusService:
             print(f"Failed to stop animation: {e}")
             return False
 
+    async def set_brightness(self, path: str, value: float):
+        """Set device brightness (0.0-100.0)."""
+        device_proxy = await self.get_device_proxy(path)
+        if not device_proxy:
+            return False
+
+        try:
+            await device_proxy.set_brightness(value)
+            return True
+        except Exception as e:
+            print(f"Failed to set brightness: {e}")
+            return False
+
+    async def set_suspended(self, path: str, suspended: bool):
+        """Set device suspended state."""
+        device_proxy = await self.get_device_proxy(path)
+        if not device_proxy:
+            return False
+
+        try:
+            await device_proxy.set_suspended(suspended)
+            return True
+        except Exception as e:
+            print(f"Failed to set suspended: {e}")
+            return False
+
     async def disconnect(self):
         """Disconnect from D-Bus."""
         if self._bus:
