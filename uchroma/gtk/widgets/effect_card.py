@@ -78,115 +78,38 @@ class EffectCard(Gtk.Button):
         else:
             self.remove_css_class("active")
 
+EFFECT_ICON_MAP = {
+    "disable": "system-shutdown-symbolic",
+    "static": "color-select-symbolic",
+    "wave": "weather-windy-symbolic",
+    "spectrum": "weather-clear-symbolic",
+    "reactive": "input-keyboard-symbolic",
+    "breathe": "weather-fog-symbolic",
+    "starlight": "starred-symbolic",
+    "ripple": "emblem-synchronizing-symbolic",
+    "rainbow": "weather-clear-symbolic",
+    "fire": "weather-clear-symbolic",
+}
 
-# Effect definitions
-EFFECTS = [
-    {
-        "id": "disable",
-        "name": "Off",
-        "icon": "system-shutdown-symbolic",
-        "preview": "off",
-        "params": [],
-    },
-    {
-        "id": "static",
-        "name": "Static",
-        "icon": "color-select-symbolic",
-        "preview": "static",
-        "params": [
-            {"name": "color", "type": "color", "label": "Color", "default": "#e135ff"},
-        ],
-    },
-    {
-        "id": "wave",
-        "name": "Wave",
-        "icon": "weather-windy-symbolic",
-        "preview": "wave",
-        "params": [
-            {
-                "name": "direction",
-                "type": "choice",
-                "label": "Direction",
-                "options": ["LEFT", "RIGHT"],
-                "default": "RIGHT",
-            },
-            {
-                "name": "speed",
-                "type": "range",
-                "label": "Speed",
-                "min": 1,
-                "max": 4,
-                "step": 1,
-                "default": 2,
-            },
-        ],
-    },
-    {
-        "id": "spectrum",
-        "name": "Spectrum",
-        "icon": "weather-clear-symbolic",
-        "preview": "spectrum",
-        "params": [],
-    },
-    {
-        "id": "reactive",
-        "name": "Reactive",
-        "icon": "input-keyboard-symbolic",
-        "preview": "reactive",
-        "params": [
-            {"name": "color", "type": "color", "label": "Color", "default": "#80ffea"},
-            {
-                "name": "speed",
-                "type": "range",
-                "label": "Speed",
-                "min": 1,
-                "max": 4,
-                "step": 1,
-                "default": 2,
-            },
-        ],
-    },
-    {
-        "id": "breathe",
-        "name": "Breathe",
-        "icon": "weather-fog-symbolic",
-        "preview": "breathe",
-        "params": [
-            {"name": "color1", "type": "color", "label": "Color 1", "default": "#e135ff"},
-            {"name": "color2", "type": "color", "label": "Color 2", "default": "#80ffea"},
-            {
-                "name": "speed",
-                "type": "range",
-                "label": "Speed",
-                "min": 1,
-                "max": 4,
-                "step": 1,
-                "default": 2,
-            },
-        ],
-    },
-    {
-        "id": "starlight",
-        "name": "Starlight",
-        "icon": "starred-symbolic",
-        "preview": "starlight",
-        "params": [
-            {"name": "color1", "type": "color", "label": "Color 1", "default": "#e135ff"},
-            {"name": "color2", "type": "color", "label": "Color 2", "default": "#80ffea"},
-            {
-                "name": "speed",
-                "type": "range",
-                "label": "Speed",
-                "min": 1,
-                "max": 4,
-                "step": 1,
-                "default": 2,
-            },
-        ],
-    },
-]
+EFFECT_PREVIEW_MAP = {
+    "disable": "off",
+    "static": "static",
+    "wave": "wave",
+    "spectrum": "spectrum",
+    "reactive": "reactive",
+    "breathe": "breathe",
+    "starlight": "starlight",
+    "ripple": "ripple",
+    "rainbow": "rainbow",
+    "fire": "fire",
+}
 
 
-def get_effect_by_id(effect_id: str) -> dict | None:
-    """Get effect definition by ID."""
-    return next((e for e in EFFECTS if e["id"] == effect_id), None)
+def icon_for_effect(effect_id: str) -> str:
+    """Get a symbolic icon name for an effect."""
+    return EFFECT_ICON_MAP.get(effect_id, "starred-symbolic")
+
+
+def preview_for_effect(effect_id: str) -> str:
+    """Get preview style class for an effect."""
+    return EFFECT_PREVIEW_MAP.get(effect_id, "default")

@@ -13,7 +13,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import GObject, Gtk  # noqa: E402
 
-from ..widgets.layer_row import RENDERERS, LayerRow  # noqa: E402
+from ..widgets.layer_row import LayerRow  # noqa: E402
 
 
 class LayerPanel(Gtk.Box):
@@ -39,6 +39,7 @@ class LayerPanel(Gtk.Box):
 
         self._layers = []
         self._selected_layer = None
+        self._renderers = []
 
         self.add_css_class("layer-panel")
         self.set_margin_start(16)
@@ -135,7 +136,7 @@ class LayerPanel(Gtk.Box):
         box.set_margin_start(8)
         box.set_margin_end(8)
 
-        for renderer in RENDERERS:
+        for renderer in self._renderers:
             row = Gtk.Button()
             row.add_css_class("flat")
 
@@ -183,7 +184,8 @@ class LayerPanel(Gtk.Box):
         """Add a new layer to the list."""
         zindex = len(self._layers)
 
-        row = LayerRow(renderer_id, renderer_name, zindex)
+        renderer_data = next((r for r in self._renderers if r["id"] == renderer_id), None)
+        row = LayerRow(renderer_id, renderer_name, zindex, renderer_data=renderer_data)
         row.connect("layer-deleted", self._on_layer_deleted)
         row.connect("blend-changed", self._on_layer_blend_changed)
         row.connect("opacity-changed", self._on_layer_opacity_changed)
@@ -237,6 +239,10 @@ class LayerPanel(Gtk.Box):
         self._layers.clear()
         self._selected_layer = None
         self.emit("layer-selected", None)
+
+    def set_renderers(self, renderers: list[dict]):
+        """Set available renderer metadata."""
+        self._renderers = renderers
 
     @property
     def layers(self) -> list:

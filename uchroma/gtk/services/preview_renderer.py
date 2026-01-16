@@ -113,6 +113,9 @@ class PreviewRenderer:
         elif self._effect_id == "rainbow":
             self._render_rainbow(t)
 
+        else:
+            self.frame.fill(0)
+
     def _render_wave(self, t: float):
         """Render wave effect."""
         direction = self._effect_params.get("direction", "RIGHT")
@@ -136,8 +139,13 @@ class PreviewRenderer:
 
     def _render_breathe(self, t: float):
         """Render breathing effect."""
-        color1 = self._parse_color(self._effect_params.get("color1", "#e135ff"))
-        color2 = self._parse_color(self._effect_params.get("color2", "#80ffea"))
+        colors = self._effect_params.get("colors") or []
+        if colors:
+            color1 = self._parse_color(colors[0])
+            color2 = self._parse_color(colors[1] if len(colors) > 1 else colors[0])
+        else:
+            color1 = self._parse_color(self._effect_params.get("color1", "#e135ff"))
+            color2 = self._parse_color(self._effect_params.get("color2", "#80ffea"))
         speed = self._effect_params.get("speed", 2)
 
         # Smooth sine wave between colors
@@ -152,8 +160,13 @@ class PreviewRenderer:
 
     def _render_starlight(self, t: float):
         """Render twinkling starlight effect."""
-        color1 = self._parse_color(self._effect_params.get("color1", "#e135ff"))
-        color2 = self._parse_color(self._effect_params.get("color2", "#80ffea"))
+        colors = self._effect_params.get("colors") or []
+        if colors:
+            color1 = self._parse_color(colors[0])
+            color2 = self._parse_color(colors[1] if len(colors) > 1 else colors[0])
+        else:
+            color1 = self._parse_color(self._effect_params.get("color1", "#e135ff"))
+            color2 = self._parse_color(self._effect_params.get("color2", "#80ffea"))
 
         # Base dim color
         self.frame[:, :] = [c * 0.1 for c in color1]

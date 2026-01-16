@@ -12,7 +12,7 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import GObject, Gtk  # noqa: E402
 
-from ..widgets.effect_card import EFFECTS, EffectCard  # noqa: E402
+from ..widgets.effect_card import EffectCard  # noqa: E402
 
 
 class EffectSelector(Gtk.Box):
@@ -29,6 +29,7 @@ class EffectSelector(Gtk.Box):
 
         self._selected_effect = None
         self._cards = {}
+        self._effects = []
 
         self.add_css_class("effect-selector")
         self.set_margin_start(16)
@@ -54,11 +55,31 @@ class EffectSelector(Gtk.Box):
         self._flow.set_selection_mode(Gtk.SelectionMode.NONE)
         self._flow.set_valign(Gtk.Align.START)
 
-        # Add effect cards
-        for effect in EFFECTS:
+        self._flow.set_valign(Gtk.Align.START)
+
+        scroll.set_child(self._flow)
+        self.append(scroll)
+
+    def _on_card_activated(self, card, effect_id):
+        """Handle card click."""
+        self.select_effect(effect_id)
+        self.emit("effect-selected", effect_id)
+
+    def set_effects(self, effects: list[dict]):
+        """Update effect list."""
+        self._effects = effects
+        self._cards.clear()
+
+        child = self._flow.get_first_child()
+        while child:
+            next_child = child.get_next_sibling()
+            self._flow.remove(child)
+            child = next_child
+
+        for effect in effects:
             effect_id: str = effect["id"]  # type: ignore[assignment]
             effect_name: str = effect["name"]  # type: ignore[assignment]
-            effect_icon: str = effect["icon"]  # type: ignore[assignment]
+            effect_icon: str = effect.get("icon", "starred-symbolic")  # type: ignore[assignment]
             preview_class: str = effect.get("preview", "default")  # type: ignore[assignment]
             card = EffectCard(
                 effect_id=effect_id,
@@ -69,15 +90,10 @@ class EffectSelector(Gtk.Box):
             card.connect("effect-activated", self._on_card_activated)
 
             self._flow.append(card)
-            self._cards[effect["id"]] = card
+            self._cards[effect_id] = card
 
-        scroll.set_child(self._flow)
-        self.append(scroll)
-
-    def _on_card_activated(self, card, effect_id):
-        """Handle card click."""
-        self.select_effect(effect_id)
-        self.emit("effect-selected", effect_id)
+        if self._selected_effect:
+            self.select_effect(self._selected_effect)
 
     def select_effect(self, effect_id: str):
         """Select an effect (update visual state)."""

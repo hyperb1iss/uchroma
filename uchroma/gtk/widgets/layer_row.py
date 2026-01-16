@@ -12,19 +12,9 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import GObject, Gtk, Pango  # noqa: E402
 
-BLEND_MODES = [
-    "normal",
-    "screen",
-    "multiply",
-    "addition",
-    "subtract",
-    "lighten_only",
-    "darken_only",
-    "soft_light",
-    "hard_light",
-    "dodge",
-    "difference",
-]
+from uchroma.blending import BlendOp  # noqa: E402
+
+BLEND_MODES = BlendOp.get_modes()
 
 
 class LayerRow(Gtk.ListBoxRow):
@@ -40,13 +30,14 @@ class LayerRow(Gtk.ListBoxRow):
         "visibility-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
     }
 
-    def __init__(self, renderer_id: str, renderer_name: str, zindex: int):
+    def __init__(self, renderer_id: str, renderer_name: str, zindex: int, renderer_data=None):
         super().__init__()
 
         self.renderer_id = renderer_id
         self.renderer_name = renderer_name
+        self.renderer_data = renderer_data
         self.zindex = zindex
-        self._blend_mode = "normal"
+        self._blend_mode = "screen"
         self._opacity = 1.0
         self._visible = True
 
@@ -91,6 +82,7 @@ class LayerRow(Gtk.ListBoxRow):
         self._blend_dropdown.set_size_request(90, -1)
         self._blend_dropdown.connect("notify::selected", self._on_blend_changed)
         box.append(self._blend_dropdown)
+        self.blend_mode = self._blend_mode
 
         # Opacity slider
         self._opacity_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 1, 0.05)
@@ -148,7 +140,7 @@ class LayerRow(Gtk.ListBoxRow):
     def blend_mode(self, value: str):
         if value in BLEND_MODES:
             self._blend_mode = value
-            self._blend_dropdown.set_selected(BLEND_MODES.index(value))
+        self._blend_dropdown.set_selected(BLEND_MODES.index(value))
 
     @property
     def opacity(self) -> float:
@@ -167,70 +159,3 @@ class LayerRow(Gtk.ListBoxRow):
     def visible(self, value: bool):
         self._visible = value
         self._vis_btn.set_active(value)
-
-
-# Renderer definitions
-RENDERERS = [
-    {
-        "id": "uchroma.fxlib.plasma.Plasma",
-        "name": "Plasma",
-        "icon": "weather-fog-symbolic",
-        "description": "Colorful morphing blobs",
-        "params": [
-            {"name": "background", "type": "color", "label": "Background", "default": "#000000"},
-            {"name": "color1", "type": "color", "label": "Color 1", "default": "#e135ff"},
-            {"name": "color2", "type": "color", "label": "Color 2", "default": "#80ffea"},
-            {"name": "color3", "type": "color", "label": "Color 3", "default": "#ff6ac1"},
-            {"name": "color4", "type": "color", "label": "Color 4", "default": "#f1fa8c"},
-        ],
-    },
-    {
-        "id": "uchroma.fxlib.rainbow.Rainbow",
-        "name": "Rainbow",
-        "icon": "weather-clear-symbolic",
-        "description": "Flowing color gradient",
-        "params": [
-            {
-                "name": "speed",
-                "type": "range",
-                "label": "Speed",
-                "min": 0.1,
-                "max": 2.0,
-                "step": 0.1,
-                "default": 1.0,
-            },
-        ],
-    },
-    {
-        "id": "uchroma.fxlib.ripple.Ripple",
-        "name": "Ripple",
-        "icon": "emblem-synchronizing-symbolic",
-        "description": "Ripples from key presses",
-        "params": [
-            {"name": "color", "type": "color", "label": "Color", "default": "#ff6ac1"},
-        ],
-    },
-    {
-        "id": "uchroma.fxlib.reaction.Reaction",
-        "name": "Reaction",
-        "icon": "input-keyboard-symbolic",
-        "description": "Keys light on press",
-        "params": [
-            {"name": "color", "type": "color", "label": "Color", "default": "#80ffea"},
-            {
-                "name": "fade_time",
-                "type": "range",
-                "label": "Fade",
-                "min": 0.1,
-                "max": 2.0,
-                "step": 0.1,
-                "default": 0.5,
-            },
-        ],
-    },
-]
-
-
-def get_renderer_by_id(renderer_id: str) -> dict | None:
-    """Get renderer definition by ID."""
-    return next((r for r in RENDERERS if r["id"] == renderer_id), None)
