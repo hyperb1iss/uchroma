@@ -5,6 +5,7 @@ Single-screen layout with matrix preview, mode toggle, and contextual panels.
 """
 
 import asyncio
+import os
 
 import gi
 
@@ -14,7 +15,12 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
 from .panels import EffectSelector, LayerPanel, ModeToggle, ParamInspector  # noqa: E402
-from .param_utils import build_param_defs, extract_description, humanize_label, is_hidden_effect  # noqa: E402
+from .param_utils import (  # noqa: E402
+    build_param_defs,
+    extract_description,
+    humanize_label,
+    is_hidden_effect,
+)
 from .services.preview_renderer import PreviewRenderer  # noqa: E402
 from .widgets import BrightnessScale, MatrixPreview  # noqa: E402
 from .widgets.effect_card import icon_for_effect, preview_for_effect  # noqa: E402
@@ -36,6 +42,8 @@ class UChromaWindow(Adw.ApplicationWindow):
         self.set_size_request(700, 550)
 
         self._device = None
+        self._device_list = []
+        self._selected_devices = []
         self._mode = self.MODE_HARDWARE
         self._selected_effect = None
         self._effect_params = {}
@@ -44,19 +52,20 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._renderers = []
         self._renderer_defs = {}
         self._anim_state = ""
+        self._fx_mixed = False
+        self._layers_mixed = False
+        self._device_layouts = {}
         self._syncing_layers = False
         self._pending_tasks: set[asyncio.Task] = set()
 
-        # Preview renderer
         self._preview_renderer = PreviewRenderer(rows=6, cols=22)
         self._preview_renderer.set_callback(self._on_preview_frame)
 
+        self._device_preview_renderers = {}
+        self._device_previews = {}
+
         self._build_ui()
         self._connect_signals()
-
-        # Start preview
-        self._preview_renderer.set_effect("spectrum", {})
-        self._preview_renderer.start(30)
 
     def _build_ui(self):
         """Build the window UI."""
@@ -80,8 +89,27 @@ class UChromaWindow(Adw.ApplicationWindow):
         preview_frame.set_margin_top(16)
         preview_frame.set_margin_bottom(16)
 
+        self._preview_stack = Gtk.Stack()
+        self._preview_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self._preview_stack.set_transition_duration(150)
+
         self._matrix_preview = MatrixPreview(rows=6, cols=22)
-        preview_frame.append(self._matrix_preview)
+        self._preview_stack.add_named(self._matrix_preview, "single")
+
+        self._multi_preview = Gtk.FlowBox()
+        self._multi_preview.set_homogeneous(False)
+        self._multi_preview.set_selection_mode(Gtk.SelectionMode.NONE)
+        self._multi_preview.set_min_children_per_line(1)
+        self._multi_preview.set_max_children_per_line(2)
+        self._multi_preview.set_column_spacing(16)
+        self._multi_preview.set_row_spacing(16)
+        self._multi_preview.set_valign(Gtk.Align.START)
+
+        multi_wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        multi_wrapper.append(self._multi_preview)
+        self._preview_stack.add_named(multi_wrapper, "multi")
+
+        preview_frame.append(self._preview_stack)
         content.append(preview_frame)
 
         # Mode Toggle
@@ -191,70 +219,148 @@ class UChromaWindow(Adw.ApplicationWindow):
         # Parameter inspector
         self._param_inspector.connect("param-changed", self._on_param_changed)
 
+    def _debug_log(self, message: str):
+        if os.getenv("UCHROMA_GTK_DEBUG"):
+            print(message)
+
     # === DEVICE MANAGEMENT ===
 
-    def set_device(self, device):
-        """Set the current device."""
-        self._device = device
+    def set_devices(self, devices: list):
+        """Set active devices (single or multiple)."""
+        self._selected_devices = devices
+        self._device = devices[0] if devices else None
 
-        if device:
-            self._window_title.set_subtitle(device.name)
+        if self._device:
+            if self._device_list:
+                if len(devices) == len(self._device_list):
+                    if self._device_dropdown.get_selected() != 0:
+                        self._device_dropdown.set_selected(0)
+                elif len(devices) == 1 and devices[0] in self._device_list:
+                    idx = self._device_list.index(devices[0]) + 1
+                    if self._device_dropdown.get_selected() != idx:
+                        self._device_dropdown.set_selected(idx)
 
-            # Update preview size from device
-            if getattr(device, "has_matrix", False):
-                rows = getattr(device, "height", 0)
-                cols = getattr(device, "width", 0)
-                if rows and cols:
-                    self._matrix_preview.set_matrix_size(rows, cols)
-                    self._preview_renderer.set_size(rows, cols)
+            subtitle = self._device.name
+            if len(devices) > 1:
+                subtitle = f"{self._device.name} +{len(devices) - 1}"
+            self._window_title.set_subtitle(subtitle)
 
-            # Update brightness
-            if hasattr(device, "brightness"):
-                self._brightness.value = device.brightness
+            if hasattr(self._device, "brightness"):
+                self._brightness.value = self._device.brightness
 
+            self._update_preview_visibility()
             self._schedule_task(self._load_device_state())
         else:
             self._window_title.set_subtitle("")
+            self._update_preview_visibility()
 
     def update_device_list(self, devices: list):
         """Update the device dropdown."""
-        if not devices:
-            self._device_model = Gtk.StringList.new(["No device"])
-        else:
-            names = [d.name for d in devices]
-            self._device_model = Gtk.StringList.new(names)
-
+        self._device_list = devices
+        names = ["All devices"] if devices else ["No device"]
+        names.extend([d.name for d in devices])
+        self._device_model = Gtk.StringList.new(names)
         self._device_dropdown.set_model(self._device_model)
 
     def _on_device_selected(self, dropdown, pspec):
         """Handle device selection from dropdown."""
         idx = dropdown.get_selected()
-        app = self.get_application()
-        if app and hasattr(app, "device_store") and idx < len(app.device_store):  # type: ignore[arg-type]
-            device = app.device_store.get_item(idx)
-            self.set_device(device)
+        if not self._device_list:
+            return
+
+        if idx == 0:
+            self.set_devices(self._device_list)
+        else:
+            device_idx = idx - 1
+            if device_idx < len(self._device_list):
+                self.set_devices([self._device_list[device_idx]])
 
     async def _load_device_state(self):
         """Fetch effects, renderers, and current animation state."""
-        if not self._device:
+        devices = self._selected_devices or ([self._device] if self._device else [])
+        if not devices:
             return
 
         app = self.get_application()
         if not app or not hasattr(app, "dbus"):
             return
 
-        path = self._device.path
-        available_fx = await app.dbus.get_available_fx(path)
-        available_renderers = await app.dbus.get_available_renderers(path)
-        current_fx = await app.dbus.get_current_fx(path)
-        current_renderers = await app.dbus.get_current_renderers(path)
-        anim_state = await app.dbus.get_animation_state(path)
+        device_states = []
+        for device in devices:
+            path = device.path
+            available_fx = await app.dbus.get_available_fx(path)
+            available_renderers = await app.dbus.get_available_renderers(path)
+            current_fx = await app.dbus.get_current_fx(path)
+            current_renderers = await app.dbus.get_current_renderers(path)
+            if current_renderers is None:
+                current_renderers = []
+            anim_state = await app.dbus.get_animation_state(path)
+            key_mapping = await app.dbus.get_key_mapping(path)
 
-        layer_infos = []
-        for renderer_id, layer_path in current_renderers:
-            zindex = self._layer_zindex_from_path(layer_path)
-            info = await app.dbus.get_layer_info(path, zindex)
-            layer_infos.append((renderer_id, zindex, info))
+            self._debug_log(
+                f"GTK: device={device.name} path={path} renderers={list(available_renderers)}"
+            )
+
+            layer_infos = []
+            for renderer_id, layer_path in current_renderers:
+                zindex = self._layer_zindex_from_path(layer_path)
+                info = await app.dbus.get_layer_info(path, zindex)
+                layer_infos.append((renderer_id, zindex, info))
+
+            device_states.append(
+                {
+                    "device": device,
+                    "available_fx": available_fx,
+                    "available_renderers": available_renderers,
+                    "current_fx": current_fx,
+                    "current_renderers": current_renderers,
+                    "layer_infos": layer_infos,
+                    "anim_state": anim_state,
+                    "key_mapping": key_mapping,
+                }
+            )
+
+        fx_sets = [set(state["available_fx"].keys()) for state in device_states]
+        renderer_sets = [set(state["available_renderers"].keys()) for state in device_states]
+        common_fx = set.intersection(*fx_sets) if fx_sets else set()
+        common_renderers = set.intersection(*renderer_sets) if renderer_sets else set()
+
+        fx_base = device_states[0]["available_fx"]
+        renderer_base = device_states[0]["available_renderers"]
+        available_fx = {k: fx_base[k] for k in common_fx if k in fx_base}
+        available_renderers = {k: renderer_base[k] for k in common_renderers if k in renderer_base}
+        self._debug_log(
+            f"GTK: common renderers={list(available_renderers)} devices={len(device_states)}"
+        )
+
+        fx_names = [
+            state["current_fx"][0] if state["current_fx"] else "" for state in device_states
+        ]
+        fx_params = [
+            state["current_fx"][1] if state["current_fx"] else {} for state in device_states
+        ]
+        same_fx = len(set(fx_names)) == 1
+        same_params = all(params == fx_params[0] for params in fx_params) if fx_params else True
+        fx_mixed = not (same_fx and same_params)
+        current_fx = device_states[0]["current_fx"] if same_fx else ("", {})
+
+        renderer_stacks = [
+            [renderer_id for renderer_id, _path in state["current_renderers"]]
+            for state in device_states
+        ]
+        same_layers = len({tuple(stack) for stack in renderer_stacks}) <= 1
+        layers_mixed = not same_layers
+        layer_infos = device_states[0]["layer_infos"] if same_layers else []
+
+        anim_states = [state["anim_state"] for state in device_states]
+        anim_state = anim_states[0] if len(set(anim_states)) == 1 else "mixed"
+
+        device_layouts = {}
+        for state in device_states:
+            mapping = state.get("key_mapping") or {}
+            device_layouts[state["device"].path] = (
+                self._compute_active_cells(mapping) if mapping else None
+            )
 
         GLib.idle_add(
             self._apply_device_state,
@@ -263,6 +369,9 @@ class UChromaWindow(Adw.ApplicationWindow):
             current_fx,
             layer_infos,
             anim_state,
+            device_layouts,
+            fx_mixed,
+            layers_mixed,
         )
 
     def _apply_device_state(
@@ -272,7 +381,14 @@ class UChromaWindow(Adw.ApplicationWindow):
         current_fx,
         layer_infos: list[tuple[str, int, dict]],
         anim_state: str,
+        device_layouts: dict,
+        fx_mixed: bool,
+        layers_mixed: bool,
     ) -> bool:
+        self._device_layouts = device_layouts
+        self._fx_mixed = fx_mixed
+        self._layers_mixed = layers_mixed
+
         self._effects = self._build_effect_defs(available_fx)
         self._effect_defs = {e["id"]: e for e in self._effects}
         self._effect_selector.set_effects(self._effects)
@@ -282,9 +398,27 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._layer_panel.set_renderers(self._renderers)
 
         self._apply_current_effect(current_fx)
-        self._apply_current_layers(layer_infos)
+        if layers_mixed:
+            self._layer_panel.clear()
+            self._layer_panel.set_placeholder_text("Layers differ across devices")
+            self._param_inspector.clear()
+        else:
+            placeholder = "Add a layer to begin"
+            if not self._renderers:
+                placeholder = "No renderers available for this selection"
+            self._layer_panel.set_placeholder_text(placeholder)
+            self._apply_current_layers(layer_infos)
 
         self._anim_state = anim_state or ""
+        self._auto_select_mode(self._anim_state, layer_infos)
+
+        if self._mode == self.MODE_CUSTOM:
+            if not layers_mixed and layer_infos:
+                self._apply_preview_effect("plasma", {})
+            else:
+                self._apply_preview_effect("disable", {})
+
+        self._update_preview_visibility()
         self._update_mode_status()
         return False
 
@@ -348,6 +482,120 @@ class UChromaWindow(Adw.ApplicationWindow):
         except (ValueError, AttributeError):
             return -1
 
+    def _compute_active_cells(self, key_mapping: dict) -> set[tuple[int, int]]:
+        cells: set[tuple[int, int]] = set()
+        for points in key_mapping.values():
+            if points is None:
+                continue
+            if (
+                isinstance(points, (list, tuple))
+                and points
+                and isinstance(points[0], (list, tuple))
+            ):
+                for point in points:
+                    if len(point) >= 2:
+                        cells.add((int(point[0]), int(point[1])))
+            elif isinstance(points, (list, tuple)) and len(points) >= 2:
+                cells.add((int(points[0]), int(points[1])))
+        return cells
+
+    def _ensure_device_preview(self, device):
+        path = device.path
+        if path in self._device_previews:
+            return self._device_previews[path]
+
+        rows = getattr(device, "height", 0) or 6
+        cols = getattr(device, "width", 0) or 22
+
+        preview = MatrixPreview(rows=rows, cols=cols)
+        renderer = PreviewRenderer(rows=rows, cols=cols)
+        renderer.set_callback(preview.update_frame)
+
+        self._device_previews[path] = preview
+        self._device_preview_renderers[path] = renderer
+        return preview
+
+    def _build_multi_preview(self):
+        child = self._multi_preview.get_first_child()
+        while child:
+            next_child = child.get_next_sibling()
+            self._multi_preview.remove(child)
+            child = next_child
+
+        active_paths = set()
+        for device in self._selected_devices:
+            active_paths.add(device.path)
+            preview = self._ensure_device_preview(device)
+            layout = self._device_layouts.get(device.path)
+            preview.set_active_cells(layout)
+
+            rows = getattr(device, "height", 0) or preview.rows
+            cols = getattr(device, "width", 0) or preview.cols
+            preview.set_matrix_size(rows, cols)
+
+            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            card.add_css_class("preview-card")
+
+            label = Gtk.Label(label=device.name)
+            label.add_css_class("preview-label")
+            label.set_xalign(0)
+            card.append(label)
+            card.append(preview)
+
+            self._multi_preview.append(card)
+
+        for path, renderer in list(self._device_preview_renderers.items()):
+            if path in active_paths:
+                renderer.start(30)
+            else:
+                renderer.stop()
+
+    def _update_preview_visibility(self):
+        if not self._selected_devices:
+            self._preview_stack.set_visible_child_name("single")
+            self._preview_renderer.stop()
+            for renderer in self._device_preview_renderers.values():
+                renderer.stop()
+            return
+
+        if len(self._selected_devices) > 1:
+            self._preview_stack.set_visible_child_name("multi")
+            self._preview_renderer.stop()
+            self._build_multi_preview()
+            return
+
+        self._preview_stack.set_visible_child_name("single")
+        if not self._device:
+            self._preview_renderer.stop()
+            return
+
+        rows = getattr(self._device, "height", 0) or 6
+        cols = getattr(self._device, "width", 0) or 22
+        self._matrix_preview.set_matrix_size(rows, cols)
+        layout = self._device_layouts.get(self._device.path)
+        self._matrix_preview.set_active_cells(layout)
+        self._preview_renderer.set_size(rows, cols)
+        self._preview_renderer.start(30)
+
+    def _apply_preview_effect(self, effect_id: str, params: dict | None = None):
+        params = params or {}
+        if len(self._selected_devices) > 1:
+            for device in self._selected_devices:
+                self._ensure_device_preview(device)
+                renderer = self._device_preview_renderers.get(device.path)
+                if renderer:
+                    renderer.set_effect(effect_id, params)
+            return
+
+        self._preview_renderer.set_effect(effect_id, params)
+
+    def _iter_target_devices(self) -> list:
+        if self._selected_devices:
+            return self._selected_devices
+        if self._device:
+            return [self._device]
+        return []
+
     def _apply_current_effect(self, current_fx):
         fx_name = ""
         fx_params = {}
@@ -355,7 +603,7 @@ class UChromaWindow(Adw.ApplicationWindow):
             fx_name = current_fx[0] or ""
             fx_params = current_fx[1] or {}
 
-        self._selected_effect = fx_name or None
+        self._selected_effect = fx_name or None if not self._fx_mixed else None
         self._effect_params = fx_params or {}
 
         if self._selected_effect and self._selected_effect in self._effect_defs:
@@ -367,16 +615,21 @@ class UChromaWindow(Adw.ApplicationWindow):
                     f"{effect_data['name'].upper()} SETTINGS",
                     self._effect_params,
                 )
-                self._preview_renderer.set_effect(self._selected_effect, self._effect_params)
         elif self._mode == self.MODE_HARDWARE:
             self._param_inspector.clear()
-            self._preview_renderer.set_effect("disable", {})
+            self._effect_selector.select_effect("")
+
+        if self._mode == self.MODE_HARDWARE:
+            if self._selected_effect:
+                self._apply_preview_effect(self._selected_effect, self._effect_params)
+            else:
+                self._apply_preview_effect("disable", {})
 
     def _apply_current_layers(self, layer_infos: list[tuple[str, int, dict]]):
         self._syncing_layers = True
         try:
             self._layer_panel.clear()
-            for renderer_id, zindex, info in sorted(layer_infos, key=lambda x: x[1]):
+            for renderer_id, _zindex, info in sorted(layer_infos, key=lambda x: x[1]):
                 renderer_data = self._renderer_defs.get(renderer_id)
                 renderer_name = (
                     renderer_data.get("name")
@@ -393,6 +646,9 @@ class UChromaWindow(Adw.ApplicationWindow):
 
     def _update_mode_status(self):
         if self._mode == self.MODE_HARDWARE:
+            if self._fx_mixed:
+                self._mode_toggle.set_status("Mixed", False)
+                return
             if self._selected_effect and self._selected_effect in self._effect_defs:
                 effect_data = self._effect_defs[self._selected_effect]
                 self._mode_toggle.set_status(
@@ -400,6 +656,10 @@ class UChromaWindow(Adw.ApplicationWindow):
                 )
             else:
                 self._mode_toggle.set_status("No effect", False)
+            return
+
+        if self._layers_mixed or self._anim_state == "mixed":
+            self._mode_toggle.set_status("Mixed", False)
             return
 
         if not self._layer_panel.layers:
@@ -410,6 +670,18 @@ class UChromaWindow(Adw.ApplicationWindow):
             self._mode_toggle.set_status("Paused", False)
         else:
             self._mode_toggle.set_status("Running", True)
+
+    def _auto_select_mode(self, anim_state: str, layer_infos: list[tuple[str, int, dict]]):
+        if anim_state == "mixed" or self._layers_mixed:
+            return
+
+        active = anim_state in {"running", "paused"}
+        if not active and not anim_state and layer_infos:
+            active = True
+
+        target_mode = self.MODE_CUSTOM if active else self.MODE_HARDWARE
+        if self._mode != target_mode:
+            self._mode_toggle.mode = target_mode
 
     # === MODE SWITCHING ===
 
@@ -428,10 +700,10 @@ class UChromaWindow(Adw.ApplicationWindow):
                         f"{effect_data['name'].upper()} SETTINGS",
                         self._effect_params,
                     )
-                self._preview_renderer.set_effect(self._selected_effect, self._effect_params)
+                self._apply_preview_effect(self._selected_effect, self._effect_params)
             else:
                 self._param_inspector.clear()
-                self._preview_renderer.set_effect("disable", {})
+                self._apply_preview_effect("disable", {})
             self._update_mode_status()
 
         else:
@@ -441,21 +713,22 @@ class UChromaWindow(Adw.ApplicationWindow):
             else:
                 self._param_inspector.clear()
             if self._layer_panel.layers:
-                self._preview_renderer.set_effect("plasma", {})
+                self._apply_preview_effect("plasma", {})
             else:
-                self._preview_renderer.set_effect("disable", {})
+                self._apply_preview_effect("disable", {})
             self._update_mode_status()
 
     # === HARDWARE FX ===
 
     def _on_effect_selected(self, selector, effect_id):
         """Handle effect card selection."""
+        self._fx_mixed = False
         self._selected_effect = effect_id
         effect_data = self._effect_defs.get(effect_id)
 
         if effect_data:
             # Update preview
-            self._preview_renderer.set_effect(effect_id, self._effect_params)
+            self._apply_preview_effect(effect_id, self._effect_params)
 
             # Show params
             self._param_inspector.set_params(
@@ -473,18 +746,21 @@ class UChromaWindow(Adw.ApplicationWindow):
 
     def _apply_effect_to_device(self, effect_id: str):
         """Apply effect to device via D-Bus."""
-        if not self._device:
+        if not self._iter_target_devices():
             return
 
         app = self.get_application()
         if app and hasattr(app, "dbus"):
             params = self._param_inspector.get_values()
-            self._schedule_task(app.dbus.set_effect(self._device.path, effect_id, params))
+            for device in self._iter_target_devices():
+                self._schedule_task(app.dbus.set_effect(device.path, effect_id, params))
 
     # === CUSTOM ANIMATION ===
 
     def _on_layer_added(self, panel, renderer_id):
         """Handle layer added."""
+        self._layers_mixed = False
+        self._layer_panel.set_placeholder_text("Add a layer to begin")
         renderer_data = self._renderer_defs.get(renderer_id)
         renderer_name = (
             renderer_data.get("name")
@@ -498,10 +774,11 @@ class UChromaWindow(Adw.ApplicationWindow):
             app = self.get_application()
             if app and hasattr(app, "dbus"):
                 zindex = len(panel.layers) - 1
-                self._schedule_task(app.dbus.add_renderer(self._device.path, renderer_id, zindex))
+                for device in self._iter_target_devices():
+                    self._schedule_task(app.dbus.add_renderer(device.path, renderer_id, zindex))
 
         # Update preview for custom animation
-        self._preview_renderer.set_effect("plasma", {})
+        self._apply_preview_effect("plasma", {})
 
         # Update status
         self._anim_state = "running"
@@ -513,12 +790,13 @@ class UChromaWindow(Adw.ApplicationWindow):
         if self._device:
             app = self.get_application()
             if app and hasattr(app, "dbus"):
-                self._schedule_task(app.dbus.remove_renderer(self._device.path, zindex))
+                for device in self._iter_target_devices():
+                    self._schedule_task(app.dbus.remove_renderer(device.path, zindex))
 
         if not panel.layers:
             self._anim_state = "stopped"
             self._update_mode_status()
-            self._preview_renderer.set_effect("disable", {})
+            self._apply_preview_effect("disable", {})
 
     def _on_layer_selected(self, panel, row):
         """Handle layer selection."""
@@ -540,7 +818,7 @@ class UChromaWindow(Adw.ApplicationWindow):
 
     async def _load_layer_params(self, row, params, title):
         """Load current trait values for a layer."""
-        if not self._device:
+        if not self._device or self._layers_mixed:
             return
 
         app = self.get_application()
@@ -548,14 +826,19 @@ class UChromaWindow(Adw.ApplicationWindow):
             return
 
         info = await app.dbus.get_layer_info(self._device.path, row.zindex)
-        values = {param["name"]: info.get(param["name"]) for param in params if param["name"] in info}
+        values = {
+            param["name"]: info.get(param["name"]) for param in params if param["name"] in info
+        }
         GLib.idle_add(self._param_inspector.set_params, params, title, values)
 
     def _on_layer_changed(self, panel, zindex, prop, value):
         """Handle layer property change."""
         if self._syncing_layers:
             return
-        if not self._device:
+        if self._layers_mixed:
+            return
+        targets = self._iter_target_devices()
+        if not targets:
             return
 
         app = self.get_application()
@@ -566,22 +849,24 @@ class UChromaWindow(Adw.ApplicationWindow):
             if zindex < 0 or zindex >= len(panel.layers):
                 return
             opacity = 0.0 if not value else panel.layers[zindex].opacity
-            self._schedule_task(
-                app.dbus.set_layer_traits(self._device.path, zindex, {"opacity": opacity})
-            )
+            for device in targets:
+                self._schedule_task(
+                    app.dbus.set_layer_traits(device.path, zindex, {"opacity": opacity})
+                )
             return
 
         if prop in {"blend_mode", "opacity"}:
-            self._schedule_task(
-                app.dbus.set_layer_traits(self._device.path, zindex, {prop: value})
-            )
+            for device in targets:
+                self._schedule_task(app.dbus.set_layer_traits(device.path, zindex, {prop: value}))
 
     def _on_play_clicked(self, panel):
         """Handle play button."""
-        if self._device and self._anim_state == "paused":
+        targets = self._iter_target_devices()
+        if targets and self._anim_state == "paused":
             app = self.get_application()
             if app and hasattr(app, "dbus"):
-                self._schedule_task(app.dbus.pause_animation(self._device.path))
+                for device in targets:
+                    self._schedule_task(app.dbus.pause_animation(device.path))
         self._anim_state = "running"
         self._update_mode_status()
 
@@ -591,13 +876,14 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._param_inspector.clear()
         self._anim_state = "stopped"
         self._update_mode_status()
-        self._preview_renderer.set_effect("disable", {})
+        self._apply_preview_effect("disable", {})
 
         # Stop on device
-        if self._device:
+        if self._iter_target_devices():
             app = self.get_application()
             if app and hasattr(app, "dbus"):
-                self._schedule_task(app.dbus.stop_animation(self._device.path))
+                for device in self._iter_target_devices():
+                    self._schedule_task(app.dbus.stop_animation(device.path))
 
     # === PARAMETERS ===
 
@@ -605,28 +891,30 @@ class UChromaWindow(Adw.ApplicationWindow):
         """Handle parameter value change."""
         if self._mode == self.MODE_HARDWARE and self._selected_effect:
             self._effect_params[name] = value
-            self._preview_renderer.set_effect(self._selected_effect, self._effect_params)
+            self._apply_preview_effect(self._selected_effect, self._effect_params)
             self._apply_effect_to_device(self._selected_effect)
             return
 
-        if self._mode == self.MODE_CUSTOM and self._layer_panel.selected_layer and self._device:
+        if self._mode == self.MODE_CUSTOM and self._layer_panel.selected_layer:
             app = self.get_application()
             if app and hasattr(app, "dbus"):
                 zindex = self._layer_panel.selected_layer.zindex
-                self._schedule_task(
-                    app.dbus.set_layer_traits(self._device.path, zindex, {name: value})
-                )
+                for device in self._iter_target_devices():
+                    self._schedule_task(
+                        app.dbus.set_layer_traits(device.path, zindex, {name: value})
+                    )
 
     # === HEADER CONTROLS ===
 
     def _on_brightness_changed(self, scale, value):
         """Handle brightness change."""
-        if not self._device:
+        if not self._iter_target_devices():
             return
 
         app = self.get_application()
         if app and hasattr(app, "dbus"):
-            self._schedule_task(app.dbus.set_brightness(self._device.path, value))
+            for device in self._iter_target_devices():
+                self._schedule_task(app.dbus.set_brightness(device.path, value))
 
     def _on_power_toggled(self, btn):
         """Handle power toggle."""
@@ -637,12 +925,13 @@ class UChromaWindow(Adw.ApplicationWindow):
         else:
             btn.remove_css_class("suspended")
 
-        if not self._device:
+        if not self._iter_target_devices():
             return
 
         app = self.get_application()
         if app and hasattr(app, "dbus"):
-            self._schedule_task(app.dbus.set_suspended(self._device.path, suspended))
+            for device in self._iter_target_devices():
+                self._schedule_task(app.dbus.set_suspended(device.path, suspended))
 
     # === PREVIEW ===
 
@@ -661,8 +950,7 @@ class UChromaWindow(Adw.ApplicationWindow):
             self.update_device_list(devices)
 
             # Select first device
-            first_device = app.device_store.get_item(0)
-            self.set_device(first_device)
+            self.set_devices([devices[0]])
 
     def _schedule_task(self, coro):
         """Schedule an async task and track it to prevent GC."""
@@ -673,4 +961,6 @@ class UChromaWindow(Adw.ApplicationWindow):
     def do_close_request(self):
         """Handle window close."""
         self._preview_renderer.stop()
+        for renderer in self._device_preview_renderers.values():
+            renderer.stop()
         return False

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 MAX_COLOR_SLOTS = 6
 
 LABEL_OVERRIDES = {
@@ -35,9 +34,7 @@ def _is_configurable(trait_def: dict) -> bool:
         return True
     if metadata.get("config") is False:
         return False
-    if trait_def.get("read_only"):
-        return False
-    return True
+    return not trait_def.get("read_only")
 
 
 def _is_hidden_trait(name: str, trait_def: dict) -> bool:

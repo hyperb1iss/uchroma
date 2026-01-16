@@ -78,6 +78,7 @@ class EffectCard(Gtk.Button):
         else:
             self.remove_css_class("active")
 
+
 EFFECT_ICON_MAP = {
     "disable": "system-shutdown-symbolic",
     "static": "color-select-symbolic",

@@ -29,6 +29,7 @@ class ParamInspector(Gtk.Box):
         self._param_map = {}
         self._widgets = {}
         self._debounce_sources = {}
+        self._color_dialog = Gtk.ColorDialog()
 
         self.add_css_class("param-inspector")
         self.set_margin_start(16)
@@ -152,9 +153,12 @@ class ParamInspector(Gtk.Box):
         """Create a color picker button."""
         btn = Gtk.ColorDialogButton()
         btn.add_css_class("param-color")
+        btn.set_dialog(self._color_dialog)
 
         # Set color
         color_str = current_value or param.get("default", "#ffffff")
+        if not color_str:
+            color_str = "#ffffff"
         rgba = Gdk.RGBA()
         rgba.parse(color_str)
         btn.set_rgba(rgba)
@@ -192,6 +196,7 @@ class ParamInspector(Gtk.Box):
         for idx in range(count):
             btn = Gtk.ColorDialogButton()
             btn.add_css_class("param-color")
+            btn.set_dialog(self._color_dialog)
 
             color_str = None
             if idx < len(values):
@@ -314,9 +319,7 @@ class ParamInspector(Gtk.Box):
         for button in widget_info.get("buttons", []):
             rgba = button.get_rgba()
             values.append(
-                f"#{int(rgba.red * 255):02x}"
-                f"{int(rgba.green * 255):02x}"
-                f"{int(rgba.blue * 255):02x}"
+                f"#{int(rgba.red * 255):02x}{int(rgba.green * 255):02x}{int(rgba.blue * 255):02x}"
             )
         self._emit_debounced(name, values)
 
@@ -325,7 +328,7 @@ class ParamInspector(Gtk.Box):
         param = self._param_map.get(name, {})
         value = scale.get_value()
         if param.get("value_type") == "int":
-            value = int(round(value))
+            value = round(value)
         self._emit_debounced(name, value)
 
     def _on_choice_changed(self, dropdown, pspec, name, options):
@@ -390,7 +393,7 @@ class ParamInspector(Gtk.Box):
                 scale = widget.get_first_child()
                 value = scale.get_value()
                 if param.get("value_type") == "int":
-                    value = int(round(value))
+                    value = round(value)
                 values[name] = value
             elif param["type"] == "choice":
                 idx = widget.get_selected()

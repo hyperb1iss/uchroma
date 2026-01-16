@@ -603,7 +603,6 @@ class SystemControlInterface(ServiceInterface):
         return [m.name.lower() for m in BoostMode]
 
 
-
 class DeviceManagerInterface(ServiceInterface):
     """
     D-Bus interface for device manager (root service).

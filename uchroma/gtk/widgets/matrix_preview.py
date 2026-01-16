@@ -32,6 +32,7 @@ class MatrixPreview(Gtk.DrawingArea):
         self.rows = rows
         self.cols = cols
         self.frame_data = None
+        self.active_cells = None
         self.cell_radius = 3
         self.cell_gap = 2
         self.glow_enabled = True
@@ -54,6 +55,11 @@ class MatrixPreview(Gtk.DrawingArea):
         self.cols = cols
         self.set_content_width(cols * 28 + 40)
         self.set_content_height(rows * 28 + 40)
+        self.queue_draw()
+
+    def set_active_cells(self, cells: set[tuple[int, int]] | None):
+        """Set active cell positions to render (None = all)."""
+        self.active_cells = cells
         self.queue_draw()
 
     def update_frame(self, frame: np.ndarray):
@@ -86,6 +92,9 @@ class MatrixPreview(Gtk.DrawingArea):
         # Draw cells
         for row in range(self.rows):
             for col in range(self.cols):
+                if self.active_cells is not None and (row, col) not in self.active_cells:
+                    continue
+
                 x = padding + col * cell_w
                 y = padding + row * cell_h
 

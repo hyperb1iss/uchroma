@@ -130,6 +130,19 @@ headerbar.flat {
     border-radius: 12px;
 }
 
+.preview-card {
+    padding: 12px;
+    border-radius: 12px;
+    background-color: @surface;
+    border: 1px solid @border;
+}
+
+.preview-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: @text_primary;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MODE TOGGLE

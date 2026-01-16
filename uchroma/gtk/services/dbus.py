@@ -90,9 +90,7 @@ class DBusService:
 
             # Try to get additional interfaces
             with contextlib.suppress(Exception):
-                self._device_proxies[path]["fx"] = proxy.get_interface(
-                    "io.uchroma.FXManager"
-                )
+                self._device_proxies[path]["fx"] = proxy.get_interface("io.uchroma.FXManager")
 
             with contextlib.suppress(Exception):
                 self._device_proxies[path]["anim"] = proxy.get_interface(
@@ -100,9 +98,7 @@ class DBusService:
                 )
 
             with contextlib.suppress(Exception):
-                self._device_proxies[path]["led"] = proxy.get_interface(
-                    "io.uchroma.LEDManager"
-                )
+                self._device_proxies[path]["led"] = proxy.get_interface("io.uchroma.LEDManager")
 
             return self._device_proxies[path]["device"]
 
@@ -183,6 +179,13 @@ class DBusService:
         if not anim_proxy:
             return []
 
+        try:
+            raw = await anim_proxy.get_current_renderers()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get current renderers: {e}")
+            return []
+
     async def get_animation_state(self, path: str) -> str:
         """Fetch animation state string."""
         anim_proxy = await self.get_anim_proxy(path)
@@ -194,13 +197,6 @@ class DBusService:
         except Exception as e:
             print(f"Failed to get animation state: {e}")
             return ""
-
-        try:
-            raw = await anim_proxy.get_current_renderers()
-            return self._unwrap_variants(raw)
-        except Exception as e:
-            print(f"Failed to get current renderers: {e}")
-            return []
 
     async def get_layer_info(self, path: str, zindex: int) -> dict:
         """Fetch layer trait values."""

@@ -4,6 +4,7 @@ Layer Panel
 Layer list with playback controls for custom animation mode.
 """
 
+import os
 from typing import ClassVar
 
 import gi
@@ -67,6 +68,7 @@ class LayerPanel(Gtk.Box):
         add_btn.set_tooltip_text("Add layer")
         add_btn.connect("clicked", self._on_add_clicked)
         header.append(add_btn)
+        self._add_btn = add_btn
 
         # Separator
         sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
@@ -118,9 +120,9 @@ class LayerPanel(Gtk.Box):
         icon.set_opacity(0.3)
         box.append(icon)
 
-        label = Gtk.Label(label="Add a layer to begin")
-        label.set_opacity(0.5)
-        box.append(label)
+        self._placeholder_label = Gtk.Label(label="Add a layer to begin")
+        self._placeholder_label.set_opacity(0.5)
+        box.append(self._placeholder_label)
 
         return box
 
@@ -135,6 +137,21 @@ class LayerPanel(Gtk.Box):
         box.set_margin_bottom(8)
         box.set_margin_start(8)
         box.set_margin_end(8)
+
+        if os.getenv("UCHROMA_GTK_DEBUG"):
+            renderer_ids = [renderer.get("id", "") for renderer in self._renderers]
+            print(f"GTK: add layer clicked renderers={renderer_ids}")
+
+        if not self._renderers:
+            label = Gtk.Label(label="No renderers available for this selection.")
+            label.add_css_class("dim")
+            label.set_xalign(0)
+            label.set_wrap(True)
+            label.set_max_width_chars(28)
+            box.append(label)
+            popover.set_child(box)
+            popover.popup()
+            return
 
         for renderer in self._renderers:
             row = Gtk.Button()
@@ -240,9 +257,17 @@ class LayerPanel(Gtk.Box):
         self._selected_layer = None
         self.emit("layer-selected", None)
 
+    def set_placeholder_text(self, text: str):
+        """Update placeholder text."""
+        if hasattr(self, "_placeholder_label"):
+            self._placeholder_label.set_label(text)
+
     def set_renderers(self, renderers: list[dict]):
         """Set available renderer metadata."""
         self._renderers = renderers
+        if hasattr(self, "_add_btn"):
+            tooltip = "Add layer" if renderers else "No renderers available for this selection"
+            self._add_btn.set_tooltip_text(tooltip)
 
     @property
     def layers(self) -> list:

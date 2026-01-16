@@ -249,9 +249,7 @@ class SystemControlMixin:
         rpm_value = fan_rpm // 100 if fan_rpm > 0 else 0
 
         # SET_FAN_MODE: [reserved, fan_id, game_mode, fan_speed]
-        return self.run_command(
-            ECCommand.SET_FAN_MODE, 0x00, fan_id, power_mode.value, rpm_value
-        )
+        return self.run_command(ECCommand.SET_FAN_MODE, 0x00, fan_id, power_mode.value, rpm_value)
 
     def set_fan_auto(self) -> bool:
         """Set fans to automatic EC control (keeps current power mode)."""
