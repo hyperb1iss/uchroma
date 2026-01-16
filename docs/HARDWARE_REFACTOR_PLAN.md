@@ -2151,7 +2151,9 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 [2026-01-15] [TODO] [6] Implement MockHIDDevice
 [2026-01-15] [TODO] [6] Write test_report.py
 [2026-01-15] [TODO] [6] Write test_crc.py
-[2026-01-15] [TODO] [6] Write test_effects.py
+[2026-01-16] [DONE] [6] Write test_protocol.py
+[2026-01-16] [DONE] [6] Write test_commands.py
+[2026-01-16] [DONE] [6] Write test_effects.py
 [2026-01-15] [TODO] [6] Write test_hardware.py
 [2026-01-15] [TODO] [6] Write test_layout.py
 [2026-01-15] [TODO] [6] Write integration tests
