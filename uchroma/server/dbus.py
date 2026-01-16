@@ -736,6 +736,7 @@ class DeviceManagerAPI:
         self._dm = device_manager
         self._logger = logger
         self._bus = None
+        self.ready = asyncio.Event()
         self._dm.callbacks.append(self._dm_callback)
         self._devs = OrderedDict()
         self._manager_iface = None
@@ -791,6 +792,7 @@ class DeviceManagerAPI:
         await self._bus.request_name(BUS_NAME)
 
         self._logger.info("D-Bus service published as %s", BUS_NAME)
+        self.ready.set()
 
         # Keep the connection alive
         await self._bus.wait_for_disconnect()

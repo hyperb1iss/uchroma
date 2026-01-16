@@ -71,15 +71,17 @@ class UChromaServer:
         for sig in (signal.SIGINT, signal.SIGTERM):
             self._loop.add_signal_handler(sig, self._handle_signal, sig)
 
+        dbus_task = None
         try:
-            # Start device monitoring
-            await dm.monitor_start()
+            # Start D-Bus service (runs until shutdown)
+            dbus_task = asyncio.create_task(dbus.run())
+            await asyncio.wait_for(dbus.ready.wait(), timeout=10)
 
             # Start power monitor
             await power.start()
 
-            # Start D-Bus service (runs until shutdown)
-            dbus_task = asyncio.create_task(dbus.run())
+            # Start device monitoring after D-Bus publishes
+            await dm.monitor_start()
 
             # Wait for shutdown signal
             await self._shutdown_event.wait()
@@ -95,6 +97,11 @@ class UChromaServer:
             pass
 
         finally:
+            if dbus_task is not None and not dbus_task.done():
+                dbus_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await dbus_task
+
             # Clean up signal handlers
             for sig in (signal.SIGTERM, signal.SIGINT):
                 self._loop.remove_signal_handler(sig)
