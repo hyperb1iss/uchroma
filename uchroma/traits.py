@@ -66,9 +66,11 @@ class ColorSchemeTrait(List):
 
     info_text = "a list of colors"
 
-    def __init__(self, trait=None, default_value=(), minlen=0, maxlen=sys.maxsize, **kwargs):
+    def __init__(self, trait=None, default_value=None, minlen=0, maxlen=sys.maxsize, **kwargs):
         if trait is None:
             trait = ColorTrait()
+        if default_value is None:
+            default_value = []
         super().__init__(
             trait=trait, default_value=default_value, minlen=minlen, maxlen=maxlen, **kwargs
         )
@@ -206,7 +208,9 @@ def trait_as_dict(trait: TraitType) -> dict:
     return tdict
 
 
-def class_traits_as_dict(obj: HasTraits, values: dict | None = None) -> dict:
+def class_traits_as_dict(
+    obj: HasTraits | dict[str, TraitType] | type, values: dict[str, object] | None = None
+) -> dict:
     """
     Create a dict which represents all traits of the given object.
     This dict itself can be inspected in a generic API, or it
@@ -218,11 +222,12 @@ def class_traits_as_dict(obj: HasTraits, values: dict | None = None) -> dict:
     :param value: optional dict of trait values (pulled from obj by default)
     :return: dict representing all traits in obj
     """
-    cls_dt = {}
+    cls_dt: dict = {}
+    traits: dict[str, TraitType] = {}
     if isinstance(obj, type) and hasattr(obj, "class_traits"):
-        traits = obj.class_traits()
+        traits = obj.class_traits()  # type: ignore[call-non-callable]
     elif isinstance(obj, dict):
-        traits = obj
+        traits = obj  # type: ignore[invalid-assignment]
     elif isinstance(obj, HasTraits):
         traits = obj.traits()
         values = obj._trait_values
@@ -343,10 +348,11 @@ def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser, prefix: str |
         if isinstance(trait, Container):
             parser.add_argument(argname, nargs="+", help=trait.info_text)
         elif isinstance(trait, Enum):
+            trait_values: tuple[str, ...] = trait.values  # type: ignore[assignment]
             parser.add_argument(
                 argname,
                 type=str.lower,
-                choices=[x.lower() for x in trait.values],
+                choices=[x.lower() for x in trait_values],
                 help=trait.info_text,
             )
         else:
@@ -356,7 +362,7 @@ def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser, prefix: str |
             parser.add_argument(argname, type=argtype, help=trait.info_text)
 
 
-def apply_from_argparse(args, traits=None, target: HasTraits = None) -> dict:
+def apply_from_argparse(args, traits=None, target: HasTraits | None = None) -> dict:
     """
     Applies arguments added via add_traits_to_argparse to
     a target object which implements HasTraits. If a target

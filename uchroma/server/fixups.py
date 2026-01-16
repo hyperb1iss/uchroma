@@ -18,7 +18,7 @@ Fixups are mixins which adjust input/output data in some form.
 """
 
 import numpy as np
-from numpy import array
+from numpy import ndarray
 
 
 class KeyboardFixup:
@@ -33,7 +33,7 @@ class KeyboardFixup:
         self._row_offsets = self._hardware.key_row_offsets
 
     @staticmethod
-    def _insert(rowdata: array, col: int) -> array:
+    def _insert(rowdata: ndarray, col: int) -> ndarray:
         """
         Inserts a "spacer" into the output row, effectively sliding right.
 
@@ -45,7 +45,7 @@ class KeyboardFixup:
         return np.insert(rowdata, col, [0, 0, 0], axis=0)
 
     @staticmethod
-    def _delete(rowdata: array, col: int) -> array:
+    def _delete(rowdata: ndarray, col: int) -> ndarray:
         """
         Deletes a cell from the output row, effectively sliding left.
 
@@ -57,7 +57,7 @@ class KeyboardFixup:
         return np.delete(rowdata, col, axis=0)
 
     @staticmethod
-    def _copy(matrix: array, src: tuple, dst: tuple) -> array:
+    def _copy(matrix: ndarray, src: tuple, dst: tuple) -> ndarray:
         """
         Copy a cell from the source to the destination, effectively moving a key.
 
@@ -75,7 +75,10 @@ class KeyboardFixup:
 
     @staticmethod
     def _update_debug_info(
-        frame, debug_position: tuple, in_data: array = None, out_data: array = None
+        frame,
+        debug_position: tuple,
+        in_data: ndarray | None = None,
+        out_data: ndarray | None = None,
     ):
         """
         Used by the alignment utility.
@@ -88,7 +91,7 @@ class KeyboardFixup:
             if out_data is not None:
                 frame.debug_opts["out_data"] = np.copy(out_data[row])
 
-    def _align_matrix(self, frame, matrix: array) -> array:
+    def _align_matrix(self, frame, matrix: ndarray) -> ndarray:
         """
         Apply the alignment map to the given matrix, performing
         inserts, deletes, and copies (in this order).
@@ -139,7 +142,7 @@ class KeyboardFixup:
 
         return self._row_offsets[row]
 
-    def align_key_matrix(self, frame, matrix: array) -> array:
+    def align_key_matrix(self, frame, matrix: ndarray) -> ndarray:
         """
         Perform alignment of the matrix. Columns may be inserted,
         deleted, or copied from other locations.

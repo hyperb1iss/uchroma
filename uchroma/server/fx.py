@@ -62,7 +62,7 @@ class FXModule:
     def available_fx(self):
         return self._available_fx
 
-    def create_fx(self, fx_name) -> BaseFX:
+    def create_fx(self, fx_name) -> BaseFX | None:
         fx_name = fx_name.lower()
         if fx_name not in self._available_fx:
             return None
@@ -106,7 +106,7 @@ class FXManager(HasTraits):
     def available_fx(self):
         return self._fxmod.available_fx
 
-    def get_fx(self, fx_name) -> BaseFX:
+    def get_fx(self, fx_name) -> BaseFX | None:
         """
         Get the requested effects implementation.
 

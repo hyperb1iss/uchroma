@@ -650,10 +650,16 @@ class LightingPage(Adw.PreferencesPage):
 
     def _on_add_layer_clicked(self, row):
         """Show renderer picker."""
-        dialog = Adw.MessageDialog.new(self.get_root(), "Add Animation Layer", "Choose a renderer:")
+        dialog = Adw.MessageDialog.new(
+            self.get_root(),  # type: ignore[arg-type]
+            "Add Animation Layer",
+            "Choose a renderer:",
+        )
 
         for renderer in RENDERERS:
-            dialog.add_response(renderer["id"], renderer["name"])
+            renderer_id: str = renderer["id"]  # type: ignore[assignment]
+            renderer_name: str = renderer["name"]  # type: ignore[assignment]
+            dialog.add_response(renderer_id, renderer_name)
 
         dialog.add_response("cancel", "Cancel")
         dialog.set_default_response("cancel")
@@ -796,7 +802,7 @@ class LightingPage(Adw.PreferencesPage):
 
     # === SHARED UTILITIES ===
 
-    def _create_param_row(self, param, callback) -> Gtk.Widget:
+    def _create_param_row(self, param, callback) -> Gtk.Widget | None:
         """Create a row widget for a parameter."""
         label = param.get("label", param["name"].replace("_", " ").title())
 

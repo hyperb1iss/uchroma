@@ -12,7 +12,6 @@
 #
 
 # pylint: disable=invalid-name,protected-access
-# ruff: noqa: F821, F722 - D-Bus type annotations are strings like 's', 'd', etc.
 
 """
 D-Bus interfaces using dbus-fast (pure asyncio)
@@ -185,9 +184,14 @@ class DeviceInterface(ServiceInterface):
     ) -> "sa{sv}as":
         return [interface_name, changed_properties, invalidated_properties]
 
-    def emit_properties_changed(self, changed: dict):
-        props = {k: Variant("d" if isinstance(v, float) else "b", v) for k, v in changed.items()}
-        self.PropertiesChanged("org.chemlab.UChroma.Device", props, [])
+    def emit_properties_changed(
+        self, changed_properties: dict, invalidated_properties: list[str] | None = None
+    ):
+        props = {
+            k: Variant("d" if isinstance(v, float) else "b", v)
+            for k, v in changed_properties.items()
+        }
+        self.PropertiesChanged("org.chemlab.UChroma.Device", props, invalidated_properties or [])
 
 
 class LEDManagerInterface(ServiceInterface):
@@ -305,15 +309,17 @@ class FXManagerInterface(ServiceInterface):
     ) -> "sa{sv}as":
         return [interface_name, changed_properties, invalidated_properties]
 
-    def emit_properties_changed(self, changed: dict):
+    def emit_properties_changed(
+        self, changed_properties: dict, invalidated_properties: list[str] | None = None
+    ):
         # FX uses tuple, serialize appropriately
         props = {}
-        for k, v in changed.items():
+        for k, v in changed_properties.items():
             if isinstance(v, tuple) and len(v) == 2:
                 props[k] = Variant("(sa{sv})", v)
             else:
                 props[k] = Variant("s", str(v))
-        self.PropertiesChanged("org.chemlab.UChroma.FXManager", props, [])
+        self.PropertiesChanged("org.chemlab.UChroma.FXManager", props, invalidated_properties or [])
 
 
 class AnimationManagerInterface(ServiceInterface):
@@ -401,14 +407,18 @@ class AnimationManagerInterface(ServiceInterface):
     ) -> "sa{sv}as":
         return [interface_name, changed_properties, invalidated_properties]
 
-    def emit_properties_changed(self, changed: dict):
+    def emit_properties_changed(
+        self, changed_properties: dict, invalidated_properties: list[str] | None = None
+    ):
         props = {}
-        for k, v in changed.items():
+        for k, v in changed_properties.items():
             if isinstance(v, list):
                 props[k] = Variant("a(so)", v)
             else:
                 props[k] = Variant("s", str(v))
-        self.PropertiesChanged("org.chemlab.UChroma.AnimationManager", props, [])
+        self.PropertiesChanged(
+            "org.chemlab.UChroma.AnimationManager", props, invalidated_properties or []
+        )
 
 
 class DeviceManagerInterface(ServiceInterface):

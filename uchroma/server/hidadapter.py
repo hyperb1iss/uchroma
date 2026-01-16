@@ -93,8 +93,19 @@ class Device:
             self._device.close()
             self._device = None
 
-    def write(self, data: bytes) -> int:
-        """Write data to the device."""
+    def write(self, data: bytes, report_id: bytes | int | None = None) -> int:
+        """Write data to the device.
+
+        Args:
+            data: Report data to send
+            report_id: Report ID (prepended to data for new hid API)
+        """
+        if report_id is not None:
+            # Old API passed report_id separately - prepend it to data
+            if isinstance(report_id, bytes):
+                data = report_id + data
+            else:
+                data = bytes([report_id]) + data
         return self._device.write(data)
 
     def read(self, size: int, timeout_ms: int = 0) -> bytes:
@@ -137,7 +148,8 @@ class Device:
     def set_nonblocking(self, nonblocking: bool):
         """Set non-blocking mode."""
         self._blocking = not nonblocking
-        self._device.nonblocking = nonblocking
+        if self._device is not None:
+            self._device.nonblocking = nonblocking
 
     @property
     def blocking(self) -> bool:

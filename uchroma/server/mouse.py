@@ -105,7 +105,7 @@ class UChromaMouse(UChromaDevice):
         args = None
         if len(dpi) == 2:
             args = struct.pack(">HH", dpi[0], dpi[1])
-        elif len(dpi == 1):
+        elif len(dpi) == 1:
             args = struct.pack(">H", dpi[0])
         else:
             raise ValueError("Must specify one (x) or two (x, y) integers to set DPI")
@@ -188,8 +188,8 @@ class UChromaWirelessMouse(UChromaMouse):
         return scale_brightness(int(value[0]), True)
 
     @dock_brightness.setter
-    def dock_brightness(self, brightness: float) -> bool:
-        return self.run_command(
+    def dock_brightness(self, brightness: float) -> None:
+        self.run_command(
             UChromaWirelessMouse.Command.SET_DOCK_BRIGHTNESS, scale_brightness(brightness)
         )
 
@@ -224,11 +224,12 @@ class UChromaWirelessMouse(UChromaMouse):
         return self.run_command(UChromaWirelessMouse.Command.SET_DOCK_CHARGE_EFFECT, int(enable))
 
     @property
-    def dock_charge_color(self) -> Color:
+    def dock_charge_color(self) -> Color | None:
         """
         The color of the dock LEDs while charging
         """
-        return self.get_led(LEDType.BATTERY).color
+        led = self.get_led(LEDType.BATTERY)
+        return led.color if led is not None else None
 
     @dock_charge_color.setter
     @colorarg
@@ -240,7 +241,9 @@ class UChromaWirelessMouse(UChromaMouse):
             self.enable_dock_charge_effect(False)
         else:
             self.enable_dock_charge_effect(True)
-            self.get_led(LEDType.BATTERY).color = color
+            led = self.get_led(LEDType.BATTERY)
+            if led is not None:
+                led.color = color
 
     def set_low_battery_threshold(self, threshold: float) -> bool:
         """

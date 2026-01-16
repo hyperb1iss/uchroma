@@ -106,7 +106,7 @@ class Frame:
         return self._debug_opts
 
     @staticmethod
-    def compose(layers: list) -> np.ndarray:
+    def compose(layers: list) -> np.ndarray | None:
         """
         Render a list of Layers into an RGB image
 

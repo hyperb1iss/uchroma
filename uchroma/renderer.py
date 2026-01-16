@@ -131,6 +131,8 @@ class Renderer(HasTraits):
         Gets the duration (in seconds) that key events will remain
         available.
         """
+        if self._input_queue is None:
+            return 0.0
         return self._input_queue.expire_time
 
     @key_expire_time.setter
@@ -141,7 +143,8 @@ class Renderer(HasTraits):
         of key events over time. If zero, events are not kept after
         being dequeued.
         """
-        self._input_queue.expire_time = expire_time
+        if self._input_queue is not None:
+            self._input_queue.expire_time = expire_time
 
     async def get_input_events(self):
         """

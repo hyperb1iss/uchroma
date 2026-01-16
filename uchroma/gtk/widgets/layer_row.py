@@ -10,7 +10,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk  # noqa: E402
+from gi.repository import GObject, Gtk, Pango  # noqa: E402
 
 BLEND_MODES = [
     "normal",
@@ -81,7 +81,7 @@ class LayerRow(Gtk.ListBoxRow):
         name_label.add_css_class("layer-name")
         name_label.set_hexpand(True)
         name_label.set_xalign(0)
-        name_label.set_ellipsize(3)  # END
+        name_label.set_ellipsize(Pango.EllipsizeMode.END)
         box.append(name_label)
 
         # Blend mode dropdown

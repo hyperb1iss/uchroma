@@ -27,7 +27,7 @@ class _KeyInputEvent(NamedTuple):
     keycode: str
     scancode: str
     keystate: int
-    coords: list
+    coords: list | None
     data: dict
 
 

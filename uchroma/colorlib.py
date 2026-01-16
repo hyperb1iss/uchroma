@@ -21,21 +21,21 @@ class Color(_BaseColor):
     def NewFromRgb(cls, r: float, g: float, b: float, a: float = 1.0) -> "Color":
         """Create color from RGB floats (0-1 range)."""
         c = cls("srgb", [r, g, b])
-        c.alpha = a
+        c["alpha"] = a
         return c
 
     @classmethod
     def NewFromHsv(cls, h: float, s: float, v: float, a: float = 1.0) -> "Color":
         """Create color from HSV (h: 0-360, s/v: 0-1)."""
         c = cls("hsv", [h, s * 100, v * 100])
-        c.alpha = a
+        c["alpha"] = a
         return c
 
     @classmethod
     def NewFromHsl(cls, h: float, s: float, l: float, a: float = 1.0) -> "Color":
         """Create color from HSL (h: 0-360, s/l: 0-1)."""
         c = cls("hsl", [h, s * 100, l * 100])
-        c.alpha = a
+        c["alpha"] = a
         return c
 
     @staticmethod
@@ -59,7 +59,7 @@ class Color(_BaseColor):
     def rgba(self) -> tuple:
         """Get RGBA as float tuple (0-1)."""
         srgb = self.convert("srgb")
-        return (srgb["red"], srgb["green"], srgb["blue"], self.alpha)
+        return (srgb["red"], srgb["green"], srgb["blue"], self.alpha())
 
     @property
     def hsl(self) -> tuple:
@@ -72,7 +72,7 @@ class Color(_BaseColor):
     def hsla(self) -> tuple:
         """Get HSLA tuple."""
         h, s, l = self.hsl
-        return (h, s, l, self.alpha)
+        return (h, s, l, self.alpha())
 
     @property
     def hsv(self) -> tuple:
@@ -85,7 +85,7 @@ class Color(_BaseColor):
     def intTuple(self) -> tuple:
         """Get RGBA as int tuple (0-255)."""
         r, g, b = self.rgb
-        return (int(r * 255), int(g * 255), int(b * 255), int(self.alpha * 255))
+        return (int(r * 255), int(g * 255), int(b * 255), int(self.alpha() * 255))
 
     @property
     def html(self) -> str:
@@ -114,31 +114,31 @@ class Color(_BaseColor):
     def ColorWithAlpha(self, alpha: float) -> "Color":
         """Return new color with modified alpha."""
         c = self.clone()
-        c.alpha = alpha
+        c["alpha"] = alpha
         return Color(c)
 
     def AnalogousScheme(self, angle: float = 30) -> tuple:
         """Generate analogous color scheme."""
         h, s, l = self.hsl
-        c1 = Color.NewFromHsl((h - angle) % 360, s, l, self.alpha)
-        c2 = Color.NewFromHsl((h + angle) % 360, s, l, self.alpha)
+        c1 = Color.NewFromHsl((h - angle) % 360, s, l, self.alpha())
+        c2 = Color.NewFromHsl((h + angle) % 360, s, l, self.alpha())
         return (c1, c2)
 
     def TriadicScheme(self, angle: float = 120) -> tuple:
         """Generate triadic color scheme."""
         h, s, l = self.hsl
-        c1 = Color.NewFromHsl((h + angle) % 360, s, l, self.alpha)
-        c2 = Color.NewFromHsl((h - angle) % 360, s, l, self.alpha)
+        c1 = Color.NewFromHsl((h + angle) % 360, s, l, self.alpha())
+        c2 = Color.NewFromHsl((h - angle) % 360, s, l, self.alpha())
         return (c1, c2)
 
     def ComplementaryScheme(self) -> "Color":
         """Get complementary color."""
         h, s, l = self.hsl
-        return Color.NewFromHsl((h + 180) % 360, s, l, self.alpha)
+        return Color.NewFromHsl((h + 180) % 360, s, l, self.alpha())
 
     def blend(self, other: "Color", percent: float = 0.5) -> "Color":
         """Blend with another color."""
-        return Color(self.interpolate(other, space="srgb")(percent))
+        return Color(self.interpolate([other], space="srgb")(percent))
 
     def __iter__(self):
         """Allow unpacking as RGB tuple."""

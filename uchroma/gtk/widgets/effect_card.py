@@ -10,7 +10,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import GObject, Gtk  # noqa: E402
+from gi.repository import GObject, Gtk, Pango  # noqa: E402
 
 
 class EffectCard(Gtk.Button):
@@ -46,7 +46,7 @@ class EffectCard(Gtk.Button):
         # Name
         label = Gtk.Label(label=name)
         label.add_css_class("effect-name")
-        label.set_ellipsize(3)  # PANGO_ELLIPSIZE_END
+        label.set_ellipsize(Pango.EllipsizeMode.END)
         label.set_max_width_chars(10)
         box.append(label)
 

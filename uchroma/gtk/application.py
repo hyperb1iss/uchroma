@@ -87,13 +87,17 @@ class UChromaApplication(Adw.Application):
                 print("Warning: Could not load stylesheet")
                 return
 
-        Gtk.StyleContext.add_provider_for_display(
+        display = (
             self.get_active_window().get_display()
             if self.get_active_window()
-            else Gdk.Display.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            else Gdk.Display.get_default()
         )
+        if display:
+            Gtk.StyleContext.add_provider_for_display(
+                display,
+                css_provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            )
 
     async def _startup_async(self):
         """Async startup: connect to D-Bus and populate devices."""

@@ -96,6 +96,6 @@ class DeviceStore(GObject.Object, Gio.ListModel):
                 GLib.idle_add(lambda pos=position: self.items_changed(pos, 1, 0))
                 break
 
-    def get_device_by_path(self, path: str) -> DeviceModel:
+    def get_device_by_path(self, path: str) -> DeviceModel | None:
         """Get device by D-Bus path."""
         return self._devices_by_path.get(path)

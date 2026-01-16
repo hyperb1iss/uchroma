@@ -141,17 +141,20 @@ class LayerPanel(Gtk.Box):
 
             row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
 
-            icon = Gtk.Image.new_from_icon_name(renderer["icon"])
+            renderer_icon: str = renderer["icon"]  # type: ignore[assignment]
+            renderer_name: str = renderer["name"]  # type: ignore[assignment]
+            renderer_desc: str = renderer["description"]  # type: ignore[assignment]
+            icon = Gtk.Image.new_from_icon_name(renderer_icon)
             row_box.append(icon)
 
             labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
 
-            name = Gtk.Label(label=renderer["name"])
+            name = Gtk.Label(label=renderer_name)
             name.set_xalign(0)
             name.add_css_class("heading")
             labels.append(name)
 
-            desc = Gtk.Label(label=renderer["description"])
+            desc = Gtk.Label(label=renderer_desc)
             desc.set_xalign(0)
             desc.add_css_class("dim")
             desc.add_css_class("caption")

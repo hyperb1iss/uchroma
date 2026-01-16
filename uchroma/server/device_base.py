@@ -282,7 +282,7 @@ class BaseUChromaDevice:
         command_id: int,
         data_size: int,
         *args,
-        transaction_id: int,
+        transaction_id: int | None = None,
         remaining_packets: int = 0x00,
     ) -> RazerReport:
         """
@@ -327,7 +327,7 @@ class BaseUChromaDevice:
         transaction_id: int | None = None,
         delay: float | None = None,
         remaining_packets: int = 0x00,
-    ) -> bytes:
+    ) -> bytes | None:
         """
         Run a command and return the result
 
@@ -404,7 +404,7 @@ class BaseUChromaDevice:
 
         return self.run_report(report, delay=delay)
 
-    def _decode_serial(self, value: bytes) -> str:
+    def _decode_serial(self, value: bytes | None) -> str | None:
         if value is not None:
             try:
                 return value.decode()
@@ -413,7 +413,7 @@ class BaseUChromaDevice:
 
         return None
 
-    def _get_serial_number(self) -> str:
+    def _get_serial_number(self) -> str | None:
         """
         Get the serial number from the hardware directly
 
@@ -424,7 +424,7 @@ class BaseUChromaDevice:
         return self._decode_serial(value)
 
     @property
-    def serial_number(self) -> str:
+    def serial_number(self) -> str | None:
         """
         The hardware serial number of this device
 
@@ -440,7 +440,7 @@ class BaseUChromaDevice:
 
         return self._serial_number
 
-    def _get_firmware_version(self) -> str:
+    def _get_firmware_version(self) -> bytes | None:
         """
         Get the firmware version from the hardware directly
         """

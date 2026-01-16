@@ -229,7 +229,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         """Handle device selection from dropdown."""
         idx = dropdown.get_selected()
         app = self.get_application()
-        if app and hasattr(app, "device_store") and idx < len(app.device_store):
+        if app and hasattr(app, "device_store") and idx < len(app.device_store):  # type: ignore[arg-type]
             device = app.device_store.get_item(idx)
             self.set_device(device)
 
@@ -425,9 +425,9 @@ class UChromaWindow(Adw.ApplicationWindow):
     def on_devices_ready(self):
         """Called when devices are loaded from D-Bus."""
         app = self.get_application()
-        if app and hasattr(app, "device_store") and len(app.device_store) > 0:
+        if app and hasattr(app, "device_store") and len(app.device_store) > 0:  # type: ignore[arg-type]
             # Update device list
-            devices = [app.device_store.get_item(i) for i in range(len(app.device_store))]
+            devices = [app.device_store.get_item(i) for i in range(len(app.device_store))]  # type: ignore[arg-type]
             self.update_device_list(devices)
 
             # Select first device

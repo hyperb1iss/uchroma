@@ -106,7 +106,7 @@ class ParamInspector(Gtk.Box):
         self._widgets.clear()
         self._params = []
 
-    def _create_param_widget(self, param: dict, current_value=None) -> Gtk.Widget:
+    def _create_param_widget(self, param: dict, current_value=None) -> Gtk.Widget | None:
         """Create a widget for a parameter."""
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         box.add_css_class("param-group")

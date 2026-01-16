@@ -13,6 +13,8 @@
 
 # pylint: disable=line-too-long, no-member
 
+from collections.abc import Callable
+
 import numpy as np
 
 # Copyright (c) 2016 Florian Roscheck
@@ -179,7 +181,9 @@ def _compose_alpha(img_in, img_layer, opacity: float = 1.0):
     return ratio
 
 
-def blend(img_in: np.ndarray, img_layer: np.ndarray, blend_op: None, opacity: float = 1.0):
+def blend(
+    img_in: np.ndarray, img_layer: np.ndarray, blend_op: str | Callable | None, opacity: float = 1.0
+):
     # sanity check of inputs
     assert img_in.dtype == np.float64, "Input variable img_in should be of numpy.float64 type."
     assert img_layer.dtype == np.float64, (

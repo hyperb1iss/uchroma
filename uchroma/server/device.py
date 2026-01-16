@@ -43,7 +43,7 @@ class UChromaDevice(BaseUChromaDevice):
 
         self._frame_control = None
 
-    def get_led(self, led_type: LEDType) -> LED:
+    def get_led(self, led_type: LEDType) -> LED | None:
         """
         Fetches the requested LED interface on this device
 
@@ -56,7 +56,7 @@ class UChromaDevice(BaseUChromaDevice):
         return self.led_manager.get(led_type)
 
     @property
-    def frame_control(self) -> Frame:
+    def frame_control(self) -> Frame | None:
         """
         Gets the Frame object for creating custom effects on this device
 
@@ -73,25 +73,30 @@ class UChromaDevice(BaseUChromaDevice):
         return self._frame_control
 
     def _set_brightness(self, level: float) -> bool:
+        led: LED | None = None
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
-            self.get_led(LEDType.SCROLL_WHEEL).brightness = level
-
+            led = self.get_led(LEDType.SCROLL_WHEEL)
         elif self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
-            self.get_led(LEDType.LOGO).brightness = level
-
+            led = self.get_led(LEDType.LOGO)
         else:
-            self.get_led(LEDType.BACKLIGHT).brightness = level
+            led = self.get_led(LEDType.BACKLIGHT)
 
+        if led is not None:
+            led.brightness = level
         return True
 
     def _get_brightness(self) -> float:
+        led: LED | None = None
         if self.has_quirk(Quirks.SCROLL_WHEEL_BRIGHTNESS):
-            return self.get_led(LEDType.SCROLL_WHEEL).brightness
+            led = self.get_led(LEDType.SCROLL_WHEEL)
+        elif self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
+            led = self.get_led(LEDType.LOGO)
+        else:
+            led = self.get_led(LEDType.BACKLIGHT)
 
-        if self.has_quirk(Quirks.LOGO_LED_BRIGHTNESS):
-            return self.get_led(LEDType.LOGO).brightness
-
-        return self.get_led(LEDType.BACKLIGHT).brightness
+        if led is not None:
+            return led.brightness
+        return 0.0
 
     @property
     def supported_leds(self) -> tuple:
@@ -108,8 +113,12 @@ class UChromaDevice(BaseUChromaDevice):
         :return: True if successful
         """
         if self._frame_control is not None:
-            self.frame_control.background_color = None
-            self.frame_control.reset()
+            frame = self.frame_control
+            if frame is not None:
+                frame.background_color = None
+                frame.reset()
 
         if hasattr(self, "fx_manager"):
             self.fx_manager.disable()
+
+        return True

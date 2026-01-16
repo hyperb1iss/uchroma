@@ -171,7 +171,7 @@ def to_byte(value: int) -> bytes:
     return struct.pack("=B", value)
 
 
-def smart_delay(delay: float, last_cmd: float, remain: int = 0) -> float:
+def smart_delay(delay: float, last_cmd: float | None, remain: int = 0) -> float:
     """
     A "smart" delay mechanism which tries to reduce the
     delay as much as possible based on the time the last

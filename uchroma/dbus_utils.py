@@ -255,7 +255,8 @@ class DescriptorBuilder:
             if hasattr(trait, "write_once"):
                 write_once = trait.write_once
 
-            self.add_property(snake_to_camel(name), sig, not (trait.read_only or write_once))
+            if sig is not None:
+                self.add_property(snake_to_camel(name), sig, not (trait.read_only or write_once))
 
     def build(self) -> str:
         val = f"<node>\n  <interface name='{self._interface_name}'>\n"

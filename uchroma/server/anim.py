@@ -18,7 +18,6 @@ import inspect
 from collections import OrderedDict
 from concurrent import futures
 from importlib.metadata import entry_points
-from types import ModuleType
 from typing import NamedTuple
 
 from traitlets import Bool, HasTraits, List, observe
@@ -100,7 +99,7 @@ class LayerHolder(HasTraits):
 
 
 class AnimationLoop(HasTraits):
-    layers = List(default_value=(), allow_none=False)
+    layers = List(default_value=[], allow_none=False)
     running = Bool()
 
     """
@@ -413,7 +412,7 @@ class AnimationLoop(HasTraits):
 
 
 class RendererInfo(NamedTuple):
-    module: ModuleType
+    module: str
     clazz: type
     key: str
     meta: RendererMeta
@@ -522,7 +521,7 @@ class AnimationManager(HasTraits):
         self._logger.debug("Loaded renderers: %s", ", ".join(infos.keys()))
         return infos
 
-    def _get_renderer(self, name, zindex: int | None = None, **traits) -> Renderer:
+    def _get_renderer(self, name, zindex: int | None = None, **traits) -> Renderer | None:
         """
         Instantiate a renderer
 

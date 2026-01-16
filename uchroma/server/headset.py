@@ -322,7 +322,7 @@ class UChromaHeadset(BaseUChromaDevice):
             return self._run_command(command, *args)
 
     @synchronized
-    def run_with_result(self, command: BaseCommand, *args) -> bytes:
+    def run_with_result(self, command: BaseCommand, *args) -> bytes | None:
         """
         Run a command against the Kraken hardware and fetch the result
 
@@ -354,13 +354,13 @@ class UChromaHeadset(BaseUChromaDevice):
 
         return None
 
-    def _get_serial_number(self) -> str:
+    def _get_serial_number(self) -> str | None:
         """
         Get the serial number from the hardware directly
         """
         return self._decode_serial(self.run_with_result(UChromaHeadset.Command.GET_SERIAL))
 
-    def _get_firmware_version(self) -> str:
+    def _get_firmware_version(self) -> bytes | None:
         """
         Get the firmware version from the hardware directly
         """
@@ -383,7 +383,7 @@ class UChromaHeadset(BaseUChromaDevice):
 
         return status
 
-    def _get_rgb(self) -> list:
+    def _get_rgb(self) -> list | None:
         with self.device_open():
             bits = self._get_led_mode()
             if bits.color_count == 0:
@@ -429,7 +429,7 @@ class UChromaHeadset(BaseUChromaDevice):
         """
         return self._get_led_mode()
 
-    def get_current_colors(self) -> list:
+    def get_current_colors(self) -> list | None:
         """
         Gets the colors currently in use
 
@@ -458,7 +458,7 @@ class UChromaHeadset(BaseUChromaDevice):
 
             return scale_brightness(value[3], True)
 
-    def _set_brightness(self, brightness: float) -> bool:
+    def _set_brightness(self, level: float) -> bool:
         """
         Set the brightness level
         """
@@ -471,10 +471,10 @@ class UChromaHeadset(BaseUChromaDevice):
             if value is None:
                 return False
 
-            level = scale_brightness(brightness)
+            scaled_level = scale_brightness(level)
 
             data = bytearray(value)
             for num in range(bits.color_count):
-                data[(num * 4) + 3] = level
+                data[(num * 4) + 3] = scaled_level
 
             return self.run_command(self._cmd_set_rgb[bits.color_count - 1], data)

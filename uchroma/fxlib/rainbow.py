@@ -52,18 +52,20 @@ class Rainbow(Renderer):
         return True
 
     async def draw(self, layer, timestamp):
+        gradient = self._gradient
+        if gradient is None:
+            return False
+
         data = []
         for row in range(layer.height):
             data.append(
                 [
-                    self._gradient[
-                        (self._offset + (row * self.stagger) + col) % len(self._gradient)
-                    ]
+                    gradient[(self._offset + (row * self.stagger) + col) % len(gradient)]
                     for col in range(layer.width)
                 ]
             )
 
         layer.put_all(data)
-        self._offset = (self._offset + 1) % len(self._gradient)
+        self._offset = (self._offset + 1) % len(gradient)
 
         return True

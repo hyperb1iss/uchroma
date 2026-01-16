@@ -12,6 +12,7 @@
 #
 
 # pylint: disable=no-member,protected-access, too-many-nested-blocks
+from __future__ import annotations
 
 import io
 import os
@@ -268,11 +269,11 @@ class Configuration:
 
         return list(search_recursive(self, key, value))
 
-    def flatten(self) -> list:
+    def flatten(self) -> list | "Configuration":
         """
         Flattens the hierarchy to a list of concrete objects.
 
-        :return: The list of hardware objects
+        :return: The list of hardware objects or a single Configuration
         """
         flat = []
         if self.children and isinstance(self.children, tuple):
@@ -283,7 +284,7 @@ class Configuration:
                 if field not in ["parent", "_children"]:
                     tmp[field] = self.get(field)
             return self.__class__(**tmp)
-        return tuple(flat)
+        return flat
 
     def _asdict(self) -> OrderedDict:
         od = OrderedDict()
@@ -426,7 +427,7 @@ class Configuration:
         _yaml.dump(self, stream)
         return stream.getvalue()
 
-    def _yaml_header(self) -> str:
+    def _yaml_header(self) -> str | None:
         return None
 
     def save_yaml(self, filename: str | None = None):

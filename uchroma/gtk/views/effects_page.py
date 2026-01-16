@@ -244,7 +244,8 @@ class EffectsPage(Adw.PreferencesPage):
             child = self.params_group.get_first_child()
             if child is None:
                 break
-            if hasattr(child, "__gtype_name__") and "Preferences" not in child.__gtype_name__:
+            gtype_name = getattr(child, "__gtype_name__", None)
+            if gtype_name and "Preferences" not in str(gtype_name):
                 break
             self.params_group.remove(child)
 
@@ -264,7 +265,7 @@ class EffectsPage(Adw.PreferencesPage):
             if row:
                 self.params_group.add(row)
 
-    def _create_param_row(self, param) -> Gtk.Widget:
+    def _create_param_row(self, param) -> Gtk.Widget | None:
         """Create a row widget for a parameter."""
         name = param["name"].replace("_", " ").title()
 

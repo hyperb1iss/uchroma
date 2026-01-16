@@ -128,7 +128,7 @@ def rgb_to_int_tuple(arg: tuple) -> tuple:
 COLOR_TUPLE_STR = re.compile(r"\((.*, .*, .*, .*)\)")
 
 
-def to_color(*color_args) -> Color:
+def to_color(*color_args) -> Color | list[Color | None] | None:
     """
     Convert various color representations to grapefruit.Color
 
@@ -164,7 +164,7 @@ def to_color(*color_args) -> Color:
     return colors
 
 
-def to_rgb(arg) -> tuple:
+def to_rgb(arg) -> tuple | list:
     """
     Convert various representations to RGB tuples
 
@@ -233,8 +233,8 @@ class ColorUtils:
         return [Color.NewFromHsv((start + (step * x)) % 360, 1, 1) for x in range(length)]
 
     @staticmethod
-    def _hsva(color: Color) -> Color:
-        return (*rgb_to_hsluv(color.rgb), color.alpha)
+    def _hsva(color: Color) -> tuple[float, float, float, float]:
+        return (*rgb_to_hsluv(color.rgb), color.alpha())
 
     @staticmethod
     @colorarg
@@ -249,6 +249,9 @@ class ColorUtils:
 
         :return: List of colors in the gradient
         """
+        # colorarg decorator ensures these are Color objects at runtime
+        assert isinstance(color1, Color)
+        assert isinstance(color2, Color)
         start = ColorUtils._hsva(color1)
         end = ColorUtils._hsva(color2)
 
@@ -256,7 +259,8 @@ class ColorUtils:
         for x in range(steps):
             amount = float(x) / float(steps - 1)
             i = ColorUtils._circular_interp(start, end, amount)
-            gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]]), i[3]))
+            rgb = hsluv_to_rgb([i[0], i[1], i[2]])
+            gradient.append(Color.NewFromRgb(rgb[0], rgb[1], rgb[2], i[3]))
 
         return gradient
 
@@ -285,7 +289,8 @@ class ColorUtils:
             for interp in range(steps):
                 amount = float(interp) / float(steps)
                 i = ColorUtils._circular_interp(start, end, amount)
-                gradient.append(Color.NewFromRgb(*hsluv_to_rgb([i[0], i[1], i[2]]), i[3]))
+                rgb = hsluv_to_rgb([i[0], i[1], i[2]])
+                gradient.append(Color.NewFromRgb(rgb[0], rgb[1], rgb[2], i[3]))
 
         return gradient
 
@@ -328,7 +333,7 @@ class ColorUtils:
 
             while True:
                 yield next(cycle)
-                if alternate:
+                if alternate and cycle2 is not None:
                     yield next(cycle2)
 
     @staticmethod
@@ -491,15 +496,16 @@ class ColorUtils:
 
     @staticmethod
     @colorarg
-    def inverse(color: ColorType) -> float:
+    def inverse(color: ColorType) -> Color:
         """
         Get the RGB inverse of this color (1 - component)
 
         :param color: a color
         :return: Inverse of the given color
         """
+        assert isinstance(color, Color)
         rgb = color.rgb
-        return Color.NewFromRgb(1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2], color.alpha)
+        return Color.NewFromRgb(1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2], color.alpha())
 
     @staticmethod
     @colorarg
@@ -512,10 +518,11 @@ class ColorUtils:
 
         :return: The new color with adjusted contrast
         """
+        assert isinstance(color, Color)
         hsl = list(color.hsl)
         if hsl[2] < 0.1 or hsl[2] > 0.7:
             hsl[2] = 1.0 - hsl[2]
-            color = Color.NewFromHsl(*hsl, color.alpha)
+            color = Color.NewFromHsl(hsl[0], hsl[1], hsl[2], color.alpha())
         return color
 
     @staticmethod

@@ -56,11 +56,15 @@ class EffectSelector(Gtk.Box):
 
         # Add effect cards
         for effect in EFFECTS:
+            effect_id: str = effect["id"]  # type: ignore[assignment]
+            effect_name: str = effect["name"]  # type: ignore[assignment]
+            effect_icon: str = effect["icon"]  # type: ignore[assignment]
+            preview_class: str = effect.get("preview", "default")  # type: ignore[assignment]
             card = EffectCard(
-                effect_id=effect["id"],
-                name=effect["name"],
-                icon=effect["icon"],
-                preview_class=effect.get("preview", "default"),
+                effect_id=effect_id,
+                name=effect_name,
+                icon=effect_icon,
+                preview_class=preview_class,
             )
             card.connect("effect-activated", self._on_card_activated)
 

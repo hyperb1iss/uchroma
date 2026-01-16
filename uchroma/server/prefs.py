@@ -82,7 +82,7 @@ class PreferenceManager(metaclass=Singleton):
         self._root.last_updated = time.time()
         self._root.save_yaml(CONFFILE)
 
-    def get(self, serial: str) -> Preferences:
+    def get(self, serial: str | None) -> Preferences:
         """
         Get the preference hierarchy for the given device serial number.
         """

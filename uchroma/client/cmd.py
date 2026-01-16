@@ -92,6 +92,7 @@ class UChromaConsoleUtil:
         pass
 
     def get_driver(self):
+        driver = None
         if hasattr(self._args, "device") and self._args.device is not None:
             driver = self._client.get_device(self._args.device)
             if driver is None:

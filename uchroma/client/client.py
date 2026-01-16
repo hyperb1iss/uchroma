@@ -48,8 +48,8 @@ CHAR_CROSS = "\x6e"
 class RemoteTraits(NamedTuple):
     name: str
     description: str
-    author: str
-    version: str
+    author: str | None
+    version: str | None
     traits: HasTraits
 
 
@@ -263,13 +263,13 @@ class DumpCommand(AbstractCommand):
         super().__init__(parent)
         self._dumpables = dumpables
 
-    def add_parser(self, sub):
-        parser = sub.add_parser("dump", help="Dump device info")
-        parser.add_argument(
+    def add_parser(self, parser):
+        sub = parser.add_parser("dump", help="Dump device info")
+        sub.add_argument(
             "-w", "--wide", action="store_true", help="Wide output (don't truncate long lines"
         )
-        parser.set_defaults(func=self.parse, parser=parser)
-        return parser
+        sub.set_defaults(func=self.parse, parser=sub)
+        return sub
 
     def parse(self, args):
         result = self.driver.GetAll("org.chemlab.UChroma.Device")
@@ -304,9 +304,9 @@ class DumpCommand(AbstractCommand):
 
 
 class BrightnessCommand(AbstractCommand):
-    def add_parser(self, sub):
-        parser = sub.add_parser("brightness", help="Set/get brightness level")
-        parser.add_argument(
+    def add_parser(self, parser):
+        sub = parser.add_parser("brightness", help="Set/get brightness level")
+        sub.add_argument(
             "level",
             metavar="BRIGHTNESS",
             type=float,
@@ -314,8 +314,8 @@ class BrightnessCommand(AbstractCommand):
             help="Brightness level to set (0-100)",
         )
 
-        parser.set_defaults(func=self.parse, parser=parser)
-        return parser
+        sub.set_defaults(func=self.parse, parser=sub)
+        return sub
 
     def parse(self, args):
         if args.level is None:
@@ -332,11 +332,11 @@ class LEDCommand(AbstractCommand):
         super().__init__(*args, **kwargs)
         self._leds = None
 
-    def add_parser(self, sub):
-        parser = sub.add_parser("led", help="Standalone LED control", add_help=False)
-        parser.add_argument("-l", "--list", action="store_true", help="Show available LEDs")
-        parser.set_defaults(func=self.parse, parser=parser)
-        return parser
+    def add_parser(self, parser):
+        sub = parser.add_parser("led", help="Standalone LED control", add_help=False)
+        sub.add_argument("-l", "--list", action="store_true", help="Show available LEDs")
+        sub.set_defaults(func=self.parse, parser=sub)
+        return sub
 
     @property
     def available_leds(self):
@@ -399,11 +399,11 @@ class FXCommand(AbstractCommand):
         super().__init__(*args, **kwargs)
         self._fx = None
 
-    def add_parser(self, sub):
-        parser = sub.add_parser("fx", help="Lighting and effects", add_help=False)
-        parser.add_argument("-l", "--list", action="store_true", help="List supported effects")
-        parser.set_defaults(func=self.parse, parser=parser)
-        return parser
+    def add_parser(self, parser):
+        sub = parser.add_parser("fx", help="Lighting and effects", add_help=False)
+        sub.add_argument("-l", "--list", action="store_true", help="List supported effects")
+        sub.set_defaults(func=self.parse, parser=sub)
+        return sub
 
     @property
     def available_fx(self):
@@ -468,13 +468,13 @@ class AnimationCommand(AbstractCommand):
         self._renderer_info = None
         self._aliases = {}
 
-    def add_parser(self, sub):
-        parser = sub.add_parser("anim", help="Animation control", add_help=False)
-        parser.add_argument(
+    def add_parser(self, parser):
+        sub = parser.add_parser("anim", help="Animation control", add_help=False)
+        sub.add_argument(
             "-l", "--list", action="store_true", help="List available renderers and options"
         )
-        parser.set_defaults(func=self.parse, parser=parser)
-        return parser
+        sub.set_defaults(func=self.parse, parser=sub)
+        return sub
 
     def parse(self, args):
         if args.list:

@@ -179,7 +179,7 @@ class Hardware(BaseHardware):
         return False
 
     @classmethod
-    def get_type(cls, hw_type) -> "Hardware":
+    def get_type(cls, hw_type) -> "Hardware | None":
         if hw_type is None:
             return None
 
@@ -192,7 +192,7 @@ class Hardware(BaseHardware):
         return config
 
     @classmethod
-    def _get_device(cls, product_id: int, hw_type) -> "Hardware":
+    def _get_device(cls, product_id: int, hw_type) -> "Hardware | None":
         if product_id is None:
             return None
 
@@ -208,7 +208,7 @@ class Hardware(BaseHardware):
         return result
 
     @classmethod
-    def get_device(cls, product_id: int, hw_type=None) -> "Hardware":
+    def get_device(cls, product_id: int, hw_type=None) -> "Hardware | None":
         if hw_type is not None:
             return cls._get_device(product_id, hw_type)
 

@@ -213,7 +213,7 @@ class RazerReport:
         return self._data
 
     @property
-    def status(self) -> int:
+    def status(self) -> int | Status:
         """
         Status code of this report.
         """

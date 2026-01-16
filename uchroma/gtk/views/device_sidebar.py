@@ -11,7 +11,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import GObject, Gtk  # noqa: E402
+from gi.repository import GObject, Gtk, Pango  # noqa: E402
 
 
 class DeviceRow(Gtk.Box):
@@ -39,7 +39,7 @@ class DeviceRow(Gtk.Box):
         self.name_label = Gtk.Label(label=device.name)
         self.name_label.add_css_class("device-name")
         self.name_label.set_xalign(0)
-        self.name_label.set_ellipsize(3)  # PANGO_ELLIPSIZE_END
+        self.name_label.set_ellipsize(Pango.EllipsizeMode.END)
         text_box.append(self.name_label)
 
         # Subtitle (product ID)

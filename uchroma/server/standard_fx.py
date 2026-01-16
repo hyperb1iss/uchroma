@@ -138,12 +138,13 @@ class StandardFX(FXModule):
             transaction_id=0x3F,
         )
 
-    def set_effect(self, effect: Enum, *args) -> bool:
+    def set_effect(self, effect: FX | ExtendedFX, *args) -> bool:
         if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
             if effect.name in ExtendedFX.__members__:
                 return self._set_effect_extended(ExtendedFX[effect.name], *args)
             return False
-        return self._set_effect_basic(effect, *args)
+        # For basic effects, we need FX type - cast since we know it's valid here
+        return self._set_effect_basic(FX[effect.name], *args)
 
     class DisableFX(BaseFX):
         description = Unicode("Disable all effects")

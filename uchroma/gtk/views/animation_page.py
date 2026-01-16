@@ -342,7 +342,9 @@ class AnimationPage(Adw.PreferencesPage):
     def _on_add_layer_clicked(self, button):
         """Show renderer picker dialog."""
         dialog = Adw.MessageDialog.new(
-            self.get_root(), "Add Animation Layer", "Choose a renderer to add:"
+            self.get_root(),  # type: ignore[arg-type]
+            "Add Animation Layer",
+            "Choose a renderer to add:",
         )
 
         # Add renderer options

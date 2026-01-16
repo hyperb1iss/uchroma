@@ -116,6 +116,9 @@ combine-as-imports = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["PT"]  # pytest style not enforced in tests
+# D-Bus files use D-Bus type signatures ('s', 'u', 'as', 'a{sv}') as annotations - not Python types
+"**/dbus.py" = ["F821", "F722"]
+"**/dbus_*.py" = ["F821", "F722"]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ty - Type Checking
@@ -147,3 +150,4 @@ include = ["**/dbus.py", "**/dbus_*.py"]
 [tool.ty.overrides.rules]
 unresolved-reference = "ignore"
 invalid-return-type = "ignore"
+invalid-syntax-in-forward-annotation = "ignore"

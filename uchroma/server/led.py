@@ -218,7 +218,7 @@ class LEDManager:
     def supported_leds(self):
         return self._driver.hardware.supported_leds
 
-    def get(self, led_type: LEDType) -> LED:
+    def get(self, led_type: LEDType) -> LED | None:
         """
         Fetches the requested LED interface on this device
 

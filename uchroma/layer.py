@@ -57,7 +57,7 @@ class Layer:
         return self._blend_mode.__name__
 
     @blend_mode.setter
-    def blend_mode(self, mode: str):
+    def blend_mode(self, mode: str | None):
         """
         Set the blending function for this layer.
 
@@ -107,7 +107,7 @@ class Layer:
         return self._matrix
 
     @property
-    def background_color(self) -> Color:
+    def background_color(self) -> Color | None:
         """
         The background color of this layer
         """
@@ -120,7 +120,10 @@ class Layer:
 
         :param color: Desired background color
         """
-        self._bg_color = to_color(color)
+        result = to_color(color)
+        # to_color with a single arg returns Color or None, not a list
+        assert not isinstance(result, list)
+        self._bg_color = result
 
     def lock(self, lock) -> "Layer":
         """
@@ -145,7 +148,7 @@ class Layer:
             self._matrix.fill(0)
         return self
 
-    def get(self, row: int, col: int) -> Color:
+    def get(self, row: int, col: int) -> Color | None:
         """
         Get the color of an individual pixel
 
@@ -154,7 +157,10 @@ class Layer:
 
         :return: Color of the pixel
         """
-        return to_color(tuple(self.matrix[row][col]))
+        color = to_color(tuple(self.matrix[row][col]))
+        # to_color with a single arg returns Color or None, not a list
+        assert not isinstance(color, list)
+        return color
 
     @colorarg
     def put(self, row: int, col: int, *color: ColorType) -> "Layer":

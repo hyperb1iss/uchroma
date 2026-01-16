@@ -45,10 +45,10 @@ class AsyncMonitorObserver:
 
     def _run(self):
         self._stop_event = pipe.Pipe.open()
-        MonitorObserver.run(self)
+        MonitorObserver.run(self)  # type: ignore[arg-type]  # duck-typing MonitorObserver
 
     def _stop(self):
-        MonitorObserver.send_stop(self)
+        MonitorObserver.send_stop(self)  # type: ignore[arg-type]  # duck-typing MonitorObserver
 
     async def start(self):
         asyncio.get_event_loop().run_in_executor(self._executor, self._run)
