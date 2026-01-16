@@ -285,14 +285,53 @@ class DeviceService:
         if not renderers:
             return None
 
+        def unwrap_variants(obj):
+            try:
+                from dbus_fast import Variant  # noqa: PLC0415
+            except ImportError:
+                Variant = None  # type: ignore[assignment]
+
+            if Variant is not None and isinstance(obj, Variant):
+                return unwrap_variants(obj.value)
+            if isinstance(obj, dict):
+                return {k: unwrap_variants(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [unwrap_variants(v) for v in obj]
+            if isinstance(obj, tuple):
+                return tuple(unwrap_variants(v) for v in obj)
+            return obj
+
+        def parse_zindex(path: str, fallback: int) -> int:
+            try:
+                return int(path.rsplit("/", 1)[-1])
+            except (ValueError, AttributeError):
+                return fallback
+
         layers = []
-        for i, renderer_name in enumerate(renderers):
-            layer_info = self.get_layer_info(device, i)
+        for i, entry in enumerate(renderers):
+            if isinstance(entry, (list, tuple)) and len(entry) == 2:
+                renderer_name, layer_path = entry
+                zindex = parse_zindex(str(layer_path), i)
+            else:
+                renderer_name = entry
+                zindex = i
+
+            layer_info = self.get_layer_info(device, zindex)
+            unwrapped = unwrap_variants(layer_info or {})
+            args = {}
+            if isinstance(unwrapped.get("traits"), dict):
+                args = unwrapped["traits"]
+            else:
+                args = {
+                    k: v
+                    for k, v in unwrapped.items()
+                    if not k.startswith("_") and k not in {"Key", "ZIndex", "Type"}
+                }
             layers.append(
                 {
                     "renderer": renderer_name,
-                    "zindex": i,
-                    "args": layer_info.get("traits", {}) if layer_info else {},
+                    "zindex": zindex,
+                    "args": args,
                 }
             )
         return layers
