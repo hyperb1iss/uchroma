@@ -85,7 +85,7 @@ class Color(_BaseColor):
     def intTuple(self) -> tuple:
         """Get RGBA as int tuple (0-255)."""
         r, g, b = self.rgb
-        return (int(r * 255), int(g * 255), int(b * 255), int(self.alpha() * 255))
+        return (int(r * 255), int(g * 255), int(b * 255), int(self.alpha * 255))
 
     @property
     def html(self) -> str:

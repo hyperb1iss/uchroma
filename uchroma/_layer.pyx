@@ -6,7 +6,13 @@ cimport numpy as np
 
 
 def color_to_np(*colors):
-    return np.array([tuple(x) for x in colors], dtype=np.float64)
+    # tuple(color) returns RGB only, need to add alpha for RGBA matrix
+    result = []
+    for c in colors:
+        rgb = tuple(c)
+        alpha = c.alpha if hasattr(c, 'alpha') else 1.0
+        result.append((rgb[0], rgb[1], rgb[2], alpha))
+    return np.array(result, dtype=np.float64)
 
 
 # a few methods pulled from skimage-dev for blending support
