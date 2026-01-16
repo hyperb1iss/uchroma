@@ -70,7 +70,7 @@ class BatteryCommand(Command):
         )
 
         # Visual bar
-        bar = self._battery_bar(battery)
+        bar = self._battery_bar(battery, charging=charging)
         self.print(self.out.table_row(key_width, "", bar))
         self.print()
 
@@ -116,25 +116,8 @@ class BatteryCommand(Command):
 
     def _format_battery_level(self, level: int) -> str:
         """Format battery level with color coding."""
-        if level <= 20:
-            return self.out.error(f"{level}%")
-        elif level <= 50:
-            return self.out.warning(f"{level}%")
-        else:
-            return self.out.success(f"{level}%")
+        return self.out.number(f"{level}%")
 
-    def _battery_bar(self, level: int, width: int = 20) -> str:
-        """Create a visual battery bar."""
-        filled = int(level / 100 * width)
-        empty = width - filled
-
-        if level <= 20:
-            fill_char = self.out.error("█")
-        elif level <= 50:
-            fill_char = self.out.warning("█")
-        else:
-            fill_char = self.out.success("█")
-
-        empty_char = self.out.muted("░")
-
-        return f"[{fill_char * filled}{empty_char * empty}]"
+    def _battery_bar(self, level: int, charging: bool = False, width: int = 20) -> str:
+        """Create a visual battery bar using output helper."""
+        return self.out.battery_bar(level, charging=charging, width=width)

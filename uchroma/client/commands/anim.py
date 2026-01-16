@@ -360,7 +360,7 @@ class AnimCommand(Command):
         values: dict | None = None,
         has_separator: bool = True,
     ) -> None:
-        """Display traits in table format matching old client output."""
+        """Display traits in table format with SilkCircuit colors."""
         count = 0
         for name, trait_dict in sorted(traits_dict.items()):
             metadata = trait_dict.get("metadata", {})
@@ -369,28 +369,28 @@ class AnimCommand(Command):
 
             trait_type = _get_trait_type(trait_dict)
 
-            # Build constraint string like old client: "type: constraint1, constraint2"
-            constraints = []
-            if "min" in trait_dict:
-                constraints.append(f"min: {trait_dict['min']}")
-            if "max" in trait_dict:
-                constraints.append(f"max: {trait_dict['max']}")
-            if "values" in trait_dict:
-                # For choices, show as description - limit to a few items
-                choices = [v.lower() for v in trait_dict["values"]]
-                if len(choices) > 4:
-                    choices_str = ", ".join(choices[:4]) + ", ..."
-                else:
-                    choices_str = ", ".join(choices)
-                constraints.append(f"one of: {choices_str}")
-            if "default_value" in trait_dict and trait_dict["default_value"] is not None:
-                constraints.append(f"default: {trait_dict['default_value']}")
+            # Extract constraint values
+            min_val = trait_dict.get("min")
+            max_val = trait_dict.get("max")
+            default_val = trait_dict.get("default_value")
+            choices = trait_dict.get("values")
 
-            # Format: "type: constraints" or just "type" if no constraints
-            if constraints:
-                value_str = f"{trait_type}: {', '.join(constraints)}"
+            # Special formatting for color types
+            if trait_type == "color":
+                value_str = self.out.format_color_trait(default_val)
+            elif trait_type == "colors":
+                # Colorscheme - default_val might be a list of colors
+                colors_list = default_val if isinstance(default_val, list) else None
+                value_str = self.out.format_colorscheme_trait(colors_list)
             else:
-                value_str = trait_type
+                # Use the colorful constraint formatter for other types
+                value_str = self.out.format_constraints(
+                    trait_type,
+                    min_val=min_val,
+                    max_val=max_val,
+                    default=default_val,
+                    choices=choices,
+                )
 
             # First trait gets separator (if we need one)
             if count == 0 and has_separator:
@@ -399,8 +399,21 @@ class AnimCommand(Command):
             # If showing current values
             if values is not None and name in values:
                 val = values[name]
-                self.print(self.out.table_row(key_width, self.out.key(name), str(val)))
-                self.print(self.out.table_row(key_width, f"({trait_type})", value_str))
+                # Color the current value based on type
+                if trait_type == "color" and isinstance(val, str):
+                    val_str = self.out.color_value(val)
+                elif trait_type == "colors" and isinstance(val, list):
+                    val_str = self.out.color_swatch(val)
+                elif isinstance(val, (int, float)):
+                    val_str = self.out.number(val)
+                elif isinstance(val, str) and val.startswith("#"):
+                    val_str = self.out.color_value(val)
+                else:
+                    val_str = self.out.value(str(val))
+                self.print(self.out.table_row(key_width, self.out.key(name), val_str))
+                self.print(
+                    self.out.table_row(key_width, self.out.type_hint(f"({trait_type})"), value_str)
+                )
                 self.print(self.out.table_sep(key_width))
             else:
                 self.print(self.out.table_row(key_width, name, value_str))

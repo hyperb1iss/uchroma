@@ -253,6 +253,13 @@ class DeviceService:
 
         return device.SetFX(effect, args)
 
+    def set_fx(self, device: "DeviceProxy", fx_name: str, fx_args: dict | None = None) -> bool:
+        """Apply hardware effect with arbitrary arguments."""
+        from uchroma.dbus_utils import dbus_prepare  # noqa: PLC0415
+
+        prepared, _ = dbus_prepare(fx_args or {}, variant=True)
+        return device.SetFX(fx_name, prepared)
+
     # ─────────────────────────────────────────────────────────────────────────
     # Animation Operations
     # ─────────────────────────────────────────────────────────────────────────
@@ -264,6 +271,24 @@ class DeviceService:
     def get_current_renderers(self, device: "DeviceProxy") -> list | None:
         """Get currently active renderer layers."""
         return device.CurrentRenderers
+
+    def get_active_layers(self, device: "DeviceProxy") -> list[dict] | None:
+        """Get info about active animation layers for profile saving."""
+        renderers = self.get_current_renderers(device)
+        if not renderers:
+            return None
+
+        layers = []
+        for i, renderer_name in enumerate(renderers):
+            layer_info = self.get_layer_info(device, i)
+            layers.append(
+                {
+                    "renderer": renderer_name,
+                    "zindex": i,
+                    "args": layer_info.get("traits", {}) if layer_info else {},
+                }
+            )
+        return layers
 
     def add_renderer(
         self, device: "DeviceProxy", name: str, zindex: int = -1, traits: dict | None = None

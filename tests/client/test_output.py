@@ -107,7 +107,7 @@ class TestCompoundFormatters:
         result = out.kv("brightness", "80%")
         assert "brightness" in result
         assert "80%" in result
-        assert "=" in result
+        assert ":" in result
 
     def test_columns_alignment(self):
         out = Output(force_color=False)

@@ -119,7 +119,7 @@ class MockDeviceProxy:
 
         # Battery/wireless properties
         self.IsWireless = is_wireless
-        self.IsCharging = True if is_wireless else False
+        self.IsCharging = is_wireless
         self.BatteryLevel = 75 if is_wireless else 0
 
     def AddRenderer(self, name, zindex, traits):

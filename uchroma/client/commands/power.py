@@ -117,21 +117,29 @@ class PowerCommand(Command):
             if fan_mode:
                 self.print(self.out.table_row(key_width, self.out.device("mode"), fan_mode))
 
+            fan_limits = service.get_fan_limits(device)
+            max_rpm = fan_limits.get("max", 5000) if fan_limits else 5000
+
             fan_rpm = service.get_fan_rpm(device)
             if fan_rpm:
                 rpm1, rpm2 = fan_rpm
+                gauge1 = self.out.rpm_gauge(rpm1, max_rpm)
                 if rpm2 > 0 and rpm2 != rpm1:
-                    self.print(
-                        self.out.table_row(key_width, self.out.device("rpm"), f"{rpm1} / {rpm2}")
-                    )
+                    gauge2 = self.out.rpm_gauge(rpm2, max_rpm)
+                    self.print(self.out.table_row(key_width, self.out.device("fan 1"), gauge1))
+                    self.print(self.out.table_row(key_width, self.out.device("fan 2"), gauge2))
                 else:
-                    self.print(self.out.table_row(key_width, self.out.device("rpm"), str(rpm1)))
+                    self.print(self.out.table_row(key_width, self.out.device("rpm"), gauge1))
 
-            fan_limits = service.get_fan_limits(device)
             if fan_limits:
                 min_rpm = fan_limits.get("min", 0)
-                max_rpm = fan_limits.get("max", 5000)
-                self.print(self.out.table_row(key_width, "limits", f"{min_rpm} - {max_rpm} RPM"))
+                self.print(
+                    self.out.table_row(
+                        key_width,
+                        "range",
+                        f"{self.out.number(min_rpm)} - {self.out.number(max_rpm)} RPM",
+                    )
+                )
             self.print()
             self.print()
 
