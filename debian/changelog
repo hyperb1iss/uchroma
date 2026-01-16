@@ -1,3 +1,10 @@
+uchroma (1.1.0-1) unstable; urgency=medium
+
+  * Modernize deb build for pyproject.
+  * Consolidate install assets and update dependencies.
+
+ -- Stefanie Kondik <stef@hyperbliss.tech>  Fri, 16 Jan 2026 01:07:45 -0800
+
 uchroma (1.0.3-1) artful; urgency=medium
 
   * Updated dependencies for Artful 

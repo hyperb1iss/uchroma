@@ -5,7 +5,6 @@ set -e
 if [ "$1" = configure ]; then
 
     # update udev with new configuration
-    udevadm hwdb --update
     udevadm control --reload-rules
     udevadm trigger -s usb -s hidraw -c add -a idVendor=1532
 
