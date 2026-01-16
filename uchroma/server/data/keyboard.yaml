@@ -124,6 +124,12 @@ children:
     quirks: LOGO_LED_BRIGHTNESS
 
   - !device-config
+    name: BlackWidow Ultimate 2013 (Alt)
+    product_id: 0x010e
+    dimensions: [6, 22]
+    quirks: LOGO_LED_BRIGHTNESS
+
+  - !device-config
     name: BlackWidow Classic
     product_id: 0x011b
     dimensions: [6, 22]
@@ -155,10 +161,71 @@ children:
     dimensions: [6, 22]
 
   - !device-config
+    name: BlackWidow X Chroma TE
+    product_id: 0x0217
+    dimensions: [6, 18]
+
+  - !device-config
+    name: BlackWidow X Ultimate
+    product_id: 0x0223
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow Chroma V2
+    product_id: 0x0221
+    dimensions: [6, 22]
+
+  - !device-config
+    name: BlackWidow Elite
+    product_id: 0x0228
+    dimensions: [6, 22]
+
+  - !device-config
     name: Ornata Chroma
     product_id: 0x021e
     dimensions: [6, 22]
     quirks: EXTENDED_FX_CMDS
+
+  - !device-config
+    name: Ornata V2
+    product_id: 0x024a
+    dimensions: [6, 22]
+
+  - !device-config
+    name: DeathStalker Chroma
+    product_id: 0x0204
+    dimensions: [1, 12]
+
+  - !device-config
+    name: Cynosa Chroma
+    product_id: 0x022a
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Cynosa V2
+    product_id: 0x025e
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Cynosa Lite
+    product_id: 0x023f
+    dimensions: [1, 1]
+    quirks: SINGLE_LED
+
+  - !device-config
+    name: Huntsman
+    product_id: 0x0227
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Huntsman Elite
+    product_id: 0x0226
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Huntsman TE
+    product_id: 0x022c
+    dimensions: [6, 18]
 
 # Modern keyboards (V3+, V4) using 0x1F transaction code and extended FX
 - !device-config
@@ -236,6 +303,11 @@ children:
   - !device-config
     name: Huntsman Mini
     product_id: 0x0257
+    dimensions: [5, 15]
+
+  - !device-config
+    name: Huntsman Mini Analog
+    product_id: 0x0266
     dimensions: [5, 15]
 
   # DeathStalker V2 Series

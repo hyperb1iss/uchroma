@@ -19,3 +19,48 @@ children:
   name: Kraken 7.1 V2 (Kylie)
   revision: 2
   product_id: 0x0510
+
+- !device-config
+  name: Kraken Ultimate
+  product_id: 0x0527
+
+- !device-config
+  name: Kraken Kitty Edition
+  product_id: 0x0F19
+
+- !device-config
+  name: Kraken Kitty V2
+  product_id: 0x0560
+
+- !device-config
+  name: Kraken V4
+  product_id: 0x0517
+
+- !device-config
+  name: Kraken V4 Pro
+  product_id: 0x0516
+
+- !device-config
+  name: Nari Ultimate
+  product_id: 0x051A
+  quirks: WIRELESS
+
+- !device-config
+  name: Nari (Wired)
+  product_id: 0x051C
+  quirks: WIRELESS
+
+- !device-config
+  name: Nari (Wireless)
+  product_id: 0x051D
+  quirks: WIRELESS
+
+- !device-config
+  name: Nari Essential (Wired)
+  product_id: 0x051E
+  quirks: WIRELESS
+
+- !device-config
+  name: Nari Essential (Wireless)
+  product_id: 0x051F
+  quirks: WIRELESS

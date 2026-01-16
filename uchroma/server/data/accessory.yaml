@@ -1,0 +1,79 @@
+#
+#  uChroma device configuration
+#
+#  Type: ACCESSORY
+#  Various Razer Chroma accessories (docks, stands, controllers, etc.)
+#
+!device-config
+manufacturer: Razer
+type: ACCESSORY
+vendor_id: 0x1532
+supported_fx: [disable, breathe, spectrum, static]
+supported_leds: [backlight]
+children:
+
+# Mouse docks
+- !device-config
+  name: Mouse Dock
+  product_id: 0x007e
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Mouse Dock Pro
+  product_id: 0x00a4
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+
+# Base stations
+- !device-config
+  name: Base Station Chroma
+  product_id: 0x0f08
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Base Station V2 Chroma
+  product_id: 0x0f20
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+
+# Laptop stands
+- !device-config
+  name: Laptop Stand Chroma
+  product_id: 0x0f0d
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Laptop Stand Chroma V2
+  product_id: 0x0f2c
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+
+# Docks
+- !device-config
+  name: Thunderbolt 4 Dock Chroma
+  product_id: 0x0f2d
+  quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS]
+
+# Controllers
+- !device-config
+  name: Chroma HDK
+  product_id: 0x0f09
+  quirks: [TRANSACTION_CODE_3F]
+
+- !device-config
+  name: ARGB Controller
+  product_id: 0x0f0e
+  quirks: [TRANSACTION_CODE_3F]
+
+# Other accessories
+- !device-config
+  name: Chroma Mug Holder
+  product_id: 0x0f07
+  quirks: [TRANSACTION_CODE_3F]
+
+- !device-config
+  name: Mouse Bungee V3 Chroma
+  product_id: 0x0f1d
+  quirks: [TRANSACTION_CODE_1F]
+
+- !device-config
+  name: Charging Pad Chroma
+  product_id: 0x0f26
+  quirks: [TRANSACTION_CODE_1F]

@@ -51,7 +51,7 @@ def main() -> int:
     parser.add_argument(
         "--doc",
         type=Path,
-        default=Path("docs/razer-device-database.md"),
+        default=Path("docs/reference/razer-device-database.md"),
         help="Path to the device database doc.",
     )
     parser.add_argument(

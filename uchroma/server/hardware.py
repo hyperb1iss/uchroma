@@ -276,6 +276,7 @@ class Hardware(BaseHardware):
     """
 
     class Type(Enum):
+        ACCESSORY = "Accessory"
         HEADSET = "Headset"
         KEYBOARD = "Keyboard"
         KEYPAD = "Keypad"

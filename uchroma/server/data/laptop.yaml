@@ -424,3 +424,138 @@ children:
   dimensions: [6, 16]
   capabilities: [ec_fan_control]
 
+# Older Blade Stealth / Pro models
+- !device-config
+  name: Blade Stealth (2017)
+  product_id: 0x022D
+  dimensions: [6, 16]
+
+- !device-config
+  name: Blade Pro (2017)
+  product_id: 0x0225
+  dimensions: [6, 25]
+
+- !device-config
+  name: Blade Pro (2019)
+  product_id: 0x0233
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+
+- !device-config
+  name: Blade Stealth (2019)
+  product_id: 0x0239
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+
+- !device-config
+  name: Blade Stealth (2020)
+  product_id: 0x0252
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+
+- !device-config
+  name: Blade 15 (2018)
+  product_id: 0x0234
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+
+- !device-config
+  name: Blade 15 (2019)
+  product_id: 0x0240
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+
+- !device-config
+  name: Blade 15 (2020)
+  product_id: 0x0253
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+
+# 2022+ Blade models
+- !device-config
+  name: Blade 14 (2022)
+  product_id: 0x027A
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 15 (2022)
+  product_id: 0x027B
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 17 (2022)
+  product_id: 0x027C
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+# 2023 Blade models
+- !device-config
+  name: Blade 14 (2023)
+  product_id: 0x029D
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 16 (2023)
+  product_id: 0x029E
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 18 (2023)
+  product_id: 0x029F
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+# 2024 Blade models
+- !device-config
+  name: Blade 14 (2024)
+  product_id: 0x02A4
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 16 (2024)
+  product_id: 0x02B4
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 18 (2024)
+  product_id: 0x02B5
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+# 2025 Blade models
+- !device-config
+  name: Blade 14 (2025)
+  product_id: 0x02C5
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 16 (2025)
+  product_id: 0x02C6
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+
+- !device-config
+  name: Blade 18 (2025)
+  product_id: 0x02C7
+  dimensions: [6, 16]
+  quirks: TRANSACTION_CODE_1F
+  capabilities: [ec_fan_control]
+

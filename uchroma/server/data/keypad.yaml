@@ -17,9 +17,35 @@ children:
     name: Tartarus Chroma
     product_id: 0x0208
     supported_leds: [backlight, profile_blue, profile_green, profile_red]
+    dimensions: [4, 5]
     macro_keys:
       numeric: [15, 16, 17, 18, 19,   # keys 1-5
                 58, 30, 31, 32, 33,   # keys 6-10
                 42, 44, 45, 46, 47]   # keys 11-15
       button_1: 56                    # top button
       button_2: 57                    # thumb key
+
+  - !device-config
+    name: Orbweaver Chroma
+    product_id: 0x0207
+    supported_leds: [backlight]
+    dimensions: [4, 5]
+
+  - !device-config
+    name: Tartarus
+    product_id: 0x0201
+    supported_leds: [backlight]
+    dimensions: [4, 5]
+
+  - !device-config
+    name: Tartarus V2
+    product_id: 0x022b
+    supported_leds: [backlight]
+    dimensions: [4, 6]
+
+  - !device-config
+    name: Tartarus Pro
+    product_id: 0x0244
+    supported_leds: [backlight]
+    dimensions: [4, 6]
+    quirks: TRANSACTION_CODE_3F

@@ -44,3 +44,20 @@ children:
   product_id: 0x0c03
   dimensions: [1, 1]
   quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Firefly Hyperflux
+  product_id: 0x0068
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Goliathus 3XL
+  product_id: 0x0c06
+  dimensions: [1, 1]
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
+
+- !device-config
+  name: Strider Chroma
+  product_id: 0x0c05
+  dimensions: [1, 1]
+  quirks: [TRANSACTION_CODE_3F, EXTENDED_FX_CMDS]
