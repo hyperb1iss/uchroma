@@ -2166,10 +2166,11 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 [2026-01-15] [TODO] [6] Write integration tests
 [2026-01-15] [TODO] [6] Create Makefile target for tests
 
-[2026-01-15] [TODO] [7] Create wireless.py with WirelessMixin
-[2026-01-15] [TODO] [7] Create polling.py with PollingMixin
-[2026-01-15] [TODO] [7] Create capabilities.py
-[2026-01-15] [TODO] [7] Integrate mixins into device classes
+[2026-01-16] [DONE] [7] Create wireless.py with WirelessMixin
+[2026-01-16] [DONE] [7] Create polling.py with PollingMixin (incl HyperPolling)
+[2026-01-16] [DONE] [7] Create capabilities.py with DeviceCapabilities
+[2026-01-16] [DONE] [6] Write test_wireless.py, test_polling.py, test_capabilities.py (61 tests)
+[2026-01-15] [TODO] [7] Integrate mixins into device classes (needs device_base refactor)
 
 [2026-01-16] [TODO] [8] Research EC protocol on actual Blade hardware
 [2026-01-16] [TODO] [8] Create system_control.py with fan/power control
