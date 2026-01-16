@@ -1,7 +1,5 @@
 #
-# uchroma - Copyright (C) 2021 Stefanie Kondik
-#
-# ANSI color utilities for CLI output.
+# Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
 
 import re

@@ -1,3 +1,6 @@
+#
+# Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
+#
 """Tests for CLI output styling."""
 
 from uchroma.client.output import Output, strip_ansi

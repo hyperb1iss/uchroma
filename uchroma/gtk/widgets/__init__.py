@@ -1,3 +1,7 @@
+#
+# Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
+#
+
 # UChroma GTK Widgets
 from .brightness_scale import BrightnessScale
 from .effect_card import EffectCard

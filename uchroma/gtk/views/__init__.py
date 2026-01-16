@@ -1,3 +1,7 @@
+#
+# Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
+#
+
 # UChroma GTK Views
 from .dashboard_page import DashboardPage
 from .device_sidebar import DeviceSidebar

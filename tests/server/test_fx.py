@@ -1,3 +1,7 @@
+#
+# Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
+#
+
 # uchroma - FX module unit tests
 from __future__ import annotations
 

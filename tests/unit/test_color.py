@@ -1,3 +1,7 @@
+#
+# Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
+#
+
 # uchroma - Unit tests for color utilities
 """
 Comprehensive tests for uchroma.color and uchroma.colorlib modules.
