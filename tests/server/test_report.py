@@ -344,9 +344,7 @@ class TestPackRequest:
 
     def test_pack_request_protocol_type(self, mock_driver):
         """Protocol type should be packed correctly."""
-        report = RazerReport(
-            mock_driver, 0x03, 0x01, 3, protocol_type=0x05
-        )
+        report = RazerReport(mock_driver, 0x03, 0x01, 3, protocol_type=0x05)
         result = report._pack_request()
         # Protocol is at offset 4 (after remaining_packets which is 2 bytes)
         # Header: status(1) + trans_id(1) + remaining(2) + proto(1) + size(1) + class(1) + cmd(1)
@@ -559,17 +557,13 @@ class TestRun:
 
     def test_run_sends_feature_report(self, basic_report, mock_hid):
         """run() should send feature report."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         basic_report.run()
         mock_hid.send_feature_report.assert_called()
 
     def test_run_gets_feature_report(self, basic_report, mock_hid):
         """run() should get feature report response."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         basic_report.run()
         mock_hid.get_feature_report.assert_called_with(
             RazerReport.RSP_REPORT_ID, RazerReport.BUF_SIZE
@@ -577,68 +571,52 @@ class TestRun:
 
     def test_run_ok_returns_true(self, basic_report, mock_hid):
         """run() should return True on OK status."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         result = basic_report.run()
         assert result is True
 
     def test_run_fail_returns_false(self, basic_report, mock_hid):
         """run() should return False on FAIL status."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.FAIL.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.FAIL.value)
         result = basic_report.run()
         assert result is False
 
     def test_run_unsupported_returns_false(self, basic_report, mock_hid):
         """run() should return False on UNSUPPORTED status."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.UNSUPPORTED.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.UNSUPPORTED.value)
         result = basic_report.run()
         assert result is False
 
     def test_run_timeout_returns_false(self, basic_report, mock_hid):
         """run() should return False on TIMEOUT with callback."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.TIMEOUT.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.TIMEOUT.value)
         callback = MagicMock()
         result = basic_report.run(timeout_cb=callback)
         assert result is False
 
     def test_run_timeout_invokes_callback(self, basic_report, mock_hid):
         """run() should invoke timeout callback on TIMEOUT."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.TIMEOUT.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.TIMEOUT.value)
         callback = MagicMock()
         basic_report.run(timeout_cb=callback)
         callback.assert_called_once()
 
     def test_run_ok_invokes_timeout_callback(self, basic_report, mock_hid):
         """run() should invoke timeout callback on OK (if provided)."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         callback = MagicMock()
         basic_report.run(timeout_cb=callback)
         callback.assert_called_once_with(Status.OK, None)
 
     def test_run_uses_device_open_context(self, basic_report, mock_driver, mock_hid):
         """run() should use device_open context manager."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         basic_report.run()
         mock_driver.device_open.assert_called_once()
 
     def test_run_default_delay(self, basic_report, mock_hid):
         """run() should use default delay of CMD_DELAY_TIME."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         with patch("uchroma.server.report.smart_delay") as mock_delay:
             mock_delay.return_value = 0.0
             basic_report.run()
@@ -647,9 +625,7 @@ class TestRun:
 
     def test_run_custom_delay(self, basic_report, mock_hid):
         """run() should respect custom delay parameter."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         with patch("uchroma.server.report.smart_delay") as mock_delay:
             mock_delay.return_value = 0.0
             basic_report.run(delay=0.05)
@@ -675,9 +651,7 @@ class TestRunRetryLogic:
 
     def test_run_max_retries(self, basic_report, mock_hid):
         """run() should fail after max retries."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.BUSY.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.BUSY.value)
         with patch("time.sleep"):
             result = basic_report.run()
         assert result is False
@@ -686,18 +660,14 @@ class TestRunRetryLogic:
 
     def test_run_no_retry_on_fail(self, basic_report, mock_hid):
         """run() should not retry on FAIL status."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.FAIL.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.FAIL.value)
         result = basic_report.run()
         assert result is False
         assert mock_hid.get_feature_report.call_count == 1
 
     def test_run_no_retry_on_unsupported(self, basic_report, mock_hid):
         """run() should not retry on UNSUPPORTED status."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.UNSUPPORTED.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.UNSUPPORTED.value)
         result = basic_report.run()
         assert result is False
         assert mock_hid.get_feature_report.call_count == 1
@@ -724,14 +694,10 @@ class TestRunRemainingPackets:
         mock_hid.send_feature_report.assert_called_once()
         mock_hid.get_feature_report.assert_not_called()
 
-    def test_run_reads_response_when_no_remaining_packets(
-        self, basic_report, mock_hid
-    ):
+    def test_run_reads_response_when_no_remaining_packets(self, basic_report, mock_hid):
         """run() should read response when remaining_packets == 0."""
         basic_report.remaining_packets = 0
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         basic_report.run()
         mock_hid.get_feature_report.assert_called()
 
@@ -763,9 +729,7 @@ class TestResultProperty:
 
     def test_result_returns_bytes(self, basic_report, mock_hid):
         """result property should return bytes."""
-        response = build_response(
-            status=Status.OK.value, data_size=4, data=bytes([1, 2, 3, 4])
-        )
+        response = build_response(status=Status.OK.value, data_size=4, data=bytes([1, 2, 3, 4]))
         mock_hid.get_feature_report.return_value = response
         basic_report.run()
         assert isinstance(basic_report.result, bytes)
@@ -816,9 +780,7 @@ class TestReportIntegration:
 
     def test_multiple_reports_same_driver(self, mock_driver, mock_hid):
         """Multiple reports can use the same driver."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
 
         report1 = RazerReport(mock_driver, 0x03, 0x01, 1)
         report2 = RazerReport(mock_driver, 0x03, 0x02, 2)
@@ -828,9 +790,7 @@ class TestReportIntegration:
 
     def test_report_reuse_after_clear(self, basic_report, mock_hid):
         """Report can be reused after clear()."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
 
         # First use
         basic_report.args.put(0x01)
@@ -876,9 +836,7 @@ class TestEdgeCases:
 
     def test_all_transaction_ids(self, mock_driver, mock_hid):
         """Various transaction IDs should work."""
-        mock_hid.get_feature_report.return_value = build_response(
-            status=Status.OK.value
-        )
+        mock_hid.get_feature_report.return_value = build_response(status=Status.OK.value)
         for tid in [0x00, 0x1F, 0x3F, 0xFF]:
             report = RazerReport(mock_driver, 0x03, 0x01, 1, transaction_id=tid)
             result = report.run()

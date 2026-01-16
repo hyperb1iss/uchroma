@@ -158,7 +158,7 @@ class TestToColor:
     def test_hex_without_hash_not_supported(self):
         """Hex strings without # prefix are not supported by coloraide."""
         # coloraide requires the # prefix for hex colors
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             to_color("ff0000")
 
     @pytest.mark.parametrize(
@@ -649,7 +649,7 @@ class TestColorSchemes:
         """AnalogousScheme respects custom angle."""
         c1, c2 = red_color.AnalogousScheme(angle=45)
         h1, _, _ = c1.hsl
-        h2, _, _ = c2.hsl
+        _h2, _, _ = c2.hsl
         # Red is at 0, so we expect ~315 and ~45
         assert h1 == pytest.approx(315, abs=2) or h1 == pytest.approx(45, abs=2)
 
@@ -742,7 +742,7 @@ class TestColorProperties:
     def test_hsla_property(self):
         """hsla property returns HSLA tuple."""
         color = Color.NewFromRgb(1.0, 0.0, 0.0, 0.5)
-        h, s, l, a = color.hsla
+        h, _s, _l, a = color.hsla
         assert h == pytest.approx(0, abs=1)
         assert a == pytest.approx(0.5, abs=0.01)
 

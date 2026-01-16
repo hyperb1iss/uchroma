@@ -195,7 +195,9 @@ class TestLerpDegrees:
             for end in [0, 90, 180, 270, 350]:
                 for amount in [0.0, 0.25, 0.5, 0.75, 1.0]:
                     result = lerp_degrees(start, end, amount)
-                    assert 0.0 <= result < 360.0, f"lerp_degrees({start}, {end}, {amount}) = {result}"
+                    assert 0.0 <= result < 360.0, (
+                        f"lerp_degrees({start}, {end}, {amount}) = {result}"
+                    )
 
 
 # =============================================================================

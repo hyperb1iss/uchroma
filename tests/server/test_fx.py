@@ -392,6 +392,7 @@ class TestFXManager:
 
     def test_activate_sets_traits_from_kwargs(self, mock_driver, mock_hardware, mock_preferences):
         """activate should set traits on the effect from kwargs."""
+
         # Create an FXModule with an effect that has configurable traits
         class TraitFXModule(FXModule):
             class ConfigurableFX(BaseFX):
@@ -412,8 +413,11 @@ class TestFXManager:
         assert fx.color == "blue"
         assert fx.speed == "fast"
 
-    def test_activate_ignores_nonexistent_traits(self, mock_driver, mock_hardware, mock_preferences):
+    def test_activate_ignores_nonexistent_traits(
+        self, mock_driver, mock_hardware, mock_preferences
+    ):
         """activate should ignore kwargs that aren't valid traits."""
+
         class SimpleFXModule(FXModule):
             class SimpleFX(BaseFX):
                 description = Unicode("Simple effect", read_only=True)
@@ -442,6 +446,7 @@ class TestFXManager:
 
     def test_activate_saves_args_to_preferences(self, mock_driver, mock_hardware, mock_preferences):
         """activate should save fx_args to preferences."""
+
         class ArgFXModule(FXModule):
             class TestFX(BaseFX):
                 description = Unicode("Test effect", read_only=True)
@@ -467,6 +472,7 @@ class TestFXManager:
 
     def test_activate_custom_frame_skips_prefs(self, mock_driver, mock_hardware, mock_preferences):
         """activate with custom_frame should not save to preferences."""
+
         class CustomFXModule(FXModule):
             class CustomFrameFX(BaseFX):
                 description = Unicode("Custom frame", read_only=True)
@@ -525,8 +531,11 @@ class TestFXManager:
 
         assert fxmanager.current_fx[0] == "wave"
 
-    def test_restore_prefs_restores_effect_with_args(self, mock_driver, mock_hardware, mock_preferences):
+    def test_restore_prefs_restores_effect_with_args(
+        self, mock_driver, mock_hardware, mock_preferences
+    ):
         """_restore_prefs should restore effect with saved args."""
+
         class ArgFXModule(FXModule):
             class ConfigFX(BaseFX):
                 description = Unicode("Config effect", read_only=True)
@@ -568,6 +577,7 @@ class TestFXManager:
 
     def test_activate_skips_traits_for_custom_frame(self, mock_driver, mock_hardware):
         """activate should skip setting traits for custom_frame effect."""
+
         class CustomFXModule(FXModule):
             class CustomFrameFX(BaseFX):
                 description = Unicode("Custom frame", read_only=True)
@@ -602,6 +612,7 @@ class TestFXManager:
 
     def test_activate_failing_effect_returns_true(self, mock_driver, mock_hardware):
         """activate should return True even when apply() fails."""
+
         # Note: Looking at the code, _activate returns True regardless
         # but the current_fx is only updated if apply() succeeds
         class FailingFXModule(FXModule):
@@ -634,6 +645,7 @@ class TestEdgeCases:
 
     def test_fxmodule_with_no_inner_classes(self, mock_driver):
         """FXModule with no inner BaseFX classes should have empty available_fx."""
+
         class EmptyFXModule(FXModule):
             pass
 
@@ -644,6 +656,7 @@ class TestEdgeCases:
 
     def test_fxmodule_inner_class_not_subclassing_basefx(self, mock_driver):
         """FXModule should only discover classes that subclass BaseFX."""
+
         class MixedFXModule(FXModule):
             class NotAnFX:
                 pass

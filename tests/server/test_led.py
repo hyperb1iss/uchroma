@@ -403,6 +403,7 @@ class TestLEDRefresh:
 
     def test_refresh_sets_state_from_response(self, mock_led_driver):
         """_refresh should set state from device response."""
+
         # Return state=1 (True)
         def side_effect(cmd, *args):
             if cmd == LED.Command.GET_LED_STATE:
@@ -859,9 +860,8 @@ class TestLEDManagerRestorePrefs:
         manager = LEDManager(mock_led_driver)
         prefs = MagicMock()
         prefs.leds = {"backlight": {"brightness": 50.0}, "logo": {"brightness": 75.0}}
-        with patch.object(LED, "_refresh"):
-            with patch.object(LED, "set_values") as mock_set_values:
-                manager._restore_prefs(prefs)
+        with patch.object(LED, "_refresh"), patch.object(LED, "set_values"):
+            manager._restore_prefs(prefs)
         # Only LOGO should have set_values called, not BACKLIGHT
         # Check the calls don't include backlight brightness setting
 

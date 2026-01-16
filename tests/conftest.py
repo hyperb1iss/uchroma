@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from uchroma.color import Color
+
 if TYPE_CHECKING:
     from collections.abc import Generator
 
@@ -33,40 +35,30 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 @pytest.fixture
 def red_color():
     """Pure red color."""
-    from uchroma.color import Color
-
     return Color.NewFromRgb(1.0, 0.0, 0.0)
 
 
 @pytest.fixture
 def green_color():
     """Pure green color."""
-    from uchroma.color import Color
-
     return Color.NewFromRgb(0.0, 1.0, 0.0)
 
 
 @pytest.fixture
 def blue_color():
     """Pure blue color."""
-    from uchroma.color import Color
-
     return Color.NewFromRgb(0.0, 0.0, 1.0)
 
 
 @pytest.fixture
 def white_color():
     """Pure white color."""
-    from uchroma.color import Color
-
     return Color.NewFromRgb(1.0, 1.0, 1.0)
 
 
 @pytest.fixture
 def black_color():
     """Pure black color."""
-    from uchroma.color import Color
-
     return Color.NewFromRgb(0.0, 0.0, 0.0)
 
 

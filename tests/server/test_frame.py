@@ -18,8 +18,10 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from uchroma.color import to_color
 from uchroma.layer import Layer
 from uchroma.server.frame import Frame
+from uchroma.server.types import BaseCommand
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -122,8 +124,6 @@ class TestFrameCommand:
 
     def test_command_is_base_command(self):
         """Frame.Command inherits from BaseCommand."""
-        from uchroma.server.types import BaseCommand
-
         assert issubclass(Frame.Command, BaseCommand)
 
 
@@ -367,8 +367,6 @@ class TestFrameComposeBackgroundColor:
 
     def test_compose_base_layer_background_color_honored(self):
         """Background color is honored on the base layer."""
-        from uchroma.color import to_color
-
         base = Layer(4, 4)
         base._matrix[:, :] = [0.0, 0.0, 0.0, 0.0]  # Transparent
         base.background_color = to_color("white")
@@ -380,8 +378,6 @@ class TestFrameComposeBackgroundColor:
 
     def test_compose_overlay_background_color_ignored(self):
         """Background color on overlay layers is ignored."""
-        from uchroma.color import to_color
-
         base = Layer(4, 4)
         base._matrix[:, :] = [0.0, 0.0, 0.0, 0.0]  # Transparent
 

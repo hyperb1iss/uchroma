@@ -72,9 +72,7 @@ class TestLayerInitialization:
 
     def test_matrix_initialized_to_zeros(self, small_layer):
         """Matrix is initialized to all zeros."""
-        np.testing.assert_array_equal(
-            small_layer.matrix, np.zeros((10, 10, 4), dtype=np.float64)
-        )
+        np.testing.assert_array_equal(small_layer.matrix, np.zeros((10, 10, 4), dtype=np.float64))
 
     @pytest.mark.parametrize(
         "width,height,expected_shape",
@@ -264,9 +262,7 @@ class TestLayerClear:
 
         small_layer.clear()
 
-        np.testing.assert_array_equal(
-            small_layer.matrix, np.zeros((10, 10, 4), dtype=np.float64)
-        )
+        np.testing.assert_array_equal(small_layer.matrix, np.zeros((10, 10, 4), dtype=np.float64))
 
     def test_clear_returns_self(self, small_layer):
         """clear() returns the layer instance for chaining."""
@@ -396,9 +392,7 @@ class TestLayerPut:
         """put() accepts RGB tuple."""
         small_layer.put(2, 3, (255, 128, 64))
         result = small_layer.matrix[2, 3]
-        np.testing.assert_array_almost_equal(
-            result[:3], [1.0, 128 / 255, 64 / 255], decimal=2
-        )
+        np.testing.assert_array_almost_equal(result[:3], [1.0, 128 / 255, 64 / 255], decimal=2)
 
     def test_put_multiple_colors(self, small_layer, red_color, green_color, blue_color):
         """put() can set multiple consecutive pixels."""
@@ -499,7 +493,9 @@ class TestLayerCircle:
 
     def test_circle_chaining_unfilled(self, small_layer, red_color, blue_color):
         """circle() can be chained (unfilled circles)."""
-        result = small_layer.circle(3, 3, 1, red_color, fill=False).circle(7, 7, 1, blue_color, fill=False)
+        result = small_layer.circle(3, 3, 1, red_color, fill=False).circle(
+            7, 7, 1, blue_color, fill=False
+        )
         assert result is small_layer
 
     def test_filled_circle_alpha_with_mock(self, small_layer, red_color):
