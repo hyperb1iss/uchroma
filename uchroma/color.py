@@ -26,11 +26,10 @@ ColorList = list[ColorType]
 
 class ColorScheme(Enum):
     """
-    Predefined color schemes
-
-    TODO: Implement support for fetching from ColourLovers
+    Predefined color schemes for animations and effects.
     """
 
+    # ── Original schemes ──────────────────────────────────────────────────────
     Emma = ("#320d6d", "#ffbfb7", "#ffd447", "#700353", "#4c1c00")
     Best = ("#247ba0", "#70c1b3", "#b2dbbf", "#f3ffbd", "#ff1654")
     Variety = ("#db5461", "#ffd9ce", "#593c8f", "#8ef9f3", "#171738")
@@ -40,6 +39,52 @@ class ColorScheme(Enum):
     Bright = ("#ffbe0b", "#fb5607", "#ff006e", "#8338ec", "#3a86ff")
     Qap = ("#004777", "#a30000", "#ff7700", "#efd28d", "#00afb5")
     Rainbow = ("red", "yellow", "lime", "aqua", "blue", "magenta")
+
+    # ── Dark purple / synthwave ───────────────────────────────────────────────
+    Nightshade = ("#0d0221", "#261447", "#6b2d5c", "#b33f62", "#f9564f")
+    Ultraviolet = ("#1a0a2e", "#3d1e6d", "#8b2fc9", "#c86bfa", "#e9b8ff")
+    DeepAmethyst = ("#120024", "#2d0a4e", "#5c1a8c", "#9b4dca", "#d4a5ff")
+    Obsidian = ("#0a0014", "#1c0033", "#3d0066", "#7a00cc", "#b84dff")
+    Twilight = ("#1a1423", "#2d2040", "#4a3766", "#7b5ea7", "#b794f6")
+    Cosmos = ("#0f0c29", "#302b63", "#24243e", "#8b5cf6", "#c4b5fd")
+    Vaporwave = ("#1a0533", "#4a0e78", "#ff00ff", "#00ffff", "#ffb6c1")
+    Witching = ("#13002d", "#2e0854", "#5a108f", "#9b30ff", "#e066ff")
+
+    # ── Cyberpunk / neon ──────────────────────────────────────────────────────
+    Neon = ("#ff00ff", "#00ffff", "#ff0080", "#80ff00", "#ffff00")
+    Cyberpunk = ("#0d0d0d", "#ff003c", "#00f0ff", "#f0f", "#ffe600")
+    Hotline = ("#1a1a2e", "#e94560", "#0f3460", "#16213e", "#ff6b6b")
+    Outrun = ("#2b1055", "#7f00ff", "#ff00ff", "#ff7300", "#ffec00")
+    Glitch = ("#0d0208", "#ff2a6d", "#05d9e8", "#d1f7ff", "#01012b")
+
+    # ── Nature / organic ──────────────────────────────────────────────────────
+    Forest = ("#1b4332", "#2d6a4f", "#40916c", "#52b788", "#95d5b2")
+    Ocean = ("#03045e", "#0077b6", "#00b4d8", "#48cae4", "#90e0ef")
+    Sunset = ("#ff6b35", "#ff8c42", "#ffd166", "#f4845f", "#f25c54")
+    Aurora = ("#004643", "#008f8c", "#00d4aa", "#c1fba4", "#fffcdc")
+    Sakura = ("#ffb7c5", "#ff8fa3", "#ff5c8a", "#c9184a", "#590d22")
+    Moss = ("#132a13", "#31572c", "#4f772d", "#90a955", "#ecf39e")
+
+    # ── Cool / icy ────────────────────────────────────────────────────────────
+    Arctic = ("#caf0f8", "#90e0ef", "#00b4d8", "#0077b6", "#03045e")
+    Glacier = ("#e0fbfc", "#c2dfe3", "#9db4c0", "#5c6b73", "#253237")
+    Frost = ("#a2d2ff", "#bde0fe", "#cdb4db", "#ffc8dd", "#ffafcc")
+
+    # ── Warm / fire ───────────────────────────────────────────────────────────
+    Ember = ("#310000", "#6b0000", "#a30000", "#d62828", "#f77f00")
+    Lava = ("#1a0000", "#660000", "#cc3300", "#ff6600", "#ffcc00")
+    Inferno = ("#03071e", "#370617", "#6a040f", "#d00000", "#ffba08")
+
+    # ── Pastel / soft ─────────────────────────────────────────────────────────
+    Candy = ("#fae0e4", "#f7cad0", "#e8b4bc", "#d698a8", "#c28294")
+    Dreamy = ("#cdb4db", "#ffc8dd", "#ffafcc", "#bde0fe", "#a2d2ff")
+    Bubblegum = ("#ff99c8", "#fcf6bd", "#d0f4de", "#a9def9", "#e4c1f9")
+    Lavender = ("#e0b1cb", "#be95c4", "#9f86c0", "#5e548e", "#231942")
+
+    # ── Monochrome gradients ──────────────────────────────────────────────────
+    Grayscale = ("#1a1a1a", "#404040", "#737373", "#a6a6a6", "#d9d9d9")
+    Purple = ("#1a0033", "#330066", "#660099", "#9933cc", "#cc66ff")
+    Emerald = ("#002211", "#004422", "#006633", "#008844", "#22aa66")
 
     def gradient(self, length: int = 360) -> list:
         """

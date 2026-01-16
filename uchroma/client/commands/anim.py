@@ -462,35 +462,67 @@ class AnimCommand(Command):
         self._get_renderers(args)
 
         self.print()
-        self.print(self.out.header("Active Layers"))
+        self.print(self.out.header(f" ◈ Active Layers ({len(current)})"))
         self.print()
-
-        verbose = getattr(args, "verbose", False)
 
         for renderer_type, path in current:
             # Extract zindex from path
             zindex = int(path.split("/")[-1])
 
-            # Get display name
+            # Get display name and info
             info = self._renderer_cache.get(renderer_type) if self._renderer_cache else None
             display_name = info.display_name if info else renderer_type.split(".")[-1]
+            description = info.description if info else ""
 
-            self.print(f"  {self.out.value(str(zindex))}  {self.out.device(display_name)}")
+            # Get layer properties
+            props = {}
+            try:
+                layer_info = service.get_layer_info(device, zindex)
+                if layer_info:
+                    props = {
+                        k: (v.value if hasattr(v, "value") else v)
+                        for k, v in layer_info.items()
+                        if not k.startswith("_") and k not in ("Key", "ZIndex")
+                    }
+            except Exception:
+                pass
 
-            # Show properties if verbose
-            if verbose:
-                try:
-                    props = service.get_layer_info(device, zindex)
-                    if props:
-                        for k, v in sorted(props.items()):
-                            if k.startswith("_") or k in ("Key", "ZIndex"):
-                                continue
-                            val = v.value if hasattr(v, "value") else v
-                            self.print(f"       {self.out.kv(k, str(val))}")
-                except Exception:
-                    pass
+            # Layer header with zindex badge
+            zindex_badge = self.out.number(f"[{zindex}]")
+            name_styled = self.out.device(display_name)
+            self.print(f"  {zindex_badge} {name_styled}")
 
-        self.print()
+            # Description if available
+            if description:
+                self.print(f"      {self.out.muted(description)}")
+
+            # Show key properties in a compact, colorful format
+            if props:
+                prop_parts = []
+                for k, v in sorted(props.items()):
+                    # Format value based on type
+                    if isinstance(v, bool):
+                        val_str = self.out.success("on") if v else self.out.muted("off")
+                    elif isinstance(v, (int, float)):
+                        val_str = self.out.number(v)
+                    elif isinstance(v, str) and v.startswith("#"):
+                        # Color value - show swatch
+                        val_str = self.out.color_value(v)
+                    elif isinstance(v, list) and v and isinstance(v[0], str):
+                        # List of colors - show swatch
+                        val_str = self.out.color_swatch(v)
+                    else:
+                        val_str = self.out.value(str(v))
+
+                    prop_parts.append(f"{self.out.key(k)}: {val_str}")
+
+                # Print properties in rows of 3
+                for i in range(0, len(prop_parts), 3):
+                    chunk = prop_parts[i : i + 3]
+                    self.print(f"      {self.out.muted('│')} {self.out.muted(' · ').join(chunk)}")
+
+            self.print()
+
         return 0
 
     def _add(self, args: Namespace) -> int:

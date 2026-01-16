@@ -1289,6 +1289,10 @@ class UChromaWindow(Adw.ApplicationWindow):
 
     def _on_param_changed(self, inspector, name, value):
         """Handle parameter value change."""
+        print(f"[DEBUG] _on_param_changed: name={name}, value={value}, mode={self._mode}")
+        print(
+            f"[DEBUG]   selected_layer={self._layer_panel.selected_layer if hasattr(self._layer_panel, 'selected_layer') else 'N/A'}"
+        )
         if self._mode == self.MODE_HARDWARE and self._selected_effect:
             self._effect_params[name] = value
             self._apply_preview_effect(self._selected_effect, self._effect_params)

@@ -92,7 +92,7 @@ headerbar.flat {
 
 .brightness-label {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 13px;
     color: @text_secondary;
 }
 
@@ -185,7 +185,7 @@ headerbar.flat {
 }
 
 .status-label {
-    font-size: 12px;
+    font-size: 13px;
     color: @text_secondary;
 }
 
@@ -273,7 +273,7 @@ headerbar.flat {
 }
 
 .effect-name {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: @text_secondary;
 }
@@ -358,7 +358,7 @@ headerbar.flat {
 }
 
 .panel-title {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.5px;
     color: @text_dim;
@@ -396,23 +396,23 @@ headerbar.flat {
 
 .layer-zindex {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     color: @text_dim;
     background-color: @surface_light;
-    padding: 2px 6px;
+    padding: 2px 8px;
     border-radius: 4px;
-    min-width: 20px;
+    min-width: 24px;
 }
 
 .layer-name {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 14px;
     color: @text_primary;
 }
 
 .layer-blend {
-    font-size: 11px;
+    font-size: 13px;
 }
 
 .layer-opacity trough {
@@ -489,10 +489,9 @@ headerbar.flat {
 }
 
 .param-label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
-    letter-spacing: 0.3px;
-    color: @text_dim;
+    color: @text_secondary;
     margin-bottom: 4px;
 }
 
@@ -529,18 +528,89 @@ headerbar.flat {
 
 .param-value {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 13px;
     color: @text_secondary;
 }
 
 .param-dropdown {
-    font-size: 12px;
+    font-size: 13px;
     background-color: @surface_light;
     border-radius: 6px;
 }
 
 .param-switch {
     /* Default switch styling is fine */
+}
+
+.param-color-list-outer {
+    min-width: 180px;
+}
+
+.param-preset-row {
+    margin-bottom: 4px;
+}
+
+.param-preset-label {
+    font-size: 12px;
+    color: @text_secondary;
+    margin-right: 8px;
+}
+
+.param-preset-btn {
+    font-size: 13px;
+    background-color: @surface_light;
+    border-radius: 6px;
+    padding: 6px 12px;
+    min-width: 140px;
+}
+
+.param-preset-btn:hover {
+    background-color: @surface_hover;
+}
+
+.param-preset-popover {
+    background-color: @surface_dark;
+    min-width: 260px;
+}
+
+.preset-list {
+    background-color: transparent;
+}
+
+.preset-row {
+    background-color: transparent;
+}
+
+.preset-item-btn {
+    border-radius: 6px;
+}
+
+.preset-item-btn:hover {
+    background-color: @surface_light;
+}
+
+.preset-gradient {
+    border-radius: 4px;
+    min-width: 80px;
+    min-height: 20px;
+}
+
+.preset-name {
+    font-size: 13px;
+    color: @text_primary;
+}
+
+.param-toggle {
+    font-size: 12px;
+    padding: 6px 12px;
+    background-color: @surface_light;
+    border-radius: 4px;
+    color: @text_secondary;
+}
+
+.param-toggle:checked {
+    background-color: alpha(@silk_cyan, 0.2);
+    color: @silk_cyan;
 }
 
 
@@ -560,45 +630,45 @@ headerbar.flat {
 }
 
 .system-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
-    color: @text_dim;
+    font-size: 14px;
+    font-weight: 500;
+    color: @text_secondary;
 }
 
 .system-subtitle {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
     color: @text_dim;
 }
 
 .system-dropdown {
-    font-size: 12px;
+    font-size: 14px;
     background-color: @surface_light;
     border-radius: 6px;
+    padding: 4px 8px;
 }
 
 .system-slider trough {
-    min-height: 6px;
+    min-height: 8px;
     background-color: @surface_light;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 .system-slider highlight {
     background: linear-gradient(to right, @silk_cyan, @silk_green);
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 .system-slider slider {
-    min-width: 14px;
-    min-height: 14px;
+    min-width: 18px;
+    min-height: 18px;
     background-color: @text_primary;
     border-radius: 50%;
 }
 
 .system-value {
     font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
+    font-size: 13px;
     color: @text_secondary;
 }
 
@@ -615,7 +685,7 @@ headerbar.flat {
 }
 
 .caption {
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .cyan {
@@ -660,6 +730,68 @@ scrollbar.horizontal slider {
 
 scrollbar.vertical slider {
     min-width: 6px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDERER DIALOG
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.renderer-dialog {
+    background-color: @bg_dark;
+}
+
+.renderer-list {
+    background-color: transparent;
+}
+
+.renderer-row {
+    background-color: transparent;
+    border-radius: 12px;
+    margin-bottom: 6px;
+}
+
+.renderer-btn {
+    border-radius: 12px;
+    transition: all 150ms ease;
+}
+
+.renderer-btn:hover {
+    background-color: @surface_light;
+}
+
+.renderer-gradient {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.renderer-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: @text_primary;
+}
+
+.renderer-desc {
+    font-size: 11px;
+    color: @text_secondary;
+    margin-top: 2px;
+}
+
+.renderer-author {
+    font-size: 10px;
+    color: @text_dim;
+    font-style: italic;
+    margin-top: 2px;
+}
+
+.renderer-arrow {
+    color: @text_dim;
+    opacity: 0.5;
+}
+
+.renderer-btn:hover .renderer-arrow {
+    opacity: 1;
+    color: @silk_purple;
 }
 
 

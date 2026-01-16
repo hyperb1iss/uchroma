@@ -15,7 +15,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, GObject, Gtk  # noqa: E402
+import cairo  # noqa: E402
+from gi.repository import Adw, Gdk, GObject, Gtk  # noqa: E402
 
 from ..widgets.layer_row import LayerRow  # noqa: E402
 
@@ -147,26 +148,176 @@ class LayerPanel(Gtk.Box):
             dialog.present()
             return
 
-        dialog = Adw.MessageDialog.new(
-            self.get_root(),  # type: ignore[arg-type]
-            "Add Animation Layer",
-            "Choose a renderer to add:",
-        )
+        # Create custom dialog with rich renderer list
+        dialog = Adw.Window()
+        dialog.set_title("Add Animation Layer")
+        dialog.set_modal(True)
+        dialog.set_transient_for(self.get_root())  # type: ignore[arg-type]
+        dialog.set_default_size(380, 500)
+        dialog.add_css_class("renderer-dialog")
 
-        for renderer in self._renderers:
-            dialog.add_response(renderer["id"], renderer["name"])
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
-        dialog.add_response("cancel", "Cancel")
-        dialog.set_default_response("cancel")
-        dialog.set_close_response("cancel")
-        dialog.connect("response", self._on_renderer_dialog_response)
+        # Header
+        header = Adw.HeaderBar()
+        header.set_show_end_title_buttons(False)
+        header.set_show_start_title_buttons(False)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda b: dialog.close())
+        header.pack_start(cancel_btn)
+
+        title = Gtk.Label(label="Add Animation Layer")
+        title.add_css_class("title")
+        header.set_title_widget(title)
+
+        main_box.append(header)
+
+        # Scrolled list
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        scroll.set_margin_start(12)
+        scroll.set_margin_end(12)
+        scroll.set_margin_top(8)
+        scroll.set_margin_bottom(12)
+
+        listbox = Gtk.ListBox()
+        listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        listbox.add_css_class("renderer-list")
+        listbox.add_css_class("boxed-list")
+
+        # Sort renderers alphabetically by name
+        sorted_renderers = sorted(self._renderers, key=lambda r: r.get("name", "").lower())
+
+        for renderer in sorted_renderers:
+            row = self._create_renderer_row(renderer, dialog)
+            listbox.append(row)
+
+        scroll.set_child(listbox)
+        main_box.append(scroll)
+
+        dialog.set_content(main_box)
         dialog.present()
 
-    def _on_renderer_dialog_response(self, dialog, response):
-        """Handle renderer selection from dialog."""
-        if response == "cancel":
-            return
-        self.emit("layer-added", response)
+    def _create_renderer_row(self, renderer: dict, dialog) -> Gtk.Widget:
+        """Create a rich renderer row with name, description, and preview."""
+        row = Gtk.ListBoxRow()
+        row.add_css_class("renderer-row")
+
+        btn = Gtk.Button()
+        btn.add_css_class("flat")
+        btn.add_css_class("renderer-btn")
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.set_margin_start(8)
+        box.set_margin_end(8)
+        box.set_margin_top(10)
+        box.set_margin_bottom(10)
+
+        # Color gradient preview (from default colorscheme if available)
+        gradient = Gtk.DrawingArea()
+        gradient.set_size_request(48, 48)
+        gradient.add_css_class("renderer-gradient")
+
+        # Get colors from renderer's default colorscheme trait
+        colors = []
+        traits = renderer.get("traits", {})
+        for trait_def in traits.values():
+            cls_name = ""
+            cls_info = trait_def.get("__class__", "")
+            if isinstance(cls_info, (list, tuple)) and len(cls_info) == 2:
+                cls_name = str(cls_info[1])
+            if "ColorSchemeTrait" in cls_name:
+                default_colors = trait_def.get("default_value", [])
+                if isinstance(default_colors, (list, tuple)):
+                    colors = list(default_colors)
+                break
+
+        # Parse colors
+        rgba_colors = []
+        for color_str in colors[:6]:
+            rgba = Gdk.RGBA()
+            if rgba.parse(str(color_str)):
+                rgba_colors.append(rgba)
+
+        def draw_gradient(area, cr, width, height, cols=rgba_colors):
+            radius = 8
+            cr.new_sub_path()
+            cr.arc(width - radius, radius, radius, -1.5708, 0)
+            cr.arc(width - radius, height - radius, radius, 0, 1.5708)
+            cr.arc(radius, height - radius, radius, 1.5708, 3.1416)
+            cr.arc(radius, radius, radius, 3.1416, 4.7124)
+            cr.close_path()
+
+            if cols:
+                pat = cairo.LinearGradient(0, 0, width, height)
+                for i, c in enumerate(cols):
+                    stop = i / max(len(cols) - 1, 1)
+                    pat.add_color_stop_rgb(stop, c.red, c.green, c.blue)
+                cr.set_source(pat)
+            else:
+                # Fallback gradient
+                pat = cairo.LinearGradient(0, 0, width, height)
+                pat.add_color_stop_rgb(0, 0.3, 0.2, 0.5)
+                pat.add_color_stop_rgb(1, 0.5, 0.3, 0.7)
+                cr.set_source(pat)
+
+            cr.fill()
+
+        gradient.set_draw_func(draw_gradient)
+        box.append(gradient)
+
+        # Text content
+        text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        text_box.set_hexpand(True)
+        text_box.set_valign(Gtk.Align.CENTER)
+
+        name_label = Gtk.Label(label=renderer.get("name", "Unknown"))
+        name_label.add_css_class("renderer-name")
+        name_label.set_xalign(0)
+        text_box.append(name_label)
+
+        # Description
+        desc = renderer.get("description", "")
+        if desc:
+            desc_label = Gtk.Label(label=desc)
+            desc_label.add_css_class("renderer-desc")
+            desc_label.set_xalign(0)
+            desc_label.set_wrap(True)
+            desc_label.set_max_width_chars(35)
+            text_box.append(desc_label)
+
+        # Author if available
+        author = renderer.get("author", "")
+        if author:
+            author_label = Gtk.Label(label=f"by {author}")
+            author_label.add_css_class("renderer-author")
+            author_label.set_xalign(0)
+            text_box.append(author_label)
+
+        box.append(text_box)
+
+        # Arrow
+        arrow = Gtk.Image.new_from_icon_name("go-next-symbolic")
+        arrow.add_css_class("renderer-arrow")
+        box.append(arrow)
+
+        btn.set_child(box)
+
+        renderer_id = renderer.get("id", "")
+        btn.connect(
+            "clicked", lambda b, rid=renderer_id, d=dialog: self._on_renderer_selected(rid, d)
+        )
+
+        row.set_child(btn)
+        return row
+
+    def _on_renderer_selected(self, renderer_id: str, dialog):
+        """Handle renderer selection from custom dialog."""
+        dialog.close()
+        self.emit("layer-added", renderer_id)
 
     def _on_row_selected(self, listbox, row):
         """Handle layer row selection."""

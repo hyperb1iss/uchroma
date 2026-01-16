@@ -456,15 +456,19 @@ class AnimationManagerInterface(ServiceInterface):
     @method()
     def SetLayerTraits(self, zindex: "i", traits: "a{sv}") -> "b":
         """Set renderer traits for a layer by zindex."""
+        self._logger.debug("SetLayerTraits: zindex=%d traits=%s", zindex, traits)
         for info in self._layers:
             if info["zindex"] == zindex:
                 layer = info["layer"]
                 for k, v in traits.items():
                     if not hasattr(layer, "has_trait") or not layer.has_trait(k):
+                        self._logger.debug("SetLayerTraits: skipping %s (no trait)", k)
                         continue
                     val = v.value if isinstance(v, Variant) else v
+                    self._logger.debug("SetLayerTraits: setting %s=%s on %s", k, val, layer)
                     setattr(layer, k, val)
                 return True
+        self._logger.debug("SetLayerTraits: no layer found with zindex=%d", zindex)
         return False
 
     @method()

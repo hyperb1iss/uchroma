@@ -228,6 +228,28 @@ Razer devices use USB HID feature reports:
 
 Transaction IDs vary by device (quirks system handles this).
 
+## Logging
+
+Use the `Log` class from `uchroma.log` — never use print statements for debugging.
+
+```python
+from uchroma.log import Log
+
+_logger = Log.get("uchroma.mymodule")
+
+_logger.debug("Debug message")
+_logger.info("Info message")
+_logger.warning("Warning message")
+_logger.error("Error message")
+```
+
+**Enable debug logging**: `UCHROMA_LOG_LEVEL=DEBUG`
+
+```bash
+UCHROMA_LOG_LEVEL=DEBUG make server
+UCHROMA_LOG_LEVEL=DEBUG uv run python -m uchroma.gtk
+```
+
 ## File Locations
 
 | Path | Purpose |

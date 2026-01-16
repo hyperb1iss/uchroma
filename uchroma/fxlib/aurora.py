@@ -98,8 +98,14 @@ class Aurora(Renderer):
             base_color_idx = int(hue_offset) % grad_len
 
             for row in range(height):
-                # Intensity falls off below curtain edge
-                intensity = smoothstep(curtain_row + 2, curtain_row - 1, row)
+                # Intensity falls off below curtain edge with extended range
+                # Use height-proportional fade so bottom rows still get light
+                fade_range = height * 0.8  # Fade spans most of the height
+                intensity = smoothstep(curtain_row + fade_range, curtain_row - 1, row)
+
+                # Ensure minimum brightness at bottom (aurora glow floor)
+                min_intensity = 0.15 * (1.0 - row / height)  # Subtle gradient floor
+                intensity = max(min_intensity, intensity)
 
                 # High-frequency shimmer
                 if shimmer > 0:

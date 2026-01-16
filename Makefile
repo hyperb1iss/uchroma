@@ -88,6 +88,10 @@ cli: ## Run the CLI client (use: make cli ARGS="device list")
 gtk: ## Run the GTK frontend
 	uv run python -m uchroma.gtk
 
+.PHONY: gtk-debug
+gtk-debug: ## Run GTK frontend in debug mode
+	uv run python -m uchroma.gtk -d -d -C
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Testing
 # ─────────────────────────────────────────────────────────────────────────────
