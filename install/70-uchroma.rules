@@ -1,2 +1,0 @@
-ACTION=="add|change", SUBSYSTEM=="hidraw|usb|input", ATTRS{idVendor}=="1532", IMPORT{builtin}="hwdb --subsystem=usb --lookup-prefix=uchroma:"
-ENV{UCHROMA_DEVICE}=="?*", TAG+="uchroma", TAG+="uaccess"

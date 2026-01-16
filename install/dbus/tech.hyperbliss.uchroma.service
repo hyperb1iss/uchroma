@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=tech.hyperbliss.uchroma
-Exec=%h/.local/bin/uchromad

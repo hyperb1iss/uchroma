@@ -1,12 +1,12 @@
 [Unit]
-Description=uchroma RGB Control Daemon
+Description=UChroma RGB Control Daemon
 Documentation=https://github.com/hyperbliss/uchroma
 After=graphical-session.target
 
 [Service]
 Type=dbus
-BusName=tech.hyperbliss.uchroma
-ExecStart=%h/.local/bin/uchromad
+BusName=org.chemlab.UChroma
+ExecStart=/usr/bin/uchromad
 Restart=on-failure
 RestartSec=5
 

@@ -125,19 +125,18 @@ info: ## Show package info
 
 .PHONY: install-udev
 install-udev: ## Install udev rules (requires sudo)
-	install -m 644 -v -D install/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
+	install -m 644 -v -D install/udev/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
 	@echo -e "\033[38;2;80;250;123m✓ udev rules installed. Run: sudo udevadm control --reload-rules\033[0m"
 
 .PHONY: install-service
 install-service: ## Install systemd user service
-	install -m 644 -v -D install/org.chemlab.UChroma.service $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
-	install -m 644 -v -D install/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
+	install -m 644 -v -D install/dbus/org.chemlab.UChroma.service $(DESTDIR)/usr/share/dbus-1/services/org.chemlab.UChroma.service
+	install -m 644 -v -D install/systemd/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 	@echo -e "\033[38;2;80;250;123m✓ systemd service installed. Run: systemctl --user daemon-reload\033[0m"
 
 .PHONY: uninstall-udev
 uninstall-udev: ## Uninstall udev rules
 	rm -v -f $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
-	rm -v -f $(DESTDIR)/etc/udev/hwdb.d/70-uchroma.hwdb
 
 .PHONY: uninstall-service
 uninstall-service: ## Uninstall systemd service
