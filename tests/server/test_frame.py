@@ -484,8 +484,11 @@ class TestFrameSetFrameDataMatrix:
         self, frame_6x22, mock_driver, mock_report
     ):
         """_set_frame_data_matrix uses tid=0x80 with CUSTOM_FRAME_80 quirk."""
+        from uchroma.server.hardware import Quirks
+
         mock_driver.get_report.return_value = mock_report
-        mock_driver.has_quirk.return_value = True  # Has quirk
+        # Only CUSTOM_FRAME_80 quirk, not EXTENDED_FX_CMDS (which is checked first)
+        mock_driver.has_quirk.side_effect = lambda q: q == Quirks.CUSTOM_FRAME_80
         layer = frame_6x22.create_layer()
 
         frame_6x22.commit([layer])

@@ -487,15 +487,22 @@ class TestUnpackResponse:
             Status.BUSY,
             Status.FAIL,
             Status.TIMEOUT,
-            Status.UNSUPPORTED,
             Status.BAD_CRC,
         ],
     )
     def test_unpack_response_logs_error_on_failure(self, basic_report, status):
-        """Unpacking non-OK status should log error."""
+        """Unpacking error status (not UNSUPPORTED) should log error."""
         response = build_response(status=status.value)
         basic_report._unpack_response(response)
         basic_report._logger.error.assert_called()
+
+    def test_unpack_response_logs_debug_on_unsupported(self, basic_report):
+        """Unpacking UNSUPPORTED status should log debug, not error."""
+        response = build_response(status=Status.UNSUPPORTED.value)
+        basic_report._unpack_response(response)
+        # UNSUPPORTED is expected behavior, logged at debug level
+        basic_report._logger.debug.assert_called()
+        basic_report._logger.error.assert_not_called()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

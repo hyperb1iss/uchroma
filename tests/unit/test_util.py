@@ -456,3 +456,322 @@ class TestToByte:
         """Test that very large values raise an error."""
         with pytest.raises(struct.error):
             to_byte(1000)
+
+
+# =============================================================================
+# max_keylen() tests
+# =============================================================================
+class TestMaxKeylen:
+    """Tests for the max_keylen function."""
+
+    def test_max_keylen_basic(self):
+        """Test max_keylen with basic dict."""
+        from uchroma.util import max_keylen
+
+        d = {"a": 1, "bb": 2, "ccc": 3}
+        assert max_keylen(d) == 3
+
+    def test_max_keylen_single_key(self):
+        """Test max_keylen with single key."""
+        from uchroma.util import max_keylen
+
+        d = {"hello": 1}
+        assert max_keylen(d) == 5
+
+    def test_max_keylen_equal_lengths(self):
+        """Test max_keylen when all keys same length."""
+        from uchroma.util import max_keylen
+
+        d = {"aa": 1, "bb": 2, "cc": 3}
+        assert max_keylen(d) == 2
+
+
+# =============================================================================
+# smart_delay() tests
+# =============================================================================
+class TestSmartDelay:
+    """Tests for the smart_delay function."""
+
+    def test_smart_delay_returns_timestamp(self):
+        """smart_delay returns a monotonic timestamp."""
+
+        from uchroma.util import smart_delay
+
+        result = smart_delay(0.0, None)
+        assert isinstance(result, float)
+        assert result > 0
+
+    def test_smart_delay_skips_when_remain_nonzero(self):
+        """smart_delay skips delay when remain > 0."""
+        import time
+
+        from uchroma.util import smart_delay
+
+        start = time.monotonic()
+        smart_delay(1.0, start - 0.5, remain=1)  # Would sleep if remain=0
+        elapsed = time.monotonic() - start
+        # Should not have slept
+        assert elapsed < 0.1
+
+    def test_smart_delay_sleeps_when_needed(self):
+        """smart_delay sleeps for remaining time."""
+        import time
+
+        from uchroma.util import smart_delay
+
+        delay = 0.02  # 20ms delay
+        last_cmd = time.monotonic()
+        time.sleep(0.005)  # Sleep 5ms
+        start = time.monotonic()
+        smart_delay(delay, last_cmd, remain=0)
+        elapsed = time.monotonic() - start
+        # Should have slept for ~15ms (20ms - 5ms elapsed)
+        assert elapsed >= 0.01
+
+    def test_smart_delay_no_sleep_when_enough_time_passed(self):
+        """smart_delay doesn't sleep if enough time already passed."""
+        import time
+
+        from uchroma.util import smart_delay
+
+        delay = 0.01  # 10ms
+        last_cmd = time.monotonic() - 0.1  # 100ms ago
+        start = time.monotonic()
+        smart_delay(delay, last_cmd, remain=0)
+        elapsed = time.monotonic() - start
+        # Should not have slept
+        assert elapsed < 0.005
+
+
+# =============================================================================
+# ArgsDict tests
+# =============================================================================
+class TestArgsDict:
+    """Tests for the ArgsDict class."""
+
+    def test_argsdict_removes_none_values(self):
+        """ArgsDict removes keys with None values."""
+        from uchroma.util import ArgsDict
+
+        d = ArgsDict({"a": 1, "b": None, "c": 3})
+        assert "a" in d
+        assert "b" not in d
+        assert "c" in d
+
+    def test_argsdict_keeps_non_none(self):
+        """ArgsDict keeps all non-None values."""
+        from uchroma.util import ArgsDict
+
+        d = ArgsDict({"a": 0, "b": "", "c": False})
+        assert "a" in d  # 0 is not None
+        assert "b" in d  # empty string is not None
+        assert "c" in d  # False is not None
+
+    def test_argsdict_empty(self):
+        """ArgsDict works with empty dict."""
+        from uchroma.util import ArgsDict
+
+        d = ArgsDict()
+        assert len(d) == 0
+
+
+# =============================================================================
+# Signal tests
+# =============================================================================
+class TestSignal:
+    """Tests for the Signal class."""
+
+    def test_signal_connect_and_fire(self):
+        """Signal connects handlers and fires them."""
+        from uchroma.util import Signal
+
+        results = []
+        signal = Signal()
+        signal.connect(lambda x: results.append(x))
+
+        signal.fire(42)
+        assert results == [42]
+
+    def test_signal_multiple_handlers(self):
+        """Signal fires all connected handlers."""
+        from uchroma.util import Signal
+
+        results = []
+        signal = Signal()
+        signal.connect(lambda x: results.append(f"a:{x}"))
+        signal.connect(lambda x: results.append(f"b:{x}"))
+
+        signal.fire("test")
+        assert "a:test" in results
+        assert "b:test" in results
+
+    def test_signal_fire_with_kwargs(self):
+        """Signal passes kwargs to handlers."""
+        from uchroma.util import Signal
+
+        results = []
+        signal = Signal()
+        signal.connect(lambda a, b=None: results.append((a, b)))
+
+        signal.fire(1, b=2)
+        assert results == [(1, 2)]
+
+
+# =============================================================================
+# Singleton tests
+# =============================================================================
+class TestSingleton:
+    """Tests for the Singleton metaclass."""
+
+    def test_singleton_returns_same_instance(self):
+        """Singleton metaclass returns same instance."""
+        from uchroma.util import Singleton
+
+        class MySingleton(metaclass=Singleton):
+            def __init__(self):
+                self.value = 42
+
+        a = MySingleton()
+        b = MySingleton()
+        assert a is b
+
+    def test_singleton_preserves_state(self):
+        """Singleton preserves state across calls."""
+        from uchroma.util import Singleton
+
+        class Counter(metaclass=Singleton):
+            def __init__(self):
+                self.count = 0
+
+        c1 = Counter()
+        c1.count = 10
+        c2 = Counter()
+        assert c2.count == 10
+
+
+# =============================================================================
+# Ticker tests
+# =============================================================================
+class TestTicker:
+    """Tests for the Ticker class."""
+
+    def test_ticker_interval_property(self):
+        """Ticker interval property works."""
+        from uchroma.util import Ticker
+
+        ticker = Ticker(0.1)
+        assert ticker.interval == 0.1
+
+    def test_ticker_interval_setter(self):
+        """Ticker interval can be changed."""
+        from uchroma.util import Ticker
+
+        ticker = Ticker(0.1)
+        ticker.interval = 0.2
+        assert ticker.interval == 0.2
+
+    def test_ticker_context_manager(self):
+        """Ticker works as sync context manager."""
+
+        from uchroma.util import Ticker
+
+        ticker = Ticker(0.01)
+        with ticker:
+            pass  # Do nothing
+        # Should have recorded next tick time
+        assert ticker._next_tick >= 0
+
+    def test_ticker_handles_overrun(self):
+        """Ticker handles interval overrun."""
+        import time
+
+        from uchroma.util import Ticker
+
+        ticker = Ticker(0.001)  # 1ms interval
+        with ticker:
+            time.sleep(0.01)  # Sleep 10ms (overrun)
+        # Should sync to next interval
+        assert ticker._next_tick >= 0
+
+    def test_ticker_async_context_manager(self):
+        """Ticker works as async context manager."""
+        import asyncio
+
+        from uchroma.util import Ticker
+
+        async def test_async():
+            ticker = Ticker(0.001)
+            async with ticker:
+                pass
+            return True
+
+        result = asyncio.run(test_async())
+        assert result is True
+
+
+# =============================================================================
+# autocast_decorator tests
+# =============================================================================
+class TestAutocastDecorator:
+    """Tests for the autocast_decorator function."""
+
+    def test_autocast_decorator_basic(self):
+        """autocast_decorator applies fix_arg_func to hinted args."""
+
+        from uchroma.util import autocast_decorator
+
+        MyType = str
+
+        def to_upper(val):
+            if val is not None:
+                return val.upper()
+            return val
+
+        decorator = autocast_decorator(MyType, to_upper)
+
+        @decorator
+        def test_func(name: MyType):
+            return name
+
+        result = test_func("hello")
+        assert result == "HELLO"
+
+    def test_autocast_decorator_kwargs(self):
+        """autocast_decorator handles kwargs."""
+
+        from uchroma.util import autocast_decorator
+
+        MyType = int
+
+        def double(val):
+            return val * 2
+
+        decorator = autocast_decorator(MyType, double)
+
+        @decorator
+        def test_func(value: MyType = 5):
+            return value
+
+        result = test_func(value=10)
+        assert result == 20
+
+    def test_autocast_decorator_no_hints_raises(self):
+        """autocast_decorator raises if no matching hints."""
+        from uchroma.util import AUTOCAST_CACHE, autocast_decorator
+
+        MyType = float
+
+        def identity(val):
+            return val
+
+        decorator = autocast_decorator(MyType, identity)
+
+        @decorator
+        def test_func(x: int):  # No MyType hints
+            return x
+
+        # Clear cache to ensure fresh check
+        AUTOCAST_CACHE.clear()
+
+        with pytest.raises(ValueError, match="No arguments with"):
+            test_func(5)

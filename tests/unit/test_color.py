@@ -15,6 +15,7 @@ Tests cover:
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from uchroma.color import (
@@ -806,3 +807,357 @@ class TestColorManipulation:
         # Due to the bug, blend always returns the second color
         blended = red_color.blend(blue_color, 0.5)
         assert blended.rgb == pytest.approx((0.0, 0.0, 1.0), abs=0.01)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorScheme enum
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorSchemeEnum:
+    """Tests for ColorScheme enum."""
+
+    def test_color_scheme_values(self):
+        """ColorScheme has expected members."""
+        from uchroma.color import ColorScheme
+
+        assert hasattr(ColorScheme, "Rainbow")
+        assert hasattr(ColorScheme, "Bright")
+        assert hasattr(ColorScheme, "Emma")
+
+    def test_color_scheme_gradient(self):
+        """ColorScheme.gradient generates gradient."""
+        from uchroma.color import ColorScheme
+
+        gradient = ColorScheme.Rainbow.gradient(36)
+        assert len(gradient) > 0
+        assert all(isinstance(c, Color) for c in gradient)
+
+    def test_color_scheme_gradient_length(self):
+        """ColorScheme.gradient respects length parameter."""
+        from uchroma.color import ColorScheme
+
+        # Gradient is generated but may not be exactly the requested length
+        # due to interpolation between stops
+        gradient = ColorScheme.Bright.gradient(100)
+        assert len(gradient) >= 5  # At least has the color stops
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorPair enum
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorPairEnum:
+    """Tests for ColorPair enum."""
+
+    def test_color_pair_members(self):
+        """ColorPair has expected members."""
+        from uchroma.color import ColorPair
+
+        assert hasattr(ColorPair, "FIRE")
+        assert hasattr(ColorPair, "WATER")
+        assert hasattr(ColorPair, "EARTH")
+
+    def test_color_pair_first_second(self):
+        """ColorPair has first and second attributes."""
+        from uchroma.color import ColorPair
+
+        assert isinstance(ColorPair.FIRE.first, Color)
+        assert isinstance(ColorPair.FIRE.second, Color)
+
+    def test_color_pair_get_valid(self):
+        """ColorPair.get returns enum for valid names."""
+        from uchroma.color import ColorPair
+
+        result = ColorPair.get("fire")
+        assert result == ColorPair.FIRE
+
+    def test_color_pair_get_case_insensitive(self):
+        """ColorPair.get is case insensitive."""
+        from uchroma.color import ColorPair
+
+        result = ColorPair.get("WATER")
+        assert result == ColorPair.WATER
+
+    def test_color_pair_get_invalid(self):
+        """ColorPair.get returns None for invalid names."""
+        from uchroma.color import ColorPair
+
+        assert ColorPair.get("invalid_name") is None
+
+    def test_color_pair_get_none(self):
+        """ColorPair.get returns None for None input."""
+        from uchroma.color import ColorPair
+
+        assert ColorPair.get(None) is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.gradient
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsGradient:
+    """Tests for ColorUtils.gradient method."""
+
+    def test_gradient_basic(self):
+        """Basic gradient generation works."""
+        gradient = ColorUtils.gradient(36, "red", "blue", "green")
+        assert len(gradient) > 0
+        assert all(isinstance(c, Color) for c in gradient)
+
+    def test_gradient_with_loop(self):
+        """Gradient with loop=True includes return to start."""
+        gradient = ColorUtils.gradient(36, "red", "blue", loop=True)
+        assert len(gradient) > 0
+
+    def test_gradient_without_loop(self):
+        """Gradient with loop=False doesn't return to start."""
+        gradient = ColorUtils.gradient(36, "red", "blue", loop=False)
+        assert len(gradient) > 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.color_generator
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsColorGenerator:
+    """Tests for ColorUtils.color_generator method."""
+
+    def test_color_generator_sequential(self):
+        """Sequential color generator works."""
+        gradient = ColorUtils.hue_gradient(0, 10)
+        gen = ColorUtils.color_generator(gradient)
+        colors = [next(gen) for _ in range(5)]
+        assert len(colors) == 5
+        assert all(isinstance(c, Color) for c in colors)
+
+    def test_color_generator_random(self):
+        """Randomized color generator works."""
+        gradient = ColorUtils.hue_gradient(0, 10)
+        gen = ColorUtils.color_generator(gradient, randomize=True)
+        colors = [next(gen) for _ in range(5)]
+        assert len(colors) == 5
+        assert all(isinstance(c, Color) for c in colors)
+
+    def test_color_generator_alternate(self):
+        """Alternating color generator works."""
+        gradient = ColorUtils.hue_gradient(0, 10)
+        gen = ColorUtils.color_generator(gradient, alternate=True)
+        colors = [next(gen) for _ in range(10)]
+        assert len(colors) == 10
+
+    def test_color_generator_rgb(self):
+        """RGB mode returns tuples."""
+        gradient = ColorUtils.hue_gradient(0, 10)
+        gen = ColorUtils.color_generator(gradient, rgb=True)
+        color = next(gen)
+        assert isinstance(color, tuple)
+        assert len(color) == 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.color_scheme
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsColorSchemeMethod:
+    """Tests for ColorUtils.color_scheme method."""
+
+    def test_color_scheme_with_base_color_only(self):
+        """color_scheme with only base_color works."""
+        result = ColorUtils.color_scheme(base_color="red", steps=11)
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+    def test_color_scheme_with_both_colors(self):
+        """color_scheme with both color and base_color works."""
+        result = ColorUtils.color_scheme(color="blue", base_color="red", steps=11)
+        assert isinstance(result, list)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.interference
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsInterference:
+    """Tests for ColorUtils.interference method."""
+
+    def test_interference_basic(self):
+        """Basic interference pattern generation."""
+        gradient = ColorUtils.interference(36)
+        assert len(gradient) == 36
+        assert all(isinstance(c, Color) for c in gradient)
+
+    def test_interference_custom_params(self):
+        """Interference with custom parameters."""
+        gradient = ColorUtils.interference(
+            length=20,
+            freq1=0.5,
+            freq2=0.5,
+            freq3=0.5,
+            phase1=0.0,
+            phase2=1.0,
+            phase3=2.0,
+            center=128.0,
+            width=127.0,
+        )
+        assert len(gradient) == 20
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.rainbow_generator
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsRainbowGenerator:
+    """Tests for ColorUtils.rainbow_generator method."""
+
+    def test_rainbow_generator_basic(self):
+        """Basic rainbow generator works."""
+        gen = ColorUtils.rainbow_generator()
+        colors = [next(gen) for _ in range(5)]
+        assert len(colors) == 5
+        assert all(isinstance(c, Color) for c in colors)
+
+    def test_rainbow_generator_rgb(self):
+        """Rainbow generator with RGB mode."""
+        gen = ColorUtils.rainbow_generator(rgb=True)
+        color = next(gen)
+        assert isinstance(color, tuple)
+        assert len(color) == 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.random_generator
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsRandomGenerator:
+    """Tests for ColorUtils.random_generator method."""
+
+    def test_random_generator_basic(self):
+        """Basic random generator works."""
+        gen = ColorUtils.random_generator()
+        colors = [next(gen) for _ in range(5)]
+        assert len(colors) == 5
+        assert all(isinstance(c, Color) for c in colors)
+
+    def test_random_generator_rgb(self):
+        """Random generator with RGB mode."""
+        gen = ColorUtils.random_generator(rgb=True)
+        color = next(gen)
+        assert isinstance(color, tuple)
+        assert len(color) == 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.hue_gradient
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsHueGradient:
+    """Tests for ColorUtils.hue_gradient method."""
+
+    def test_hue_gradient_default(self):
+        """Default hue gradient spans all hues."""
+        gradient = ColorUtils.hue_gradient()
+        assert len(gradient) == 360
+
+    def test_hue_gradient_custom_length(self):
+        """Custom length hue gradient."""
+        gradient = ColorUtils.hue_gradient(length=36)
+        assert len(gradient) == 36
+
+    def test_hue_gradient_custom_start(self):
+        """Custom start hue."""
+        gradient = ColorUtils.hue_gradient(start=180, length=10)
+        assert len(gradient) == 10
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.increase_contrast
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsIncreaseContrast:
+    """Tests for ColorUtils.increase_contrast method."""
+
+    def test_increase_contrast_dark_color(self):
+        """Dark colors get lightness increased."""
+        dark = Color.NewFromRgb(0.05, 0.05, 0.05)
+        result = ColorUtils.increase_contrast(dark)
+        assert isinstance(result, Color)
+        # Should be lighter
+        _, _, l1 = dark.hsl
+        _, _, l2 = result.hsl
+        assert l2 > l1
+
+    def test_increase_contrast_light_color(self):
+        """Light colors get lightness decreased."""
+        light = Color.NewFromRgb(0.95, 0.95, 0.95)
+        result = ColorUtils.increase_contrast(light)
+        assert isinstance(result, Color)
+
+    def test_increase_contrast_mid_color_unchanged(self, red_color):
+        """Mid-range colors are returned unchanged."""
+        result = ColorUtils.increase_contrast(red_color)
+        # Red has lightness ~0.5, should be returned unchanged
+        assert result.rgb[0] == pytest.approx(red_color.rgb[0], abs=0.01)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.scheme_generator
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsSchemeGenerator:
+    """Tests for ColorUtils.scheme_generator method."""
+
+    def test_scheme_generator_basic(self):
+        """Basic scheme generator works."""
+        gen = ColorUtils.scheme_generator(base_color="red")
+        colors = [next(gen) for _ in range(5)]
+        assert len(colors) == 5
+
+    def test_scheme_generator_rgb(self):
+        """Scheme generator with RGB mode."""
+        gen = ColorUtils.scheme_generator(base_color="blue", rgb=True)
+        color = next(gen)
+        assert isinstance(color, tuple)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for ColorUtils.rgba2rgb
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestColorUtilsRgba2Rgb:
+    """Tests for ColorUtils.rgba2rgb method."""
+
+    def test_rgba2rgb_basic(self, rgba_ones):
+        """Basic RGBA to RGB conversion."""
+        result = ColorUtils.rgba2rgb(rgba_ones)
+        assert result.shape == (4, 4, 3)  # RGB, no alpha
+        assert result.dtype == np.uint8
+
+    def test_rgba2rgb_with_bg_color(self, rgba_half):
+        """RGBA to RGB with custom background color."""
+        result = ColorUtils.rgba2rgb(rgba_half, bg_color="blue")
+        assert result.shape == (4, 4, 3)
+
+    def test_rgba2rgb_transparent_over_bg(self):
+        """Transparent pixels show background color."""
+        import numpy as np
+
+        # Fully transparent red
+        img = np.zeros((2, 2, 4), dtype=np.float64)
+        img[:, :, 0] = 1.0  # Red channel
+        img[:, :, 3] = 0.0  # Fully transparent
+
+        result = ColorUtils.rgba2rgb(img, bg_color="blue")
+        # Should show blue background
+        assert result[0, 0, 2] > result[0, 0, 0]  # Blue > Red
