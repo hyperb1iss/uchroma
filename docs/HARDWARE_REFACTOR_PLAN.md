@@ -1,7 +1,7 @@
 # Hardware Layer Refactor Plan & Worklog
 
 **Created:** 2026-01-15
-**Status:** Planning
+**Status:** Core Infrastructure Complete (2026-01-16)
 **Author:** Nova (with Bliss)
 
 ---
@@ -2180,6 +2180,29 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 [2026-01-16] [TODO] [8] Add GTK system control panel
 [2026-01-16] [TODO] [8] Write tests for system control
 [2026-01-16] [TODO] [8] Document safety limits and warnings
+
+## COMPLETION SUMMARY (2026-01-16)
+Core infrastructure refactor complete. Key achievements:
+
+✅ Phase 1: Foundation - New quirks, transaction codes 0x9F and 0x08
+✅ Phase 2: Device additions - 50+ new devices in YAML configs
+✅ Phase 3: Protocol/Commands/Effects modules with protocol-aware dispatching
+✅ Phase 4: Hardware schema extensions (Capability, MatrixType, ProtocolSpec)
+✅ Phase 6: Test infrastructure - 1078 tests passing, MockHIDDevice
+✅ Phase 7: Extended device support (wireless.py, polling.py, capabilities.py)
+
+Remaining as enhancement items (not blocking):
+🔶 Phase 5: Keyboard Layout System - improvement/tooling
+🔶 Phase 8: System Control - requires hardware testing
+
+New modules created:
+- uchroma/server/protocol.py - Protocol version abstraction
+- uchroma/server/commands.py - Centralized command registry (56 commands)
+- uchroma/server/effects.py - Effect registry with protocol mapping (15 effects)
+- uchroma/server/wireless.py - Battery/charging support mixin
+- uchroma/server/polling.py - Polling rate control (incl HyperPolling)
+- uchroma/server/capabilities.py - Runtime capability detection
+- tests/server/mock_hid.py - Mock HID device for testing
 ```
 
 ---
