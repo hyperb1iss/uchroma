@@ -218,5 +218,7 @@ class InputQueue:
         self._expire_time = seconds
 
     def __del__(self):
-        if hasattr(self, "_input_manager") and self._input_manager is not None:
-            self.detach()
+        # Note: detach() is async, but we can't await in __del__.
+        # Just mark as not attached; cleanup happens when InputManager is destroyed.
+        if hasattr(self, "_attached"):
+            self._attached = False

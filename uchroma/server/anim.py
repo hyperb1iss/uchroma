@@ -640,5 +640,7 @@ class AnimationManager(HasTraits):
         return self._loop is not None and self._loop.running
 
     def __del__(self):
+        # Note: stop() is async, but we can't await in __del__.
+        # Just mark as not running; proper cleanup should use shutdown() coroutine.
         if hasattr(self, "_loop") and self._loop is not None:
-            self._loop.stop()
+            self._loop.running = False

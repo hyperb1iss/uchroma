@@ -143,11 +143,13 @@ class TestDevice:
     @pytest.fixture
     def device_info(self):
         """Create a DeviceInfo for testing."""
-        return DeviceInfo({
-            "path": b"/dev/hidraw0",
-            "vendor_id": 0x1532,
-            "product_id": 0x0227,
-        })
+        return DeviceInfo(
+            {
+                "path": b"/dev/hidraw0",
+                "vendor_id": 0x1532,
+                "product_id": 0x0227,
+            }
+        )
 
     @pytest.fixture
     def device(self, device_info, mock_hid_device):

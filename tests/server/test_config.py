@@ -149,12 +149,8 @@ class TestConfigurationCreate:
 
     def test_create_mutable_flag(self):
         """create respects mutable flag."""
-        MutableConfig = Configuration.create(
-            "MutableConfig", [("value", int)], mutable=True
-        )
-        ImmutableConfig = Configuration.create(
-            "ImmutableConfig", [("value", int)], mutable=False
-        )
+        MutableConfig = Configuration.create("MutableConfig", [("value", int)], mutable=True)
+        ImmutableConfig = Configuration.create("ImmutableConfig", [("value", int)], mutable=False)
         assert MutableConfig._mutable is True
         assert ImmutableConfig._mutable is False
 
@@ -177,9 +173,7 @@ class TestConfigurationInstance:
     @pytest.fixture
     def ImmutableConfig(self):
         """Create an immutable config class."""
-        return Configuration.create(
-            "ImmutableConfig", [("name", str)], mutable=False
-        )
+        return Configuration.create("ImmutableConfig", [("name", str)], mutable=False)
 
     def test_init_with_kwargs(self, MutableConfig):
         """Configuration can be initialized with kwargs."""
@@ -251,9 +245,7 @@ class TestConfigurationHierarchy:
     @pytest.fixture
     def HierarchyConfig(self):
         """Create config for hierarchy tests."""
-        return Configuration.create(
-            "HierarchyConfig", [("id", str), ("data", int)], mutable=True
-        )
+        return Configuration.create("HierarchyConfig", [("id", str), ("data", int)], mutable=True)
 
     def test_children_property(self, HierarchyConfig):
         """children property returns child configs."""
@@ -296,9 +288,7 @@ class TestConfigurationObserver:
     @pytest.fixture
     def ObservableConfig(self):
         """Create observable config class."""
-        return Configuration.create(
-            "ObservableConfig", [("value", int)], mutable=True
-        )
+        return Configuration.create("ObservableConfig", [("value", int)], mutable=True)
 
     def test_observe_fires_on_change(self, ObservableConfig):
         """Observer fires when value changes."""

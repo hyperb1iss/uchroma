@@ -38,7 +38,7 @@ gtk = [
 ]
 
 [project.scripts]
-uchroma = "uchroma.client.client:run_client"
+uchroma = "uchroma.client.main:cli_entry"
 uchromad = "uchroma.server.server:run_server"
 uchroma-gtk = "uchroma.gtk:main"
 
@@ -152,6 +152,17 @@ include = ["**/dbus.py", "**/dbus_*.py"]
 unresolved-reference = "ignore"
 invalid-return-type = "ignore"
 invalid-syntax-in-forward-annotation = "ignore"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pytest
+# ─────────────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+filterwarnings = [
+    # traitlets library uses deprecated APIs - not our code
+    "ignore::DeprecationWarning:traitlets.*",
+    # AsyncMock can produce unawaited coroutine warnings on GC - mock library quirk
+    "ignore:coroutine.*was never awaited:RuntimeWarning",
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Coverage
