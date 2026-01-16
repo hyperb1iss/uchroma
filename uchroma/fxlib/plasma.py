@@ -21,7 +21,7 @@ class Plasma(Renderer):
     """
 
     # meta
-    meta = RendererMeta("Plasma", "Colorful moving blobs of plasma", "Stefanie Kondik", "v1.0")
+    meta = RendererMeta("Plasma", "Colorful moving blobs of plasma", "Stefanie Jane", "v1.0")
 
     # configurable traits
     color_scheme = ColorSchemeTrait(minlen=2, default_value=[*ColorScheme.Qap.value]).tag(

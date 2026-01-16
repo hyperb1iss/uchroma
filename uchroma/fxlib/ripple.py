@@ -26,7 +26,7 @@ SCHEME_KEY = "color_scheme"
 class Ripple(Renderer):
     # meta
     meta = RendererMeta(
-        "Ripples", "Ripples of color when keys are pressed", "Stefanie Kondik", "1.0"
+        "Ripples", "Ripples of color when keys are pressed", "Stefanie Jane", "1.0"
     )
 
     # configurable traits

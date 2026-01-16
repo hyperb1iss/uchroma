@@ -5,7 +5,7 @@ description = "Userspace RGB control for Razer Chroma peripherals"
 readme = "README.md"
 license = "LGPL-3.0-only"
 requires-python = ">=3.10"
-authors = [{ name = "Stefanie Kondik", email = "stef@hyperbliss.tech" }]
+authors = [{ name = "Stefanie Jane", email = "stef@hyperbliss.tech" }]
 keywords = ["razer", "chroma", "rgb", "keyboard", "mouse", "linux"]
 classifiers = [
     "Development Status :: 4 - Beta",

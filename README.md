@@ -3,7 +3,7 @@
 
 The Razer Chroma line of peripherals have flashy features such as embedded LED matrices and macro keys. This project aims to provide rich support for these features under Linux without requiring kernel modifications. 
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b38cbbbd41e74cef89438b20faeb75d1)](https://www.codacy.com/app/shade_2/uchroma?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cyanogen/uchroma&amp;utm_campaign=Badge_Grade) [![Build Status](https://travis-ci.org/cyanogen/uchroma.svg?branch=master)](https://travis-ci.org/cyanogen/uchroma)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/b38cbbbd41e74cef89438b20faeb75d1)](https://www.codacy.com/app/shade_2/uchroma?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=hyperb1iss/uchroma&amp;utm_campaign=Badge_Grade) [![Build Status](https://travis-ci.org/hyperb1iss/uchroma.svg?branch=master)](https://travis-ci.org/hyperb1iss/uchroma)
 
 
 
@@ -117,7 +117,7 @@ The number after the dot is the device index. You may select a target device wit
 	
 	           plasma │ Colorful moving blobs of plasma
 	 ─────────────────┼────────────────────────────────────────────────────
-	           author │ Stefanie Kondik
+	           author │ Stefanie Jane
 	      description │ Colorful moving blobs of plasma
 	             name │ Plasma
 	          version │ v1.0
@@ -268,7 +268,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	            plasma │ Colorful moving blobs of plasma
 	 ──────────────────┼───────────────────────────────────────────────────
-	            author │ Stefanie Kondik
+	            author │ Stefanie Jane
 	       description │ Colorful moving blobs of plasma
 	              name │ Plasma
 	           version │ v1.0
@@ -296,7 +296,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	          rainflow │ Simple flowing colors
 	 ──────────────────┼───────────────────────────────────────────────────
-	            author │ Stefanie Kondik
+	            author │ Stefanie Jane
 	       description │ Simple flowing colors
 	              name │ Rainflow
 	           version │ 1.0
@@ -311,7 +311,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 	
 	           ripples │ Ripples of color when keys are pressed
 	 ──────────────────┼───────────────────────────────────────────────────
-	            author │ Stefanie Kondik
+	            author │ Stefanie Jane
 	       description │ Ripples of color when keys are pressed
 	              name │ Ripples
 	           version │ 1.0
@@ -432,7 +432,7 @@ Send a pull request if you implement a new renderer and would like to have it in
 
 ## Credits
 
-[Copyright (C) 2021 Stefanie Kondik](https://github.com/cyanogen)
+[Copyright (C) 2021 Stefanie Jane](https://github.com/hyperb1iss)
 
 [Inspired by work from Tim Theede and Terry Cain](https://github.com/terrycain/razer-drivers)
  

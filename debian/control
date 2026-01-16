@@ -1,7 +1,7 @@
 Source: uchroma
 Section: misc
 Priority: optional
-Maintainer: Stefanie Kondik <stef@hyperbliss.tech>
+Maintainer: Stefanie Jane <stef@hyperbliss.tech>
 Build-Depends: cython3,
         debhelper-compat (= 13),
         dh-python,
