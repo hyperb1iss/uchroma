@@ -11,6 +11,7 @@ import asyncio
 import os
 
 import gi
+import numpy as np
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
@@ -66,6 +67,10 @@ class UChromaWindow(Adw.ApplicationWindow):
 
         self._device_preview_renderers = {}
         self._device_previews = {}
+        self._live_preview_source = None
+        self._live_preview_inflight = False
+        self._live_preview_seq = None
+        self._live_preview_interval_ms = self._read_live_preview_interval()
 
         self._build_ui()
         self._connect_signals()
@@ -225,6 +230,22 @@ class UChromaWindow(Adw.ApplicationWindow):
     def _debug_log(self, message: str):
         if os.getenv("UCHROMA_GTK_DEBUG"):
             print(message)
+
+    def _read_live_preview_interval(self) -> int:
+        fps = os.getenv("UCHROMA_LIVE_PREVIEW_FPS")
+        if fps:
+            try:
+                fps_val = max(1, int(fps))
+                return max(40, int(1000 / fps_val))
+            except ValueError:
+                pass
+        interval = os.getenv("UCHROMA_LIVE_PREVIEW_INTERVAL_MS")
+        if interval:
+            try:
+                return max(40, int(interval))
+            except ValueError:
+                pass
+        return 250
 
     # === DEVICE MANAGEMENT ===
 
@@ -502,6 +523,13 @@ class UChromaWindow(Adw.ApplicationWindow):
                 cells.add((int(points[0]), int(points[1])))
         return cells
 
+    def _layout_bounds(self, cells: set[tuple[int, int]] | None) -> tuple[int, int]:
+        if not cells:
+            return (0, 0)
+        max_row = max(point[0] for point in cells)
+        max_col = max(point[1] for point in cells)
+        return (max_row + 1, max_col + 1)
+
     def _ensure_device_preview(self, device):
         path = device.path
         if path in self._device_previews:
@@ -532,8 +560,14 @@ class UChromaWindow(Adw.ApplicationWindow):
             layout = self._device_layouts.get(device.path)
             preview.set_active_cells(layout)
 
-            rows = getattr(device, "height", 0) or preview.rows
-            cols = getattr(device, "width", 0) or preview.cols
+            rows = getattr(device, "height", 0) or 0
+            cols = getattr(device, "width", 0) or 0
+            if (rows == 0 or cols == 0) and layout:
+                rows, cols = self._layout_bounds(layout)
+            if rows == 0:
+                rows = preview.rows
+            if cols == 0:
+                cols = preview.cols
             preview.set_matrix_size(rows, cols)
 
             card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -559,28 +593,43 @@ class UChromaWindow(Adw.ApplicationWindow):
             self._preview_renderer.stop()
             for renderer in self._device_preview_renderers.values():
                 renderer.stop()
+            self._stop_live_preview()
             return
 
         if len(self._selected_devices) > 1:
             self._preview_stack.set_visible_child_name("multi")
             self._preview_renderer.stop()
             self._build_multi_preview()
+            self._stop_live_preview()
             return
 
         self._preview_stack.set_visible_child_name("single")
         if not self._device:
             self._preview_renderer.stop()
+            self._stop_live_preview()
             return
 
-        rows = getattr(self._device, "height", 0) or 6
-        cols = getattr(self._device, "width", 0) or 22
-        self._matrix_preview.set_matrix_size(rows, cols)
+        rows = getattr(self._device, "height", 0) or 0
+        cols = getattr(self._device, "width", 0) or 0
         layout = self._device_layouts.get(self._device.path)
         self._matrix_preview.set_active_cells(layout)
+        if (rows == 0 or cols == 0) and layout:
+            rows, cols = self._layout_bounds(layout)
+        rows = rows or 6
+        cols = cols or 22
+        self._matrix_preview.set_matrix_size(rows, cols)
+
+        if self._should_live_preview():
+            self._start_live_preview()
+            return
+
+        self._stop_live_preview()
         self._preview_renderer.set_size(rows, cols)
         self._preview_renderer.start(30)
 
     def _apply_preview_effect(self, effect_id: str, params: dict | None = None):
+        if self._live_preview_source is not None:
+            return
         params = params or {}
         if len(self._selected_devices) > 1:
             for device in self._selected_devices:
@@ -591,6 +640,84 @@ class UChromaWindow(Adw.ApplicationWindow):
             return
 
         self._preview_renderer.set_effect(effect_id, params)
+
+    def _should_live_preview(self, layer_infos: list[tuple[str, int, dict]] | None = None) -> bool:
+        if not self._device:
+            return False
+        if len(self._selected_devices) != 1:
+            return False
+        if self._mode != self.MODE_CUSTOM:
+            return False
+        if self._layers_mixed:
+            return False
+        has_layers = (
+            bool(layer_infos) if layer_infos is not None else bool(self._layer_panel.layers)
+        )
+        if not has_layers:
+            return False
+        if self._anim_state in {"running", "paused", ""}:
+            return True
+        return False
+
+    def _start_live_preview(self):
+        if self._live_preview_source is not None or not self._device:
+            return
+        self._preview_renderer.stop()
+        self._live_preview_seq = None
+        self._live_preview_source = GLib.timeout_add(
+            self._live_preview_interval_ms,
+            self._live_preview_tick,
+        )
+
+    def _stop_live_preview(self):
+        if self._live_preview_source is None:
+            return
+        GLib.source_remove(self._live_preview_source)
+        self._live_preview_source = None
+        self._live_preview_seq = None
+
+    def _live_preview_tick(self) -> bool:
+        if self._live_preview_inflight:
+            return True
+        if not self._device:
+            return False
+        self._live_preview_inflight = True
+        self._schedule_task(self._fetch_live_frame(self._device))
+        return True
+
+    async def _fetch_live_frame(self, device):
+        try:
+            app = self.get_application()
+            if not app or not hasattr(app, "dbus"):
+                return
+            if self._live_preview_source is None:
+                return
+
+            frame = await app.dbus.get_current_frame(device.path)
+            if not frame:
+                return
+
+            data = frame.get("data")
+            width = int(frame.get("width") or 0)
+            height = int(frame.get("height") or 0)
+            seq = frame.get("seq")
+            if not data or width <= 0 or height <= 0:
+                return
+            if seq is not None and seq == self._live_preview_seq:
+                return
+
+            buffer = np.frombuffer(data, dtype=np.uint8)
+            expected = width * height * 3
+            if buffer.size < expected:
+                return
+
+            matrix = buffer[:expected].reshape((height, width, 3))
+            if self._matrix_preview.rows != height or self._matrix_preview.cols != width:
+                GLib.idle_add(self._matrix_preview.set_matrix_size, height, width)
+            GLib.idle_add(self._matrix_preview.update_frame, matrix)
+            self._live_preview_seq = seq
+        finally:
+            self._live_preview_inflight = False
 
     def _iter_target_devices(self) -> list:
         if self._selected_devices:
@@ -720,6 +847,7 @@ class UChromaWindow(Adw.ApplicationWindow):
             else:
                 self._apply_preview_effect("disable", {})
             self._update_mode_status()
+        self._update_preview_visibility()
 
     # === HARDWARE FX ===
 
@@ -787,6 +915,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._anim_state = "running"
         self._update_mode_status()
         self._show_layer_params(row)
+        self._update_preview_visibility()
 
     def _on_layer_removed(self, panel, zindex):
         """Handle layer removed."""
@@ -800,6 +929,7 @@ class UChromaWindow(Adw.ApplicationWindow):
             self._anim_state = "stopped"
             self._update_mode_status()
             self._apply_preview_effect("disable", {})
+        self._update_preview_visibility()
 
     def _on_layer_selected(self, panel, row):
         """Handle layer selection."""
@@ -872,6 +1002,7 @@ class UChromaWindow(Adw.ApplicationWindow):
                     self._schedule_task(app.dbus.pause_animation(device.path))
         self._anim_state = "running"
         self._update_mode_status()
+        self._update_preview_visibility()
 
     def _on_stop_clicked(self, panel):
         """Handle stop button."""
@@ -880,6 +1011,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._anim_state = "stopped"
         self._update_mode_status()
         self._apply_preview_effect("disable", {})
+        self._update_preview_visibility()
 
         # Stop on device
         if self._iter_target_devices():
@@ -966,4 +1098,5 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._preview_renderer.stop()
         for renderer in self._device_preview_renderers.values():
             renderer.stop()
+        self._stop_live_preview()
         return False

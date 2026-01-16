@@ -166,7 +166,7 @@ class UChromaApplication(Adw.Application):
         about.set_website("https://hyperbliss.tech/uchroma")
         about.set_issue_url("https://github.com/hyperbliss/uchroma/issues")
         about.set_copyright("© 2024 Hyperbliss")
-        about.set_developers(["Stefanie Kondik", "Contributors"])
+        about.set_developers(["Stefanie Jane", "Contributors"])
         about.set_comments("Control your Razer RGB lighting with style")
         about.present()
 

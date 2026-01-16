@@ -18,6 +18,7 @@ import os
 from collections import OrderedDict
 from enum import Enum
 
+import numpy as np
 from dbus_fast import BusType, PropertyAccess, Variant
 from dbus_fast.aio import MessageBus
 from dbus_fast.service import ServiceInterface, dbus_property, method, signal
@@ -399,6 +400,25 @@ class AnimationManagerInterface(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     def AnimationState(self) -> "s":
         return self._state or ""
+
+    @method()
+    def GetCurrentFrame(self) -> "a{sv}":
+        frame = getattr(self._driver, "frame_control", None)
+        if frame is None or frame.last_frame is None:
+            return {}
+
+        img = frame.last_frame
+        if img.dtype != np.uint8:
+            img = img.astype(np.uint8)
+
+        height, width = img.shape[:2]
+        return {
+            "width": Variant("i", int(width)),
+            "height": Variant("i", int(height)),
+            "data": Variant("ay", img.tobytes()),
+            "seq": Variant("i", int(frame.frame_seq)),
+            "timestamp": Variant("d", float(frame.last_frame_ts)),
+        }
 
     @method()
     def AddRenderer(self, name: "s", zindex: "i", traits: "a{sv}") -> "o":

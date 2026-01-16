@@ -201,6 +201,19 @@ class DBusService:
             print(f"Failed to get animation state: {e}")
             return ""
 
+    async def get_current_frame(self, path: str) -> dict:
+        """Fetch current composed frame for live preview."""
+        anim_proxy = await self.get_anim_proxy(path)
+        if not anim_proxy:
+            return {}
+
+        try:
+            raw = await anim_proxy.call_get_current_frame()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get current frame: {e}")
+            return {}
+
     async def get_layer_info(self, path: str, zindex: int) -> dict:
         """Fetch layer trait values."""
         anim_proxy = await self.get_anim_proxy(path)

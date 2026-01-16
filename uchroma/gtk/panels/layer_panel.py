@@ -15,7 +15,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import GObject, Gtk  # noqa: E402
+from gi.repository import Adw, GObject, Gtk  # noqa: E402
 
 from ..widgets.layer_row import LayerRow  # noqa: E402
 
@@ -44,6 +44,7 @@ class LayerPanel(Gtk.Box):
         self._layers = []
         self._selected_layer = None
         self._renderers = []
+        self._add_btn = None
 
         self.add_css_class("layer-panel")
         self.set_margin_start(16)
@@ -131,69 +132,41 @@ class LayerPanel(Gtk.Box):
 
     def _on_add_clicked(self, btn):
         """Show renderer picker."""
-        # Create popover with renderer options
-        popover = Gtk.Popover()
-        popover.set_parent(btn)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        box.set_margin_top(8)
-        box.set_margin_bottom(8)
-        box.set_margin_start(8)
-        box.set_margin_end(8)
-
         if os.getenv("UCHROMA_GTK_DEBUG"):
             renderer_ids = [renderer.get("id", "") for renderer in self._renderers]
             print(f"GTK: add layer clicked renderers={renderer_ids}")
 
         if not self._renderers:
-            label = Gtk.Label(label="No renderers available for this selection.")
-            label.add_css_class("dim")
-            label.set_xalign(0)
-            label.set_wrap(True)
-            label.set_max_width_chars(28)
-            box.append(label)
-            popover.set_child(box)
-            popover.popup()
+            dialog = Adw.MessageDialog.new(
+                self.get_root(),  # type: ignore[arg-type]
+                "No Renderers",
+                "No renderers are available for this selection.",
+            )
+            dialog.add_response("ok", "OK")
+            dialog.set_default_response("ok")
+            dialog.present()
             return
 
+        dialog = Adw.MessageDialog.new(
+            self.get_root(),  # type: ignore[arg-type]
+            "Add Animation Layer",
+            "Choose a renderer to add:",
+        )
+
         for renderer in self._renderers:
-            row = Gtk.Button()
-            row.add_css_class("flat")
+            dialog.add_response(renderer["id"], renderer["name"])
 
-            row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        dialog.add_response("cancel", "Cancel")
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self._on_renderer_dialog_response)
+        dialog.present()
 
-            renderer_icon: str = renderer["icon"]  # type: ignore[assignment]
-            renderer_name: str = renderer["name"]  # type: ignore[assignment]
-            renderer_desc: str = renderer["description"]  # type: ignore[assignment]
-            icon = Gtk.Image.new_from_icon_name(renderer_icon)
-            row_box.append(icon)
-
-            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-
-            name = Gtk.Label(label=renderer_name)
-            name.set_xalign(0)
-            name.add_css_class("heading")
-            labels.append(name)
-
-            desc = Gtk.Label(label=renderer_desc)
-            desc.set_xalign(0)
-            desc.add_css_class("dim")
-            desc.add_css_class("caption")
-            labels.append(desc)
-
-            row_box.append(labels)
-            row.set_child(row_box)
-
-            row.connect("clicked", self._on_renderer_selected, renderer["id"], popover)
-            box.append(row)
-
-        popover.set_child(box)
-        popover.popup()
-
-    def _on_renderer_selected(self, btn, renderer_id: str, popover: Gtk.Popover):
-        """Handle renderer selection from popover."""
-        popover.popdown()
-        self.emit("layer-added", renderer_id)
+    def _on_renderer_dialog_response(self, dialog, response):
+        """Handle renderer selection from dialog."""
+        if response == "cancel":
+            return
+        self.emit("layer-added", response)
 
     def _on_row_selected(self, listbox, row):
         """Handle layer row selection."""

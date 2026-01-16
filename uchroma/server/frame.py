@@ -54,6 +54,9 @@ class Frame:
         self._logger = driver.logger
 
         self._report = None
+        self._last_frame = None
+        self._frame_seq = 0
+        self._last_frame_ts = 0.0
 
         self._debug_opts = {}
 
@@ -88,6 +91,19 @@ class Frame:
         The height of this Frame in pixels
         """
         return self._height
+
+    @property
+    def last_frame(self) -> np.ndarray | None:
+        """Last composed RGB frame (uint8) sent to hardware, if available."""
+        return self._last_frame
+
+    @property
+    def frame_seq(self) -> int:
+        return self._frame_seq
+
+    @property
+    def last_frame_ts(self) -> float:
+        return self._last_frame_ts
 
     @property
     def debug_opts(self) -> dict:
@@ -134,6 +150,7 @@ class Frame:
             img[0][:width].tobytes(),
             transaction_id=0x80,
         )
+        return img
 
     def _get_frame_data_report(self, remaining_packets: int, *args):
         if self._report is None:
@@ -224,15 +241,21 @@ class Frame:
                 self._driver.run_report(self._get_frame_data_report(remaining - 1, *args))
 
             time.sleep(0.001)
+        return img
 
     def _set_frame_data(self, img, frame_id: int | None = None):
         if frame_id is None:
             frame_id = Frame.DEFAULT_FRAME_ID
 
         if self._height == 1:
-            self._set_frame_data_single(img, frame_id)
+            img = self._set_frame_data_single(img, frame_id)
         else:
-            self._set_frame_data_matrix(img, frame_id)
+            img = self._set_frame_data_matrix(img, frame_id)
+
+        if img is not None:
+            self._last_frame = img
+            self._frame_seq += 1
+            self._last_frame_ts = time.monotonic()
 
     def _set_custom_frame(self):
         self._driver.fx_manager.activate("custom_frame")
