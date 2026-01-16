@@ -438,6 +438,18 @@ class TestUnpackResponse:
         result = basic_report._unpack_response(response)
         assert result is True
 
+    def test_unpack_response_accepts_alternate_crc_range(self, basic_report):
+        """Some devices compute CRC over a different byte range; accept it."""
+        response = build_response(status=Status.OK.value, transaction_id=0x1F)
+        mutated = bytearray(response)
+        # Alternate CRC differs by xor'ing out transaction_id and xor'ing in byte 87
+        mutated[88] = mutated[88] ^ mutated[1] ^ mutated[87]
+        response = bytes(mutated)
+
+        result = basic_report._unpack_response(response)
+        assert result is True
+        assert basic_report.status == Status.OK
+
     def test_unpack_response_ok_zero_crc_skips_validation(self, basic_report):
         response = build_response(status=Status.OK.value, crc=0x00)
         result = basic_report._unpack_response(response)

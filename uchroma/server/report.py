@@ -277,6 +277,7 @@ class RazerReport:
 
         # CRC check - fast_crc XORs bytes 1-86 (transaction_id through args[78])
         calc_crc = fast_crc(buf)
+        alt_crc = calc_crc ^ buf[1] ^ buf[87]
 
         self._status = Status(status)
         self._result = data
@@ -292,7 +293,7 @@ class RazerReport:
             if rsp_crc == 0x00:
                 return True
 
-            if calc_crc != rsp_crc:
+            if rsp_crc not in {calc_crc, alt_crc}:
                 self._logger.error(
                     "CRC mismatch for response: got=%02x expected=%02x (cmd=%02x,%02x)",
                     rsp_crc,
@@ -305,7 +306,7 @@ class RazerReport:
 
             return True
 
-        if calc_crc != rsp_crc:
+        if rsp_crc not in {calc_crc, alt_crc}:
             self._logger.error(
                 "CRC mismatch for response: got=%02x expected=%02x (cmd=%02x,%02x)",
                 rsp_crc,
