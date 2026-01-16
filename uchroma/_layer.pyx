@@ -10,7 +10,13 @@ def color_to_np(*colors):
     result = []
     for c in colors:
         rgb = tuple(c)
-        alpha = c.alpha if hasattr(c, 'alpha') else 1.0
+        # Handle alpha as property or method
+        if hasattr(c, 'alpha'):
+            alpha = c.alpha
+            if callable(alpha):
+                alpha = alpha()
+        else:
+            alpha = 1.0
         result.append((rgb[0], rgb[1], rgb[2], alpha))
     return np.array(result, dtype=np.float64)
 

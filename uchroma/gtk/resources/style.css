@@ -1,18 +1,10 @@
 /*
  * UChroma GTK4 Stylesheet
- * Aesthetic: Neon Noir - Dark luxe surfaces with electric SilkCircuit accents
- *
- * Palette:
- *   --silk-purple:  #e135ff  (accent, active states)
- *   --silk-cyan:    #80ffea  (interactive, links)
- *   --silk-coral:   #ff6ac1  (highlights, badges)
- *   --silk-yellow:  #f1fa8c  (warnings)
- *   --silk-green:   #50fa7b  (success)
- *   --silk-red:     #ff6363  (errors, destructive)
+ * SilkCircuit Neon Design Language
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ROOT VARIABLES
+   COLOR DEFINITIONS
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @define-color silk_purple #e135ff;
@@ -22,538 +14,103 @@
 @define-color silk_green #50fa7b;
 @define-color silk_red #ff6363;
 
-@define-color surface_dark #0d0d0f;
-@define-color surface_mid #16161a;
-@define-color surface_light #1e1e24;
-@define-color surface_hover #26262e;
+@define-color bg_dark #0d0d0d;
+@define-color surface_dark #1a1a1a;
+@define-color surface_light #252525;
+@define-color surface_hover #2d2d2d;
 
-@define-color text_primary rgba(255, 255, 255, 0.95);
-@define-color text_secondary rgba(255, 255, 255, 0.6);
-@define-color text_tertiary rgba(255, 255, 255, 0.35);
-
-/* Override libadwaita accent */
-@define-color accent_bg_color @silk_purple;
-@define-color accent_fg_color white;
-@define-color accent_color @silk_purple;
+@define-color text_primary #ffffff;
+@define-color text_secondary #b0b0b0;
+@define-color text_dim #666666;
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   WINDOW & NAVIGATION
+   WINDOW & BASE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-window.background {
-    background-color: @surface_dark;
+window {
+    background-color: @bg_dark;
 }
 
-.navigation-sidebar {
-    background-color: @surface_mid;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+.main-container {
+    background-color: @bg_dark;
+}
+
+.content-area {
+    background-color: @bg_dark;
 }
 
 headerbar {
-    background-color: @surface_mid;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    background-color: @surface_dark;
+    border-bottom: 1px solid alpha(@silk_purple, 0.2);
 }
 
-headerbar .title {
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   DEVICE SIDEBAR
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.device-sidebar {
-    padding: 8px;
-}
-
-.device-sidebar row {
-    border-radius: 12px;
-    margin: 4px 0;
-    padding: 12px 16px;
-    transition: all 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.device-sidebar row:hover {
-    background-color: @surface_hover;
-}
-
-.device-sidebar row:selected {
-    background: linear-gradient(135deg,
-        alpha(@silk_purple, 0.25) 0%,
-        alpha(@silk_cyan, 0.15) 100%);
-    border: 1px solid alpha(@silk_purple, 0.4);
-    box-shadow:
-        0 0 20px alpha(@silk_purple, 0.2),
-        inset 0 1px 0 alpha(white, 0.05);
-}
-
-.device-sidebar row:selected .device-name {
-    color: @silk_cyan;
-    text-shadow: 0 0 12px alpha(@silk_cyan, 0.5);
-}
-
-.device-icon {
-    -gtk-icon-size: 32px;
-    color: @text_secondary;
-    transition: all 200ms ease;
-}
-
-.device-sidebar row:selected .device-icon {
-    color: @silk_purple;
-    -gtk-icon-filter: drop-shadow(0 0 6px alpha(@silk_purple, 0.6));
-}
-
-.device-name {
-    font-weight: 600;
-    font-size: 14px;
-    color: @text_primary;
-}
-
-.device-subtitle {
-    font-size: 11px;
-    color: @text_tertiary;
-    font-family: "JetBrains Mono", "Fira Code", monospace;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PREFERENCES PAGES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-preferencespage {
+headerbar.flat {
     background-color: @surface_dark;
 }
 
-preferencesgroup {
-    background-color: @surface_mid;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.02);
-    margin: 12px;
-    padding: 4px;
-}
-
-preferencesgroup > box > label.title {
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: @text_tertiary;
-    padding: 16px 20px 8px;
-}
-
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ROWS (Action, Switch, Combo, Spin, Expander)
+   HEADER CONTROLS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-row.activatable {
-    border-radius: 12px;
-    margin: 2px 4px;
-    padding: 4px 12px;
-    min-height: 56px;
-    transition: all 150ms ease;
-}
-
-row.activatable:hover {
-    background-color: alpha(@surface_hover, 0.8);
-}
-
-row.activatable:active {
-    background-color: alpha(@silk_purple, 0.1);
-}
-
-row .title {
-    font-weight: 500;
-    color: @text_primary;
-}
-
-row .subtitle {
-    color: @text_secondary;
-    font-size: 12px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SWITCHES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-switch {
+.device-dropdown {
     background-color: @surface_light;
-    border-radius: 999px;
-    min-width: 52px;
-    min-height: 28px;
-    transition: all 200ms ease;
+    border-radius: 6px;
+    padding: 4px 8px;
 }
 
-switch:checked {
-    background: linear-gradient(135deg, @silk_purple 0%, @silk_coral 100%);
-    box-shadow: 0 0 16px alpha(@silk_purple, 0.4);
-}
-
-switch slider {
-    background-color: white;
-    border-radius: 50%;
-    min-width: 22px;
-    min-height: 22px;
-    margin: 3px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-switch:checked slider {
-    box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.3),
-        0 0 8px alpha(@silk_purple, 0.3);
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SLIDERS / SCALES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-scale {
-    padding: 8px 0;
-}
-
-scale trough {
+.brightness-control {
+    padding: 4px 8px;
     background-color: @surface_light;
-    border-radius: 999px;
-    min-height: 6px;
+    border-radius: 6px;
 }
 
-scale highlight {
-    background: linear-gradient(90deg, @silk_purple 0%, @silk_cyan 100%);
-    border-radius: 999px;
-    box-shadow: 0 0 12px alpha(@silk_purple, 0.4);
+.brightness-icon {
+    color: @silk_yellow;
+    opacity: 0.8;
 }
 
-scale slider {
-    background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 100%);
-    border-radius: 50%;
-    min-width: 20px;
-    min-height: 20px;
-    box-shadow:
-        0 2px 6px rgba(0, 0, 0, 0.3),
-        0 0 0 1px rgba(0, 0, 0, 0.1);
-    transition: all 150ms ease;
-}
-
-scale slider:hover {
-    transform: scale(1.15);
-    box-shadow:
-        0 3px 10px rgba(0, 0, 0, 0.4),
-        0 0 16px alpha(@silk_purple, 0.3);
-}
-
-scale slider:active {
-    background: @silk_purple;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BUTTONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-button {
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-weight: 500;
-    transition: all 150ms ease;
-    border: 1px solid transparent;
-}
-
-button:hover {
-    background-color: @surface_hover;
-}
-
-button.suggested-action {
-    background: linear-gradient(135deg, @silk_purple 0%, alpha(@silk_coral, 0.8) 100%);
-    color: white;
-    font-weight: 600;
-    box-shadow: 0 4px 16px alpha(@silk_purple, 0.35);
-    border: none;
-}
-
-button.suggested-action:hover {
-    box-shadow:
-        0 6px 24px alpha(@silk_purple, 0.5),
-        0 0 40px alpha(@silk_purple, 0.2);
-    transform: translateY(-1px);
-}
-
-button.suggested-action:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 8px alpha(@silk_purple, 0.3);
-}
-
-button.destructive-action {
-    background: linear-gradient(135deg, @silk_red 0%, #cc4444 100%);
-    color: white;
-}
-
-button.circular {
-    border-radius: 50%;
-    padding: 12px;
-    min-width: 44px;
-    min-height: 44px;
-}
-
-button.flat {
-    background: transparent;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   COLOR BUTTONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.color-button {
-    border-radius: 8px;
-    min-width: 36px;
-    min-height: 36px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: all 200ms ease;
-}
-
-.color-button:hover {
-    border-color: @silk_purple;
-    box-shadow:
-        0 4px 16px rgba(0, 0, 0, 0.4),
-        0 0 20px alpha(@silk_purple, 0.3);
-    transform: scale(1.08);
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EFFECT CARDS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.effect-card {
-    background-color: @surface_light;
-    border-radius: 16px;
-    padding: 16px;
-    min-width: 140px;
-    min-height: 100px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    transition: all 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.effect-card:hover {
-    background-color: @surface_hover;
-    border-color: alpha(@silk_purple, 0.3);
-    transform: translateY(-4px);
-    box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.35),
-        0 0 30px alpha(@silk_purple, 0.15);
-}
-
-.effect-card:checked,
-.effect-card.active {
-    background: linear-gradient(145deg,
-        alpha(@silk_purple, 0.2) 0%,
-        alpha(@silk_cyan, 0.1) 100%);
-    border-color: @silk_purple;
-    box-shadow:
-        0 0 30px alpha(@silk_purple, 0.3),
-        inset 0 0 20px alpha(@silk_purple, 0.1);
-}
-
-.effect-card .effect-icon {
-    -gtk-icon-size: 32px;
-    color: @text_secondary;
-    margin-bottom: 8px;
-    transition: all 200ms ease;
-}
-
-.effect-card:checked .effect-icon,
-.effect-card.active .effect-icon {
-    color: @silk_purple;
-    -gtk-icon-filter: drop-shadow(0 0 8px alpha(@silk_purple, 0.6));
-}
-
-.effect-card .effect-name {
-    font-weight: 600;
-    font-size: 13px;
-    color: @text_primary;
-}
-
-.effect-card:checked .effect-name {
-    color: @silk_cyan;
-}
-
-/* Effect preview gradient animation */
-.effect-preview {
-    border-radius: 8px;
+.brightness-scale trough {
     min-height: 4px;
-    margin-top: 8px;
-    background-size: 200% 100%;
-    animation: gradient-flow 3s ease infinite;
+    background-color: @surface_dark;
+    border-radius: 2px;
 }
 
-@keyframes gradient-flow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+.brightness-scale highlight {
+    background: linear-gradient(to right, @silk_yellow, @silk_coral);
+    border-radius: 2px;
 }
 
-.effect-preview.wave {
-    background: linear-gradient(90deg,
-        @silk_purple, @silk_cyan, @silk_coral, @silk_purple);
+.brightness-scale slider {
+    min-width: 14px;
+    min-height: 14px;
+    background-color: @text_primary;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-.effect-preview.spectrum {
-    background: linear-gradient(90deg,
-        #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0088ff, #8800ff, #ff0000);
-}
-
-.effect-preview.breathe {
-    background: linear-gradient(90deg, @silk_purple, @silk_cyan);
-    animation: breathe-pulse 2s ease-in-out infinite;
-}
-
-@keyframes breathe-pulse {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LAYER COMPOSER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.layer-list {
-    background: transparent;
-}
-
-.layer-row {
-    background-color: @surface_light;
-    border-radius: 12px;
-    margin: 4px 0;
-    padding: 12px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    transition: all 200ms ease;
-}
-
-.layer-row:hover {
-    background-color: @surface_hover;
-    border-color: rgba(255, 255, 255, 0.08);
-}
-
-.layer-row.selected {
-    background: linear-gradient(135deg,
-        alpha(@silk_purple, 0.15) 0%,
-        alpha(@silk_cyan, 0.08) 100%);
-    border-color: @silk_purple;
-    box-shadow:
-        0 0 24px alpha(@silk_purple, 0.2),
-        inset 0 1px 0 alpha(white, 0.03);
-}
-
-.layer-row.dragging {
-    opacity: 0.6;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    transform: scale(1.02);
-}
-
-.layer-handle {
-    color: @text_tertiary;
-    padding: 0 8px;
-    transition: color 150ms ease;
-}
-
-.layer-handle:hover {
-    color: @silk_purple;
-}
-
-.layer-name {
-    font-weight: 600;
-    font-size: 14px;
-    color: @text_primary;
-}
-
-.layer-row.selected .layer-name {
-    color: @silk_cyan;
-}
-
-.layer-zindex {
+.brightness-label {
     font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
-    color: @text_tertiary;
-    background-color: alpha(@surface_dark, 0.5);
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-size: 11px;
+    color: @text_secondary;
 }
 
-.layer-blend-dropdown {
-    font-size: 12px;
-    min-width: 100px;
-}
-
-.layer-opacity-scale {
-    min-width: 80px;
-}
-
-.layer-delete-button {
-    color: @text_tertiary;
+.power-toggle {
+    background-color: @surface_light;
+    color: @text_secondary;
     transition: all 150ms ease;
 }
 
-.layer-delete-button:hover {
-    color: @silk_red;
-    -gtk-icon-filter: drop-shadow(0 0 6px alpha(@silk_red, 0.5));
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   COLOR SCHEME PICKER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.color-scheme-picker {
-    padding: 8px 0;
-}
-
-.color-scheme-card {
-    border-radius: 12px;
-    padding: 12px;
-    margin: 4px;
-    min-width: 120px;
-    background-color: @surface_light;
-    border: 2px solid transparent;
-    transition: all 200ms ease;
-}
-
-.color-scheme-card:hover {
+.power-toggle:hover {
     background-color: @surface_hover;
-    transform: translateY(-2px);
-}
-
-.color-scheme-card.selected {
-    border-color: @silk_purple;
-    box-shadow: 0 0 20px alpha(@silk_purple, 0.3);
-}
-
-.color-scheme-preview {
-    min-height: 32px;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.color-scheme-name {
-    font-size: 12px;
-    font-weight: 500;
     color: @text_primary;
+}
+
+.power-toggle:checked,
+.power-toggle.suspended {
+    background-color: alpha(@silk_red, 0.3);
+    color: @silk_red;
 }
 
 
@@ -561,255 +118,419 @@ button.flat {
    MATRIX PREVIEW
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.matrix-preview {
+.preview-frame {
     background-color: @surface_dark;
     border-radius: 16px;
-    padding: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow:
-        inset 0 2px 8px rgba(0, 0, 0, 0.4),
-        0 4px 16px rgba(0, 0, 0, 0.3);
+    padding: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 alpha(@text_primary, 0.05);
 }
 
-.matrix-key {
-    border-radius: 6px;
-    min-width: 32px;
-    min-height: 32px;
-    margin: 2px;
-    transition: all 100ms ease;
-    box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.matrix-key.active {
-    box-shadow:
-        0 0 12px currentColor,
-        0 2px 4px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PLAYBACK CONTROLS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.playback-controls {
-    padding: 16px;
-}
-
-.playback-button {
-    min-width: 48px;
-    min-height: 48px;
-    border-radius: 50%;
-    margin: 0 8px;
-}
-
-.playback-button.play {
-    background: linear-gradient(135deg, @silk_purple 0%, @silk_coral 100%);
-    box-shadow: 0 4px 20px alpha(@silk_purple, 0.4);
-}
-
-.playback-button.play:hover {
-    box-shadow:
-        0 6px 28px alpha(@silk_purple, 0.6),
-        0 0 40px alpha(@silk_purple, 0.2);
-}
-
-.playback-button.pause {
-    background-color: @surface_light;
-}
-
-.playback-button.stop {
-    background-color: @surface_light;
-}
-
-.playback-button.stop:hover {
-    background-color: alpha(@silk_red, 0.2);
-    color: @silk_red;
-}
-
-.fps-indicator {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 12px;
-    color: @silk_cyan;
-    background-color: alpha(@silk_cyan, 0.1);
-    padding: 4px 10px;
-    border-radius: 8px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LED ZONES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.zone-card {
-    background-color: @surface_light;
-    border-radius: 16px;
-    padding: 16px;
-    margin: 8px 0;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.zone-icon {
-    -gtk-icon-size: 24px;
-    color: @text_secondary;
-    transition: all 200ms ease;
-}
-
-.zone-card.active .zone-icon {
-    color: @silk_cyan;
-    -gtk-icon-filter: drop-shadow(0 0 8px alpha(@silk_cyan, 0.6));
-}
-
-.zone-name {
-    font-weight: 600;
-    font-size: 14px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   DROPDOWNS / POPOVERS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-popover.menu,
-popover.combo {
-    background-color: @surface_mid;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+.matrix-preview {
     border-radius: 12px;
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(0, 0, 0, 0.3);
-}
-
-popover modelbutton {
-    border-radius: 8px;
-    padding: 8px 12px;
-    margin: 2px 4px;
-}
-
-popover modelbutton:hover {
-    background-color: alpha(@silk_purple, 0.15);
 }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SPIN BUTTONS
+   MODE TOGGLE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-spinbutton {
-    background-color: @surface_light;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-spinbutton text {
-    background: transparent;
-    color: @text_primary;
-    font-family: "JetBrains Mono", monospace;
-}
-
-spinbutton button {
-    background: transparent;
-    border: none;
-    min-width: 32px;
-}
-
-spinbutton button:hover {
-    background-color: alpha(@silk_purple, 0.2);
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   VIEW SWITCHER (Tab Bar)
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-viewswitcher {
-    background: transparent;
-}
-
-viewswitcher button {
-    background: transparent;
-    border-radius: 8px;
+.mode-toggle-bar {
     padding: 8px 16px;
-    margin: 4px;
-    border: none;
 }
 
-viewswitcher button:checked {
-    background: linear-gradient(180deg,
-        alpha(@silk_purple, 0.2) 0%,
-        alpha(@silk_purple, 0.1) 100%);
-    box-shadow: 0 0 16px alpha(@silk_purple, 0.2);
+.mode-toggle .mode-btn {
+    padding: 8px 20px;
+    font-weight: 500;
+    background-color: @surface_dark;
+    color: @text_secondary;
+    border: 1px solid @surface_light;
+    transition: all 150ms ease;
 }
 
-viewswitcher button:checked image,
-viewswitcher button:checked label {
+.mode-toggle .mode-btn:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.mode-toggle .mode-btn:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.mode-toggle .mode-btn:hover {
+    background-color: @surface_light;
+    color: @text_primary;
+}
+
+.mode-toggle .mode-btn:checked {
+    background-color: alpha(@silk_purple, 0.2);
+    color: @silk_purple;
+    border-color: @silk_purple;
+}
+
+.status-icon {
+    color: @text_dim;
+}
+
+.status-label {
+    font-size: 12px;
+    color: @text_secondary;
+}
+
+.status-label.dim {
+    color: @text_dim;
+}
+
+.status-label.running {
+    color: @silk_green;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EFFECT CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.effect-selector {
+    padding: 8px 0;
+}
+
+.effect-card {
+    min-width: 80px;
+    min-height: 80px;
+    padding: 8px;
+    background-color: @surface_dark;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    transition: all 150ms ease;
+}
+
+.effect-card:hover {
+    background-color: @surface_light;
+    transform: translateY(-2px);
+}
+
+.effect-card:focus {
+    outline: none;
+    border-color: alpha(@silk_purple, 0.5);
+}
+
+.effect-card.active {
+    background: linear-gradient(135deg, alpha(@silk_purple, 0.2), alpha(@silk_cyan, 0.1));
+    border-color: @silk_purple;
+    box-shadow: 0 0 20px alpha(@silk_purple, 0.3);
+}
+
+.effect-icon {
+    color: @text_secondary;
+    transition: color 150ms ease;
+}
+
+.effect-card:hover .effect-icon,
+.effect-card.active .effect-icon {
     color: @silk_purple;
 }
 
+.effect-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: @text_secondary;
+}
+
+.effect-card.active .effect-name {
+    color: @text_primary;
+}
+
+.effect-preview {
+    min-height: 12px;
+    border-radius: 4px;
+    margin-top: 4px;
+    background-color: @surface_light;
+}
+
+/* Effect preview animations */
+.preview-off {
+    background-color: @surface_dark;
+}
+
+.preview-static {
+    background: @silk_purple;
+}
+
+.preview-wave {
+    background: linear-gradient(90deg, @silk_purple, @silk_cyan, @silk_coral, @silk_purple);
+    background-size: 200% 100%;
+    animation: wave-move 2s linear infinite;
+}
+
+.preview-spectrum {
+    background: linear-gradient(90deg,
+        #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+    background-size: 200% 100%;
+    animation: wave-move 3s linear infinite;
+}
+
+.preview-breathe {
+    background: @silk_purple;
+    animation: breathe 2s ease-in-out infinite;
+}
+
+.preview-starlight {
+    background: radial-gradient(circle at 20% 50%, @silk_purple 1px, transparent 1px),
+                radial-gradient(circle at 60% 30%, @silk_cyan 1px, transparent 1px),
+                radial-gradient(circle at 80% 70%, @silk_coral 1px, transparent 1px),
+                @surface_dark;
+    animation: twinkle 1.5s ease-in-out infinite;
+}
+
+.preview-reactive {
+    background: @surface_dark;
+    box-shadow: inset 0 0 10px @silk_cyan;
+}
+
+@keyframes wave-move {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+@keyframes breathe {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TOASTS & NOTIFICATIONS
+   LAYER PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 
-toast {
-    background-color: @surface_mid;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+.layer-panel {
+    padding: 8px 0;
 }
 
-toast.success {
-    border-color: @silk_green;
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.5),
-        0 0 20px alpha(@silk_green, 0.2);
+.layer-header {
+    padding: 4px 0;
 }
 
-toast.error {
-    border-color: @silk_red;
+.panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: @text_dim;
+}
+
+.layer-list-frame {
+    background-color: @surface_dark;
+    border-radius: 8px;
+    border: 1px solid @surface_light;
+    min-height: 100px;
+}
+
+.layer-list {
+    background-color: transparent;
+}
+
+.layer-row {
+    padding: 6px 8px;
+    border-left: 3px solid transparent;
+    transition: all 150ms ease;
+}
+
+.layer-row:hover {
+    background-color: alpha(@surface_light, 0.5);
+}
+
+.layer-row:selected {
+    background-color: alpha(@silk_purple, 0.1);
+    border-left-color: @silk_purple;
+}
+
+.layer-handle {
+    color: @text_dim;
+}
+
+.layer-zindex {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: @text_dim;
+    background-color: @surface_light;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+.layer-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: @text_primary;
+}
+
+.layer-blend {
+    font-size: 11px;
+}
+
+.layer-opacity trough {
+    min-height: 4px;
+    background-color: @surface_light;
+    border-radius: 2px;
+}
+
+.layer-opacity highlight {
+    background-color: @silk_cyan;
+    border-radius: 2px;
+}
+
+.layer-opacity slider {
+    min-width: 12px;
+    min-height: 12px;
+    background-color: @text_primary;
+    border-radius: 50%;
+}
+
+.layer-visibility {
+    color: @text_dim;
+    transition: color 150ms ease;
+}
+
+.layer-visibility:checked {
+    color: @silk_cyan;
+}
+
+.layer-delete {
+    color: @text_dim;
+    opacity: 0;
+    transition: all 150ms ease;
+}
+
+.layer-row:hover .layer-delete {
+    opacity: 1;
+}
+
+.layer-delete:hover {
+    color: @silk_red;
+}
+
+.play-btn {
+    color: @silk_green;
+}
+
+.play-btn:hover {
+    background-color: alpha(@silk_green, 0.2);
+}
+
+.stop-btn {
+    color: @silk_red;
+}
+
+.stop-btn:hover {
+    background-color: alpha(@silk_red, 0.2);
 }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ANIMATIONS & TRANSITIONS
+   PARAMETER INSPECTOR
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Staggered reveal for lists */
-@keyframes slide-up-fade {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.param-inspector {
+    background-color: @surface_dark;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
 }
 
-.animate-in {
-    animation: slide-up-fade 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+.param-group {
+    min-width: 100px;
 }
 
-.animate-in:nth-child(1) { animation-delay: 0ms; }
-.animate-in:nth-child(2) { animation-delay: 50ms; }
-.animate-in:nth-child(3) { animation-delay: 100ms; }
-.animate-in:nth-child(4) { animation-delay: 150ms; }
-.animate-in:nth-child(5) { animation-delay: 200ms; }
-
-/* Glow pulse for active elements */
-@keyframes glow-pulse {
-    0%, 100% {
-        box-shadow: 0 0 20px alpha(@silk_purple, 0.3);
-    }
-    50% {
-        box-shadow: 0 0 30px alpha(@silk_purple, 0.5);
-    }
+.param-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: @text_dim;
+    margin-bottom: 4px;
 }
 
-.glow-active {
-    animation: glow-pulse 2s ease-in-out infinite;
+.param-color {
+    min-width: 40px;
+    min-height: 32px;
+    border-radius: 6px;
+    border: 2px solid @surface_light;
+    transition: border-color 150ms ease;
+}
+
+.param-color:hover {
+    border-color: @silk_purple;
+}
+
+.param-scale trough {
+    min-height: 6px;
+    background-color: @surface_light;
+    border-radius: 3px;
+}
+
+.param-scale highlight {
+    background: linear-gradient(to right, @silk_purple, @silk_cyan);
+    border-radius: 3px;
+}
+
+.param-scale slider {
+    min-width: 16px;
+    min-height: 16px;
+    background-color: @text_primary;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.param-value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: @text_secondary;
+}
+
+.param-dropdown {
+    font-size: 12px;
+    background-color: @surface_light;
+    border-radius: 6px;
+}
+
+.param-switch {
+    /* Default switch styling is fine */
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dim {
+    opacity: 0.5;
+}
+
+.heading {
+    font-weight: 600;
+}
+
+.caption {
+    font-size: 11px;
+}
+
+.cyan {
+    color: @silk_cyan;
+}
+
+.purple {
+    color: @silk_purple;
+}
+
+.green {
+    color: @silk_green;
+}
+
+.red {
+    color: @silk_red;
 }
 
 
@@ -818,53 +539,39 @@ toast.error {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 scrollbar {
-    background: transparent;
+    background-color: transparent;
 }
 
 scrollbar slider {
-    background-color: alpha(white, 0.15);
-    border-radius: 999px;
     min-width: 6px;
     min-height: 6px;
+    background-color: alpha(@text_dim, 0.3);
+    border-radius: 3px;
 }
 
 scrollbar slider:hover {
-    background-color: alpha(@silk_purple, 0.5);
+    background-color: alpha(@text_secondary, 0.5);
 }
 
-scrollbar slider:active {
-    background-color: @silk_purple;
+scrollbar.horizontal slider {
+    min-height: 6px;
+}
+
+scrollbar.vertical slider {
+    min-width: 6px;
 }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   UTILITY CLASSES
+   POPOVERS & DIALOGS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.dim { color: @text_tertiary; }
-.muted { color: @text_secondary; }
-.accent { color: @silk_purple; }
-.cyan { color: @silk_cyan; }
-.coral { color: @silk_coral; }
-.success { color: @silk_green; }
-.warning { color: @silk_yellow; }
-.error { color: @silk_red; }
-
-.mono {
-    font-family: "JetBrains Mono", "Fira Code", monospace;
+popover {
+    background-color: @surface_dark;
+    border: 1px solid @surface_light;
 }
 
-.card {
-    background-color: @surface_light;
-    border-radius: 12px;
-    padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.glow-purple {
-    box-shadow: 0 0 20px alpha(@silk_purple, 0.4);
-}
-
-.glow-cyan {
-    box-shadow: 0 0 20px alpha(@silk_cyan, 0.4);
+popover > arrow {
+    background-color: @surface_dark;
+    border-color: @surface_light;
 }

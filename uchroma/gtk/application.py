@@ -55,6 +55,11 @@ class UChromaApplication(Adw.Application):
         self.add_action(refresh_action)
         self.set_accels_for_action('app.refresh', ['<Control>r'])
 
+        # Settings (placeholder)
+        settings_action = Gio.SimpleAction.new('settings', None)
+        settings_action.connect('activate', self._on_settings)
+        self.add_action(settings_action)
+
     def do_startup(self):
         """Called when the application starts."""
         Adw.Application.do_startup(self)
@@ -159,6 +164,11 @@ class UChromaApplication(Adw.Application):
     def _on_refresh(self, action, param):
         """Refresh device list."""
         asyncio.create_task(self.device_store.populate(self.dbus))
+
+    def _on_settings(self, action, param):
+        """Show settings dialog."""
+        # TODO: Implement settings dialog
+        pass
 
 
 def main():
