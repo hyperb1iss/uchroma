@@ -2,6 +2,7 @@
 # Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
 import asyncio
+import contextlib
 from collections import OrderedDict
 from concurrent import futures
 
@@ -32,7 +33,7 @@ class AsyncMonitorObserver:
         self._callback = callback
 
         self._executor = futures.ThreadPoolExecutor(max_workers=2)
-        self._task = None
+        self._run_future = None
 
     def _run(self):
         self._stop_event = pipe.Pipe.open()
@@ -42,11 +43,22 @@ class AsyncMonitorObserver:
         MonitorObserver.send_stop(self)  # type: ignore[arg-type]  # duck-typing MonitorObserver
 
     async def start(self):
-        asyncio.get_event_loop().run_in_executor(self._executor, self._run)
+        loop = asyncio.get_running_loop()
+        if self._run_future is None or self._run_future.done():
+            self._run_future = loop.run_in_executor(self._executor, self._run)
 
     async def stop(self):
-        asyncio.get_event_loop().run_in_executor(self._executor, self._stop)
-        self._executor.shutdown()
+        if self._run_future is None:
+            return
+
+        # Request stop and wait for the observer thread to exit.
+        with contextlib.suppress(Exception):
+            self._stop()
+        with contextlib.suppress(Exception):
+            await self._run_future
+
+        self._run_future = None
+        self._executor.shutdown(wait=False, cancel_futures=True)
 
 
 class UChromaDeviceManager(metaclass=Singleton):
