@@ -285,12 +285,20 @@ class RazerReport:
             # on successful responses. This matches razer-laptop-control behavior.
             return True
 
-        self._logger.error(
-            "Got error %s for command %02x,%02x",
-            self._status.name,
-            self._command_class,
-            self._command_id,
-        )
-        self._hexdump(data, "raw response: ")
+        # UNSUPPORTED is not an error - it's a normal response for unsupported commands
+        if self._status == Status.UNSUPPORTED:
+            self._logger.debug(
+                "Command %02x,%02x returned UNSUPPORTED",
+                self._command_class,
+                self._command_id,
+            )
+        else:
+            self._logger.error(
+                "Got error %s for command %02x,%02x",
+                self._status.name,
+                self._command_class,
+                self._command_id,
+            )
+            self._hexdump(data, "raw response: ")
 
         return False

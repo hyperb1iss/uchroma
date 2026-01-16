@@ -199,6 +199,36 @@ headerbar.flat {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   SECTION SWITCHER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.section-switcher {
+    margin: 0 16px;
+}
+
+.section-switcher button {
+    padding: 6px 18px;
+    background-color: @surface_dark;
+    color: @text_secondary;
+    border: 1px solid @surface_light;
+    border-radius: 999px;
+    margin: 0 4px;
+    transition: all 150ms ease;
+}
+
+.section-switcher button:hover {
+    background-color: @surface_light;
+    color: @text_primary;
+}
+
+.section-switcher button:checked {
+    background-color: alpha(@silk_cyan, 0.2);
+    color: @silk_cyan;
+    border-color: @silk_cyan;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
    EFFECT CARDS
    ═══════════════════════════════════════════════════════════════════════════ */
 

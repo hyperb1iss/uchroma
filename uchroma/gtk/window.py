@@ -134,9 +134,26 @@ class UChromaWindow(Adw.ApplicationWindow):
         preview_frame.append(self._preview_stack)
         content.append(preview_frame)
 
+        # Section tabs
+        self._section_stack = Adw.ViewStack()
+        self._section_stack.set_vexpand(True)
+
+        self._section_switcher = Adw.ViewSwitcher()
+        self._section_switcher.set_stack(self._section_stack)
+        self._section_switcher.add_css_class("section-switcher")
+        self._section_switcher.set_halign(Gtk.Align.CENTER)
+        self._section_switcher.set_margin_top(4)
+        self._section_switcher.set_margin_bottom(8)
+
+        content.append(self._section_switcher)
+        content.append(self._section_stack)
+
+        # === EFFECTS PAGE ===
+        effects_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
         # Mode Toggle
         self._mode_toggle = ModeToggle()
-        content.append(self._mode_toggle)
+        effects_box.append(self._mode_toggle)
 
         # Mode-specific content (Stack)
         self._mode_stack = Gtk.Stack()
@@ -156,15 +173,21 @@ class UChromaWindow(Adw.ApplicationWindow):
         custom_box.append(self._layer_panel)
         self._mode_stack.add_named(custom_box, "custom")
 
-        content.append(self._mode_stack)
+        effects_box.append(self._mode_stack)
 
         # Parameter Inspector
         self._param_inspector = ParamInspector()
-        content.append(self._param_inspector)
+        effects_box.append(self._param_inspector)
 
-        # System Control (laptops only)
+        self._section_stack.add_titled(effects_box, "effects", "Effects")
+
+        # === SYSTEM PAGE ===
+        system_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self._system_panel = SystemControlPanel()
-        content.append(self._system_panel)
+        system_box.append(self._system_panel)
+
+        self._section_stack.add_titled(system_box, "system", "System")
+        self._section_stack.set_visible_child_name("effects")
 
         main_box.append(content)
         self.set_content(main_box)
