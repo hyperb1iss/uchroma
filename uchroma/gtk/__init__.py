@@ -5,7 +5,7 @@
 # UChroma GTK4 Frontend
 # A gorgeous, reactive RGB control interface
 
-__version__ = "0.1.0"
+from uchroma.version import __version__ as __version__
 
 
 def main():

@@ -8,6 +8,7 @@ import logging
 import signal
 
 from uchroma.log import LOG_PROTOCOL_TRACE, LOG_TRACE, Log
+from uchroma.version import __version__
 
 from .dbus import DeviceManagerAPI
 from .device_manager import UChromaDeviceManager
@@ -17,7 +18,7 @@ from .power import PowerMonitor
 class UChromaServer:
     def __init__(self):
         parser = argparse.ArgumentParser(description="UChroma daemon")
-        parser.add_argument("-v", "--version", action="version", version="self.version")
+        parser.add_argument("-v", "--version", action="version", version=f"uchromad {__version__}")
         parser.add_argument(
             "-d", "--debug", action="append_const", const=True, help="Increase logging verbosity"
         )

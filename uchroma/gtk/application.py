@@ -18,6 +18,8 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
+from uchroma.version import __version__  # noqa: E402
+
 from .models.store import DeviceStore  # noqa: E402
 from .services.dbus import DBusService  # noqa: E402
 from .window import UChromaWindow  # noqa: E402
@@ -160,7 +162,7 @@ class UChromaApplication(Adw.Application):
         about.set_transient_for(self._window)
         about.set_application_name("UChroma")
         about.set_application_icon("preferences-desktop-keyboard")
-        about.set_version("2.0.0")
+        about.set_version(__version__)
         about.set_developer_name("Hyperbliss")
         about.set_license_type(Gtk.License.LGPL_3_0)
         about.set_website("https://hyperbliss.tech/uchroma")
