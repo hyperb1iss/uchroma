@@ -36,7 +36,7 @@ def main():
     logging.getLogger().setLevel(level)
 
     # Replace sys.argv with remaining args for GTK
-    sys.argv = [sys.argv[0]] + remaining
+    sys.argv = [sys.argv[0], *remaining]
 
     # Import and run application
     from .application import main as app_main  # noqa: PLC0415
