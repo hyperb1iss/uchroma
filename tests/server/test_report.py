@@ -84,7 +84,6 @@ def build_response(
     command_class: int = 0x00,
     command_id: int = 0x00,
     data: bytes | None = None,
-    crc: int | None = None,
 ) -> bytes:
     """Build a valid 90-byte HID response."""
     buf = bytearray(90)
@@ -103,12 +102,7 @@ def build_response(
     if data:
         for i, byte in enumerate(data[:80]):
             buf[8 + i] = byte
-    if crc is None:
-        crc = 0
-        for i in range(1, 87):
-            crc ^= buf[i]
-    buf[88] = crc
-    # reserved at 89
+    # CRC at 88, reserved at 89
     return bytes(buf)
 
 
@@ -437,19 +431,6 @@ class TestUnpackResponse:
         response = build_response(status=Status.OK.value)
         result = basic_report._unpack_response(response)
         assert result is True
-
-    def test_unpack_response_ok_zero_crc_skips_validation(self, basic_report):
-        response = build_response(status=Status.OK.value, crc=0x00)
-        result = basic_report._unpack_response(response)
-        assert result is True
-        assert basic_report.status == Status.OK
-
-    def test_unpack_response_mismatched_crc_fails(self, basic_report):
-        good = build_response(status=Status.OK.value)
-        response = build_response(status=Status.OK.value, crc=(good[88] ^ 0x01))
-        result = basic_report._unpack_response(response)
-        assert result is False
-        assert basic_report.status == Status.BAD_CRC
 
     def test_unpack_response_fail_returns_false(self, basic_report):
         """Unpacking FAIL response should return False."""

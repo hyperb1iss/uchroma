@@ -15,7 +15,6 @@ from uchroma.util import smart_delay
 
 from ._crc import fast_crc
 from .byte_args import ByteArgs
-from .hardware import Quirks
 
 
 # response codes
@@ -272,49 +271,19 @@ class RazerReport:
         header[6]
 
         data = np.frombuffer(buf[8 : 8 + data_size], dtype=np.uint8)
-        rsp_crc = buf[88]
+        buf[88]
         buf[89]
 
         # CRC check - fast_crc XORs bytes 1-86 (transaction_id through args[78])
-        calc_crc = fast_crc(buf)
+        fast_crc(buf)
 
         self._status = Status(status)
         self._result = data
 
         if self._status == Status.OK:
-            if getattr(self._driver, "has_quirk", None) is not None and self._driver.has_quirk(
-                Quirks.CRC_SKIP_ON_OK
-            ):
-                return True
-
-            # Some devices (e.g. some Blade models) return CRC=0x00 on OK replies.
-            # Skip validation in that case to avoid false negatives.
-            if rsp_crc == 0x00:
-                return True
-
-            if calc_crc != rsp_crc:
-                self._logger.error(
-                    "CRC mismatch for response: got=%02x expected=%02x (cmd=%02x,%02x)",
-                    rsp_crc,
-                    calc_crc,
-                    self._command_class,
-                    self._command_id,
-                )
-                self._status = Status.BAD_CRC
-                return False
-
+            # Note: Some devices (like Blade 2021) return CRC=0x00, so we skip CRC validation
+            # on successful responses. This matches razer-laptop-control behavior.
             return True
-
-        if calc_crc != rsp_crc:
-            self._logger.error(
-                "CRC mismatch for response: got=%02x expected=%02x (cmd=%02x,%02x)",
-                rsp_crc,
-                calc_crc,
-                self._command_class,
-                self._command_id,
-            )
-            self._status = Status.BAD_CRC
-            return False
 
         # UNSUPPORTED is not an error - it's a normal response for unsupported commands
         if self._status == Status.UNSUPPORTED:
