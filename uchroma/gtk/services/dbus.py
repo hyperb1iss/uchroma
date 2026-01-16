@@ -13,6 +13,8 @@ from collections.abc import Callable
 from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
 
+from uchroma.dbus_utils import dbus_prepare
+
 SERVICE_NAME = "io.uchroma"
 ROOT_PATH = "/io/uchroma"
 
@@ -90,6 +92,7 @@ class DBusService:
                 "anim": None,
                 "led": None,
                 "system": None,
+                "props": None,
             }
 
             # Try to get additional interfaces
@@ -107,6 +110,11 @@ class DBusService:
             with contextlib.suppress(Exception):
                 self._device_proxies[path]["system"] = proxy.get_interface(
                     "io.uchroma.SystemControl"
+                )
+
+            with contextlib.suppress(Exception):
+                self._device_proxies[path]["props"] = proxy.get_interface(
+                    "org.freedesktop.DBus.Properties"
                 )
 
             return self._device_proxies[path]["device"]
@@ -138,6 +146,12 @@ class DBusService:
         if path not in self._device_proxies:
             await self.get_device_proxy(path)
         return self._device_proxies.get(path, {}).get("system")
+
+    async def get_properties_proxy(self, path: str):
+        """Get proxy for org.freedesktop.DBus.Properties."""
+        if path not in self._device_proxies:
+            await self.get_device_proxy(path)
+        return self._device_proxies.get(path, {}).get("props")
 
     def _unwrap_variants(self, obj):
         """Recursively unwrap dbus_fast Variants."""
@@ -246,20 +260,8 @@ class DBusService:
             return False
 
         try:
-            dbus_traits = {}
-            for k, v in traits.items():
-                if isinstance(v, bool):
-                    dbus_traits[k] = Variant("b", v)
-                elif isinstance(v, int):
-                    dbus_traits[k] = Variant("i", v)
-                elif isinstance(v, float):
-                    dbus_traits[k] = Variant("d", v)
-                elif isinstance(v, str):
-                    dbus_traits[k] = Variant("s", v)
-                elif isinstance(v, list):
-                    dbus_traits[k] = Variant("as", v)
-
-            return await anim_proxy.call_set_layer_traits(zindex, dbus_traits)
+            prepared, _sig = dbus_prepare(traits or {}, variant=True)
+            return await anim_proxy.call_set_layer_traits(zindex, prepared)
         except Exception as e:
             print(f"Failed to set layer traits: {e}")
             return False
@@ -268,6 +270,13 @@ class DBusService:
         """Set an effect on a device."""
         fx_proxy = await self.get_fx_proxy(path)
         if not fx_proxy:
+            return False
+
+        try:
+            prepared, _sig = dbus_prepare(params or {}, variant=True)
+            return await fx_proxy.call_set_fx(effect_name, prepared)
+        except Exception as e:
+            print(f"Failed to set effect: {e}")
             return False
 
     async def get_key_mapping(self, path: str) -> dict:
@@ -283,28 +292,6 @@ class DBusService:
             print(f"Failed to get key mapping: {e}")
             return {}
 
-        try:
-            # Convert params to D-Bus variants
-            dbus_params = {}
-            if params:
-                for k, v in params.items():
-                    if isinstance(v, bool):
-                        dbus_params[k] = Variant("b", v)
-                    elif isinstance(v, int):
-                        dbus_params[k] = Variant("i", v)
-                    elif isinstance(v, float):
-                        dbus_params[k] = Variant("d", v)
-                    elif isinstance(v, str):
-                        dbus_params[k] = Variant("s", v)
-                    elif isinstance(v, list):
-                        # Assume list of strings for now
-                        dbus_params[k] = Variant("as", v)
-
-            return await fx_proxy.call_set_fx(effect_name, dbus_params)
-        except Exception as e:
-            print(f"Failed to set effect: {e}")
-            return False
-
     async def add_renderer(
         self, path: str, name: str, zindex: int = -1, traits: dict | None = None
     ):
@@ -314,21 +301,8 @@ class DBusService:
             return None
 
         try:
-            dbus_traits = {}
-            if traits:
-                for k, v in traits.items():
-                    if isinstance(v, bool):
-                        dbus_traits[k] = Variant("b", v)
-                    elif isinstance(v, int):
-                        dbus_traits[k] = Variant("i", v)
-                    elif isinstance(v, float):
-                        dbus_traits[k] = Variant("d", v)
-                    elif isinstance(v, str):
-                        dbus_traits[k] = Variant("s", v)
-                    elif isinstance(v, list):
-                        dbus_traits[k] = Variant("as", v)
-
-            return await anim_proxy.call_add_renderer(name, zindex, dbus_traits)
+            prepared, _sig = dbus_prepare(traits or {}, variant=True)
+            return await anim_proxy.call_add_renderer(name, zindex, prepared)
         except Exception as e:
             print(f"Failed to add renderer: {e}")
             return None

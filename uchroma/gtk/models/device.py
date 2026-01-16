@@ -56,9 +56,11 @@ class DeviceModel(GObject.Object):
         self._device_proxy = None
         self._fx_proxy = None
         self._anim_proxy = None
+        self._props_proxy = None
         self._pending_tasks: set[asyncio.Task] = set()
 
         self._syncing = False  # Prevent feedback loops
+        self._props_subscribed = False
 
     @property
     def path(self) -> str:
@@ -88,6 +90,10 @@ class DeviceModel(GObject.Object):
         self._device_proxy = device_proxy
         self._fx_proxy = fx_proxy
         self._anim_proxy = anim_proxy
+
+        if self._dbus is not None:
+            with contextlib.suppress(Exception):
+                self._props_proxy = await self._dbus.get_properties_proxy(self._path)
 
         self._syncing = True
         try:
@@ -153,6 +159,11 @@ class DeviceModel(GObject.Object):
         self.connect("notify::brightness", self._on_brightness_changed)
         self.connect("notify::suspended", self._on_suspended_changed)
 
+        if self._props_proxy and not self._props_subscribed:
+            with contextlib.suppress(Exception):
+                self._props_proxy.on_properties_changed(self.on_dbus_properties_changed)
+                self._props_subscribed = True
+
     def _on_brightness_changed(self, obj, pspec):
         """Push brightness change to D-Bus."""
         if self._syncing or not self._device_proxy:
@@ -183,14 +194,25 @@ class DeviceModel(GObject.Object):
 
     def on_dbus_properties_changed(self, interface, changed, invalidated):
         """Handle D-Bus property changes."""
+
+        def _unwrap(value):
+            return value.value if hasattr(value, "value") else value
+
         self._syncing = True
         try:
-            if "Brightness" in changed:
-                self.brightness = changed["Brightness"].value
-            if "Suspended" in changed:
-                self.suspended = changed["Suspended"].value
-            if "AnimationState" in changed:
-                self.is_animating = changed["AnimationState"].value == "running"
+            if interface == "io.uchroma.Device":
+                if "Brightness" in changed:
+                    self.brightness = _unwrap(changed["Brightness"])
+                if "Suspended" in changed:
+                    self.suspended = _unwrap(changed["Suspended"])
+            elif interface == "io.uchroma.AnimationManager":
+                if "AnimationState" in changed:
+                    self.is_animating = _unwrap(changed["AnimationState"]) == "running"
+            elif interface == "io.uchroma.FXManager":
+                if "CurrentFX" in changed:
+                    current = _unwrap(changed["CurrentFX"])
+                    if isinstance(current, (list, tuple)) and current:
+                        self.current_fx = current[0]
         finally:
             self._syncing = False
 

@@ -63,15 +63,21 @@ def dbus_prepare(obj, variant: bool = False, camel_keys: bool = False) -> tuple:
         elif isinstance(obj, str):
             sig = "s"
 
-        elif isinstance(obj, int):
-            if obj < pow(2, 16):
-                sig = "n"
-            elif obj < pow(2, 32):
+        elif isinstance(obj, (bytes, bytearray, memoryview)):
+            sig = "ay"
+            obj = bytes(obj)
+
+        elif isinstance(obj, (int, np.integer)):
+            if isinstance(obj, np.integer):
+                obj = int(obj)
+            if -(2**31) <= obj <= 2**31 - 1:
                 sig = "i"
             else:
                 sig = "x"
 
-        elif isinstance(obj, float):
+        elif isinstance(obj, (float, np.floating)):
+            if isinstance(obj, np.floating):
+                obj = float(obj)
             sig = "d"
 
         elif isinstance(obj, Color):
@@ -100,10 +106,32 @@ def dbus_prepare(obj, variant: bool = False, camel_keys: bool = False) -> tuple:
             sig = "s"
 
         elif isinstance(obj, np.ndarray):
-            dtype = obj.dtype.kind
-            if dtype == "f":
-                dtype = "d"
-            sig = "a" * obj.ndim + dtype
+            dtype = obj.dtype
+            kind = dtype.kind
+            itemsize = dtype.itemsize
+
+            if kind == "O":
+                obj = obj.tolist()
+                return dbus_prepare(obj, variant=variant)
+
+            if kind == "b":
+                base_sig = "b"
+            elif kind == "f":
+                base_sig = "d"
+            elif kind in {"i", "u"}:
+                if itemsize == 1:
+                    base_sig = "y" if kind == "u" else "n"
+                elif itemsize == 2:
+                    base_sig = "q" if kind == "u" else "n"
+                elif itemsize == 4:
+                    base_sig = "u" if kind == "u" else "i"
+                else:
+                    base_sig = "t" if kind == "u" else "x"
+            else:
+                base_sig = "d"
+                obj = obj.astype(np.float64)
+
+            sig = "a" * obj.ndim + base_sig
             obj = obj.tolist()
 
         elif isinstance(obj, tuple):

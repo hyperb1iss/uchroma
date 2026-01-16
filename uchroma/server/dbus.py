@@ -21,6 +21,7 @@ from enum import Enum
 import numpy as np
 from dbus_fast import BusType, PropertyAccess, Variant
 from dbus_fast.aio import MessageBus
+from dbus_fast.errors import DBusError
 from dbus_fast.service import ServiceInterface, dbus_property, method, signal
 
 from uchroma.dbus_utils import dbus_prepare
@@ -244,8 +245,7 @@ class LEDManagerInterface(ServiceInterface):
         try:
             ledtype = LEDType[name.upper()]
         except KeyError:
-            self._logger.error("Unknown LED type: %s", name)
-            return {}
+            raise DBusError("io.uchroma.Error.UnknownLED", f"Unknown LED type: {name}") from None
         led = self._driver.led_manager.get(ledtype)
         return dbus_prepare(led._trait_values, variant=True)[0]
 
@@ -254,8 +254,7 @@ class LEDManagerInterface(ServiceInterface):
         try:
             ledtype = LEDType[name.upper()]
         except KeyError:
-            self._logger.error("Unknown LED type: %s", name)
-            return False
+            raise DBusError("io.uchroma.Error.UnknownLED", f"Unknown LED type: {name}") from None
 
         led = self._driver.led_manager.get(ledtype)
         with led.hold_trait_notifications():
@@ -320,6 +319,8 @@ class FXManagerInterface(ServiceInterface):
 
     @method()
     def SetFX(self, name: "s", args: "a{sv}") -> "b":
+        if name not in self._fx_manager.available_fx:
+            raise DBusError("io.uchroma.Error.UnknownFX", f"Unknown FX: {name}") from None
         # Extract values from variants
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in args.items()}
         return self._fx_manager.activate(name, **kwargs)
@@ -415,6 +416,11 @@ class AnimationManagerInterface(ServiceInterface):
         if zindex < 0:
             zindex = None
 
+        if name not in self._animgr.renderer_info:
+            raise DBusError(
+                "io.uchroma.Error.UnknownRenderer", f"Unknown renderer: {name}"
+            ) from None
+
         # Extract values from variants
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in traits.items()}
         z = self._animgr.add_renderer(name, traits=kwargs, zindex=zindex)
@@ -458,7 +464,7 @@ class AnimationManagerInterface(ServiceInterface):
                     setattr(layer, k, val)
                 return True
         self._logger.debug("SetLayerTraits: no layer found with zindex=%d", zindex)
-        return False
+        raise DBusError("io.uchroma.Error.UnknownLayer", f"No layer with zindex={zindex}") from None
 
     @method()
     def RemoveRenderer(self, zindex: "i") -> "b":

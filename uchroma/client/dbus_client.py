@@ -301,7 +301,7 @@ class DeviceProxy:
             return None
         if "AvailableLEDs" not in self._cache:
             loop = self._get_loop()
-            raw = loop.run_until_complete(self._led_iface.get_available_le_ds())
+            raw = loop.run_until_complete(self._led_iface.get_available_leds())
             self._cache["AvailableLEDs"] = self._unwrap_variants(raw)
         return self._cache["AvailableLEDs"]
 
