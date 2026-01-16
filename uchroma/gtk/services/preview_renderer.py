@@ -10,6 +10,8 @@ import time
 import numpy as np
 from gi.repository import GLib
 
+from uchroma.color import to_rgb
+
 
 class PreviewRenderer:
     """Renders effects locally for preview display."""
@@ -225,13 +227,12 @@ class PreviewRenderer:
 
     def _parse_color(self, color_str: str) -> tuple:
         """Parse hex color to RGB floats."""
-        if color_str.startswith("#"):
-            color_str = color_str[1:]
-        if len(color_str) == 6:
-            r = int(color_str[0:2], 16) / 255
-            g = int(color_str[2:4], 16) / 255
-            b = int(color_str[4:6], 16) / 255
-            return (r, g, b)
+        try:
+            rgb = to_rgb(color_str)
+            if isinstance(rgb, (list, tuple)) and len(rgb) >= 3:
+                return (rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+        except Exception:
+            pass
         return (1.0, 1.0, 1.0)
 
     def _hsv_to_rgb(self, h: float, s: float, v: float) -> tuple:
