@@ -20,6 +20,7 @@ from traitlets import Bool, Int, Unicode
 from uchroma.color import ColorUtils
 from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
 
+from .effects import Effects
 from .fx import BaseFX, FXModule
 from .hardware import Hardware, Quirks
 from .types import BaseCommand, LEDType
@@ -27,9 +28,13 @@ from .types import BaseCommand, LEDType
 
 class FX(Enum):
     """
-    All known lighting effects.
+    Legacy lighting effect IDs (Command Class 0x03).
 
-    Not all effects are available on all devices.
+    Not all effects are available on all devices. See Effects registry
+    in effects.py for the authoritative source of effect ID mappings.
+
+    Note: These IDs are for the legacy protocol only. Devices with
+    EXTENDED_FX_CMDS quirk use different IDs (see ExtendedFX enum).
     """
 
     DISABLE = 0x00
@@ -56,11 +61,13 @@ class FX(Enum):
 
 class ExtendedFX(Enum):
     """
-    Enumeration of "extended" effect types and command identifiers
+    Extended lighting effect IDs (Command Class 0x0F).
 
     These effects use a different command structure than the standard
-    effects. Should not normally be used as part of the API.
+    effects and are used by devices with EXTENDED_FX_CMDS quirk.
 
+    See Effects registry in effects.py for the authoritative source
+    of effect ID mappings. Should not normally be used as part of the API.
     """
 
     DISABLE = 0x00
@@ -139,11 +146,21 @@ class StandardFX(FXModule):
         )
 
     def set_effect(self, effect: FX | ExtendedFX, *args) -> bool:
-        if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
-            if effect.name in ExtendedFX.__members__:
-                return self._set_effect_extended(ExtendedFX[effect.name], *args)
+        """Apply a lighting effect to the device.
+
+        Uses the Effects registry to determine protocol support.
+        """
+        uses_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
+
+        # Validate effect is supported on this protocol using Effects registry
+        if not Effects.supports_protocol(effect.name, uses_extended):
+            self._driver.logger.warning(
+                f"Effect '{effect.name}' not supported on {'extended' if uses_extended else 'legacy'} protocol"
+            )
             return False
-        # For basic effects, we need FX type - cast since we know it's valid here
+
+        if uses_extended:
+            return self._set_effect_extended(ExtendedFX[effect.name], *args)
         return self._set_effect_basic(FX[effect.name], *args)
 
     class DisableFX(BaseFX):
