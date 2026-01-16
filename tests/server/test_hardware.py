@@ -4,14 +4,18 @@ from __future__ import annotations
 import pytest
 
 from uchroma.server.hardware import (
+    Capability,
     Hardware,
     HexQuad,
     KeyMapping,
+    MatrixType,
     Point,
     PointList,
+    ProtocolSpec,
     Quirks,
     Zone,
 )
+from uchroma.server.protocol import ProtocolVersion
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Quirks Enum Tests
@@ -429,3 +433,323 @@ class TestRealDeviceData:
         assert device.key_mapping is not None
         assert "KEY_ESC" in device.key_mapping
         assert "KEY_A" in device.key_mapping
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: Capability Enum Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestCapabilityEnum:
+    """Tests for the Capability enum values."""
+
+    def test_capability_wireless(self):
+        """WIRELESS capability should have correct value."""
+        assert Capability.WIRELESS.value == "wireless"
+
+    def test_capability_hyperpolling(self):
+        """HYPERPOLLING capability should have correct value."""
+        assert Capability.HYPERPOLLING.value == "hyperpolling"
+
+    def test_capability_no_led(self):
+        """NO_LED capability should have correct value."""
+        assert Capability.NO_LED.value == "no_led"
+
+    def test_capability_single_led(self):
+        """SINGLE_LED capability should have correct value."""
+        assert Capability.SINGLE_LED.value == "single_led"
+
+    def test_capability_software_effects(self):
+        """SOFTWARE_EFFECTS capability should have correct value."""
+        assert Capability.SOFTWARE_EFFECTS.value == "software_effects"
+
+    def test_capability_analog_keys(self):
+        """ANALOG_KEYS capability should have correct value."""
+        assert Capability.ANALOG_KEYS.value == "analog_keys"
+
+    def test_capability_profile_leds(self):
+        """PROFILE_LEDS capability should have correct value."""
+        assert Capability.PROFILE_LEDS.value == "profile_leds"
+
+    def test_capability_is_strenum(self):
+        """Capability should be usable as strings."""
+        assert str(Capability.WIRELESS) == "wireless"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: MatrixType Enum Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestMatrixTypeEnum:
+    """Tests for the MatrixType enum values."""
+
+    def test_matrix_type_none(self):
+        """NONE matrix type should have correct value."""
+        assert MatrixType.NONE.value == "none"
+
+    def test_matrix_type_single(self):
+        """SINGLE matrix type should have correct value."""
+        assert MatrixType.SINGLE.value == "single"
+
+    def test_matrix_type_row(self):
+        """ROW matrix type should have correct value."""
+        assert MatrixType.ROW.value == "row"
+
+    def test_matrix_type_full(self):
+        """FULL matrix type should have correct value."""
+        assert MatrixType.FULL.value == "full"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: ProtocolSpec Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestProtocolSpec:
+    """Tests for ProtocolSpec named tuple."""
+
+    def test_protocol_spec_defaults(self):
+        """ProtocolSpec should have sensible defaults."""
+        spec = ProtocolSpec()
+        assert spec.version == "legacy"
+        assert spec.transaction_id == 0xFF
+        assert spec.transaction_id_wireless is None
+        assert spec.extended_fx is False
+        assert spec.inter_command_delay == 0.007
+
+    def test_protocol_spec_custom_values(self):
+        """ProtocolSpec should accept custom values."""
+        spec = ProtocolSpec(
+            version="modern",
+            transaction_id=0x1F,
+            transaction_id_wireless=0x1F,
+            extended_fx=True,
+            inter_command_delay=0.005,
+        )
+        assert spec.version == "modern"
+        assert spec.transaction_id == 0x1F
+        assert spec.transaction_id_wireless == 0x1F
+        assert spec.extended_fx is True
+        assert spec.inter_command_delay == 0.005
+
+    def test_protocol_spec_asdict(self):
+        """ProtocolSpec._asdict() should omit None values."""
+        spec = ProtocolSpec(version="extended", transaction_id=0x3F, extended_fx=True)
+        d = spec._asdict()
+        assert d["version"] == "extended"
+        assert d["transaction_id"] == 0x3F
+        assert "transaction_id_wireless" not in d  # None values omitted
+
+    def test_protocol_spec_is_immutable(self):
+        """ProtocolSpec should be immutable."""
+        spec = ProtocolSpec()
+        with pytest.raises(AttributeError):
+            spec.version = "modern"  # type: ignore
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: Hardware.has_capability Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestHardwareHasCapability:
+    """Tests for Hardware.has_capability method."""
+
+    def test_has_capability_wireless_via_quirk(self):
+        """has_capability should detect WIRELESS from legacy quirk."""
+        # Mamba Wireless has WIRELESS quirk
+        device = Hardware.get_device(0x0045, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.has_capability(Capability.WIRELESS) is True
+        assert device.has_capability("wireless") is True
+
+    def test_has_capability_no_capability(self):
+        """has_capability should return False when not present."""
+        # DeathAdder Chroma has no wireless capability
+        device = Hardware.get_device(0x0043, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.has_capability(Capability.WIRELESS) is False
+
+    def test_has_capability_string_argument(self):
+        """has_capability should accept string argument."""
+        device = Hardware.get_device(0x0045, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.has_capability("WIRELESS") is True
+        assert device.has_capability("Wireless") is True
+
+    def test_has_capability_unknown_capability(self):
+        """has_capability should return False for unknown capability."""
+        device = Hardware.get_device(0x0043, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.has_capability("nonexistent") is False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: Hardware.get_protocol_config Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestHardwareGetProtocolConfig:
+    """Tests for Hardware.get_protocol_config method."""
+
+    def test_get_protocol_config_legacy(self):
+        """Device with no quirks should get LEGACY protocol."""
+        # DeathAdder Chroma has no transaction code quirks
+        device = Hardware.get_device(0x0043, Hardware.Type.MOUSE)
+        assert device is not None
+        config = device.get_protocol_config()
+        assert config.version == ProtocolVersion.LEGACY
+        assert config.transaction_id == 0xFF
+        assert config.uses_extended_fx is False
+
+    def test_get_protocol_config_extended(self):
+        """Device with TRANSACTION_CODE_3F should get EXTENDED protocol."""
+        # Naga Hex V2 has TRANSACTION_CODE_3F
+        device = Hardware.get_device(0x0050, Hardware.Type.MOUSE)
+        assert device is not None
+        config = device.get_protocol_config()
+        assert config.version == ProtocolVersion.EXTENDED
+        assert config.transaction_id == 0x3F
+
+    def test_get_protocol_config_modern(self):
+        """Device with TRANSACTION_CODE_1F should get MODERN protocol."""
+        # Find a device with TRANSACTION_CODE_1F quirk
+        # Basilisk V3 (0x0099) has TRANSACTION_CODE_1F
+        device = Hardware.get_device(0x0099, Hardware.Type.MOUSE)
+        if device is not None:
+            config = device.get_protocol_config()
+            assert config.version == ProtocolVersion.MODERN
+            assert config.transaction_id == 0x1F
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: Hardware.uses_extended_fx Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestHardwareUsesExtendedFx:
+    """Tests for Hardware.uses_extended_fx property."""
+
+    def test_uses_extended_fx_false_for_legacy(self):
+        """Legacy device should return False for uses_extended_fx."""
+        # DeathAdder Chroma doesn't use extended FX
+        device = Hardware.get_device(0x0043, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.uses_extended_fx is False
+
+    def test_uses_extended_fx_true_for_extended(self):
+        """Device with EXTENDED_FX_CMDS should return True."""
+        # Naga Hex V2 has EXTENDED_FX_CMDS
+        device = Hardware.get_device(0x0050, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.uses_extended_fx is True
+
+    def test_uses_extended_fx_ornata(self):
+        """Ornata Chroma should use extended FX."""
+        device = Hardware.get_device(0x021E, Hardware.Type.KEYBOARD)
+        assert device is not None
+        assert device.uses_extended_fx is True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: Hardware.has_leds Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestHardwareHasLeds:
+    """Tests for Hardware.has_leds property."""
+
+    def test_has_leds_true_for_keyboard(self):
+        """Keyboard with supported_leds should return True."""
+        device = Hardware.get_device(0x0203, Hardware.Type.KEYBOARD)
+        assert device is not None
+        assert device.has_leds is True
+
+    def test_has_leds_true_for_mouse(self):
+        """Mouse with supported_leds should return True."""
+        device = Hardware.get_device(0x0043, Hardware.Type.MOUSE)
+        assert device is not None
+        assert device.has_leds is True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: Hardware Effect Support Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestHardwareEffectSupport:
+    """Tests for Hardware.get_supported_effects and supports_effect methods."""
+
+    def test_get_supported_effects_returns_tuple(self):
+        """get_supported_effects should return tuple."""
+        device = Hardware.get_device(0x0203, Hardware.Type.KEYBOARD)
+        assert device is not None
+        effects = device.get_supported_effects()
+        assert isinstance(effects, tuple)
+
+    def test_get_supported_effects_from_supported_fx(self):
+        """get_supported_effects should use supported_fx field."""
+        device = Hardware.get_device(0x0203, Hardware.Type.KEYBOARD)
+        assert device is not None
+        effects = device.get_supported_effects()
+        assert len(effects) > 0
+        assert "wave" in effects or "static" in effects
+
+    def test_supports_effect_true(self):
+        """supports_effect should return True for supported effect."""
+        device = Hardware.get_device(0x0203, Hardware.Type.KEYBOARD)
+        assert device is not None
+        # BlackWidow Chroma should support common effects
+        assert device.supports_effect("static") is True
+        assert device.supports_effect("STATIC") is True  # Case insensitive
+
+    def test_supports_effect_returns_true_when_no_list(self):
+        """supports_effect should return True when no effects list specified."""
+        # Find a device with no supported_fx list
+        device = Hardware.get_device(0x0043, Hardware.Type.MOUSE)
+        assert device is not None
+        if device.supported_fx is None:
+            # When no list, all effects considered available
+            assert device.supports_effect("static") is True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4: New Quirks Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestNewQuirks:
+    """Tests for new quirks added in Phase 1."""
+
+    def test_transaction_code_9f_exists(self):
+        """TRANSACTION_CODE_9F quirk should exist."""
+        assert Quirks.TRANSACTION_CODE_9F == 10
+
+    def test_transaction_code_08_exists(self):
+        """TRANSACTION_CODE_08 quirk should exist."""
+        assert Quirks.TRANSACTION_CODE_08 == 11
+
+    def test_no_led_quirk_exists(self):
+        """NO_LED quirk should exist."""
+        assert Quirks.NO_LED == 12
+
+    def test_single_led_quirk_exists(self):
+        """SINGLE_LED quirk should exist."""
+        assert Quirks.SINGLE_LED == 13
+
+    def test_hyperpolling_quirk_exists(self):
+        """HYPERPOLLING quirk should exist."""
+        assert Quirks.HYPERPOLLING == 14
+
+    def test_analog_keys_quirk_exists(self):
+        """ANALOG_KEYS quirk should exist."""
+        assert Quirks.ANALOG_KEYS == 15
+
+    def test_software_effects_quirk_exists(self):
+        """SOFTWARE_EFFECTS quirk should exist."""
+        assert Quirks.SOFTWARE_EFFECTS == 16
+
+    def test_crc_skip_on_ok_quirk_exists(self):
+        """CRC_SKIP_ON_OK quirk should exist."""
+        assert Quirks.CRC_SKIP_ON_OK == 17

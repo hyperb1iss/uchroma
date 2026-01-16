@@ -2137,9 +2137,16 @@ STATUS: TODO | IN_PROGRESS | DONE | BLOCKED
 [2026-01-16] [DONE] [3] Create effects.py with EffectDef
 [2026-01-16] [DONE] [3] Update StandardFX to use Effects.get_id()
 
-[2026-01-15] [TODO] [4] Extend Hardware class for new protocol fields
-[2026-01-15] [TODO] [4] Add capabilities list parsing
-[2026-01-15] [TODO] [4] Create migration script for YAML
+[2026-01-16] [DONE] [4] Extend Hardware class for new protocol fields
+[2026-01-16] [DONE] [4] Add Capability enum and MatrixType enum
+[2026-01-16] [DONE] [4] Add ProtocolSpec namedtuple for YAML protocol section
+[2026-01-16] [DONE] [4] Add has_capability() method with quirks fallback
+[2026-01-16] [DONE] [4] Add get_protocol_config() method with quirks fallback
+[2026-01-16] [DONE] [4] Add uses_extended_fx, has_leds properties
+[2026-01-16] [DONE] [4] Add get_supported_effects(), supports_effect() methods
+[2026-01-16] [DONE] [4] Add YAML representer for ProtocolSpec
+[2026-01-16] [DONE] [6] Write comprehensive tests for Phase 4 features
+[2026-01-15] [TODO] [4] Create migration script for YAML (optional - incremental OK)
 
 [2026-01-15] [TODO] [5] Create layout template system
 [2026-01-15] [TODO] [5] Implement layout validation tool
