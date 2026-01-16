@@ -4,6 +4,8 @@ Comprehensive list of Razer Chroma devices with USB Product IDs, capabilities, a
 
 **Vendor ID**: `0x1532`
 
+**Coverage audit**: Run `python3 scripts/audit_hardware_db.py` to compare this list to `uchroma/server/data/*.yaml`.
+
 ---
 
 ## Keyboards
