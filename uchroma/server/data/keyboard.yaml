@@ -205,3 +205,87 @@ children:
     product_id: 0x0a24
     dimensions: [6, 18]
     quirks: []  # Uses default 0xFF, override parent
+
+  # Huntsman V3 Pro Series
+  - !device-config
+    name: Huntsman V3 Pro
+    product_id: 0x02a6
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Huntsman V3 Pro TKL
+    product_id: 0x02b0
+    dimensions: [6, 18]
+
+  - !device-config
+    name: Huntsman V3 Pro Mini
+    product_id: 0x02b1
+    dimensions: [5, 15]
+
+  # Huntsman V2 Series
+  - !device-config
+    name: Huntsman V2
+    product_id: 0x026b
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Huntsman V2 TKL
+    product_id: 0x026c
+    dimensions: [6, 18]
+
+  - !device-config
+    name: Huntsman Mini
+    product_id: 0x0257
+    dimensions: [5, 15]
+
+  # DeathStalker V2 Series
+  - !device-config
+    name: DeathStalker V2
+    product_id: 0x0295
+    dimensions: [6, 22]
+
+  - !device-config
+    name: DeathStalker V2 Pro (Wired)
+    product_id: 0x0296
+    dimensions: [6, 22]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+  - !device-config
+    name: DeathStalker V2 Pro TKL
+    product_id: 0x029c
+    dimensions: [6, 18]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+  # Ornata V3 Series
+  - !device-config
+    name: Ornata V3
+    product_id: 0x0292
+    dimensions: [6, 22]
+
+  - !device-config
+    name: Ornata V3 TKL
+    product_id: 0x02b3
+    dimensions: [6, 18]
+
+# Wireless keyboards using 0x9F transaction code
+- !device-config
+  supported_fx: [disable, wave, reactive, breathe, spectrum, static, custom_frame,
+    rainbow, starlight]
+  quirks: [TRANSACTION_CODE_9F, EXTENDED_FX_CMDS, WIRELESS]
+  children:
+
+  - !device-config
+    name: BlackWidow V3 Pro (Wired)
+    product_id: 0x025a
+    dimensions: [6, 22]
+    quirks: [TRANSACTION_CODE_1F, EXTENDED_FX_CMDS, WIRELESS]
+
+  - !device-config
+    name: BlackWidow V3 Pro (Wireless)
+    product_id: 0x025c
+    dimensions: [6, 22]
+
+  - !device-config
+    name: DeathStalker V2 Pro (Wireless)
+    product_id: 0x0298
+    dimensions: [6, 22]
