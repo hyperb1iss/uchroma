@@ -18,7 +18,13 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
-from .panels import EffectSelector, LayerPanel, ModeToggle, ParamInspector  # noqa: E402
+from .panels import (  # noqa: E402
+    EffectSelector,
+    LayerPanel,
+    ModeToggle,
+    ParamInspector,
+    SystemControlPanel,
+)
 from .param_utils import (  # noqa: E402
     build_param_defs,
     extract_description,
@@ -71,6 +77,14 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._live_preview_inflight = False
         self._live_preview_seq = None
         self._live_preview_interval_ms = self._read_live_preview_interval()
+
+        self._system_panel = None
+        self._system_device_path = None
+        self._system_refresh_id = None
+        self._system_refresh_inflight = False
+        self._system_refresh_interval_ms = 1000
+        self._system_power_modes: list[str] = []
+        self._system_boost_modes: list[str] = []
 
         self._build_ui()
         self._connect_signals()
@@ -147,6 +161,10 @@ class UChromaWindow(Adw.ApplicationWindow):
         # Parameter Inspector
         self._param_inspector = ParamInspector()
         content.append(self._param_inspector)
+
+        # System Control (laptops only)
+        self._system_panel = SystemControlPanel()
+        content.append(self._system_panel)
 
         main_box.append(content)
         self.set_content(main_box)
@@ -227,6 +245,14 @@ class UChromaWindow(Adw.ApplicationWindow):
         # Parameter inspector
         self._param_inspector.connect("param-changed", self._on_param_changed)
 
+        # System control
+        if self._system_panel:
+            self._system_panel.connect("power-mode-changed", self._on_power_mode_changed)
+            self._system_panel.connect("fan-mode-changed", self._on_fan_mode_changed)
+            self._system_panel.connect("fan-rpm-changed", self._on_fan_rpm_changed)
+            self._system_panel.connect("cpu-boost-changed", self._on_cpu_boost_changed)
+            self._system_panel.connect("gpu-boost-changed", self._on_gpu_boost_changed)
+
     def _debug_log(self, message: str):
         if os.getenv("UCHROMA_GTK_DEBUG"):
             print(message)
@@ -274,9 +300,13 @@ class UChromaWindow(Adw.ApplicationWindow):
 
             self._update_preview_visibility()
             self._schedule_task(self._load_device_state())
+            self._schedule_task(self._load_system_state())
         else:
             self._window_title.set_subtitle("")
             self._update_preview_visibility()
+            self._stop_system_refresh()
+            if self._system_panel:
+                self._system_panel.set_available(False, "Select a laptop to manage system control")
 
     def update_device_list(self, devices: list):
         """Update the device dropdown."""
@@ -445,6 +475,217 @@ class UChromaWindow(Adw.ApplicationWindow):
         self._update_preview_visibility()
         self._update_mode_status()
         return False
+
+    # === SYSTEM CONTROL ===
+
+    async def _load_system_state(self):
+        """Load system control state for the selected device."""
+        if not self._system_panel:
+            return
+
+        self._stop_system_refresh()
+        self._system_device_path = None
+        self._system_power_modes = []
+        self._system_boost_modes = []
+
+        devices = self._selected_devices or ([self._device] if self._device else [])
+        if len(devices) != 1:
+            self._system_panel.set_available(
+                False, "Select a single laptop device for system control"
+            )
+            return
+
+        device = devices[0]
+        app = self.get_application()
+        if not app or not hasattr(app, "dbus"):
+            return
+
+        system_proxy = await app.dbus.get_system_proxy(device.path)
+        if not system_proxy:
+            self._system_panel.set_available(
+                False, "System control is only available on supported laptops"
+            )
+            return
+
+        fan_limits = await app.dbus.get_fan_limits(device.path)
+        power_modes = await app.dbus.get_available_power_modes(device.path)
+        boost_modes = await app.dbus.get_available_boost_modes(device.path)
+        fan_rpm = await app.dbus.get_fan_rpm(device.path)
+        fan_mode = await app.dbus.get_fan_mode(device.path)
+        power_mode = await app.dbus.get_power_mode(device.path)
+        cpu_boost = await app.dbus.get_cpu_boost(device.path)
+        gpu_boost = await app.dbus.get_gpu_boost(device.path)
+
+        GLib.idle_add(
+            self._apply_system_state,
+            device.path,
+            fan_limits,
+            power_modes,
+            boost_modes,
+            fan_rpm,
+            fan_mode,
+            power_mode,
+            cpu_boost,
+            gpu_boost,
+        )
+
+    def _apply_system_state(
+        self,
+        path: str,
+        fan_limits: dict,
+        power_modes: list[str],
+        boost_modes: list[str],
+        fan_rpm: list[int],
+        fan_mode: str,
+        power_mode: str,
+        cpu_boost: str,
+        gpu_boost: str,
+    ) -> bool:
+        if not self._system_panel:
+            return False
+
+        self._system_device_path = path
+        self._system_power_modes = power_modes or []
+        self._system_boost_modes = boost_modes or []
+
+        self._system_panel.set_available(True)
+        self._system_panel.set_fan_limits(fan_limits or {"supports_dual_fan": False})
+        self._system_panel.set_power_modes(power_modes, power_mode)
+        self._system_panel.set_boost_modes(boost_modes, cpu_boost, gpu_boost)
+        self._system_panel.set_boost_enabled(
+            power_mode == "custom" and bool(self._system_boost_modes)
+        )
+        self._system_panel.set_fan_state(fan_rpm or [], fan_mode)
+
+        self._start_system_refresh()
+        return False
+
+    def _start_system_refresh(self):
+        if not self._system_device_path:
+            return
+        if self._system_refresh_id is not None:
+            return
+        self._system_refresh_id = GLib.timeout_add(
+            self._system_refresh_interval_ms, self._on_system_refresh_tick
+        )
+
+    def _stop_system_refresh(self):
+        if self._system_refresh_id is None:
+            return
+        GLib.source_remove(self._system_refresh_id)
+        self._system_refresh_id = None
+        self._system_refresh_inflight = False
+
+    def _on_system_refresh_tick(self):
+        if not self._system_device_path:
+            return False
+        if self._system_refresh_inflight:
+            return True
+        self._system_refresh_inflight = True
+        self._schedule_task(self._refresh_system_state(self._system_device_path))
+        return True
+
+    async def _refresh_system_state(self, path: str):
+        app = self.get_application()
+        if not app or not hasattr(app, "dbus"):
+            self._system_refresh_inflight = False
+            return
+        if path != self._system_device_path:
+            self._system_refresh_inflight = False
+            return
+
+        try:
+            fan_rpm = await app.dbus.get_fan_rpm(path)
+            fan_mode = await app.dbus.get_fan_mode(path)
+            power_mode = await app.dbus.get_power_mode(path)
+            cpu_boost = await app.dbus.get_cpu_boost(path)
+            gpu_boost = await app.dbus.get_gpu_boost(path)
+        finally:
+            self._system_refresh_inflight = False
+
+        GLib.idle_add(
+            self._apply_system_refresh,
+            path,
+            fan_rpm,
+            fan_mode,
+            power_mode,
+            cpu_boost,
+            gpu_boost,
+        )
+
+    def _apply_system_refresh(
+        self,
+        path: str,
+        fan_rpm: list[int],
+        fan_mode: str,
+        power_mode: str,
+        cpu_boost: str,
+        gpu_boost: str,
+    ) -> bool:
+        if not self._system_panel or path != self._system_device_path:
+            return False
+
+        self._system_panel.set_power_mode(power_mode)
+        self._system_panel.set_boost_enabled(
+            power_mode == "custom" and bool(self._system_boost_modes)
+        )
+        self._system_panel.set_cpu_boost(cpu_boost)
+        self._system_panel.set_gpu_boost(gpu_boost)
+        self._system_panel.set_fan_state(fan_rpm or [], fan_mode)
+        return False
+
+    def _on_power_mode_changed(self, panel, mode: str):
+        if not self._system_device_path:
+            return
+        if self._system_panel:
+            self._system_panel.set_boost_enabled(
+                mode == "custom" and bool(self._system_boost_modes)
+            )
+        app = self.get_application()
+        if app and hasattr(app, "dbus"):
+            self._schedule_task(app.dbus.set_power_mode(self._system_device_path, mode))
+
+    def _on_fan_mode_changed(self, panel, mode: str, fan1: int, fan2: int):
+        if not self._system_device_path:
+            return
+        app = self.get_application()
+        if not app or not hasattr(app, "dbus"):
+            return
+
+        if mode == "auto":
+            self._schedule_task(app.dbus.set_fan_auto(self._system_device_path))
+            return
+
+        self._schedule_task(self._set_manual_fan(self._system_device_path, fan1, fan2))
+
+    async def _set_manual_fan(self, path: str, fan1: int, fan2: int):
+        app = self.get_application()
+        if not app or not hasattr(app, "dbus"):
+            return
+        if "custom" in self._system_power_modes:
+            await app.dbus.set_power_mode(path, "custom")
+        await app.dbus.set_fan_rpm(path, fan1, fan2)
+
+    def _on_fan_rpm_changed(self, panel, fan1: int, fan2: int):
+        if not self._system_device_path:
+            return
+        app = self.get_application()
+        if app and hasattr(app, "dbus"):
+            self._schedule_task(app.dbus.set_fan_rpm(self._system_device_path, fan1, fan2))
+
+    def _on_cpu_boost_changed(self, panel, mode: str):
+        if not self._system_device_path:
+            return
+        app = self.get_application()
+        if app and hasattr(app, "dbus"):
+            self._schedule_task(app.dbus.set_cpu_boost(self._system_device_path, mode))
+
+    def _on_gpu_boost_changed(self, panel, mode: str):
+        if not self._system_device_path:
+            return
+        app = self.get_application()
+        if app and hasattr(app, "dbus"):
+            self._schedule_task(app.dbus.set_gpu_boost(self._system_device_path, mode))
 
     def _build_effect_defs(self, available_fx: dict) -> list[dict]:
         effects = []
@@ -1097,4 +1338,5 @@ class UChromaWindow(Adw.ApplicationWindow):
         for renderer in self._device_preview_renderers.values():
             renderer.stop()
         self._stop_live_preview()
+        self._stop_system_refresh()
         return False

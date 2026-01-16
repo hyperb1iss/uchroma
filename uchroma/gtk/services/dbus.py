@@ -89,6 +89,7 @@ class DBusService:
                 "fx": None,
                 "anim": None,
                 "led": None,
+                "system": None,
             }
 
             # Try to get additional interfaces
@@ -102,6 +103,11 @@ class DBusService:
 
             with contextlib.suppress(Exception):
                 self._device_proxies[path]["led"] = proxy.get_interface("io.uchroma.LEDManager")
+
+            with contextlib.suppress(Exception):
+                self._device_proxies[path]["system"] = proxy.get_interface(
+                    "io.uchroma.SystemControl"
+                )
 
             return self._device_proxies[path]["device"]
 
@@ -126,6 +132,12 @@ class DBusService:
         if path not in self._device_proxies:
             await self.get_device_proxy(path)
         return self._device_proxies.get(path, {}).get("led")
+
+    async def get_system_proxy(self, path: str):
+        """Get proxy for SystemControl interface."""
+        if path not in self._device_proxies:
+            await self.get_device_proxy(path)
+        return self._device_proxies.get(path, {}).get("system")
 
     def _unwrap_variants(self, obj):
         """Recursively unwrap dbus_fast Variants."""
@@ -382,6 +394,169 @@ class DBusService:
         except Exception as e:
             print(f"Failed to set suspended: {e}")
             return False
+
+    async def get_fan_rpm(self, path: str) -> list[int]:
+        """Get current fan RPM list."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return []
+
+        try:
+            raw = await system_proxy.get_fan_rpm()
+            return list(self._unwrap_variants(raw))
+        except Exception as e:
+            print(f"Failed to get fan RPM: {e}")
+            return []
+
+    async def get_fan_mode(self, path: str) -> str:
+        """Get current fan mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return ""
+
+        try:
+            return await system_proxy.get_fan_mode()
+        except Exception as e:
+            print(f"Failed to get fan mode: {e}")
+            return ""
+
+    async def get_fan_limits(self, path: str) -> dict:
+        """Get fan RPM limits."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return {}
+
+        try:
+            raw = await system_proxy.get_fan_limits()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to get fan limits: {e}")
+            return {}
+
+    async def set_fan_auto(self, path: str) -> bool:
+        """Set fans to automatic control."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return False
+
+        try:
+            return await system_proxy.call_set_fan_auto()
+        except Exception as e:
+            print(f"Failed to set fan auto: {e}")
+            return False
+
+    async def set_fan_rpm(self, path: str, rpm: int, fan2_rpm: int = -1) -> bool:
+        """Set manual fan RPM."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return False
+
+        try:
+            return await system_proxy.call_set_fan_rpm(rpm, fan2_rpm)
+        except Exception as e:
+            print(f"Failed to set fan RPM: {e}")
+            return False
+
+    async def get_power_mode(self, path: str) -> str:
+        """Get current power mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return ""
+
+        try:
+            return await system_proxy.get_power_mode()
+        except Exception as e:
+            print(f"Failed to get power mode: {e}")
+            return ""
+
+    async def set_power_mode(self, path: str, mode: str) -> bool:
+        """Set power mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return False
+
+        try:
+            await system_proxy.set_power_mode(mode)
+            return True
+        except Exception as e:
+            print(f"Failed to set power mode: {e}")
+            return False
+
+    async def get_available_power_modes(self, path: str) -> list[str]:
+        """Get available power modes."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return []
+
+        try:
+            raw = await system_proxy.get_available_power_modes()
+            return list(self._unwrap_variants(raw))
+        except Exception as e:
+            print(f"Failed to get available power modes: {e}")
+            return []
+
+    async def get_cpu_boost(self, path: str) -> str:
+        """Get current CPU boost mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return ""
+
+        try:
+            return await system_proxy.get_cpu_boost()
+        except Exception as e:
+            print(f"Failed to get CPU boost: {e}")
+            return ""
+
+    async def set_cpu_boost(self, path: str, mode: str) -> bool:
+        """Set CPU boost mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return False
+
+        try:
+            await system_proxy.set_cpu_boost(mode)
+            return True
+        except Exception as e:
+            print(f"Failed to set CPU boost: {e}")
+            return False
+
+    async def get_gpu_boost(self, path: str) -> str:
+        """Get current GPU boost mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return ""
+
+        try:
+            return await system_proxy.get_gpu_boost()
+        except Exception as e:
+            print(f"Failed to get GPU boost: {e}")
+            return ""
+
+    async def set_gpu_boost(self, path: str, mode: str) -> bool:
+        """Set GPU boost mode."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return False
+
+        try:
+            await system_proxy.set_gpu_boost(mode)
+            return True
+        except Exception as e:
+            print(f"Failed to set GPU boost: {e}")
+            return False
+
+    async def get_available_boost_modes(self, path: str) -> list[str]:
+        """Get available boost modes."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy:
+            return []
+
+        try:
+            raw = await system_proxy.get_available_boost_modes()
+            return list(self._unwrap_variants(raw))
+        except Exception as e:
+            print(f"Failed to get available boost modes: {e}")
+            return []
 
     async def disconnect(self):
         """Disconnect from D-Bus."""

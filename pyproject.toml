@@ -71,6 +71,7 @@ include-package-data = true
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=6.0",
     "ruff>=0.9",
     "ty>=0.0.1a7",
     "cython>=3.0",
@@ -151,3 +152,30 @@ include = ["**/dbus.py", "**/dbus_*.py"]
 unresolved-reference = "ignore"
 invalid-return-type = "ignore"
 invalid-syntax-in-forward-annotation = "ignore"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Coverage
+# ─────────────────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["uchroma"]
+branch = true
+omit = [
+    "uchroma/gtk/*",        # GTK requires display, skip for now
+    "*/__main__.py",
+    "*/test_*.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]
+show_missing = true
+skip_covered = false
+precision = 1
+
+[tool.coverage.html]
+directory = "htmlcov"

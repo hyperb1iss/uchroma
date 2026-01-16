@@ -515,6 +515,64 @@ headerbar.flat {
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   SYSTEM CONTROL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.system-control {
+    background-color: @surface_dark;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
+}
+
+.system-row {
+    margin-top: 4px;
+}
+
+.system-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: @text_dim;
+}
+
+.system-subtitle {
+    font-size: 10px;
+    font-weight: 500;
+    color: @text_dim;
+}
+
+.system-dropdown {
+    font-size: 12px;
+    background-color: @surface_light;
+    border-radius: 6px;
+}
+
+.system-slider trough {
+    min-height: 6px;
+    background-color: @surface_light;
+    border-radius: 3px;
+}
+
+.system-slider highlight {
+    background: linear-gradient(to right, @silk_cyan, @silk_green);
+    border-radius: 3px;
+}
+
+.system-slider slider {
+    min-width: 14px;
+    min-height: 14px;
+    background-color: @text_primary;
+    border-radius: 50%;
+}
+
+.system-value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: @text_secondary;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    UTILITY CLASSES
    ═══════════════════════════════════════════════════════════════════════════ */
 

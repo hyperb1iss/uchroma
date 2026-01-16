@@ -173,7 +173,12 @@ class RazerReport:
                             timeout_cb(self.status, None)
                         return True
 
-                    if self.status == Status.FAIL or self.status == Status.UNSUPPORTED:
+                    if self.status == Status.UNSUPPORTED:
+                        # UNSUPPORTED is normal for features the device doesn't have
+                        self._logger.debug("Command unsupported: %s", self.status.name)
+                        return False
+
+                    if self.status == Status.FAIL:
                         self._logger.error("Command failed with status %s", self.status.name)
                         return False
 

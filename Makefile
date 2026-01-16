@@ -100,6 +100,15 @@ test: ## Run tests
 test-v: ## Run tests with verbose output
 	uv run pytest -v
 
+.PHONY: cov
+cov: ## Run tests with coverage report
+	uv run pytest --cov --cov-report=term-missing
+
+.PHONY: cov-html
+cov-html: ## Generate HTML coverage report
+	uv run pytest --cov --cov-report=html
+	@echo -e "\033[38;2;80;250;123m✓ Coverage report: htmlcov/index.html\033[0m"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
 # ─────────────────────────────────────────────────────────────────────────────
