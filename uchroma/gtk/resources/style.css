@@ -406,6 +406,16 @@ headerbar.flat {
 
 .layer-handle {
     color: @text_dim;
+    padding: 6px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: all 150ms ease;
+}
+
+.layer-handle:hover {
+    color: @silk_cyan;
+    background-color: alpha(@silk_cyan, 0.15);
+    opacity: 1;
 }
 
 .layer-zindex {

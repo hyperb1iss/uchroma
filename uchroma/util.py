@@ -252,7 +252,10 @@ def ensure_future(coro, loop=None):
     Wrapper for asyncio.ensure_future which dumps exceptions
     """
     if loop is None:
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
     fut = asyncio.ensure_future(coro, loop=loop)
 
     def exception_logging_done_cb(fut):
@@ -435,11 +438,16 @@ class ValueAnimator:
         :param start: Starting value
         :param end: Ending value
         """
-        if asyncio.get_event_loop().is_running():
-            if self._task is not None:
-                self._task.cancel()
-            self._task = ensure_future(self._animate(start, end))
-            if done_cb is not None:
-                self._task.add_done_callback(done_cb)
-        else:
-            self._callback(end)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            result = self._callback(end)
+            if asyncio.iscoroutine(result):
+                asyncio.run(result)
+            return
+
+        if self._task is not None:
+            self._task.cancel()
+        self._task = ensure_future(self._animate(start, end))
+        if done_cb is not None:
+            self._task.add_done_callback(done_cb)

@@ -84,11 +84,13 @@ class LayerRow(Gtk.ListBoxRow):
         box.set_margin_start(8)
         box.set_margin_end(8)
 
-        # Drag handle
-        handle = Gtk.Image.new_from_icon_name("list-drag-handle-symbolic")
-        handle.add_css_class("layer-handle")
-        handle.set_opacity(0.5)
-        box.append(handle)
+        # Drag handle - use a Box container for better event handling
+        self._handle = Gtk.Box()
+        self._handle.add_css_class("layer-handle")
+        self._handle.set_cursor(Gdk.Cursor.new_from_name("grab"))
+        handle_icon = Gtk.Image.new_from_icon_name("list-drag-handle-symbolic")
+        self._handle.append(handle_icon)
+        box.append(self._handle)
 
         # Z-index badge
         self._zindex_label = Gtk.Label(label=str(self.zindex))
@@ -110,7 +112,9 @@ class LayerRow(Gtk.ListBoxRow):
         self._blend_btn.set_size_request(90, -1)
 
         # Button label shows current mode
-        self._blend_label = Gtk.Label(label=BLEND_INFO.get(self._blend_mode, (self._blend_mode,))[0])
+        self._blend_label = Gtk.Label(
+            label=BLEND_INFO.get(self._blend_mode, (self._blend_mode,))[0]
+        )
         self._blend_btn.set_child(self._blend_label)
 
         # Build popover with categorized blend modes
@@ -150,12 +154,14 @@ class LayerRow(Gtk.ListBoxRow):
         self._setup_drag_source()
 
     def _setup_drag_source(self):
-        """Setup drag source for layer reordering."""
+        """Setup drag source for layer reordering on the handle."""
         drag_source = Gtk.DragSource()
         drag_source.set_actions(Gdk.DragAction.MOVE)
         drag_source.connect("prepare", self._on_drag_prepare)
         drag_source.connect("drag-begin", self._on_drag_begin)
-        self.add_controller(drag_source)
+        drag_source.connect("drag-end", self._on_drag_end)
+        # Attach to the handle widget, not the whole row
+        self._handle.add_controller(drag_source)
 
     def _on_drag_prepare(self, source, x, y):
         """Prepare drag data - return content provider with row index."""
@@ -165,13 +171,16 @@ class LayerRow(Gtk.ListBoxRow):
 
     def _on_drag_begin(self, source, drag):
         """Handle drag start - create visual feedback."""
-        # Create a snapshot of the row for the drag icon
-        snapshot = Gtk.Snapshot()
-        self.snapshot(snapshot)
-        paintable = snapshot.to_paintable(None)
-        if paintable:
-            Gtk.DragSource.set_icon(source, paintable, 0, 0)
+        # Use WidgetPaintable for the drag icon
+        paintable = Gtk.WidgetPaintable.new(self)
+        Gtk.DragSource.set_icon(source, paintable, 0, 0)
         self.add_css_class("layer-dragging")
+        self._handle.set_cursor(Gdk.Cursor.new_from_name("grabbing"))
+
+    def _on_drag_end(self, source, drag, delete_data):
+        """Handle drag end - clean up styling."""
+        self.remove_css_class("layer-dragging")
+        self._handle.set_cursor(Gdk.Cursor.new_from_name("grab"))
 
     def _build_blend_popover(self) -> Gtk.Popover:
         """Build popover with categorized blend modes."""

@@ -88,12 +88,11 @@ class BaseUChromaDevice:
         """
         Shuts down all services associated with the device and closes the HID instance.
         """
-        if asyncio.get_event_loop().is_running():
-            if hasattr(self, "_animation_manager") and self.animation_manager is not None:
-                await self.animation_manager.shutdown()
+        if hasattr(self, "_animation_manager") and self.animation_manager is not None:
+            await self.animation_manager.shutdown()
 
-            if hasattr(self, "_input_manager") and self._input_manager is not None:
-                await self._input_manager.shutdown()
+        if hasattr(self, "_input_manager") and self._input_manager is not None:
+            await self._input_manager.shutdown()
 
         self.close(True)
         if hasattr(self, "_executor") and self._executor is not None:
@@ -191,11 +190,11 @@ class BaseUChromaDevice:
         return 0.0
 
     async def _update_brightness(self, level):
-        await ensure_future(
-            asyncio.get_event_loop().run_in_executor(
-                self._executor, functools.partial(self._set_brightness, level)
-            )
-        )
+        if self._executor is None:
+            return
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(self._executor, functools.partial(self._set_brightness, level))
 
         suspended = self.suspended and level == 0
         self.power_state_changed.fire(level, suspended)

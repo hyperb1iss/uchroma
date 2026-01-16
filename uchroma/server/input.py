@@ -85,7 +85,7 @@ class InputManager:
         self._opened = False
 
         for event_device in self._event_devices:
-            asyncio.get_event_loop().remove_reader(event_device.fileno())
+            asyncio.get_running_loop().remove_reader(event_device.fileno())
             event_device.close()
 
         tasks = []

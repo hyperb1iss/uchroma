@@ -142,7 +142,7 @@ class LayerPanel(Gtk.Box):
 
     def _setup_drop_target(self):
         """Setup drop target for layer reordering."""
-        drop_target = Gtk.DropTarget.new(GLib.VariantType.new("i"), Gdk.DragAction.MOVE)
+        drop_target = Gtk.DropTarget.new(GLib.VariantType.new("i"), Gdk.DragAction.MOVE)  # type: ignore[arg-type]
         drop_target.connect("drop", self._on_drop)
         drop_target.connect("motion", self._on_drag_motion)
         drop_target.connect("leave", self._on_drag_leave)

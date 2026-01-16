@@ -60,7 +60,7 @@ class UChromaServer:
             asyncio.run(self._run())
 
     async def _run(self):
-        self._loop = asyncio.get_event_loop()
+        self._loop = asyncio.get_running_loop()
         self._loop.set_debug(self._asyncio_debug)
 
         dm = UChromaDeviceManager()

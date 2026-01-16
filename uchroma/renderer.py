@@ -192,7 +192,7 @@ class Renderer(HasTraits):
 
                 try:
                     # draw the layer
-                    status = await self.draw(layer, asyncio.get_event_loop().time())
+                    status = await self.draw(layer, asyncio.get_running_loop().time())
                 except Exception as err:
                     self.logger.exception("Exception in renderer, exiting now!", exc_info=err)
                     self.logger.error("Renderer traits: %s", self._trait_values)
