@@ -57,8 +57,8 @@ packages = [
     "uchroma.server",
     "uchroma.gtk",
     "uchroma.gtk.models",
-    "uchroma.gtk.views",
-    "uchroma.gtk.views.widgets",
+    "uchroma.gtk.widgets",
+    "uchroma.gtk.panels",
     "uchroma.gtk.services",
     "uchroma.gtk.resources",
 ]
