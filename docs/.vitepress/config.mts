@@ -6,6 +6,7 @@ export default withMermaid(
   defineConfig({
     title: 'uchroma',
     description: 'RGB control for Razer Chroma peripherals',
+    base: '/uchroma/',
     appearance: 'dark',
 
     head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]],
