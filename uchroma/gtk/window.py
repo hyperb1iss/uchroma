@@ -1179,7 +1179,8 @@ class UChromaWindow(Adw.ApplicationWindow):
         # Update status
         self._anim_state = "running"
         self._update_mode_status()
-        self._show_layer_params(row)
+        # Select the new layer (triggers _on_layer_selected → _show_layer_params)
+        self._layer_panel.select_layer(row)
         self._update_preview_visibility()
 
     def _on_layer_removed(self, panel, zindex):
@@ -1289,10 +1290,6 @@ class UChromaWindow(Adw.ApplicationWindow):
 
     def _on_param_changed(self, inspector, name, value):
         """Handle parameter value change."""
-        print(f"[DEBUG] _on_param_changed: name={name}, value={value}, mode={self._mode}")
-        print(
-            f"[DEBUG]   selected_layer={self._layer_panel.selected_layer if hasattr(self._layer_panel, 'selected_layer') else 'N/A'}"
-        )
         if self._mode == self.MODE_HARDWARE and self._selected_effect:
             self._effect_params[name] = value
             self._apply_preview_effect(self._selected_effect, self._effect_params)

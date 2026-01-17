@@ -509,6 +509,10 @@ class LayerPanel(Gtk.Box):
             tooltip = "Add layer" if renderers else "No renderers available for this selection"
             self._add_btn.set_tooltip_text(tooltip)
 
+    def select_layer(self, row: LayerRow | None):
+        """Programmatically select a layer row."""
+        self._list.select_row(row)
+
     @property
     def layers(self) -> list:
         return self._layers

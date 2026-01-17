@@ -27,7 +27,7 @@ class Plasma(Renderer):
     color_scheme = ColorSchemeTrait(minlen=2, default_value=[*ColorScheme.Qap.value]).tag(
         config=True
     )
-    preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Qap).tag(config=True)
+    preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Qap).tag(config=False)
     gradient_length = Int(default_value=360, min=0).tag(config=True)
 
     def __init__(self, *args, **kwargs):

@@ -37,7 +37,7 @@ class CopperBars(Renderer):
     color_scheme = ColorSchemeTrait(minlen=2, default_value=[*ColorScheme.Rainbow.value]).tag(
         config=True
     )
-    preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Rainbow).tag(config=True)
+    preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Rainbow).tag(config=False)
     gradient_length = Int(default_value=360, min=60, max=720).tag(config=True)
 
     def __init__(self, *args, **kwargs):
