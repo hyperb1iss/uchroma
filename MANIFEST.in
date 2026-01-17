@@ -3,12 +3,11 @@ include LICENSE
 include Makefile
 include MANIFEST.in
 include README.md
-include TODO
+include Cargo.toml
 include debian/*
 include doc/*
 include install/*
+include rust/*.rs
 include scripts/*
 include tests/*
-include uchroma/_*.pyx
-include uchroma/server/_*.pyx
 

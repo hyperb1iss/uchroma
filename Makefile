@@ -1,8 +1,12 @@
 # UChroma Development Makefile
 # Run `make help` to see all available commands
 
-DESTDIR ?= /
+DESTDIR ?=
+PREFIX ?= /usr
 SHELL := /bin/bash
+
+# Use uv by default, but allow override for packaging environments
+MATURIN ?= uv run maturin
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Help
@@ -26,15 +30,15 @@ sync: ## Sync dependencies and build native extension
 
 .PHONY: rebuild
 rebuild: ## Rebuild native Rust extension (use after editing .rs files)
-	uv run maturin develop
+	$(MATURIN) develop
 
 .PHONY: rebuild-release
 rebuild-release: ## Rebuild native extension with release optimizations
-	uv run maturin develop --release
+	$(MATURIN) develop --release
 
 .PHONY: build
 build: ## Build wheel for distribution
-	uv run maturin build --release
+	$(MATURIN) build --release
 
 .PHONY: clean
 clean: ## Clean build artifacts
@@ -171,25 +175,42 @@ info: ## Show package info
 # Installation (System)
 # ─────────────────────────────────────────────────────────────────────────────
 
+.PHONY: install
+install: install-udev install-service install-desktop ## Install all system files (udev, systemd, desktop)
+	@echo -e "\033[38;2;80;250;123m✓ Installation complete!\033[0m"
+	@echo -e "\033[38;2;241;250;140m  → Run: sudo udevadm control --reload-rules\033[0m"
+	@echo -e "\033[38;2;241;250;140m  → Run: systemctl --user daemon-reload\033[0m"
+
 .PHONY: install-udev
 install-udev: ## Install udev rules (requires sudo)
-	install -m 644 -v -D install/udev/70-uchroma.rules $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
-	@echo -e "\033[38;2;80;250;123m✓ udev rules installed. Run: sudo udevadm control --reload-rules\033[0m"
+	install -Dm644 install/udev/70-uchroma.rules $(DESTDIR)$(PREFIX)/lib/udev/rules.d/70-uchroma.rules
 
 .PHONY: install-service
-install-service: ## Install systemd user service
-	install -m 644 -v -D install/dbus/io.uchroma.service $(DESTDIR)/usr/share/dbus-1/services/io.uchroma.service
-	install -m 644 -v -D install/systemd/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
-	@echo -e "\033[38;2;80;250;123m✓ systemd service installed. Run: systemctl --user daemon-reload\033[0m"
+install-service: ## Install systemd user service and D-Bus activation
+	install -Dm644 install/dbus/io.uchroma.service $(DESTDIR)$(PREFIX)/share/dbus-1/services/io.uchroma.service
+	install -Dm644 install/systemd/uchromad.service $(DESTDIR)$(PREFIX)/lib/systemd/user/uchromad.service
+
+.PHONY: install-desktop
+install-desktop: ## Install desktop file for GTK app
+	install -Dm644 install/desktop/io.uchroma.gtk.desktop $(DESTDIR)$(PREFIX)/share/applications/io.uchroma.gtk.desktop
+	install -Dm644 install/icons/io.uchroma.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/io.uchroma.svg
+
+.PHONY: uninstall
+uninstall: uninstall-udev uninstall-service uninstall-desktop ## Uninstall all system files
 
 .PHONY: uninstall-udev
 uninstall-udev: ## Uninstall udev rules
-	rm -v -f $(DESTDIR)/etc/udev/rules.d/70-uchroma.rules
+	rm -f $(DESTDIR)$(PREFIX)/lib/udev/rules.d/70-uchroma.rules
 
 .PHONY: uninstall-service
 uninstall-service: ## Uninstall systemd service
-	rm -v -f $(DESTDIR)/usr/share/dbus-1/services/io.uchroma.service
-	rm -v -f $(DESTDIR)/usr/lib/systemd/user/uchromad.service
+	rm -f $(DESTDIR)$(PREFIX)/share/dbus-1/services/io.uchroma.service
+	rm -f $(DESTDIR)$(PREFIX)/lib/systemd/user/uchromad.service
+
+.PHONY: uninstall-desktop
+uninstall-desktop: ## Uninstall desktop file
+	rm -f $(DESTDIR)$(PREFIX)/share/applications/io.uchroma.gtk.desktop
+	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/io.uchroma.svg
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Documentation

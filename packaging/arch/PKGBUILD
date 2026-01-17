@@ -4,7 +4,7 @@ pkgrel=1
 pkgdesc="Userspace RGB control for Razer Chroma peripherals"
 arch=("x86_64")
 url="https://github.com/hyperbliss/uchroma"
-license=("LGPL3")
+license=("LGPL-3.0-only")
 depends=(
   "python"
   "python-argcomplete"
@@ -26,10 +26,9 @@ optdepends=(
   "python-gobject: GTK frontend"
 )
 makedepends=(
-  "cython"
-  "python-build"
+  "rust"
+  "maturin"
   "python-installer"
-  "python-numpy"
 )
 source=("$pkgname-$pkgver.tar.gz::https://github.com/hyperbliss/uchroma/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=("SKIP")
@@ -37,17 +36,11 @@ install="$pkgname.install"
 
 build() {
   cd "$pkgname-$pkgver"
-  python -m build --wheel --no-isolation
+  make build MATURIN=maturin
 }
 
 package() {
   cd "$pkgname-$pkgver"
   python -m installer --destdir="$pkgdir" dist/*.whl
-
-  install -Dm644 install/udev/70-uchroma.rules \
-    "$pkgdir/usr/lib/udev/rules.d/70-uchroma.rules"
-  install -Dm644 install/systemd/uchromad.service \
-    "$pkgdir/usr/lib/systemd/user/uchromad.service"
-  install -Dm644 install/dbus/io.uchroma.service \
-    "$pkgdir/usr/share/dbus-1/services/io.uchroma.service"
+  make install DESTDIR="$pkgdir"
 }

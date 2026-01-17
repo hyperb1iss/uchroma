@@ -7,7 +7,7 @@ Userspace RGB control for Razer Chroma peripherals. Pure Python daemon with cust
 ```bash
 make              # Show all commands
 make sync         # Install deps
-make rebuild      # Rebuild after .pyx changes
+make rebuild      # Rebuild after .rs changes
 make gtk          # Run GTK frontend
 make server       # Run daemon
 make check        # Lint + format check + typecheck
@@ -31,13 +31,13 @@ make fix          # Auto-fix lint + format
 - Configured in `pyproject.toml [tool.ty]`
 - Currently warnings-only for gradual adoption
 
-**Cython**: Three `.pyx` modules require rebuild after changes:
+**Rust Extensions**: Native performance-critical code in `rust/`:
 
-- `uchroma/_layer.pyx` — layer pixel operations
-- `uchroma/fxlib/_plasma.pyx` — plasma effect hot path
-- `uchroma/server/_crc.pyx` — USB report CRC
+- `rust/plasma.rs` — plasma effect calculations
+- `rust/metaballs.rs` — metaballs effect
+- `rust/crc.rs` — USB report CRC
 
-**Rebuild Cython**: `make rebuild` (runs `uv sync --extra gtk --reinstall-package uchroma`)
+**Rebuild Rust**: `make rebuild` (runs `uv run maturin develop`)
 
 ## Architecture
 
@@ -201,7 +201,7 @@ c = to_color((1.0, 0.0, 0.0)) # RGB tuple
 c = Color('oklch', [0.7, 0.15, 30])  # Any color space
 ```
 
-**Alpha handling** (`_layer.pyx`): ColorAide's alpha is a property, not a method. The `color_to_np()` function handles both for compatibility.
+**Alpha handling**: ColorAide's alpha is a property, not a method. The `color_to_np()` function handles both for compatibility.
 
 ## Traitlets
 
@@ -229,7 +229,7 @@ Razer devices use USB HID feature reports:
 
 1. Create `RazerReport` with command class/id
 2. Pack arguments via `report.args.put()`
-3. CRC calculated automatically (`_crc.pyx`)
+3. CRC calculated automatically (Rust `fast_crc`)
 4. Send via hidapi, enforce inter-command delay
 5. Parse response for queries
 
@@ -281,4 +281,4 @@ Core: numpy, traitlets, dbus-fast, hid, pyudev, coloraide, scikit-image, ruamel.
 
 GTK: pygobject (optional extra)
 
-Build: cython, setuptools
+Build: rust, maturin

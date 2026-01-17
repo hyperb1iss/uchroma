@@ -1,2 +1,1 @@
-install/systemd/uchromad.service /usr/lib/systemd/user/
-install/dbus/io.uchroma.service /usr/share/dbus-1/services/
+# Installed by make install target - nothing extra needed here

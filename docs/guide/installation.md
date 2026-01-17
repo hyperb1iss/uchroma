@@ -115,9 +115,9 @@ uv run uchroma devices
 uv run python -m uchroma.gtk
 ```
 
-### Rebuild Cython Modules
+### Rebuild Rust Extensions
 
-After modifying `.pyx` files, rebuild the Cython extensions:
+After modifying `.rs` files, rebuild the native extensions:
 
 ```bash
 make rebuild
@@ -128,7 +128,7 @@ make rebuild
 ```bash
 make              # Show all commands
 make sync         # Install dependencies
-make rebuild      # Rebuild Cython extensions
+make rebuild      # Rebuild Rust extensions
 make server       # Run daemon
 make gtk          # Run GTK frontend
 make check        # Lint + format + typecheck

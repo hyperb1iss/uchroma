@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=UChroma
+Comment=RGB control for Razer Chroma peripherals
+Exec=uchroma-gtk
+Icon=io.uchroma
+Terminal=false
+Type=Application
+Categories=Settings;HardwareSettings;
+Keywords=razer;chroma;rgb;keyboard;mouse;lighting;
+StartupNotify=true

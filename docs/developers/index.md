@@ -68,7 +68,7 @@ Extend the GTK frontend with custom widgets and panels.
 | [Layer API](./layer-api)               | Drawing primitives and pixel operations    |
 | [Traits](./traits)                     | Configurable parameters with traitlets     |
 | [Colors](./colors)                     | Color handling, gradients, and schemes     |
-| [Advanced](./advanced)                 | Input events, Cython, D-Bus API            |
+| [Advanced](./advanced)                 | Input events, Rust extensions, D-Bus API   |
 
 ## Development Setup
 
@@ -99,7 +99,7 @@ make gtk
 
 ```bash
 make sync           # Install dependencies
-make rebuild        # Rebuild after .pyx changes
+make rebuild        # Rebuild after .rs changes
 make check          # Run lint + format check + typecheck
 make fix            # Auto-fix lint + format issues
 make test           # Run tests

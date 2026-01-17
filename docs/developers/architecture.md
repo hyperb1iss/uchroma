@@ -270,17 +270,17 @@ The async design ensures the daemon only wakes when:
 - Double buffering: 2 layers per renderer
 - Typical keyboard (6x22): ~4 KB per layer
 
-### Cython Hot Paths
+### Rust Native Extensions
 
-Performance-critical code is implemented in Cython:
+Performance-critical code is implemented in Rust via PyO3:
 
-| File                        | Purpose                            |
-| --------------------------- | ---------------------------------- |
-| `uchroma/_layer.pyx`        | Pixel operations, color conversion |
-| `uchroma/fxlib/_plasma.pyx` | Plasma effect calculations         |
-| `uchroma/server/_crc.pyx`   | USB report CRC                     |
+| File                | Purpose                    |
+| ------------------- | -------------------------- |
+| `rust/plasma.rs`    | Plasma effect calculations |
+| `rust/metaballs.rs` | Metaballs effect           |
+| `rust/crc.rs`       | USB report CRC             |
 
-After modifying `.pyx` files, rebuild with:
+After modifying `.rs` files, rebuild with:
 
 ```bash
 make rebuild

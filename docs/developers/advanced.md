@@ -165,77 +165,68 @@ async def draw(self, layer, timestamp) -> bool:
         # Use color...
 ```
 
-## Cython Optimization
+## Rust Native Extensions
 
-Performance-critical code can be implemented in Cython for significant speedups.
+Performance-critical code is implemented in Rust via PyO3 for significant speedups.
 
-### Cython Modules in uchroma
+### Rust Modules in uchroma
 
-| File                        | Purpose                            |
-| --------------------------- | ---------------------------------- |
-| `uchroma/_layer.pyx`        | Pixel operations, color conversion |
-| `uchroma/fxlib/_plasma.pyx` | Plasma effect calculations         |
-| `uchroma/server/_crc.pyx`   | USB report CRC                     |
+| File                | Purpose                    |
+| ------------------- | -------------------------- |
+| `rust/plasma.rs`    | Plasma effect calculations |
+| `rust/metaballs.rs` | Metaballs effect           |
+| `rust/crc.rs`       | USB report CRC             |
 
 ### Rebuilding After Changes
 
-After modifying `.pyx` files:
+After modifying `.rs` files:
 
 ```bash
 make rebuild
 ```
 
-This runs `uv sync --extra gtk --reinstall-package uchroma`.
+This runs `uv run maturin develop`.
 
-### Example: Optimized Effect Core
+### Example: Optimized Effect in Rust
 
-Create `uchroma/fxlib/_myeffect.pyx`:
+Create `rust/myeffect.rs`:
 
-```python
-# cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=False
+```rust
+use numpy::{PyArray3, PyArrayMethods, PyReadonlyArray2};
+use pyo3::prelude::*;
 
-import numpy as np
-cimport numpy as np
+#[pyfunction]
+pub fn draw_pattern<'py>(
+    _py: Python<'py>,
+    width: usize,
+    height: usize,
+    matrix: &Bound<'py, PyArray3<f64>>,
+    time: f64,
+    gradient: PyReadonlyArray2<'py, f64>,
+) -> PyResult<()> {
+    let grad = gradient.as_array();
+    let grad_len = grad.nrows();
 
-
-def draw_pattern(int width, int height, np.ndarray[np.float64_t, ndim=3] matrix,
-                 double time, list gradient):
-    """
-    Draw an optimized pattern directly into the matrix.
-
-    Args:
-        width: Layer width
-        height: Layer height
-        matrix: The layer's backing array (height x width x 4)
-        time: Animation time
-        gradient: List of Color objects
-    """
-    cdef int row, col, idx
-    cdef int grad_len = len(gradient)
-    cdef double r, g, b
-
-    for row in range(height):
-        for col in range(width):
-            # Compute gradient index
-            idx = int((col + row + time * 10) % grad_len)
-
-            # Get color RGB
-            color = gradient[idx]
-            r, g, b = color.rgb
-
-            # Write directly to matrix
-            matrix[row, col, 0] = r
-            matrix[row, col, 1] = g
-            matrix[row, col, 2] = b
-            matrix[row, col, 3] = 1.0
+    unsafe {
+        let mut array = matrix.as_array_mut();
+        for row in 0..height {
+            for col in 0..width {
+                let idx = ((col + row) as f64 + time * 10.0) as usize % grad_len;
+                array[[row, col, 0]] = grad[[idx, 0]];
+                array[[row, col, 1]] = grad[[idx, 1]];
+                array[[row, col, 2]] = grad[[idx, 2]];
+                array[[row, col, 3]] = 1.0;
+            }
+        }
+    }
+    Ok(())
+}
 ```
 
-Use in your renderer:
+Register in `rust/lib.rs` and use in your renderer:
 
 ```python
-from ._myeffect import draw_pattern
+from uchroma._native import draw_pattern
 
 class MyFastEffect(Renderer):
     async def draw(self, layer, timestamp) -> bool:
@@ -243,7 +234,7 @@ class MyFastEffect(Renderer):
             layer.width, layer.height,
             layer.matrix,
             self._time,
-            self._gradient
+            self._gradient_array
         )
         self._time += 1 / self.fps
         return True

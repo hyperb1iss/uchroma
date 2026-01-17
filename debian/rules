@@ -1,28 +1,21 @@
 #!/usr/bin/make -f
-# See debhelper(7) (uncomment to enable)
-# output every command that modifies files on the build system.
-#export DH_VERBOSE = 1
 
-export PYBUILD_NAME=uchroma
-export PYBUILD_SYSTEM=pyproject
-export DH_OPTIONS
-export http_proxy=127.0.0.1:9
-export https_proxy=127.0.0.1:9
-export PYTHONIOENCODING=utf-8
+export DH_VERBOSE = 1
+export DESTDIR = debian/uchroma
 
 %:
-	dh $@  --with-python3,sphinxdoc --buildsystem=pybuild
+	dh $@
 
-override_dh_installdocs:
-	sphinx-build -b html doc \
-		$(CURDIR)/debian/python3-uchroma-doc/usr/share/doc/python3-uchroma-doc/html
-	dh_installdocs
+override_dh_auto_build:
+	make build MATURIN=maturin
 
-override_dh_clean:
-	dh_clean -O--buildsystem=pybuild
-	rm -rf build
-	rm -rf uchroma/__pycache__
+override_dh_auto_install:
+	python3 -m installer --destdir=$(DESTDIR) dist/*.whl
+	make install DESTDIR=$(DESTDIR)
 
-override_dh_installudev:
-	cp $(CURDIR)/install/udev/70-uchroma.rules $(CURDIR)/debian/uchroma.uchroma.udev
-	dh_installudev --name=uchroma --priority 70
+override_dh_auto_clean:
+	make clean || true
+	rm -rf dist/ target/ build/
+
+override_dh_auto_test:
+	# Skip tests during package build

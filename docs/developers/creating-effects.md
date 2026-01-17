@@ -378,4 +378,4 @@ Your effect key will be `module.ClassName`, e.g., `uchroma.fxlib.pulse.Pulse`.
 - [Layer API](./layer-api) - Full drawing primitive reference
 - [Traits](./traits) - All available trait types
 - [Colors](./colors) - Color handling and gradients
-- [Advanced](./advanced) - Cython optimization, D-Bus API
+- [Advanced](./advanced) - Rust extensions, D-Bus API
