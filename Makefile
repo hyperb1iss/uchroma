@@ -195,9 +195,12 @@ uninstall-service: ## Uninstall systemd service
 # Documentation
 # ─────────────────────────────────────────────────────────────────────────────
 
-.PHONY: docs docs-dev docs-build docs-preview docs-lint docs-lint-fix
+.PHONY: docs docs-install docs-dev docs-build docs-preview docs-lint docs-lint-fix
 
 docs: docs-dev  ## Alias for docs-dev
+
+docs-install:  ## Install docs dependencies
+	cd docs && npm install --legacy-peer-deps
 
 docs-dev:  ## Start docs dev server
 	cd docs && npm run dev

@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "mermaid": "^11.12.2",
-    "prettier": "^3.4.0",
+    "prettier": "^3.8.0",
     "vitepress": "^2.0.0-alpha.15",
     "vitepress-plugin-llms": "^1.10.0",
     "vitepress-plugin-mermaid": "^2.0.17"
