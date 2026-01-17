@@ -1,5 +1,5 @@
 name: uchroma
-version: "1.1.0"
+version: "1.9.90"
 summary: Razer Chroma peripheral manager
 description: |
   An advanced driver for the Razer Chroma line of peripherals.

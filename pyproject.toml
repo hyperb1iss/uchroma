@@ -1,6 +1,6 @@
 [project]
 name = "uchroma"
-version = "1.1.0"
+version = "1.9.90"
 description = "Userspace RGB control for Razer Chroma peripherals"
 readme = "README.md"
 license = "LGPL-3.0-only"

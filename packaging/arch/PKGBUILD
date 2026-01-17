@@ -1,5 +1,5 @@
 pkgname=uchroma
-pkgver=1.1.0
+pkgver=1.9.90
 pkgrel=1
 pkgdesc="Userspace RGB control for Razer Chroma peripherals"
 arch=("x86_64")
