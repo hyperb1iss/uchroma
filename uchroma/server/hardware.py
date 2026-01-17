@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from collections import OrderedDict
 from datetime import datetime
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, StrEnum
 from typing import TYPE_CHECKING, NamedTuple
 
 import ruamel.yaml as yaml
@@ -19,13 +19,6 @@ from .types import LEDType
 
 if TYPE_CHECKING:
     from .protocol import ProtocolConfig
-
-try:
-    from enum import StrEnum  # py311+
-except ImportError:  # pragma: no cover
-
-    class StrEnum(str, Enum):
-        """Backport of enum.StrEnum for Python 3.10 compatibility."""
 
 
 RAZER_VENDOR_ID = 0x1532
