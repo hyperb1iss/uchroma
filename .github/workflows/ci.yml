@@ -61,10 +61,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - run: sudo apt-get update && sudo apt-get install -y libhidapi-dev libudev-dev
-      - if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: sudo apt-get install -y gcc-aarch64-linux-gnu
-      - run: uv run maturin build --release --target ${{ matrix.target }}
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          args: --release --zig
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.target }}
