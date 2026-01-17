@@ -7,7 +7,7 @@ Parameter Inspector Panel
 Contextual parameter controls for selected effect or layer.
 """
 
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import gi
 
@@ -356,8 +356,9 @@ class ParamInspector(Gtk.Box):
             if hasattr(pb, "_label"):
                 pb._label.set_label(n)
             if hasattr(pb, "_gradient") and hasattr(pb, "_schemes"):
-                self._setup_gradient_draw(pb._gradient, c)
-                pb._gradient.queue_draw()
+                gradient = cast(Gtk.DrawingArea, pb._gradient)
+                self._setup_gradient_draw(gradient, c)
+                gradient.queue_draw()
             po.popdown()
             self.emit("param-changed", pn, n)
 
