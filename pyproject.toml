@@ -46,27 +46,23 @@ uchroma-gtk = "uchroma.gtk:main"
 renderers = "uchroma.fxlib"
 
 [build-system]
-requires = ["setuptools>=61", "cython>=3.0", "numpy"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
-[tool.setuptools]
-packages = [
-    "uchroma",
-    "uchroma.fxlib",
-    "uchroma.client",
-    "uchroma.server",
-    "uchroma.gtk",
-    "uchroma.gtk.models",
-    "uchroma.gtk.widgets",
-    "uchroma.gtk.panels",
-    "uchroma.gtk.services",
-    "uchroma.gtk.resources",
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "."
+module-name = "uchroma._native"
+include = [
+    "uchroma/**/*.py",
+    "uchroma/server/data/*.yaml",
+    "uchroma/gtk/resources/*.css",
 ]
-include-package-data = true
-
-[tool.setuptools.package-data]
-"uchroma.server" = ["data/*.yaml"]
-"uchroma.gtk.resources" = ["*.css"]
+exclude = [
+    "**/*.pyx",
+    "**/*.c",
+    "**/*.so",
+]
 
 [dependency-groups]
 dev = [
@@ -74,8 +70,8 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.9",
     "ty>=0.0.1a7",
-    "cython>=3.0",
     "pygobject-stubs>=2.16.0",
+    "maturin>=1.7",
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────

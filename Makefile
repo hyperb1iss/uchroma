@@ -21,17 +21,25 @@ help: ## Show this help
 # ─────────────────────────────────────────────────────────────────────────────
 
 .PHONY: sync
-sync: ## Sync dependencies and build package
+sync: ## Sync dependencies and build native extension
 	uv sync --extra gtk
 
 .PHONY: rebuild
-rebuild: ## Rebuild package (use after editing .pyx files)
-	uv sync --extra gtk --reinstall-package uchroma
+rebuild: ## Rebuild native Rust extension (use after editing .rs files)
+	uv run maturin develop
+
+.PHONY: rebuild-release
+rebuild-release: ## Rebuild native extension with release optimizations
+	uv run maturin develop --release
+
+.PHONY: build
+build: ## Build wheel for distribution
+	uv run maturin build --release
 
 .PHONY: clean
 clean: ## Clean build artifacts
-	rm -rf build/ dist/ *.egg-info/
-	rm -f uchroma/*.so uchroma/*.c
+	rm -rf build/ dist/ *.egg-info/ target/ wheels/
+	rm -f uchroma/*.so uchroma/**/*.so
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 
@@ -63,10 +71,10 @@ typecheck: ## Run ty type checker
 tc: typecheck ## Alias for typecheck
 
 .PHONY: check
-check: lint fmt-check typecheck ## Run all checks (lint + format + types)
+check: lint fmt-check typecheck rust-check ## Run all checks (Python + Rust)
 
 .PHONY: fix
-fix: lint-fix fmt ## Fix all auto-fixable issues (lint + format)
+fix: lint-fix fmt cargo-fmt ## Fix all auto-fixable issues (Python + Rust)
 
 .PHONY: prettier
 prettier: ## Format markdown and yaml files with prettier
@@ -75,6 +83,21 @@ prettier: ## Format markdown and yaml files with prettier
 .PHONY: prettier-check
 prettier-check: ## Check markdown and yaml formatting
 	npx prettier --check '**/*.md' '**/*.yaml' '**/*.yml'
+
+.PHONY: clippy
+clippy: ## Run Rust linter (strict)
+	cargo clippy --all-targets -- -D warnings
+
+.PHONY: cargo-fmt
+cargo-fmt: ## Format Rust code
+	cargo fmt
+
+.PHONY: cargo-fmt-check
+cargo-fmt-check: ## Check Rust formatting
+	cargo fmt -- --check
+
+.PHONY: rust-check
+rust-check: clippy cargo-fmt-check ## Run all Rust checks (clippy + fmt)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Run
@@ -121,6 +144,10 @@ cov-html: ## Generate HTML coverage report
 	uv run pytest --cov --cov-report=html
 	@echo -e "\033[38;2;80;250;123m✓ Coverage report: htmlcov/index.html\033[0m"
 
+.PHONY: test-rust
+test-rust: ## Run Rust unit tests
+	cargo test
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +158,7 @@ dev: ## Install dev dependencies
 
 .PHONY: watch
 watch: ## Watch for changes and rebuild (requires watchexec)
-	watchexec -e py,pyx -r -- make rebuild
+	watchexec -e py,rs -r -- make rebuild
 
 .PHONY: info
 info: ## Show package info

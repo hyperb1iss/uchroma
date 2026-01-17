@@ -10,10 +10,10 @@ from enum import Enum
 
 import numpy as np
 
+from uchroma._native import fast_crc
 from uchroma.log import LOG_PROTOCOL_TRACE
 from uchroma.util import smart_delay
 
-from ._crc import fast_crc
 from .byte_args import ByteArgs
 
 

@@ -6,14 +6,18 @@ Metaballs - Organic blob fusion effect.
 
 Soft, blobby shapes that slowly drift, merge when close,
 and split apart — like a lava lamp. Classic demoscene algorithm.
+
+Rendering is done in Rust for performance (rayon parallelism).
 """
 
 import math
 import random
 from dataclasses import dataclass
 
+import numpy as np
 from traitlets import Float, Int, observe
 
+from uchroma._native import draw_metaballs
 from uchroma.color import ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorSchemeTrait
@@ -57,6 +61,7 @@ class Metaballs(Renderer):
         super().__init__(*args, **kwargs)
         self._blobs: list[Blob] = []
         self._gradient = None
+        self._gradient_array = None  # Numpy array for Rust
         self.fps = 15
 
     def _spawn_blob(self, idx: int) -> Blob:
@@ -74,13 +79,19 @@ class Metaballs(Renderer):
 
     def _gen_gradient(self):
         self._gradient = ColorUtils.gradient(360, *self.color_scheme)
+        # Convert Color objects to numpy array for Rust
+        self._gradient_array = np.array([c.rgb for c in self._gradient], dtype=np.float64)
 
     @observe("color_scheme")
     def _scheme_changed(self, changed):
+        if not hasattr(self, "_gradient"):
+            return  # Not initialized yet
         self._gen_gradient()
 
     @observe("blob_count")
     def _count_changed(self, changed):
+        if not hasattr(self, "_blobs"):
+            return  # Not initialized yet
         while len(self._blobs) < self.blob_count:
             self._blobs.append(self._spawn_blob(len(self._blobs)))
         while len(self._blobs) > self.blob_count:
@@ -92,18 +103,13 @@ class Metaballs(Renderer):
         return True
 
     async def draw(self, layer, timestamp):
-        gradient = self._gradient
-        if gradient is None:
+        if self._gradient_array is None:
             return False
 
         width = layer.width
         height = layer.height
-        grad_len = len(gradient)
-        thresh = self.threshold
-        falloff = self.glow_falloff
-        base_bright = self.base_brightness
 
-        # Update blob physics
+        # Update blob physics (keep in Python - simple and not the bottleneck)
         dt = 1.0 / self.fps
         for blob in self._blobs:
             blob.x += blob.vx * dt * 10
@@ -117,59 +123,22 @@ class Metaballs(Renderer):
                 blob.vy = -blob.vy
                 blob.y = max(0, min(height - 0.1, blob.y))
 
-        # Render metaball field
-        for row in range(height):
-            for col in range(width):
-                field = 0.0
-                total_weight = 0.0
-                weighted_hue = 0.0
+        # Pack blob data for Rust: [x, y, radius, hue_idx]
+        blob_array = np.array(
+            [[b.x, b.y, b.radius, b.hue_idx] for b in self._blobs],
+            dtype=np.float64,
+        )
 
-                for blob in self._blobs:
-                    dx = col - blob.x
-                    dy = row - blob.y
-                    dist_sq = dx * dx + dy * dy + 0.1  # Epsilon to avoid divide by zero
-
-                    # Inverse square falloff
-                    contribution = (blob.radius * blob.radius) / dist_sq
-                    field += contribution
-
-                    # Weight color by contribution
-                    blob_hue = (blob.hue_idx * 60) % grad_len
-                    weighted_hue += blob_hue * contribution
-                    total_weight += contribution
-
-                # Threshold creates blob boundary
-                if field > thresh:
-                    brightness = min(1.0, (field - thresh) * falloff * 0.5 + 0.5)
-                    hue_idx = int(weighted_hue / total_weight) % grad_len
-                    color = gradient[hue_idx]
-                    r, g, b = color.rgb
-                    layer.matrix[row][col] = (
-                        r * brightness,
-                        g * brightness,
-                        b * brightness,
-                        1.0,
-                    )
-                elif field > thresh * 0.5:
-                    # Glow region
-                    glow = (field - thresh * 0.5) / (thresh * 0.5)
-                    brightness = base_bright + glow * 0.3
-                    hue_idx = int(weighted_hue / total_weight) % grad_len
-                    color = gradient[hue_idx]
-                    r, g, b = color.rgb
-                    layer.matrix[row][col] = (
-                        r * brightness,
-                        g * brightness,
-                        b * brightness,
-                        1.0,
-                    )
-                else:
-                    # Background
-                    layer.matrix[row][col] = (
-                        base_bright * 0.3,
-                        base_bright * 0.2,
-                        base_bright * 0.4,
-                        1.0,
-                    )
+        # Render metaball field in Rust (parallel, fast)
+        draw_metaballs(
+            width,
+            height,
+            layer.matrix,
+            blob_array,
+            self._gradient_array,
+            self.threshold,
+            self.glow_falloff,
+            self.base_brightness,
+        )
 
         return True

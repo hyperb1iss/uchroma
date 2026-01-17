@@ -17,6 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
       - run: uv sync --group dev
       - run: make check
 
@@ -30,9 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y libhidapi-dev libudev-dev
       - run: uv python install ${{ matrix.python-version }}
-      - run: uv sync --group dev --reinstall-package uchroma
+      - run: uv sync --group dev
       - run: uv run pytest --cov=uchroma --cov-report=xml
       - uses: codecov/codecov-action@v4
         if: matrix.python-version == '3.12'
@@ -43,14 +45,27 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build:
-    name: Build
-    runs-on: ubuntu-latest
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
       - run: sudo apt-get update && sudo apt-get install -y libhidapi-dev libudev-dev
-      - run: uv build
+      - if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu
+      - run: uv run maturin build --release --target ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist/
+          name: wheels-${{ matrix.target }}
+          path: target/wheels/*.whl

@@ -1,0 +1,27 @@
+[package]
+name = "uchroma-native"
+version = "0.1.0"
+edition = "2021"
+description = "Native Rust extensions for uchroma"
+license = "LGPL-3.0-only"
+
+[lib]
+name = "_native"
+path = "rust/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py311"] }
+numpy = "0.23"
+
+[dev-dependencies]
+criterion = "0.6"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3

@@ -6,13 +6,13 @@
 
 import time
 
+import numpy as np
 from traitlets import Int, observe
 
+from uchroma._native import draw_plasma
 from uchroma.color import ColorScheme, ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorPresetTrait, ColorSchemeTrait
-
-from ._plasma import draw_plasma
 
 
 class Plasma(Renderer):
@@ -34,11 +34,14 @@ class Plasma(Renderer):
         super().__init__(*args, **kwargs)
 
         self._gradient = None
+        self._gradient_array = None  # Numpy array for Rust
         self._start_time = 0
         self.fps = 15
 
     def _gen_gradient(self):
         self._gradient = ColorUtils.gradient(self.gradient_length, *self.color_scheme)
+        # Convert Color objects to numpy array for Rust
+        self._gradient_array = np.array([c.rgb for c in self._gradient], dtype=np.float64)
 
     @observe("color_scheme", "gradient_length", "preset")
     def _scheme_changed(self, changed):
@@ -57,6 +60,7 @@ class Plasma(Renderer):
     async def draw(self, layer, timestamp):
         duration = timestamp - self._start_time
 
-        draw_plasma(layer.width, layer.height, layer.matrix, duration, self._gradient)
+        if self._gradient_array is not None:
+            draw_plasma(layer.width, layer.height, layer.matrix, duration, self._gradient_array)
 
         return True
