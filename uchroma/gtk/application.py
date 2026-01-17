@@ -70,11 +70,23 @@ class UChromaApplication(Adw.Application):
         """Called when the application starts."""
         Adw.Application.do_startup(self)
 
+        # Add local icon theme path for development
+        self._setup_icons()
+
         # Load custom CSS
         self._load_css()
 
         # Start async initialization
         self._startup_task = asyncio.create_task(self._startup_async())
+
+    def _setup_icons(self):
+        """Add local icon path for development."""
+        icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+
+        # Add install/icons/hicolor to search path (for development)
+        local_icons = Path(__file__).parent.parent.parent / "install" / "icons" / "hicolor"
+        if local_icons.exists():
+            icon_theme.add_search_path(str(local_icons.parent))
 
     def _load_css(self):
         """Load custom stylesheet."""
@@ -161,7 +173,7 @@ class UChromaApplication(Adw.Application):
         about = Adw.AboutWindow.new()
         about.set_transient_for(self._window)
         about.set_application_name("UChroma")
-        about.set_application_icon("preferences-desktop-keyboard")
+        about.set_application_icon("io.uchroma")
         about.set_version(__version__)
         about.set_developer_name("Hyperbliss")
         about.set_license_type(Gtk.License.LGPL_3_0)

@@ -50,6 +50,7 @@ class UChromaWindow(Adw.ApplicationWindow):
         self.set_title("UChroma")
         self.set_default_size(900, 700)
         self.set_size_request(700, 550)
+        self.set_icon_name("io.uchroma")
 
         self._device = None
         self._device_list = []

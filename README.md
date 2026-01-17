@@ -1,8 +1,14 @@
-## 💜 uChroma
+<p align="center">
+  <img src="docs/public/uchroma-mark.png" alt="UChroma" width="200">
+</p>
 
-**RGB Control for Razer Chroma on Linux**
+<h1 align="center">uChroma</h1>
 
-<p>
+<p align="center">
+  <strong>RGB Control for Razer Chroma on Linux</strong>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/GTK4-Frontend-4a86cf?style=for-the-badge&logo=gtk&logoColor=white" alt="GTK4">
   <img src="https://img.shields.io/badge/D--Bus-API-e135ff?style=for-the-badge&logo=freedesktoporg&logoColor=white" alt="D-Bus">
