@@ -39,7 +39,8 @@ jobs:
 
       - name: Install dependencies
         working-directory: docs
-        run: npm install
+        # vitepress-plugin-mermaid peer deps don't include vitepress 2.x yet
+        run: npm install --legacy-peer-deps
 
       - name: Build docs
         working-directory: docs
