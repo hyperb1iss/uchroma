@@ -12,7 +12,7 @@ from concurrent import futures
 from importlib.metadata import entry_points
 from typing import NamedTuple
 
-from traitlets import Bool, HasTraits, List, observe
+from traitlets import All, Bool, HasTraits, List, observe
 
 from uchroma.log import LOG_TRACE
 from uchroma.renderer import MAX_FPS, NUM_BUFFERS, Renderer, RendererMeta
@@ -34,9 +34,10 @@ class LayerHolder(HasTraits):
         self.active_buf = None
         self.task = None
         self._finished = False
+        self._started = False
 
         self.traits_changed = Signal()
-        self._renderer.observe(self._traits_changed, names=["all"])
+        self._renderer.observe(self._traits_changed, names=All)
 
         self._renderer._flush()
 
@@ -55,7 +56,8 @@ class LayerHolder(HasTraits):
         return get_args_dict(self._renderer)
 
     def _traits_changed(self, change):
-        if not self.renderer.running:
+        # Only propagate changes after the layer has started (not during initial setup)
+        if not self._started:
             return
 
         self.traits_changed.fire(self.zindex, self.trait_values, change.name, change.old)
@@ -70,6 +72,7 @@ class LayerHolder(HasTraits):
 
     def start(self):
         if not self.renderer.running:
+            self._started = True
             self.task = ensure_future(self.renderer._run())
 
     async def stop(self):

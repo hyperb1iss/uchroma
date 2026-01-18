@@ -315,6 +315,9 @@ def get_args_dict(obj: HasTraits, incl_all=False):
     for k in sorted(obj._trait_values.keys()):
         v = obj._trait_values[k]
         trait = obj.traits()[k]
+        # Only include traits marked as config=True (user-configurable)
+        if not trait.get_metadata("config"):
+            continue
         if incl_all or (not trait.get_metadata("hidden") and is_trait_writable(trait)):
             argsdict[k] = v
     return argsdict

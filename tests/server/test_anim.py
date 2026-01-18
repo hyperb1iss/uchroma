@@ -503,3 +503,192 @@ class TestDiscoverRenderers:
             with patch.object(Renderer, "__subclasses__", return_value=[]):
                 mgr = AnimationManager(mock_driver)
                 assert isinstance(mgr._renderer_info, (OrderedDict, dict))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LayerHolder Trait Change Propagation Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestLayerHolderTraitPropagation:
+    """Tests for LayerHolder trait change signal propagation."""
+
+    @pytest.fixture
+    def real_renderer(self, mock_frame):
+        """Create a real renderer instance for trait testing."""
+        from traitlets import Float
+
+        from uchroma.renderer import Renderer, RendererMeta
+
+        class TestRenderer(Renderer):
+            meta = RendererMeta("Test", "Test renderer", "Test", "1.0")
+            speed = Float(default_value=1.0).tag(config=True)
+
+            def init(self, frame):
+                return True
+
+            async def draw(self, layer, timestamp):
+                return True
+
+        # Create a mock driver with required attributes
+        mock_driver = MagicMock()
+        mock_driver.width = 10
+        mock_driver.height = 5
+        mock_driver.input_manager = None
+
+        return TestRenderer(mock_driver)
+
+    def test_traits_changed_ignored_before_start(self, mock_frame, real_renderer):
+        """Trait changes are ignored before layer.start() is called."""
+        from uchroma.server.anim import LayerHolder
+
+        holder = LayerHolder(real_renderer, mock_frame)
+        signal_received = []
+
+        def on_traits_changed(*args):
+            signal_received.append(args)
+
+        holder.traits_changed.connect(on_traits_changed)
+
+        # Change a trait before starting
+        real_renderer.speed = 2.0
+
+        # Signal should NOT have fired (not started yet)
+        assert len(signal_received) == 0
+
+    def test_traits_changed_fires_after_start(self, mock_frame, real_renderer):
+        """Trait changes fire signal after layer.start() is called."""
+        from uchroma.server.anim import LayerHolder
+
+        holder = LayerHolder(real_renderer, mock_frame)
+        signal_received = []
+
+        def on_traits_changed(*args):
+            signal_received.append(args)
+
+        holder.traits_changed.connect(on_traits_changed)
+
+        # Start the layer (but don't actually run the async task)
+        holder._started = True
+
+        # Change a trait after starting
+        real_renderer.speed = 3.0
+
+        # Signal should have fired
+        assert len(signal_received) > 0
+        # Check the signal contains expected data
+        _zindex, _trait_values, change_name, _old_value = signal_received[-1]
+        assert change_name == "speed"
+
+    def test_started_flag_set_on_start(self, mock_frame, real_renderer):
+        """_started flag is set when start() is called."""
+        from uchroma.server.anim import LayerHolder
+
+        holder = LayerHolder(real_renderer, mock_frame)
+        assert holder._started is False
+
+        with patch("uchroma.server.anim.ensure_future"):
+            holder.start()
+
+        assert holder._started is True
+
+    def test_trait_values_returns_config_traits_only(self, mock_frame, real_renderer):
+        """trait_values property returns only config=True traits."""
+        from uchroma.server.anim import LayerHolder
+
+        holder = LayerHolder(real_renderer, mock_frame)
+
+        # Set values
+        real_renderer.speed = 2.5
+        real_renderer.running = True  # Not config=True
+        real_renderer.zindex = 5  # Not config=True
+
+        trait_values = holder.trait_values
+
+        # Should include config traits
+        assert "speed" in trait_values
+        # Should NOT include runtime state
+        assert "running" not in trait_values
+        assert "zindex" not in trait_values
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# End-to-End Preference Persistence Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestPreferencePersistence:
+    """Tests for end-to-end trait change to preference persistence."""
+
+    @pytest.fixture
+    def mock_frame_with_driver(self):
+        """Create a mock frame with a real-ish driver for prefs testing."""
+        frame = MagicMock()
+        frame._driver = MagicMock()
+        frame._driver.logger = MagicMock()
+        frame._driver.logger.isEnabledFor.return_value = False
+        frame._driver.logger.debug = MagicMock()
+        frame._driver.logger.info = MagicMock()
+        frame.create_layer = MagicMock(return_value=MagicMock())
+        frame.commit = MagicMock()
+        return frame
+
+    def test_update_prefs_saves_layer_traits(self, mock_driver, mock_frame_with_driver):
+        """_update_prefs saves layer trait values to preferences."""
+        from uchroma.server.anim import AnimationLoop, AnimationManager, LayerHolder
+
+        # Setup
+        mock_driver.frame_control = mock_frame_with_driver
+        mock_driver.preferences = MagicMock()
+        mock_driver.preferences.layers = None
+
+        with patch.object(AnimationManager, "_discover_renderers", return_value=OrderedDict()):
+            mgr = AnimationManager(mock_driver)
+
+        # Create a loop with a mock layer
+        mgr._loop = AnimationLoop(mock_frame_with_driver)
+
+        mock_holder = MagicMock(spec=LayerHolder)
+        mock_holder.type_string = "test.TestRenderer"
+        mock_holder.trait_values = {"speed": 2.0, "opacity": 0.5}
+
+        # Patch start() to avoid triggering async code when layers change
+        with patch.object(mgr._loop, "start"):
+            mgr._loop.layers = [mock_holder]
+
+        # Call _update_prefs
+        mgr._update_prefs()
+
+        # Verify preferences were set
+        assert mock_driver.preferences.layers is not None
+        assert "test.TestRenderer" in mock_driver.preferences.layers
+        assert mock_driver.preferences.layers["test.TestRenderer"]["speed"] == 2.0
+
+    def test_loop_layers_changed_triggers_update_prefs(self, mock_driver, mock_frame_with_driver):
+        """_loop_layers_changed triggers _update_prefs on modify."""
+        from uchroma.server.anim import AnimationManager
+
+        mock_driver.frame_control = mock_frame_with_driver
+        mock_driver.preferences = MagicMock()
+
+        with patch.object(AnimationManager, "_discover_renderers", return_value=OrderedDict()):
+            mgr = AnimationManager(mock_driver)
+
+        with patch.object(mgr, "_update_prefs") as mock_update:
+            # Simulate a "modify" event (trait change)
+            mgr._loop_layers_changed("modify", 0, {"speed": 2.0}, "speed", 1.0)
+            mock_update.assert_called_once()
+
+    def test_loop_layers_changed_skips_on_error(self, mock_driver, mock_frame_with_driver):
+        """_loop_layers_changed skips _update_prefs when error=True."""
+        from uchroma.server.anim import AnimationManager
+
+        mock_driver.frame_control = mock_frame_with_driver
+
+        with patch.object(AnimationManager, "_discover_renderers", return_value=OrderedDict()):
+            mgr = AnimationManager(mock_driver)
+
+        with patch.object(mgr, "_update_prefs") as mock_update:
+            # Simulate event with error flag
+            mgr._loop_layers_changed("modify", 0, {}, "speed", 1.0, error=True)
+            mock_update.assert_not_called()

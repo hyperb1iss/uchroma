@@ -359,7 +359,7 @@ class AnimationManagerInterface(ServiceInterface):
                 }
             )
 
-    def _layers_changed(self, action, zindex=None, layer=None):
+    def _layers_changed(self, action, zindex=None, *args, **kwargs):
         if action in {"add", "remove", "modify"}:
             self._sync_layers()
 

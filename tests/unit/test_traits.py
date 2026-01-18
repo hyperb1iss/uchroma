@@ -528,30 +528,77 @@ class TestDictAsClassTraits:
 class TestGetArgsDict:
     """Tests for get_args_dict function."""
 
-    def test_returns_configurable_traits(self):
-        """Returns dict of trait values."""
+    def test_only_returns_config_traits(self):
+        """Only returns traits marked with config=True."""
 
         class Obj(HasTraits):
-            value = Int(default_value=10)
-            hidden = Int(default_value=0).tag(hidden=True)
+            configurable = Int(default_value=10).tag(config=True)
+            not_configurable = Int(default_value=20)
 
         obj = Obj()
-        obj.value = 25
+        obj.configurable = 25
+        obj.not_configurable = 30
         result = get_args_dict(obj)
-        assert result["value"] == 25
-        assert "hidden" not in result
+        assert "configurable" in result
+        assert result["configurable"] == 25
+        assert "not_configurable" not in result
 
-    def test_incl_all_includes_hidden(self):
-        """incl_all=True includes hidden traits."""
+    def test_excludes_hidden_config_traits(self):
+        """Excludes traits that are both config=True and hidden=True."""
 
         class Obj(HasTraits):
-            value = Int(default_value=10)
-            hidden = Int(default_value=0).tag(hidden=True)
+            visible = Int(default_value=10).tag(config=True)
+            hidden = Int(default_value=0).tag(config=True, hidden=True)
+
+        obj = Obj()
+        obj.visible = 25
+        obj.hidden = 5
+        result = get_args_dict(obj)
+        assert "visible" in result
+        assert "hidden" not in result
+
+    def test_incl_all_includes_hidden_config_traits(self):
+        """incl_all=True includes hidden traits that have config=True."""
+
+        class Obj(HasTraits):
+            visible = Int(default_value=10).tag(config=True)
+            hidden = Int(default_value=0).tag(config=True, hidden=True)
 
         obj = Obj()
         obj.hidden = 5
         result = get_args_dict(obj, incl_all=True)
         assert "hidden" in result
+
+    def test_excludes_runtime_state_traits(self):
+        """Excludes runtime state traits like running and zindex."""
+
+        class Obj(HasTraits):
+            speed = Float(default_value=1.0).tag(config=True)
+            running = Int(default_value=0)  # No config=True
+            zindex = Int(default_value=-1)  # No config=True
+
+        obj = Obj()
+        obj.speed = 2.0
+        obj.running = 1
+        obj.zindex = 0
+        result = get_args_dict(obj)
+        assert "speed" in result
+        assert "running" not in result
+        assert "zindex" not in result
+
+    def test_excludes_write_once_traits(self):
+        """Excludes write-once traits even if config=True."""
+
+        class Obj(HasTraits):
+            normal = Int(default_value=10).tag(config=True)
+            once = WriteOnceInt().tag(config=True)
+
+        obj = Obj()
+        obj.normal = 25
+        obj.once = 100
+        result = get_args_dict(obj)
+        assert "normal" in result
+        assert "once" not in result  # Write-once is not writable
 
 
 # ─────────────────────────────────────────────────────────────────────────────
