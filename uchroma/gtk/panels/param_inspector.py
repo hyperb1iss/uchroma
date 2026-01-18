@@ -350,8 +350,17 @@ class ParamInspector(Gtk.Box):
 
         chooser = Gtk.ColorChooserWidget()
         chooser.add_css_class("color-chooser")
-        chooser.set_use_alpha(False)
-        chooser.set_show_editor(True)
+        try:
+            chooser.set_use_alpha(False)
+        except AttributeError:
+            chooser.set_property("use-alpha", False)
+        if hasattr(chooser, "set_show_editor"):
+            chooser.set_show_editor(True)
+        else:
+            try:
+                chooser.set_property("show-editor", True)
+            except (AttributeError, TypeError, ValueError):
+                pass
         chooser.set_size_request(220, 180)
         chooser.set_rgba(rgba)
         btn._chooser = chooser
