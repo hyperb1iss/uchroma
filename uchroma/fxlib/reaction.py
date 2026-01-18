@@ -99,13 +99,14 @@ class Reaction(Renderer):
         """
         Draw the next layer
         """
-        # Yield until the queue becomes active
-        events = await self.get_input_events()
+        if not self.has_key_input or not self._input_queue.attach():
+            return False
 
-        if len(events) > 0:
+        events = self._input_queue.get_events_nowait()
+        if events:
             self._process_events(layer, events)
-            return True
-        return False
+
+        return True
 
     @observe("background_color", "color")
     def _update_colors(self, change=None):

@@ -78,7 +78,10 @@ class Typewriter(Renderer):
         if brightness is None:
             return False
 
-        events = await self.get_input_events()
+        if not self.has_key_input or not self._input_queue.attach():
+            return False
+
+        events = self._input_queue.get_events_nowait()
         height = layer.height
         width = layer.width
         spread = self.spread

@@ -142,6 +142,25 @@ class InputQueue:
         """
         Version of get_events which returns immediately
         """
+        if not self._attached:
+            self._logger.error("InputQueue is not attached!")
+            return []
+
+        if self._expire_time is None or self._expire_time <= 0:
+            events = []
+            while True:
+                try:
+                    events.append(self._q.get_nowait())
+                except asyncio.QueueEmpty:
+                    break
+            return events
+
+        self._expire()
+        while True:
+            try:
+                self._q.get_nowait()
+            except asyncio.QueueEmpty:
+                break
         return self._events[:]
 
     async def _input_callback(self, ev):
