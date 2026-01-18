@@ -644,6 +644,12 @@ headerbar.flat {
     background-color: @surface_hover;
 }
 
+.color-chooser {
+    background-color: @surface_light;
+    border-radius: 6px;
+    padding: 6px;
+}
+
 .param-scale trough {
     min-height: 6px;
     background-color: @surface_light;

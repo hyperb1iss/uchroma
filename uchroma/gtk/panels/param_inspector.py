@@ -102,6 +102,34 @@ class ParamInspector(Gtk.Box):
             return rgba
         return Gdk.RGBA()
 
+    def _normalize_color_list(self, colors: list[str]) -> list[str]:
+        normalized = []
+        for color_str in colors:
+            rgba = Gdk.RGBA()
+            if rgba.parse(str(color_str)):
+                normalized.append(self._rgba_to_hex(rgba))
+        return normalized
+
+    def _match_preset_name(self, colors: list[str], scheme_values: dict[str, tuple[str, ...]]) -> str | None:
+        normalized = self._normalize_color_list(colors)
+        if not normalized:
+            return None
+        for name, scheme in scheme_values.items():
+            if normalized == self._normalize_color_list(list(scheme)):
+                return name
+        return None
+
+    def _update_color_list_preset_label(self, param_name: str, colors: list[str]):
+        widget_info = self._widgets.get(param_name)
+        if not isinstance(widget_info, dict):
+            return
+        preset_btn = widget_info.get("preset_btn")
+        scheme_values = widget_info.get("scheme_values", {})
+        if not preset_btn:
+            return
+        matched = self._match_preset_name(colors, scheme_values)
+        preset_btn.set_label(matched if matched else "Custom")
+
     def _set_color_button_rgba(
         self,
         button: Gtk.MenuButton,
@@ -110,21 +138,29 @@ class ParamInspector(Gtk.Box):
         emit: bool = True,
         update_entry: bool = True,
     ):
-        button._rgba = rgba
-        hex_color = self._rgba_to_hex(rgba)
+        button._updating = True
+        try:
+            button._rgba = rgba
+            hex_color = self._rgba_to_hex(rgba)
 
-        swatch = getattr(button, "_swatch_area", None)
-        if swatch is not None:
-            swatch._rgba = rgba
-            swatch.queue_draw()
+            swatch = getattr(button, "_swatch_area", None)
+            if swatch is not None:
+                swatch._rgba = rgba
+                swatch.queue_draw()
 
-        label = getattr(button, "_label", None)
-        if label is not None:
-            label.set_label(hex_color)
+            label = getattr(button, "_label", None)
+            if label is not None:
+                label.set_label(hex_color)
 
-        entry = getattr(button, "_entry", None)
-        if update_entry and entry is not None and entry.get_text() != hex_color:
-            entry.set_text(hex_color)
+            entry = getattr(button, "_entry", None)
+            if update_entry and entry is not None and entry.get_text() != hex_color:
+                entry.set_text(hex_color)
+
+            chooser = getattr(button, "_chooser", None)
+            if chooser is not None:
+                chooser.set_rgba(rgba)
+        finally:
+            button._updating = False
 
         if emit:
             on_change = getattr(button, "_on_change", None)
@@ -250,6 +286,7 @@ class ParamInspector(Gtk.Box):
         btn._swatch_area = swatch
         btn._label = label
         btn._on_change = on_change
+        btn._updating = False
 
         popover = Gtk.Popover()
         popover.add_css_class("color-popover")
@@ -305,6 +342,32 @@ class ParamInspector(Gtk.Box):
         entry.connect("activate", on_entry_activate)
 
         content.append(entry_row)
+
+        picker_title = Gtk.Label(label="Picker")
+        picker_title.add_css_class("color-section-label")
+        picker_title.set_xalign(0)
+        content.append(picker_title)
+
+        chooser = Gtk.ColorChooserWidget()
+        chooser.add_css_class("color-chooser")
+        chooser.set_use_alpha(False)
+        chooser.set_show_editor(True)
+        chooser.set_size_request(220, 180)
+        chooser.set_rgba(rgba)
+        btn._chooser = chooser
+
+        def on_chooser_changed(_chooser, _pspec):
+            if btn._updating:
+                return
+            btn._updating = True
+            try:
+                new_rgba = _chooser.get_rgba()
+                apply_rgba(new_rgba, update_entry=True)
+            finally:
+                btn._updating = False
+
+        chooser.connect("notify::rgba", on_chooser_changed)
+        content.append(chooser)
 
         recent_title = Gtk.Label(label="Recent")
         recent_title.add_css_class("color-section-label")
@@ -785,6 +848,15 @@ class ParamInspector(Gtk.Box):
             "scheme_values": scheme_values,
         }
 
+        selected_colors = list(values) if values else []
+        if not selected_colors and not allow_empty:
+            selected_colors = list(resolved_defaults)
+        if selected_colors:
+            preset_name = self._match_preset_name(selected_colors, scheme_values)
+            preset_btn.set_label(preset_name if preset_name else "Custom")
+        else:
+            preset_btn.set_label("Select preset...")
+
         return outer
 
     def _create_preset_row(
@@ -1003,6 +1075,7 @@ class ParamInspector(Gtk.Box):
             values.append(
                 f"#{int(rgba.red * 255):02x}{int(rgba.green * 255):02x}{int(rgba.blue * 255):02x}"
             )
+        self._update_color_list_preset_label(name, values)
         self._emit_debounced(name, values)
 
     def _on_range_changed(self, scale, name):
