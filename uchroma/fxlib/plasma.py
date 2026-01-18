@@ -7,7 +7,7 @@
 import time
 
 import numpy as np
-from traitlets import Int, observe
+from traitlets import Float, Int, observe
 
 from uchroma._native import draw_plasma
 from uchroma.color import ColorScheme, ColorUtils
@@ -29,6 +29,12 @@ class Plasma(Renderer):
     )
     preset = ColorPresetTrait(ColorScheme, default_value=ColorScheme.Qap).tag(config=False)
     gradient_length = Int(default_value=360, min=0).tag(config=True)
+
+    # ✨ fun knobs
+    speed = Float(default_value=1.0, min=0.1, max=2.0).tag(config=True)
+    scale = Float(default_value=1.0, min=0.2, max=4.0).tag(config=True)
+    complexity = Int(default_value=2, min=1, max=4).tag(config=True)
+    turbulence = Float(default_value=0.0, min=0.0, max=1.0).tag(config=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,9 +64,18 @@ class Plasma(Renderer):
         return True
 
     async def draw(self, layer, timestamp):
-        duration = timestamp - self._start_time
+        duration = (timestamp - self._start_time) * self.speed
 
         if self._gradient_array is not None:
-            draw_plasma(layer.width, layer.height, layer.matrix, duration, self._gradient_array)
+            draw_plasma(
+                layer.width,
+                layer.height,
+                layer.matrix,
+                duration,
+                self._gradient_array,
+                self.scale,
+                self.complexity,
+                self.turbulence,
+            )
 
         return True
