@@ -113,7 +113,7 @@ class InputQueue:
 
         if self._expire_time is None or self._expire_time <= 0:
             event = await self._q.get()
-            return event
+            return [event]
 
         self._expire()
 

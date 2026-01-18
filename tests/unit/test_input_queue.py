@@ -325,7 +325,7 @@ class TestInputQueueGetEvents:
         mock_driver.logger.error.assert_called()
 
     def test_get_events_no_expire_time(self, input_queue_no_expire):
-        """get_events returns single event when no expire_time."""
+        """get_events returns list with single event when no expire_time."""
 
         async def run_test():
             input_queue_no_expire.attach()
@@ -334,7 +334,7 @@ class TestInputQueueGetEvents:
             return await input_queue_no_expire.get_events()
 
         result = asyncio.run(run_test())
-        assert result == "test_event"
+        assert result == ["test_event"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
