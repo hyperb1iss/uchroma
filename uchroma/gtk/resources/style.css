@@ -573,6 +573,77 @@ headerbar.flat {
     border-color: @silk_purple;
 }
 
+.param-color-wide {
+    min-width: 140px;
+}
+
+.color-hex-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: @text_secondary;
+}
+
+.color-popover {
+    background-color: @surface_dark;
+    border-radius: 8px;
+    min-width: 220px;
+}
+
+.color-section-label {
+    font-size: 11px;
+    color: @text_secondary;
+}
+
+.color-section-empty {
+    font-size: 11px;
+    color: alpha(@text_secondary, 0.7);
+}
+
+.color-hex-entry {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    background-color: @surface_light;
+    border-radius: 6px;
+    padding: 4px 6px;
+}
+
+.color-hex-entry.invalid {
+    border: 1px solid @silk_red;
+}
+
+.color-swatch {
+    border-radius: 4px;
+}
+
+.color-swatch-btn {
+    padding: 0;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+.color-swatch-btn:hover {
+    background-color: @surface_light;
+}
+
+.color-swatch-row {
+    margin-bottom: 2px;
+}
+
+.color-swatch-grid {
+    margin-bottom: 4px;
+}
+
+.color-reset-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+    background-color: @surface_light;
+    border-radius: 6px;
+}
+
+.color-reset-btn:hover {
+    background-color: @surface_hover;
+}
+
 .param-scale trough {
     min-height: 6px;
     background-color: @surface_light;

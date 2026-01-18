@@ -43,7 +43,7 @@ class ParamInspector(Gtk.Box):
         self._param_map = {}
         self._widgets = {}
         self._debounce_sources = {}
-        self._color_dialog = Gtk.ColorDialog()
+        self._recent_colors = []
 
         self.add_css_class("param-inspector")
         self.set_margin_start(16)
@@ -77,6 +77,313 @@ class ParamInspector(Gtk.Box):
         self._empty.add_css_class("dim")
         self._empty.set_margin_top(8)
         self.append(self._empty)
+
+    @staticmethod
+    def _rgba_to_hex(rgba: Gdk.RGBA) -> str:
+        return f"#{int(rgba.red * 255):02x}{int(rgba.green * 255):02x}{int(rgba.blue * 255):02x}"
+
+    @staticmethod
+    def _parse_color_text(text: str) -> tuple[Gdk.RGBA, str] | None:
+        raw = text.strip()
+        if not raw:
+            return None
+        if not raw.startswith("#") and all(c in "0123456789abcdefABCDEF" for c in raw):
+            if len(raw) in (3, 6):
+                raw = f"#{raw}"
+        rgba = Gdk.RGBA()
+        if rgba.parse(raw):
+            hex_color = ParamInspector._rgba_to_hex(rgba)
+            return rgba, hex_color
+        return None
+
+    def _get_button_rgba(self, button: Gtk.Widget) -> Gdk.RGBA:
+        rgba = getattr(button, "_rgba", None)
+        if isinstance(rgba, Gdk.RGBA):
+            return rgba
+        return Gdk.RGBA()
+
+    def _set_color_button_rgba(
+        self,
+        button: Gtk.MenuButton,
+        rgba: Gdk.RGBA,
+        *,
+        emit: bool = True,
+        update_entry: bool = True,
+    ):
+        button._rgba = rgba
+        hex_color = self._rgba_to_hex(rgba)
+
+        swatch = getattr(button, "_swatch_area", None)
+        if swatch is not None:
+            swatch._rgba = rgba
+            swatch.queue_draw()
+
+        label = getattr(button, "_label", None)
+        if label is not None:
+            label.set_label(hex_color)
+
+        entry = getattr(button, "_entry", None)
+        if update_entry and entry is not None and entry.get_text() != hex_color:
+            entry.set_text(hex_color)
+
+        if emit:
+            on_change = getattr(button, "_on_change", None)
+            if on_change:
+                on_change(hex_color)
+
+    def _add_recent_color(self, hex_color: str):
+        hex_color = hex_color.lower()
+        if hex_color in self._recent_colors:
+            self._recent_colors.remove(hex_color)
+        self._recent_colors.insert(0, hex_color)
+        self._recent_colors = self._recent_colors[:8]
+
+    def _populate_swatch_row(
+        self, container: Gtk.Box, colors: list[str], on_select, *, empty_label: str | None = None
+    ):
+        child = container.get_first_child()
+        while child:
+            next_child = child.get_next_sibling()
+            container.remove(child)
+            child = next_child
+
+        if not colors:
+            if empty_label:
+                label = Gtk.Label(label=empty_label)
+                label.add_css_class("color-section-empty")
+                label.set_xalign(0)
+                container.append(label)
+            return
+
+        for color_str in colors:
+            btn = self._create_swatch_button(color_str, on_select)
+            container.append(btn)
+
+    def _create_swatch_button(self, color_str: str, on_select):
+        rgba = Gdk.RGBA()
+        if not rgba.parse(str(color_str)):
+            rgba.parse("#888888")
+
+        swatch = Gtk.DrawingArea()
+        swatch.set_size_request(18, 18)
+        swatch.add_css_class("color-swatch")
+        swatch._rgba = rgba
+
+        def draw(area, cr, width, height):
+            r = area._rgba
+            radius = 4
+            cr.new_sub_path()
+            cr.arc(width - radius, radius, radius, -1.5708, 0)
+            cr.arc(width - radius, height - radius, radius, 0, 1.5708)
+            cr.arc(radius, height - radius, radius, 1.5708, 3.1416)
+            cr.arc(radius, radius, radius, 3.1416, 4.7124)
+            cr.close_path()
+            cr.set_source_rgba(r.red, r.green, r.blue, 1.0)
+            cr.fill()
+
+        swatch.set_draw_func(draw)
+
+        btn = Gtk.Button()
+        btn.add_css_class("color-swatch-btn")
+        btn.set_child(swatch)
+
+        def on_click(_btn, rgba=rgba):
+            on_select(rgba)
+
+        btn.connect("clicked", on_click)
+        return btn
+
+    def _create_color_button(
+        self,
+        color_str: str,
+        *,
+        on_change,
+        show_label: bool = False,
+        default_color: str | None = None,
+    ) -> Gtk.MenuButton:
+        rgba = Gdk.RGBA()
+        if not rgba.parse(str(color_str)):
+            rgba.parse("#888888")
+
+        btn = Gtk.MenuButton()
+        btn.add_css_class("param-color")
+        if show_label:
+            btn.add_css_class("param-color-wide")
+
+        swatch = Gtk.DrawingArea()
+        swatch.set_size_request(18, 18)
+        swatch.add_css_class("color-swatch")
+        swatch._rgba = rgba
+
+        def draw(area, cr, width, height):
+            r = area._rgba
+            radius = 4
+            cr.new_sub_path()
+            cr.arc(width - radius, radius, radius, -1.5708, 0)
+            cr.arc(width - radius, height - radius, radius, 0, 1.5708)
+            cr.arc(radius, height - radius, radius, 1.5708, 3.1416)
+            cr.arc(radius, radius, radius, 3.1416, 4.7124)
+            cr.close_path()
+            cr.set_source_rgba(r.red, r.green, r.blue, 1.0)
+            cr.fill()
+
+        swatch.set_draw_func(draw)
+
+        hex_color = self._rgba_to_hex(rgba)
+        btn_content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        btn_content.set_margin_start(6)
+        btn_content.set_margin_end(6)
+        btn_content.set_margin_top(4)
+        btn_content.set_margin_bottom(4)
+        btn_content.append(swatch)
+
+        label = None
+        if show_label:
+            label = Gtk.Label(label=hex_color)
+            label.add_css_class("color-hex-label")
+            label.set_xalign(0)
+            btn_content.append(label)
+
+        btn.set_child(btn_content)
+
+        btn._rgba = rgba
+        btn._swatch_area = swatch
+        btn._label = label
+        btn._on_change = on_change
+
+        popover = Gtk.Popover()
+        popover.add_css_class("color-popover")
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.set_margin_start(8)
+        content.set_margin_end(8)
+        content.set_margin_top(8)
+        content.set_margin_bottom(8)
+
+        entry_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        entry_label = Gtk.Label(label="Hex")
+        entry_label.add_css_class("color-section-label")
+        entry_label.set_xalign(0)
+        entry_row.append(entry_label)
+
+        entry = Gtk.Entry()
+        entry.add_css_class("color-hex-entry")
+        entry.set_width_chars(9)
+        entry.set_text(hex_color)
+        entry_row.append(entry)
+
+        def apply_rgba(new_rgba: Gdk.RGBA, *, update_entry: bool = True):
+            self._set_color_button_rgba(btn, new_rgba, emit=True, update_entry=update_entry)
+            self._add_recent_color(self._rgba_to_hex(new_rgba))
+            self._populate_swatch_row(
+                recent_row,
+                self._recent_colors,
+                lambda r: apply_rgba(r, update_entry=True),
+                empty_label="No recent colors",
+            )
+
+        def on_entry_changed(entry_widget):
+            result = self._parse_color_text(entry_widget.get_text())
+            if result is None:
+                entry_widget.add_css_class("invalid")
+                return
+            entry_widget.remove_css_class("invalid")
+            new_rgba, _hex = result
+            self._set_color_button_rgba(btn, new_rgba, emit=True, update_entry=False)
+
+        entry.connect("changed", on_entry_changed)
+
+        def on_entry_activate(entry_widget):
+            result = self._parse_color_text(entry_widget.get_text())
+            if result is None:
+                entry_widget.add_css_class("invalid")
+                return
+            entry_widget.remove_css_class("invalid")
+            new_rgba, _hex = result
+            apply_rgba(new_rgba, update_entry=True)
+
+        entry.connect("activate", on_entry_activate)
+
+        content.append(entry_row)
+
+        recent_title = Gtk.Label(label="Recent")
+        recent_title.add_css_class("color-section-label")
+        recent_title.set_xalign(0)
+        content.append(recent_title)
+
+        recent_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        recent_row.add_css_class("color-swatch-row")
+        self._populate_swatch_row(
+            recent_row,
+            self._recent_colors,
+            lambda r: apply_rgba(r, update_entry=True),
+            empty_label="No recent colors",
+        )
+        content.append(recent_row)
+
+        palette_title = Gtk.Label(label="Palette")
+        palette_title.add_css_class("color-section-label")
+        palette_title.set_xalign(0)
+        content.append(palette_title)
+
+        palette_row = Gtk.FlowBox()
+        palette_row.add_css_class("color-swatch-grid")
+        palette_row.set_selection_mode(Gtk.SelectionMode.NONE)
+        palette_row.set_max_children_per_line(8)
+        palette_row.set_row_spacing(6)
+        palette_row.set_column_spacing(6)
+
+        palette = [
+            "#ffffff",
+            "#e6e6e6",
+            "#b3b3b3",
+            "#666666",
+            "#111111",
+            "#ff3b30",
+            "#ff9500",
+            "#ffcc00",
+            "#34c759",
+            "#00ffea",
+            "#00ffff",
+            "#32ade6",
+            "#007aff",
+            "#5856d6",
+            "#af52de",
+            "#ff2d55",
+            "#ff6ac1",
+            "#f1fa8c",
+            "#50fa7b",
+            "#80ffea",
+        ]
+
+        def on_palette_select(new_rgba):
+            apply_rgba(new_rgba, update_entry=True)
+
+        for color in palette:
+            swatch_btn = self._create_swatch_button(color, on_palette_select)
+            palette_row.append(swatch_btn)
+
+        content.append(palette_row)
+
+        if default_color:
+            reset_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            reset_btn = Gtk.Button(label="Reset to default")
+            reset_btn.add_css_class("color-reset-btn")
+            reset_row.append(reset_btn)
+
+            def on_reset_click(_btn, color=default_color):
+                default_rgba = Gdk.RGBA()
+                if default_rgba.parse(str(color)):
+                    apply_rgba(default_rgba, update_entry=True)
+
+            reset_btn.connect("clicked", on_reset_click)
+            content.append(reset_row)
+
+        popover.set_child(content)
+        btn.set_popover(popover)
+        btn._entry = entry
+
+        return btn
 
     def set_params(self, params: list, title: str = "SETTINGS", values: dict | None = None):
         """Set parameters to display.
@@ -167,20 +474,13 @@ class ParamInspector(Gtk.Box):
 
     def _create_color_widget(self, param: dict, current_value) -> Gtk.Widget:
         """Create a color picker button."""
-        btn = Gtk.ColorDialogButton()
-        btn.add_css_class("param-color")
-        btn.set_dialog(self._color_dialog)
-
-        # Set color
-        color_str = current_value or param.get("default", "#ffffff")
-        if not color_str:
-            color_str = "#ffffff"
-        rgba = Gdk.RGBA()
-        rgba.parse(color_str)
-        btn.set_rgba(rgba)
-
-        btn.connect("notify::rgba", self._on_color_changed, param["name"])
-        return btn
+        color_str = current_value or param.get("default", "#ffffff") or "#ffffff"
+        return self._create_color_button(
+            color_str,
+            on_change=lambda _hex, name=param["name"]: self._emit_debounced(name, _hex),
+            show_label=True,
+            default_color=param.get("default"),
+        )
 
     def _create_color_preset_widget(self, param: dict, current_value) -> Gtk.Widget:
         """Create a color preset selector with gradient swatches (for ColorPresetTrait)."""
@@ -457,10 +757,6 @@ class ParamInspector(Gtk.Box):
 
         buttons = []
         for idx in range(count):
-            btn = Gtk.ColorDialogButton()
-            btn.add_css_class("param-color")
-            btn.set_dialog(self._color_dialog)
-
             color_str = None
             if idx < len(values):
                 color_str = values[idx]
@@ -469,12 +765,13 @@ class ParamInspector(Gtk.Box):
             if not color_str:
                 color_str = "#888888"  # Gray fallback instead of white
 
-            rgba = Gdk.RGBA()
-            if not rgba.parse(str(color_str)):
-                rgba.parse("#888888")  # Fallback if parse fails
-            btn.set_rgba(rgba)
+            btn = self._create_color_button(
+                color_str,
+                on_change=lambda _hex, name=param["name"]: self._emit_color_list(name),
+                show_label=False,
+                default_color=resolved_defaults[idx] if idx < len(resolved_defaults) else None,
+            )
             btn.set_sensitive(not (auto_toggle and auto_toggle.get_active()))
-            btn.connect("notify::rgba", self._on_color_list_changed, param["name"])
             wrapper.append(btn)
             buttons.append(btn)
 
@@ -600,8 +897,8 @@ class ParamInspector(Gtk.Box):
         for idx, btn in enumerate(buttons):
             if idx < len(colors):
                 rgba = Gdk.RGBA()
-                rgba.parse(str(colors[idx]))
-                btn.set_rgba(rgba)
+                if rgba.parse(str(colors[idx])):
+                    self._set_color_button_rgba(btn, rgba, emit=False, update_entry=True)
 
         # Emit change
         self._emit_color_list(param_name)
@@ -702,7 +999,7 @@ class ParamInspector(Gtk.Box):
 
         values = []
         for button in widget_info.get("buttons", []):
-            rgba = button.get_rgba()
+            rgba = self._get_button_rgba(button)
             values.append(
                 f"#{int(rgba.red * 255):02x}{int(rgba.green * 255):02x}{int(rgba.blue * 255):02x}"
             )
@@ -754,7 +1051,7 @@ class ParamInspector(Gtk.Box):
                 continue
 
             if param["type"] == "color":
-                rgba = widget.get_rgba()
+                rgba = self._get_button_rgba(widget)
                 values[name] = (
                     f"#{int(rgba.red * 255):02x}{int(rgba.green * 255):02x}{int(rgba.blue * 255):02x}"
                 )
@@ -766,7 +1063,7 @@ class ParamInspector(Gtk.Box):
                     else:
                         colors = []
                         for btn in widget.get("buttons", []):
-                            rgba = btn.get_rgba()
+                            rgba = self._get_button_rgba(btn)
                             colors.append(
                                 f"#{int(rgba.red * 255):02x}"
                                 f"{int(rgba.green * 255):02x}"
