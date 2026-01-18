@@ -21,7 +21,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 from uchroma.version import __version__  # noqa: E402
 
 from .models.store import DeviceStore  # noqa: E402
-from .services.dbus import DBusService  # noqa: E402
+from .services.dbus import ConnectionState, DBusService  # noqa: E402
 from .window import UChromaWindow  # noqa: E402
 
 
@@ -81,7 +81,11 @@ class UChromaApplication(Adw.Application):
 
     def _setup_icons(self):
         """Add local icon path for development."""
-        icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+        display = Gdk.Display.get_default()
+        if display is None:
+            return
+
+        icon_theme = Gtk.IconTheme.get_for_display(display)
 
         # Add install/icons/hicolor to search path (for development)
         local_icons = Path(__file__).parent.parent.parent / "install" / "icons" / "hicolor"
@@ -118,20 +122,40 @@ class UChromaApplication(Adw.Application):
 
     async def _startup_async(self):
         """Async startup: connect to D-Bus and populate devices."""
+        # Subscribe to connection state changes before connecting
+        self.dbus.on_state_changed(self._on_connection_state_changed)
+        self.dbus.on_devices_changed(self._on_devices_changed)
+
         try:
             await self.dbus.connect()
-            await self.device_store.populate(self.dbus)
-
-            # Subscribe to device changes
-            self.dbus.on_devices_changed(self._on_devices_changed)
-
-            # Notify window that devices are ready
-            if self._window:
-                GLib.idle_add(self._window.on_devices_ready)
+            await self._on_connected()
 
         except Exception as e:
             print(f"Failed to connect to UChroma daemon: {e}")
             GLib.idle_add(self._show_daemon_error)
+            # Start reconnection attempts in the background
+            self._schedule_task(self._start_reconnect())
+
+    async def _start_reconnect(self):
+        """Start the reconnection loop after initial failure."""
+        # Trigger reconnection by simulating a disconnect
+        self.dbus._on_bus_disconnect()
+
+    async def _on_connected(self):
+        """Handle successful connection (initial or reconnect)."""
+        await self.device_store.populate(self.dbus)
+
+        if self._window:
+            GLib.idle_add(self._window.on_devices_ready)
+
+    def _on_connection_state_changed(self, state: ConnectionState):
+        """Handle D-Bus connection state changes."""
+        if self._window:
+            GLib.idle_add(self._window.on_connection_state_changed, state)
+
+        if state == ConnectionState.CONNECTED:
+            # Reconnected - repopulate devices
+            self._schedule_task(self._on_connected())
 
     def _on_devices_changed(self, action: str, device_path: str):
         """Handle D-Bus device changes."""

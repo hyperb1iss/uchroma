@@ -4,47 +4,160 @@
 """
 D-Bus Service
 
-Async wrapper for UChroma D-Bus communication.
+Async wrapper for UChroma D-Bus communication with automatic reconnection.
 """
 
+import asyncio
 import contextlib
 from collections.abc import Callable
+from enum import Enum, auto
 
 from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
 
 from uchroma.dbus_utils import dbus_prepare
+from uchroma.log import Log
 
 SERVICE_NAME = "io.uchroma"
 ROOT_PATH = "/io/uchroma"
 
+# Reconnection settings
+RECONNECT_INITIAL_DELAY = 1.0  # seconds
+RECONNECT_MAX_DELAY = 30.0  # seconds
+RECONNECT_BACKOFF_FACTOR = 2.0
+
+_logger = Log.get("uchroma.gtk.dbus")
+
+
+class ConnectionState(Enum):
+    """D-Bus connection states."""
+
+    DISCONNECTED = auto()
+    CONNECTING = auto()
+    CONNECTED = auto()
+    RECONNECTING = auto()
+
 
 class DBusService:
-    """Async D-Bus client for UChroma daemon."""
+    """Async D-Bus client for UChroma daemon with auto-reconnection."""
 
     def __init__(self):
         self._bus: MessageBus | None = None
         self._manager_proxy = None
         self._device_proxies = {}
         self._change_callbacks = []
+        self._state_callbacks: list[Callable[[ConnectionState], None]] = []
+        self._state = ConnectionState.DISCONNECTED
+        self._reconnect_task: asyncio.Task | None = None
+        self._disconnect_monitor: asyncio.Task | None = None
+        self._should_reconnect = True
 
     @property
     def connected(self) -> bool:
         """Check if connected to D-Bus."""
         return self._bus is not None and self._bus.connected
 
+    @property
+    def state(self) -> ConnectionState:
+        """Get current connection state."""
+        return self._state
+
+    def _set_state(self, state: ConnectionState):
+        """Update connection state and notify callbacks."""
+        if self._state != state:
+            old_state = self._state
+            self._state = state
+            _logger.debug("Connection state: %s -> %s", old_state.name, state.name)
+            for callback in self._state_callbacks:
+                try:
+                    callback(state)
+                except Exception as e:
+                    _logger.warning("State callback error: %s", e)
+
+    def on_state_changed(self, callback: Callable[[ConnectionState], None]):
+        """Register callback for connection state changes."""
+        self._state_callbacks.append(callback)
+
     async def connect(self):
         """Connect to the session bus and get manager proxy."""
-        self._bus = await MessageBus(bus_type=BusType.SESSION).connect()
+        self._set_state(ConnectionState.CONNECTING)
+        self._should_reconnect = True
 
-        # Get device manager proxy
-        introspection = await self._bus.introspect(SERVICE_NAME, ROOT_PATH)
-        proxy = self._bus.get_proxy_object(SERVICE_NAME, ROOT_PATH, introspection)
+        try:
+            self._bus = await MessageBus(bus_type=BusType.SESSION).connect()
 
-        self._manager_proxy = proxy.get_interface("io.uchroma.DeviceManager")
+            # Get device manager proxy
+            introspection = await self._bus.introspect(SERVICE_NAME, ROOT_PATH)
+            proxy = self._bus.get_proxy_object(SERVICE_NAME, ROOT_PATH, introspection)
 
-        # Subscribe to device changes
-        await self._subscribe_device_changes()
+            self._manager_proxy = proxy.get_interface("io.uchroma.DeviceManager")
+
+            # Subscribe to device changes
+            await self._subscribe_device_changes()
+
+            # Monitor for disconnection in background
+            self._disconnect_monitor = asyncio.create_task(self._monitor_disconnect())
+
+            self._set_state(ConnectionState.CONNECTED)
+            _logger.info("Connected to UChroma daemon")
+
+        except Exception:
+            self._set_state(ConnectionState.DISCONNECTED)
+            raise
+
+    async def _monitor_disconnect(self):
+        """Monitor for bus disconnection and trigger reconnect."""
+        if not self._bus:
+            return
+
+        try:
+            await self._bus.wait_for_disconnect()
+        except Exception as e:
+            _logger.debug("Disconnect monitor error: %s", e)
+
+        # Only handle if we haven't already cleaned up
+        if self._bus is not None:
+            self._on_bus_disconnect()
+
+    def _on_bus_disconnect(self):
+        """Handle bus disconnection."""
+        _logger.warning("D-Bus connection lost")
+        self._clear_state()
+        self._set_state(ConnectionState.DISCONNECTED)
+
+        if self._should_reconnect and not self._reconnect_task:
+            self._reconnect_task = asyncio.create_task(self._reconnect_loop())
+
+    def _clear_state(self):
+        """Clear all cached state after disconnection."""
+        self._bus = None
+        self._manager_proxy = None
+        self._device_proxies.clear()
+        self._disconnect_monitor = None
+
+    async def _reconnect_loop(self):
+        """Attempt to reconnect with exponential backoff."""
+        delay = RECONNECT_INITIAL_DELAY
+
+        while self._should_reconnect:
+            self._set_state(ConnectionState.RECONNECTING)
+            _logger.info("Attempting to reconnect in %.1fs...", delay)
+
+            await asyncio.sleep(delay)
+
+            if not self._should_reconnect:
+                break
+
+            try:
+                await self.connect()
+                _logger.info("Reconnected to UChroma daemon")
+                self._reconnect_task = None
+                return
+            except Exception as e:
+                _logger.debug("Reconnection failed: %s", e)
+                delay = min(delay * RECONNECT_BACKOFF_FACTOR, RECONNECT_MAX_DELAY)
+
+        self._reconnect_task = None
 
     async def _subscribe_device_changes(self):
         """Subscribe to DevicesChanged signal."""
@@ -533,9 +646,17 @@ class DBusService:
             return []
 
     async def disconnect(self):
-        """Disconnect from D-Bus."""
+        """Disconnect from D-Bus and stop reconnection attempts."""
+        self._should_reconnect = False
+
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._reconnect_task
+            self._reconnect_task = None
+
         if self._bus:
             self._bus.disconnect()
-            self._bus = None
-            self._manager_proxy = None
-            self._device_proxies.clear()
+
+        self._clear_state()
+        self._set_state(ConnectionState.DISCONNECTED)

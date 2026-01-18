@@ -739,6 +739,34 @@ headerbar.flat {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   CONNECTION STATUS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.connection-status {
+    opacity: 0.9;
+    transition: all 200ms ease;
+}
+
+.connection-status.warning {
+    color: @silk_yellow;
+}
+
+.connection-status.error {
+    color: @silk_red;
+}
+
+@keyframes pulse-status {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Animate during reconnection */
+.connection-status:not(.error) {
+    animation: pulse-status 1.5s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
    UTILITY CLASSES
    ═══════════════════════════════════════════════════════════════════════════ */
 

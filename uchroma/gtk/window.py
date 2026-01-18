@@ -31,6 +31,7 @@ from .param_utils import (  # noqa: E402
     humanize_label,
     is_hidden_effect,
 )
+from .services.dbus import ConnectionState  # noqa: E402
 from .services.preview_renderer import PreviewRenderer  # noqa: E402
 from .widgets import BrightnessScale, MatrixPreview  # noqa: E402
 from .widgets.effect_card import icon_for_effect, preview_for_effect  # noqa: E402
@@ -213,10 +214,22 @@ class UChromaWindow(Adw.ApplicationWindow):
         device_box.append(self._device_dropdown)
         header.pack_start(device_box)
 
-        # Center: Title
+        # Center: Title with connection status
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        title_box.set_halign(Gtk.Align.CENTER)
+
         title = Adw.WindowTitle(title="UChroma", subtitle="")
-        header.set_title_widget(title)
         self._window_title = title
+        title_box.append(title)
+
+        # Connection status indicator (hidden by default)
+        self._conn_status = Gtk.Image.new_from_icon_name("network-offline-symbolic")
+        self._conn_status.add_css_class("connection-status")
+        self._conn_status.add_css_class("warning")
+        self._conn_status.set_visible(False)
+        title_box.append(self._conn_status)
+
+        header.set_title_widget(title_box)
 
         # Right side: Brightness + Power + Settings
         controls_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -1353,6 +1366,32 @@ class UChromaWindow(Adw.ApplicationWindow):
 
             # Select first device
             self.set_devices([devices[0]])
+
+    def on_connection_state_changed(self, state: ConnectionState):
+        """Handle D-Bus connection state changes."""
+        if state == ConnectionState.CONNECTED:
+            self._conn_status.set_visible(False)
+            self._window_title.set_subtitle("")
+            # Re-enable controls
+            self._device_dropdown.set_sensitive(True)
+            self._brightness.set_sensitive(True)
+            self._power_btn.set_sensitive(True)
+
+        elif state == ConnectionState.DISCONNECTED:
+            self._conn_status.set_from_icon_name("network-offline-symbolic")
+            self._conn_status.set_tooltip_text("Disconnected from daemon")
+            self._conn_status.set_visible(True)
+            self._window_title.set_subtitle("Disconnected")
+            # Disable controls while disconnected
+            self._device_dropdown.set_sensitive(False)
+            self._brightness.set_sensitive(False)
+            self._power_btn.set_sensitive(False)
+
+        elif state == ConnectionState.RECONNECTING:
+            self._conn_status.set_from_icon_name("emblem-synchronizing-symbolic")
+            self._conn_status.set_tooltip_text("Reconnecting to daemon...")
+            self._conn_status.set_visible(True)
+            self._window_title.set_subtitle("Reconnecting...")
 
     def _schedule_task(self, coro):
         """Schedule an async task and track it to prevent GC."""
