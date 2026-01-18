@@ -34,9 +34,8 @@ class Rainbow(Renderer):
     @observe("speed", "stagger")
     def _create_gradient(self, change=None):
         self._offset = 0
-        self._gradient = Rainbow._hue_gradient(
-            0, self.speed * self.width + (self.height * self.stagger)
-        )
+        length = max(1, self.speed * self.width + (self.height * self.stagger))
+        self._gradient = Rainbow._hue_gradient(0, length)
 
     def init(self, frame):
         self._create_gradient()

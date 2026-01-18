@@ -46,9 +46,12 @@ class Ocean(Renderer):
         self.fps = 15
 
     def _gen_gradient(self):
-        self._gradient = ColorUtils.gradient(100, *self.color_scheme, loop=False)
+        gradient = ColorUtils.gradient(100, *self.color_scheme, loop=False)
+        if self.saturation < 1.0:
+            gradient = [c.ColorWithSaturation(self.saturation) for c in gradient]
+        self._gradient = gradient
 
-    @observe("color_scheme")
+    @observe("color_scheme", "saturation")
     def _scheme_changed(self, changed):
         self._gen_gradient()
 
@@ -72,6 +75,8 @@ class Ocean(Renderer):
         wave_h = self.wave_height
         foam_thresh = self.foam_threshold
         caustic = self.caustic_intensity
+        surface_rows = min(3, height)
+        surface_scale = 1.0 / surface_rows if surface_rows > 0 else 0.0
 
         # Wave components (Gerstner-inspired)
         waves = [
@@ -104,14 +109,18 @@ class Ocean(Renderer):
                 brightness = 0.5 + (1.0 - depth) * 0.4
 
                 # Wave height affects surface brightness (caustics)
-                if row < 2:
+                if row < surface_rows:
                     wave_effect = (height_val + 1.0) / 2.0
-                    brightness += wave_effect * caustic
+                    surface_factor = (surface_rows - row) * surface_scale
+                    brightness += wave_effect * caustic * surface_factor
 
                 # Foam on steep slopes at surface
-                if abs(slope) > foam_thresh and row == 0:
-                    r, g, b = 1.0, 1.0, 1.0
-                    brightness = 1.0
+                if abs(slope) > foam_thresh and row < surface_rows:
+                    surface_factor = (surface_rows - row) * surface_scale
+                    r = r + (1.0 - r) * surface_factor
+                    g = g + (1.0 - g) * surface_factor
+                    b = b + (1.0 - b) * surface_factor
+                    brightness = min(1.0, brightness + surface_factor * 0.3)
 
                 # Apply brightness
                 brightness = min(1.0, brightness)

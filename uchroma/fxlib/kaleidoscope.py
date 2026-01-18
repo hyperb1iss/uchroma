@@ -50,7 +50,10 @@ class Kaleidoscope(Renderer):
         self.fps = 15
 
     def _gen_gradient(self):
-        self._gradient = ColorUtils.gradient(360, *self.color_scheme)
+        gradient = ColorUtils.gradient(360, *self.color_scheme)
+        if self.saturation < 1.0:
+            gradient = [c.ColorWithSaturation(self.saturation) for c in gradient]
+        self._gradient = gradient
 
     def _compute_polar_map(self):
         """Precompute polar coordinates for each pixel."""
@@ -68,7 +71,7 @@ class Kaleidoscope(Renderer):
                 radius = math.sqrt(dx * dx + dy * dy)
                 self._polar_map.append((angle, radius))
 
-    @observe("color_scheme")
+    @observe("color_scheme", "saturation")
     def _scheme_changed(self, changed):
         self.logger.debug("color_scheme changed: %s -> %s", changed.old, changed.new)
         self._gen_gradient()

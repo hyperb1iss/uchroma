@@ -100,9 +100,13 @@ class Embers(Renderer):
         r, g, b = self._color_rgb
 
         # Clear layer with slight ambient warmth
-        for row in range(height):
-            for col in range(width):
-                layer.matrix[row][col] = (r * 0.05, g * 0.03, b * 0.02, 1.0)
+        ambient_r = r * 0.05
+        ambient_g = g * 0.03
+        ambient_b = b * 0.02
+        layer.matrix[:, :, 0] = ambient_r
+        layer.matrix[:, :, 1] = ambient_g
+        layer.matrix[:, :, 2] = ambient_b
+        layer.matrix[:, :, 3] = 1.0
 
         # Update and render each ember
         for ember in self._embers:

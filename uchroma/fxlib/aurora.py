@@ -42,6 +42,7 @@ class Aurora(Renderer):
     curtain_height = Float(default_value=0.7, min=0.3, max=1.0).tag(config=True)
     shimmer = Float(default_value=0.3, min=0.0, max=1.0).tag(config=True)
     color_drift = Float(default_value=0.5, min=0.1, max=2.0).tag(config=True)
+    floor_glow = Float(default_value=0.15, min=0.0, max=0.4).tag(config=True)
 
     color_scheme = ColorSchemeTrait(minlen=2, default_value=AURORA_COLORS).tag(config=True)
 
@@ -83,6 +84,7 @@ class Aurora(Renderer):
         base_height = self.curtain_height
         shimmer = self.shimmer
         color_drift = self.color_drift
+        floor_glow = self.floor_glow
 
         for col in range(width):
             # Curtain height oscillates via layered sines
@@ -104,7 +106,8 @@ class Aurora(Renderer):
                 intensity = smoothstep(curtain_row + fade_range, curtain_row - 1, row)
 
                 # Ensure minimum brightness at bottom (aurora glow floor)
-                min_intensity = 0.15 * (1.0 - row / height)  # Subtle gradient floor
+                row_norm = row / (height - 1) if height > 1 else 0.0
+                min_intensity = floor_glow * row_norm
                 intensity = max(min_intensity, intensity)
 
                 # High-frequency shimmer

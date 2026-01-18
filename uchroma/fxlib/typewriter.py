@@ -125,7 +125,7 @@ class Typewriter(Renderer):
                     g = glow_g + (1.0 - glow_g) * warm_mix
                     bl = glow_b + (1.0 - glow_b) * warm_mix
                 else:
-                    r, g, bl = glow_r * b, glow_g * b, glow_b * b
+                    r, g, bl = glow_r, glow_g, glow_b
 
                 layer.matrix[row][col] = (r * b, g * b, bl * b, 1.0)
 

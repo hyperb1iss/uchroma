@@ -45,7 +45,8 @@ class Plasma(Renderer):
         self.fps = 15
 
     def _gen_gradient(self):
-        self._gradient = ColorUtils.gradient(self.gradient_length, *self.color_scheme)
+        length = max(2, self.gradient_length)
+        self._gradient = ColorUtils.gradient(length, *self.color_scheme)
         # Convert Color objects to numpy array for Rust
         self._gradient_array = np.array([c.rgb for c in self._gradient], dtype=np.float64)
 

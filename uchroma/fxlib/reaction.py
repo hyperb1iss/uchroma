@@ -69,7 +69,7 @@ class Reaction(Renderer):
             return None
 
         for event in events:
-            if REACT_COLOR_KEY not in events:
+            if REACT_COLOR_KEY not in event.data:
                 # percent_complete appears to go from 1 to 0.
                 # perhaps it should be renamed percent_remaining?
                 idx = int(self._gradient_count - (event.percent_complete * self._gradient_count))
@@ -78,6 +78,7 @@ class Reaction(Renderer):
                     # the last event for this key press?
                     event.data[REACT_COLOR_KEY] = self.background_color
                 else:
+                    idx = max(0, min(self._gradient_count - 1, idx))
                     event.data[REACT_COLOR_KEY] = self._gradient[idx]
 
             self._react_keys(layer, event)

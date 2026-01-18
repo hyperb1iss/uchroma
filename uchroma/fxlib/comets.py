@@ -72,6 +72,9 @@ class Comets(Renderer):
     @observe("color_scheme")
     def _scheme_changed(self, changed):
         self._gen_colors()
+        for idx, comet in enumerate(self._comets):
+            if self._colors:
+                comet.color = self._colors[idx % len(self._colors)].rgb
 
     @observe("comet_count")
     def _count_changed(self, changed):
@@ -132,10 +135,17 @@ class Comets(Renderer):
             # Render bright head
             head_col = int(comet.x)
             if 0 <= head_col < width:
+                r, g, b = comet.color
+                peak = max(r, g, b, 1e-6)
+                scale = head_bright / peak
+                head_r = min(1.0, r * scale)
+                head_g = min(1.0, g * scale)
+                head_b = min(1.0, b * scale)
+                existing = layer.matrix[comet.y][head_col]
                 layer.matrix[comet.y][head_col] = (
-                    head_bright,
-                    head_bright,
-                    head_bright,
+                    min(1.0, existing[0] + head_r),
+                    min(1.0, existing[1] + head_g),
+                    min(1.0, existing[2] + head_b),
                     1.0,
                 )
 
