@@ -1,0 +1,1 @@
+extend-diff-ignore = "(^(\.venv|\.proto|\.coverage|\.ruff_cache|\.pytest_cache|\.ty_cache|\.claude|Cargo\.lock|docs/node_modules|docs/\.vitepress|docs/archive|target|dist|build|htmlcov|__pycache__|.*\.egg-info)(/|$))|(\.so$)|(\.pyc$)|(\.c$)"

@@ -225,6 +225,24 @@ uninstall-apparmor: ## Uninstall AppArmor profile
 	@echo -e "\033[38;2;80;250;123m✓ AppArmor profile removed\033[0m"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Debian Packaging
+# ─────────────────────────────────────────────────────────────────────────────
+
+.PHONY: deb deb-clean deb-orig
+
+deb: deb-clean ## Build debian package (binary only, unsigned)
+	debuild -us -uc -d -b
+	@echo -e "\033[38;2;80;250;123m✓ Package built: ../uchroma_*.deb\033[0m"
+
+deb-clean: ## Clean debian build artifacts
+	rm -rf debian/uchroma debian/.debhelper debian/*.debhelper debian/*.substvars debian/files target/wheels
+	@echo -e "\033[38;2;80;250;123m✓ Debian build artifacts cleaned\033[0m"
+
+deb-orig: ## Generate orig tarball from git HEAD
+	git archive --format=tar.gz --prefix=uchroma-$(shell grep '^version' pyproject.toml | cut -d'"' -f2)/ HEAD > ../uchroma_$(shell grep '^version' pyproject.toml | cut -d'"' -f2).orig.tar.gz
+	@echo -e "\033[38;2;80;250;123m✓ Created ../uchroma_$(shell grep '^version' pyproject.toml | cut -d'"' -f2).orig.tar.gz\033[0m"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Documentation
 # ─────────────────────────────────────────────────────────────────────────────
 

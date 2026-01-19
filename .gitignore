@@ -13,6 +13,9 @@ build
 _build
 debhelper-build-stamp
 debian/files
+debian/uchroma/
+debian/.debhelper/
+debian/*.debhelper
 debian/python3-uchroma
 debian/python3-uchroma-doc
 debian/python3-uchroma.uchroma.udev

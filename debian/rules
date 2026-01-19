@@ -10,8 +10,10 @@ override_dh_auto_build:
 	make build MATURIN=maturin
 
 override_dh_auto_install:
-	python3 -m installer --destdir=$(DESTDIR) dist/*.whl
+	DEB_PYTHON_INSTALL_LAYOUT=deb python3 -m pip install --root=$(DESTDIR) --prefix=/usr --no-deps --no-compile --no-warn-script-location --ignore-installed target/wheels/*.whl
 	make install DESTDIR=$(DESTDIR)
+	# Use debian-specific service file with /usr/bin path
+	install -Dm644 debian/services/uchromad.service $(DESTDIR)/usr/lib/systemd/user/uchromad.service
 
 override_dh_auto_clean:
 	make clean || true
