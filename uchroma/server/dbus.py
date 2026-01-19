@@ -172,12 +172,13 @@ class DeviceInterface(ServiceInterface):
                 continue
             # Check if points is a single coordinate (2-tuple with int elements)
             # vs a collection of coordinates (PointList/list of Points)
+            # Convert to native int to avoid ruamel.yaml ScalarInt issues with D-Bus
             if len(points) == 2 and isinstance(points[0], int):
                 # Single point like Point(0, 1)
-                mapping[str(key)] = [tuple(points)]
+                mapping[str(key)] = [(int(points[0]), int(points[1]))]
             else:
-                # Collection of points - convert each to tuple
-                mapping[str(key)] = [tuple(p) for p in points]
+                # Collection of points - convert each to tuple of native ints
+                mapping[str(key)] = [(int(p[0]), int(p[1])) for p in points]
 
         return mapping
 
