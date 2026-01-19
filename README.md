@@ -76,9 +76,11 @@ UChroma consists of two main executables, _uchromad_ and _uchroma_. The _uchroma
 
 ### Listing devices
 
-    $ uchroma -l
-    [1532:0210.00]: Blade Pro (Late 2016) (BladeProLate2016 / v0.38)
-    [1532:0510.01]: Kraken 7.1 V2 (Kylie) (HN1649D04607845 / v1.135)
+```
+$ uchroma -l
+[1532:0210.00]: Blade Pro (Late 2016) (BladeProLate2016 / v0.38)
+[1532:0510.01]: Kraken 7.1 V2 (Kylie) (HN1649D04607845 / v1.135)
+```
 
 The number after the dot is the device index. You may select a target device with the -d flag using the full identifier or just the device index.
 
@@ -86,76 +88,34 @@ The number after the dot is the device index. You may select a target device wit
 
 ### Dump device state
 
-    $ uchroma -d 0 dump
+```
+$ uchroma -d 0 dump
 
-    Device properties:
+Device properties:
+  device-0: Blade Pro (Late 2016)
+  brightness: 100.0
+  device_type: laptop
+  firmware_version: v0.38
+  has_matrix: True
+  dimensions: 6x25
+  manufacturer: Razer
+  serial_number: BladeProLate2016
 
-             device-0 │ Blade Pro (Late 2016)
-     ─────────────────┼────────────────────────────────────────────────────
-           brightness │ 100.0
-          device_type │ laptop
-       driver_version │ 0.99
-     firmware_version │ v0.38
-           has_matrix │ True
-               height │ 6
-                  key │ 1532:0210.00
-          key_mapping │ {'KEY_F12': [[0, 14]], 'KEY_ENTER': [[3, 15], [(...)
-         manufacturer │ Razer
-           product_id │ 528
-        serial_number │ BladeProLate2016
-            suspended │ False
-             sys_path │ /sys/devices/pci0000:00/0000:00:14.0/usb1/1-8
-            vendor_id │ 5426
-                width │ 25
+Current LED state:
+  logo (LED: Logo)
+    brightness: 0.0 (float, 0.0-100.0)
+    color: #000000 (default: green)
+    mode: STATIC (blink, pulse, spectrum, static)
 
-
-
-     Current LED state:
-
-                 logo │ LED: Logo
-     ─────────────────┼────────────────────────────────────────────────────
-           brightness │ 0.0
-              (float) │ a float
-                      │ min: 0.0, max: 100.0, default: 0.0
-     ─────────────────┼────────────────────────────────────────────────────
-                color │  #000000
-              (color) │ a color
-                      │ default: green
-     ─────────────────┼────────────────────────────────────────────────────
-                 mode │ STATIC
-             (choice) │ one of: blink, pulse, spectrum, static
-                      │ default: STATIC
-
-
-
-     Current animation renderer state:
-
-               plasma │ Colorful moving blobs of plasma
-     ─────────────────┼────────────────────────────────────────────────────
-               author │ Stefanie Jane
-          description │ Colorful moving blobs of plasma
-                 name │ Plasma
-              version │ v1.0
-     ─────────────────┼────────────────────────────────────────────────────
-     background_color │  #000000
-              (color) │ a color
-                      │ default: black
-     ─────────────────┼────────────────────────────────────────────────────
-         color_scheme │  #004777  #a30000  #ff7700  #efd28d  #00afb5
-        (colorscheme) │ a list of colors
-                      │ min length: 2
-     ─────────────────┼────────────────────────────────────────────────────
-                  fps │ 15.0
-              (float) │ a float
-                      │ min: 0.0, max: 30, default: 15
-     ─────────────────┼────────────────────────────────────────────────────
-      gradient_length │ 360
-                (int) │ an int
-                      │ min: 0, max: None, default: 360
-     ─────────────────┼────────────────────────────────────────────────────
-               preset │ Qap
-             (choice) │ one of: best, bluticas, bright, emma, newer, qa(...)
-                      │ default: Qap
+Current animation renderer state:
+  plasma: Colorful moving blobs of plasma
+    author: Stefanie Jane, version: v1.0
+    background_color: #000000 (default: black)
+    color_scheme: #004777 #a30000 #ff7700 #efd28d #00afb5
+    fps: 15.0 (0.0-30)
+    gradient_length: 360
+    preset: Qap
+```
 
 ---
 
@@ -165,81 +125,60 @@ Built-in effects are executed entirely by the hardware, and the supported types 
 
 #### List available effects:
 
-     $ uchroma -d 0 fx list
+```
+$ uchroma -d 0 fx list
 
-     Built-in effects and arguments:
+Built-in effects and arguments:
 
-              breathe │ Colors pulse in and out
-     ─────────────────┼────────────────────────────────────────────────────
-               colors │ colorscheme: max length: 2
+  breathe - Colors pulse in and out
+    colors: colorscheme (max length: 2)
 
+  disable - Disable all effects
 
-              disable │ Disable all effects
+  fire - Keys on fire
+    color: color (default: red)
+    speed: int (16-128, default: 64)
 
+  morph - Morphing colors when keys are pressed
+    base_color: color (default: darkblue)
+    color: color (default: magenta)
+    speed: int (1-4, default: 2)
 
-                 fire │ Keys on fire
-     ─────────────────┼────────────────────────────────────────────────────
-                color │ color: default: red
-                speed │ int: min: 16, max: 128, default: 64
+  rainbow - Rainbow of hues
+    length: int (20-360, default: 75)
+    stagger: int (0-100, default: 4)
 
+  reactive - Keys light up when pressed
+    color: color (default: skyblue)
+    speed: int (1-4, default: 1)
 
-                morph │ Morphing colors when keys are pressed
-     ─────────────────┼────────────────────────────────────────────────────
-           base_color │ color: default: darkblue
-                color │ color: default: magenta
-                speed │ int: min: 1, max: 4, default: 2
+  ripple - Ripple effect when keys are pressed
+    color: color (default: green)
+    speed: int (1-8, default: 3)
 
+  ripple_solid - Ripple effect on a solid background
+    color: color (default: green)
+    speed: int (1-8, default: 3)
 
-              rainbow │ Rainbow of hues
-     ─────────────────┼────────────────────────────────────────────────────
-               length │ int: min: 20, max: 360, default: 75
-              stagger │ int: min: 0, max: 100, default: 4
+  spectrum - Cycle thru all colors of the spectrum
 
+  starlight - Keys sparkle with color
+    colors: colorscheme (max length: 2)
+    speed: int (1-4, default: 1)
 
-             reactive │ Keys light up when pressed
-     ─────────────────┼────────────────────────────────────────────────────
-                color │ color: default: skyblue
-                speed │ int: min: 1, max: 4, default: 1
+  static - Static color
+    color: color (default: green)
 
+  sweep - Colors sweep across the device
+    base_color: color (default: black)
+    color: color (default: green)
+    direction: choice (default: RIGHT)
+    speed: int (1-30, default: 15)
 
-               ripple │ Ripple effect when keys are pressed
-     ─────────────────┼────────────────────────────────────────────────────
-                color │ color: default: green
-                speed │ int: min: 1, max: 8, default: 3
-
-
-         ripple_solid │ Ripple effect on a solid background
-     ─────────────────┼────────────────────────────────────────────────────
-                color │ color: default: green
-                speed │ int: min: 1, max: 8, default: 3
-
-
-             spectrum │ Cycle thru all colors of the spectrum
-
-
-            starlight │ Keys sparkle with color
-     ─────────────────┼────────────────────────────────────────────────────
-               colors │ colorscheme: max length: 2
-                speed │ int: min: 1, max: 4, default: 1
-
-
-               static │ Static color
-     ─────────────────┼────────────────────────────────────────────────────
-                color │ color: default: green
-
-
-                sweep │ Colors sweep across the device
-     ─────────────────┼────────────────────────────────────────────────────
-           base_color │ color: default: black
-                color │ color: default: green
-            direction │ choice: default: RIGHT
-                speed │ int: min: 1, max: 30, default: 15
-
-
-                 wave │ Waves of color
-     ─────────────────┼────────────────────────────────────────────────────
-            direction │ choice: default: RIGHT
-      trackpad_effect │ bool: default: False
+  wave - Waves of color
+    direction: choice (default: RIGHT)
+    trackpad_effect: bool (default: False)
+```
 
 #### Activate an effect:
 
@@ -272,69 +211,40 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 
 #### List available animation renderers:
 
-     $ uchroma -d 0 anim list
+```
+$ uchroma -d 0 anim list
 
-     Available renderers and arguments:
+Available renderers and arguments:
 
-                plasma │ Colorful moving blobs of plasma
-     ──────────────────┼───────────────────────────────────────────────────
-                author │ Stefanie Jane
-           description │ Colorful moving blobs of plasma
-                  name │ Plasma
-               version │ v1.0
-     ──────────────────┼───────────────────────────────────────────────────
-      background_color │  #000000
-               (color) │ a color
-                       │ default: black
-     ──────────────────┼───────────────────────────────────────────────────
-          color_scheme │  #004777  #a30000  #ff7700  #efd28d  #00afb5
-         (colorscheme) │ a list of colors
-                       │ min length: 2
-     ──────────────────┼───────────────────────────────────────────────────
-                   fps │ 15.0
-               (float) │ a float
-                       │ min: 0.0, max: 30, default: 15
-     ──────────────────┼───────────────────────────────────────────────────
-       gradient_length │ 360
-                 (int) │ an int
-                       │ min: 0, max: None, default: 360
-     ──────────────────┼───────────────────────────────────────────────────
-                preset │ Qap
-              (choice) │ one of: best, bluticas, bright, emma, newer, q(...)
-                       │ default: Qap
+  plasma - Colorful moving blobs of plasma
+    author: Stefanie Jane, version: v1.0
+    background_color: color (default: black)
+    color_scheme: colorscheme (min length: 2)
+    fps: float (0.0-30, default: 15)
+    gradient_length: int
+    preset: choice (default: Qap)
 
+  rainflow - Simple flowing colors
+    author: Stefanie Jane, version: 1.0
+    background_color: color (default: black)
+    blend_mode: string
+    fps: float (0.0-30, default: 15)
+    opacity: float (0.0-1.0, default: 1.0)
+    speed: int (0-20, default: 8)
+    stagger: int (0-100, default: 4)
 
-              rainflow │ Simple flowing colors
-     ──────────────────┼───────────────────────────────────────────────────
-                author │ Stefanie Jane
-           description │ Simple flowing colors
-                  name │ Rainflow
-               version │ 1.0
-     ──────────────────┼───────────────────────────────────────────────────
-      background_color │ color: default: black
-            blend_mode │ string
-                   fps │ float: min: 0.0, max: 30, default: 15
-               opacity │ float: min: 0.0, max: 1.0, default: 1.0
-                 speed │ int: min: 0, max: 20, default: 8
-               stagger │ int: min: 0, max: 100, default: 4
-
-
-               ripples │ Ripples of color when keys are pressed
-     ──────────────────┼───────────────────────────────────────────────────
-                author │ Stefanie Jane
-           description │ Ripples of color when keys are pressed
-                  name │ Ripples
-               version │ 1.0
-     ──────────────────┼───────────────────────────────────────────────────
-      background_color │ color: default: black
-            blend_mode │ string
-                 color │ color: default: black
-                   fps │ float: min: 0.0, max: 30, default: 15
-               opacity │ float: min: 0.0, max: 1.0, default: 1.0
-                preset │ choice: default: Emma
-                random │ bool: default: True
-          ripple_width │ int: min: 1, max: 5, default: 3
-                 speed │ int: min: 1, max: 9, default: 5
+  ripples - Ripples of color when keys are pressed
+    author: Stefanie Jane, version: 1.0
+    background_color: color (default: black)
+    blend_mode: string
+    color: color (default: black)
+    fps: float (0.0-30, default: 15)
+    opacity: float (0.0-1.0, default: 1.0)
+    preset: choice (default: Emma)
+    random: bool (default: True)
+    ripple_width: int (1-5, default: 3)
+    speed: int (1-9, default: 5)
+```
 
 #### Start an animation:
 
@@ -344,7 +254,7 @@ UChroma supports custom animations on devices which support a lighting matrix, s
 
     $ uchroma -d 0 anim add ripples
 
-####Modify parameters of a running layer:
+#### Modify parameters of a running layer:
 
     $ uchroma -d 0 anim mod 0 --color-scheme emma --fps 10
 
@@ -377,8 +287,6 @@ UChroma supports custom animations on devices which support a lighting matrix, s
     }
 
 Send a pull request if you implement a new renderer and would like to have it included!
-
->
 
 #### _Are you affiliated with Razer Inc?_
 
