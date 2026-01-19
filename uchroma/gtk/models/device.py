@@ -97,15 +97,26 @@ class DeviceModel(GObject.Object):
 
         self._syncing = True
         try:
+            refresh = {}
+            if self._dbus is not None:
+                with contextlib.suppress(Exception):
+                    refresh = await self._dbus.refresh_device_state(self._path)
+
             # Read device properties
             self.name = await device_proxy.get_name()
             self.device_type = await device_proxy.get_device_type()
 
             with contextlib.suppress(Exception):
-                self.serial_number = await device_proxy.get_serial_number()
+                if "SerialNumber" in refresh:
+                    self.serial_number = refresh.get("SerialNumber") or ""
+                else:
+                    self.serial_number = await device_proxy.get_serial_number()
 
             with contextlib.suppress(Exception):
-                self.firmware_version = await device_proxy.get_firmware_version()
+                if "FirmwareVersion" in refresh:
+                    self.firmware_version = refresh.get("FirmwareVersion") or ""
+                else:
+                    self.firmware_version = await device_proxy.get_firmware_version()
 
             try:
                 self.vendor_id = await device_proxy.get_vendor_id()
@@ -122,10 +133,25 @@ class DeviceModel(GObject.Object):
                 pass
 
             with contextlib.suppress(Exception):
-                self.brightness = await device_proxy.get_brightness()
+                if "Brightness" in refresh:
+                    self.brightness = float(refresh.get("Brightness") or 0.0)
+                else:
+                    self.brightness = await device_proxy.get_brightness()
 
             with contextlib.suppress(Exception):
-                self.suspended = await device_proxy.get_suspended()
+                if "Suspended" in refresh:
+                    self.suspended = bool(refresh.get("Suspended"))
+                else:
+                    self.suspended = await device_proxy.get_suspended()
+
+            with contextlib.suppress(Exception):
+                self.is_wireless = await device_proxy.get_is_wireless()
+
+            if "IsCharging" in refresh:
+                self.is_charging = bool(refresh.get("IsCharging"))
+
+            if "BatteryLevel" in refresh:
+                self.battery_level = float(refresh.get("BatteryLevel") or 0.0)
 
             # FX state
             if fx_proxy:

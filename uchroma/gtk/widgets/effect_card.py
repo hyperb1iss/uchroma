@@ -57,7 +57,7 @@ class EffectCard(Gtk.Button):
         preview = Gtk.Box()
         preview.add_css_class("effect-preview")
         preview.add_css_class(f"preview-{preview_class}")
-        preview.set_size_request(-1, 12)
+        preview.set_size_request(-1, 20)
         preview.set_hexpand(True)
         box.append(preview)
 

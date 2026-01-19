@@ -451,10 +451,19 @@ class LayerPanel(Gtk.Box):
         self._list.prepend(row)  # Newest at top (highest z-index)
         self._layers.append(row)
 
+        # Animate new layer appearance
+        row.add_css_class("just-added")
+        GLib.timeout_add(300, self._remove_just_added_class, row)
+
         # Update z-index display (reverse order)
         self._update_zindices()
 
         return row
+
+    def _remove_just_added_class(self, row: LayerRow) -> bool:
+        """Remove just-added animation class."""
+        row.remove_css_class("just-added")
+        return False  # Don't repeat
 
     def _on_layer_deleted(self, row):
         """Handle layer deletion."""

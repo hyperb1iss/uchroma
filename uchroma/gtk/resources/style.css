@@ -114,7 +114,7 @@ headerbar.flat {
 
 .brightness-scale slider:hover {
     transform: scale(1.15);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 8px alpha(@silk_coral, 0.4);
 }
 
 .brightness-scale slider:active {
@@ -180,8 +180,8 @@ headerbar.flat {
 .preview-card {
     padding: 12px;
     border-radius: 12px;
-    background-color: @surface;
-    border: 1px solid @border;
+    background-color: @surface_dark;
+    border: 1px solid @surface_light;
 }
 
 .preview-label {
@@ -446,11 +446,59 @@ headerbar.flat {
 .preview-reactive {
     background: @surface_dark;
     box-shadow: inset 0 0 10px @silk_cyan;
+    animation: reactive-pulse 1.5s ease-out infinite;
 }
 
-@keyframes wave-move {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
+@keyframes reactive-pulse {
+    0% {
+        box-shadow: inset 0 0 15px @silk_cyan;
+        background: alpha(@silk_cyan, 0.3);
+    }
+    100% {
+        box-shadow: inset 0 0 5px alpha(@silk_cyan, 0.3);
+        background: @surface_dark;
+    }
+}
+
+/* Additional effect previews */
+.preview-ripple {
+    background: radial-gradient(circle at center, @silk_cyan, transparent 70%),
+                @surface_dark;
+    animation: ripple-expand 1.5s ease-out infinite;
+}
+
+@keyframes ripple-expand {
+    0% {
+        background-size: 0% 0%, 100% 100%;
+        opacity: 1;
+    }
+    100% {
+        background-size: 200% 200%, 100% 100%;
+        opacity: 0.3;
+    }
+}
+
+.preview-rainbow {
+    background: linear-gradient(90deg,
+        hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%),
+        hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%));
+    background-size: 200% 100%;
+    animation: spectrum-cycle 4s linear infinite;
+}
+
+.preview-fire {
+    background: linear-gradient(0deg, @silk_red, @silk_coral, @silk_yellow);
+    background-size: 100% 200%;
+    animation: fire-flicker 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes fire-flicker {
+    0% { background-position: 0% 100%; }
+    100% { background-position: 0% 0%; }
+}
+
+.preview-default {
+    background: linear-gradient(135deg, @silk_purple, @silk_cyan);
 }
 
 @keyframes breathe {
@@ -897,7 +945,7 @@ headerbar.flat {
 
 .param-scale slider:hover {
     transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 6px alpha(@silk_purple, 0.4);
 }
 
 .param-scale slider:active {
@@ -1052,6 +1100,17 @@ headerbar.flat {
     min-height: 18px;
     background-color: @text_primary;
     border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 80ms ease-out, box-shadow 150ms ease-out;
+}
+
+.system-slider slider:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 6px alpha(@silk_cyan, 0.4);
+}
+
+.system-slider slider:active {
+    transform: scale(1.05);
 }
 
 .system-value {
@@ -1137,6 +1196,7 @@ scrollbar slider {
     min-height: 6px;
     background-color: alpha(@text_dim, 0.3);
     border-radius: 3px;
+    transition: background-color 150ms ease;
 }
 
 scrollbar slider:hover {

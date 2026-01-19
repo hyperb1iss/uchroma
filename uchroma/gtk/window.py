@@ -547,11 +547,20 @@ class UChromaWindow(Adw.ApplicationWindow):
         fan_limits = await app.dbus.get_fan_limits(device.path)
         power_modes = await app.dbus.get_available_power_modes(device.path)
         boost_modes = await app.dbus.get_available_boost_modes(device.path)
-        fan_rpm = await app.dbus.get_fan_rpm(device.path)
-        fan_mode = await app.dbus.get_fan_mode(device.path)
-        power_mode = await app.dbus.get_power_mode(device.path)
-        cpu_boost = await app.dbus.get_cpu_boost(device.path)
-        gpu_boost = await app.dbus.get_gpu_boost(device.path)
+
+        system_state = await app.dbus.refresh_system_state(device.path)
+        if system_state:
+            fan_rpm = system_state.get("FanRPM", [])
+            fan_mode = system_state.get("FanMode", "")
+            power_mode = system_state.get("PowerMode", "")
+            cpu_boost = system_state.get("CPUBoost", "")
+            gpu_boost = system_state.get("GPUBoost", "")
+        else:
+            fan_rpm = await app.dbus.get_fan_rpm(device.path)
+            fan_mode = await app.dbus.get_fan_mode(device.path)
+            power_mode = await app.dbus.get_power_mode(device.path)
+            cpu_boost = await app.dbus.get_cpu_boost(device.path)
+            gpu_boost = await app.dbus.get_gpu_boost(device.path)
 
         GLib.idle_add(
             self._apply_system_state,
@@ -632,11 +641,19 @@ class UChromaWindow(Adw.ApplicationWindow):
             return
 
         try:
-            fan_rpm = await app.dbus.get_fan_rpm(path)
-            fan_mode = await app.dbus.get_fan_mode(path)
-            power_mode = await app.dbus.get_power_mode(path)
-            cpu_boost = await app.dbus.get_cpu_boost(path)
-            gpu_boost = await app.dbus.get_gpu_boost(path)
+            system_state = await app.dbus.refresh_system_state(path)
+            if system_state:
+                fan_rpm = system_state.get("FanRPM", [])
+                fan_mode = system_state.get("FanMode", "")
+                power_mode = system_state.get("PowerMode", "")
+                cpu_boost = system_state.get("CPUBoost", "")
+                gpu_boost = system_state.get("GPUBoost", "")
+            else:
+                fan_rpm = await app.dbus.get_fan_rpm(path)
+                fan_mode = await app.dbus.get_fan_mode(path)
+                power_mode = await app.dbus.get_power_mode(path)
+                cpu_boost = await app.dbus.get_cpu_boost(path)
+                gpu_boost = await app.dbus.get_gpu_boost(path)
         finally:
             self._system_refresh_inflight = False
 

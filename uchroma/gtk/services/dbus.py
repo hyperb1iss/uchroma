@@ -236,6 +236,19 @@ class DBusService:
             print(f"Failed to get device proxy for {path}: {e}")
             return None
 
+    async def refresh_device_state(self, path: str) -> dict:
+        """Refresh dynamic device state (brightness, battery, etc)."""
+        device_proxy = await self.get_device_proxy(path)
+        if not device_proxy or not hasattr(device_proxy, "call_refresh"):
+            return {}
+
+        try:
+            raw = await device_proxy.call_refresh()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to refresh device state: {e}")
+            return {}
+
     async def get_fx_proxy(self, path: str):
         """Get proxy for FXManager interface."""
         if path not in self._device_proxies:
@@ -259,6 +272,19 @@ class DBusService:
         if path not in self._device_proxies:
             await self.get_device_proxy(path)
         return self._device_proxies.get(path, {}).get("system")
+
+    async def refresh_system_state(self, path: str) -> dict:
+        """Refresh dynamic system control state."""
+        system_proxy = await self.get_system_proxy(path)
+        if not system_proxy or not hasattr(system_proxy, "call_refresh"):
+            return {}
+
+        try:
+            raw = await system_proxy.call_refresh()
+            return self._unwrap_variants(raw)
+        except Exception as e:
+            print(f"Failed to refresh system state: {e}")
+            return {}
 
     async def get_properties_proxy(self, path: str):
         """Get proxy for org.freedesktop.DBus.Properties."""
