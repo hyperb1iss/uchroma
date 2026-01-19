@@ -368,11 +368,11 @@ class TestBaseUChromaDeviceSuspendResume:
         device._prefs = MagicMock()
         device._prefs.brightness = 75.0
 
-        with patch.object(
-            BaseUChromaDevice, "brightness", new_callable=PropertyMock
-        ) as mock_brightness:
+        with patch.object(device, "set_brightness") as mock_set_brightness:
             device.resume()
-            mock_brightness.assert_called_with(75.0)
+            mock_set_brightness.assert_called_once()
+            args, _kwargs = mock_set_brightness.call_args
+            assert args[0] == 75.0
 
         assert device._suspended is False
 
