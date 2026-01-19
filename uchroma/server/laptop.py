@@ -1,6 +1,8 @@
 #
 # Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
+import asyncio
+
 from uchroma.server import hid
 from uchroma.util import scale_brightness
 
@@ -40,8 +42,10 @@ class UChromaLaptop(SystemControlMixin, UChromaKeyboard):
         **kwargs,
     ):
         super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
+        self._cached_brightness = 0.0
+        self._brightness_lock = asyncio.Lock()
 
-    def _get_serial_number(self):
+    async def _get_serial_number_async(self) -> str | None:
         return self.name
 
     def _set_brightness(self, level: float):
@@ -51,11 +55,24 @@ class UChromaLaptop(SystemControlMixin, UChromaKeyboard):
         )
 
     def _get_brightness(self) -> float:
-        # Standard LED brightness: args = [VARSTORE, BACKLIGHT_LED, 0x00]
-        value = self.run_with_result(
-            UChromaLaptop.Command.GET_BRIGHTNESS, VARSTORE, BACKLIGHT_LED, 0x00
+        return self._cached_brightness
+
+    async def _set_brightness_async(self, level: float) -> bool:
+        success = await self.run_command_async(
+            UChromaLaptop.Command.SET_BRIGHTNESS,
+            VARSTORE,
+            BACKLIGHT_LED,
+            scale_brightness(level),
         )
-        if value is None:
-            return 0.0
-        # Response: brightness is in args[2]
-        return scale_brightness(int(value[2]), True)
+        if success:
+            self._cached_brightness = level
+        return success
+
+    async def refresh_brightness_async(self) -> float | None:
+        async with self._brightness_lock:
+            value = await self.run_with_result_async(
+                UChromaLaptop.Command.GET_BRIGHTNESS, VARSTORE, BACKLIGHT_LED, 0x00
+            )
+            if value is not None and len(value) > 2:
+                self._cached_brightness = scale_brightness(int(value[2]), True)
+        return self._cached_brightness

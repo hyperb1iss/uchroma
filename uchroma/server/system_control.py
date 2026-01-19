@@ -533,3 +533,18 @@ class SystemControlMixin:
         if success:
             self._cached_gpu_boost = mode
         return success
+
+    async def refresh_system_state_async(self) -> dict[str, object]:
+        await self._refresh_state_async()
+
+        rpm1, rpm2 = self._cached_fan_rpm
+        fan_rpm = [rpm1] if rpm2 is None else [rpm1, rpm2]
+        power = self._cached_power_mode or PowerMode.BALANCED
+
+        return {
+            "FanRPM": fan_rpm,
+            "FanMode": self._cached_fan_mode.name.lower(),
+            "PowerMode": power.name.lower(),
+            "CPUBoost": self._cached_cpu_boost.name.lower(),
+            "GPUBoost": self._cached_gpu_boost.name.lower(),
+        }

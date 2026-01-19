@@ -7,6 +7,7 @@
 import asyncio
 import contextlib
 import re
+from typing import ClassVar
 
 from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
@@ -97,11 +98,21 @@ class DeviceProxy:
     Caches introspected properties for sync access.
     """
 
+    _DYNAMIC_PROPS: ClassVar[set[str]] = {
+        "Brightness",
+        "BatteryLevel",
+        "IsCharging",
+        "SerialNumber",
+        "FirmwareVersion",
+    }
+
     def __init__(self, proxy, loop=None):
         self._proxy = proxy
         self._device_iface = proxy.get_interface("io.uchroma.Device")
         self._cache = {}
         self._loop = loop
+        self._refreshed = False
+        self._system_refreshed = False
 
         # Try to get optional interfaces
         self._fx_iface = None
@@ -134,6 +145,8 @@ class DeviceProxy:
 
     def _get_prop(self, name):
         """Get property synchronously via cache or async fetch."""
+        if name in self._DYNAMIC_PROPS and not self._refreshed:
+            self.Refresh()
         if name not in self._cache:
             loop = self._get_loop()
             # Convert CamelCase to snake_case for dbus-fast
@@ -150,6 +163,45 @@ class DeviceProxy:
         setter = getattr(self._device_iface, f"set_{snake_name}")
         loop.run_until_complete(setter(value))
         self._cache[name] = value
+        self._refreshed = True
+
+    def Refresh(self):
+        """Refresh dynamic device state via D-Bus."""
+        if not hasattr(self._device_iface, "call_refresh"):
+            self._refreshed = True
+            return None
+
+        loop = self._get_loop()
+        try:
+            raw = loop.run_until_complete(self._device_iface.call_refresh())
+        except Exception:
+            self._refreshed = True
+            return None
+
+        values = self._unwrap_variants(raw)
+        if isinstance(values, dict):
+            self._cache.update(values)
+        self._refreshed = True
+        return values
+
+    def RefreshSystemControl(self):
+        """Refresh system control state via D-Bus."""
+        if self._system_iface is None or not hasattr(self._system_iface, "call_refresh"):
+            self._system_refreshed = True
+            return None
+
+        loop = self._get_loop()
+        try:
+            raw = loop.run_until_complete(self._system_iface.call_refresh())
+        except Exception:
+            self._system_refreshed = True
+            return None
+
+        values = self._unwrap_variants(raw)
+        if isinstance(values, dict):
+            self._cache.update(values)
+        self._system_refreshed = True
+        return values
 
     @property
     def Name(self):
@@ -331,16 +383,26 @@ class DeviceProxy:
         """Get current fan RPM(s)."""
         if self._system_iface is None:
             return None
+        if not self._system_refreshed:
+            self.RefreshSystemControl()
+        if "FanRPM" in self._cache:
+            return self._cache["FanRPM"]
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.get_fan_rpm())
+        self._cache["FanRPM"] = loop.run_until_complete(self._system_iface.get_fan_rpm())
+        return self._cache["FanRPM"]
 
     @property
     def FanMode(self):
         """Get current fan mode (auto/manual)."""
         if self._system_iface is None:
             return None
+        if not self._system_refreshed:
+            self.RefreshSystemControl()
+        if "FanMode" in self._cache:
+            return self._cache["FanMode"]
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.get_fan_mode())
+        self._cache["FanMode"] = loop.run_until_complete(self._system_iface.get_fan_mode())
+        return self._cache["FanMode"]
 
     @property
     def FanLimits(self):
@@ -358,8 +420,13 @@ class DeviceProxy:
         """Get current power mode."""
         if self._system_iface is None:
             return None
+        if not self._system_refreshed:
+            self.RefreshSystemControl()
+        if "PowerMode" in self._cache:
+            return self._cache["PowerMode"]
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.get_power_mode())
+        self._cache["PowerMode"] = loop.run_until_complete(self._system_iface.get_power_mode())
+        return self._cache["PowerMode"]
 
     @PowerMode.setter
     def PowerMode(self, mode):
@@ -368,6 +435,8 @@ class DeviceProxy:
             return
         loop = self._get_loop()
         loop.run_until_complete(self._system_iface.set_power_mode(mode))
+        self._cache["PowerMode"] = mode
+        self._system_refreshed = False
 
     @property
     def AvailablePowerModes(self):
@@ -386,8 +455,13 @@ class DeviceProxy:
         """Get current CPU boost mode."""
         if self._system_iface is None:
             return None
+        if not self._system_refreshed:
+            self.RefreshSystemControl()
+        if "CPUBoost" in self._cache:
+            return self._cache["CPUBoost"]
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.get_cpu_boost())
+        self._cache["CPUBoost"] = loop.run_until_complete(self._system_iface.get_cpu_boost())
+        return self._cache["CPUBoost"]
 
     @CPUBoost.setter
     def CPUBoost(self, mode):
@@ -396,14 +470,21 @@ class DeviceProxy:
             return
         loop = self._get_loop()
         loop.run_until_complete(self._system_iface.set_cpu_boost(mode))
+        self._cache["CPUBoost"] = mode
+        self._system_refreshed = False
 
     @property
     def GPUBoost(self):
         """Get current GPU boost mode."""
         if self._system_iface is None:
             return None
+        if not self._system_refreshed:
+            self.RefreshSystemControl()
+        if "GPUBoost" in self._cache:
+            return self._cache["GPUBoost"]
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.get_gpu_boost())
+        self._cache["GPUBoost"] = loop.run_until_complete(self._system_iface.get_gpu_boost())
+        return self._cache["GPUBoost"]
 
     @GPUBoost.setter
     def GPUBoost(self, mode):
@@ -412,6 +493,8 @@ class DeviceProxy:
             return
         loop = self._get_loop()
         loop.run_until_complete(self._system_iface.set_gpu_boost(mode))
+        self._cache["GPUBoost"] = mode
+        self._system_refreshed = False
 
     @property
     def AvailableBoostModes(self):
@@ -446,14 +529,18 @@ class DeviceProxy:
         if self._system_iface is None:
             return False
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.call_set_fan_auto())
+        result = loop.run_until_complete(self._system_iface.call_set_fan_auto())
+        self._system_refreshed = False
+        return result
 
     def SetFanRPM(self, rpm, fan2_rpm=-1):
         """Set manual fan RPM."""
         if self._system_iface is None:
             return False
         loop = self._get_loop()
-        return loop.run_until_complete(self._system_iface.call_set_fan_rpm(rpm, fan2_rpm))
+        result = loop.run_until_complete(self._system_iface.call_set_fan_rpm(rpm, fan2_rpm))
+        self._system_refreshed = False
+        return result
 
     # Battery/Wireless properties (from Device interface)
     @property

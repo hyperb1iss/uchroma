@@ -16,6 +16,7 @@ rather than interacting with the hardware directly.
 import asyncio
 import os
 from collections import OrderedDict
+from contextlib import suppress
 from enum import Enum
 
 import numpy as np
@@ -215,6 +216,13 @@ class DeviceInterface(ServiceInterface):
     @method()
     def Reset(self):
         self._driver.reset()
+
+    @method()
+    async def Refresh(self) -> "a{sv}":
+        updates = await self._driver.refresh_state_async()
+        if updates:
+            self.emit_properties_changed(updates)
+        return dbus_prepare(updates, variant=True)[0]
 
 
 class LEDManagerInterface(ServiceInterface):
@@ -612,6 +620,13 @@ class SystemControlInterface(ServiceInterface):
         """True if device supports CPU/GPU boost control."""
         return self._driver.supports_boost
 
+    @method()
+    async def Refresh(self) -> "a{sv}":
+        updates = await self._driver.refresh_system_state_async()
+        if updates:
+            self.emit_properties_changed(updates)
+        return dbus_prepare(updates, variant=True)[0]
+
 
 class DeviceManagerInterface(ServiceInterface):
     """
@@ -791,6 +806,8 @@ class DeviceManagerAPI:
         path = None
 
         if action == "add":
+            with suppress(Exception):
+                await device.refresh_device_info_async()
             path = self._publish_device(device)
             device.fire_restore_prefs()
 

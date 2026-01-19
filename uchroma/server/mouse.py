@@ -1,6 +1,7 @@
 #
 # Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
+import asyncio
 import struct
 from enum import Enum
 
@@ -153,6 +154,9 @@ class UChromaWirelessMouse(UChromaMouse):
         **kwargs,
     ):
         super().__init__(hardware, devinfo, devindex, sys_path, input_devices, *args, **kwargs)
+        self._cached_battery_level = -1.0
+        self._cached_is_charging = False
+        self._wireless_lock = asyncio.Lock()
 
     @property
     def is_wireless(self):
@@ -188,20 +192,32 @@ class UChromaWirelessMouse(UChromaMouse):
         """
         The current battery level
         """
-        value = self.run_with_result(UChromaWirelessMouse.Command.GET_BATTERY_LEVEL)
-        if value is None:
-            return -1.0
-        return (value[1] / 255) * 100
+        return self._cached_battery_level
 
     @property
     def is_charging(self) -> bool:
         """
         Is the device currently charging?
         """
-        value = self.run_with_result(UChromaWirelessMouse.Command.GET_CHARGING_STATUS)
-        if value is None:
-            return False
-        return value[1] == 1
+        return self._cached_is_charging
+
+    async def refresh_wireless_state_async(self) -> dict[str, object]:
+        async with self._wireless_lock:
+            value = await self.run_with_result_async(UChromaWirelessMouse.Command.GET_BATTERY_LEVEL)
+            if value is None or len(value) < 2:
+                self._cached_battery_level = -1.0
+            else:
+                self._cached_battery_level = (value[1] / 255) * 100
+
+            value = await self.run_with_result_async(
+                UChromaWirelessMouse.Command.GET_CHARGING_STATUS
+            )
+            self._cached_is_charging = bool(value is not None and len(value) > 1 and value[1] == 1)
+
+        return {
+            "BatteryLevel": float(self._cached_battery_level),
+            "IsCharging": bool(self._cached_is_charging),
+        }
 
     def enable_dock_charge_effect(self, enable: bool) -> bool:
         """

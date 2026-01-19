@@ -2,7 +2,6 @@
 # Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
 import asyncio
-import functools
 import re
 from concurrent import futures
 from contextlib import contextmanager, suppress
@@ -60,7 +59,9 @@ class BaseUChromaDevice:
         super().__init__(*args, **kwargs)
 
         self._dev = None
-        self._serial_number = None
+        serial = getattr(devinfo, "serial_number", "") if devinfo is not None else ""
+        serial = serial.strip() if isinstance(serial, str) else ""
+        self._serial_number = re.sub(r"\W+", r"", serial) if serial else None
         self._firmware_version = None
         self._last_cmd_time = None
         self._prefs = None
@@ -87,6 +88,7 @@ class BaseUChromaDevice:
         self._ref_count = 0
         self._executor = futures.ThreadPoolExecutor(max_workers=1)
         self._async_lock = None
+        self._info_lock = asyncio.Lock()
 
     async def shutdown(self):
         """
@@ -193,13 +195,11 @@ class BaseUChromaDevice:
     def _get_brightness(self) -> float:
         return 0.0
 
+    async def _set_brightness_async(self, level: float) -> bool:
+        return self._set_brightness(level)
+
     async def _update_brightness(self, level):
-        if self._executor is None:
-            return
-
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(self._executor, functools.partial(self._set_brightness, level))
-
+        await self._set_brightness_async(level)
         suspended = self.suspended
         self.power_state_changed.fire(level, suspended)
 
@@ -480,14 +480,11 @@ class BaseUChromaDevice:
 
         return None
 
-    def _get_serial_number(self) -> str | None:
+    async def _get_serial_number_async(self) -> str | None:
         """
-        Get the serial number from the hardware directly
-
-        Laptops don't return a serial number for their devices,
-        so we return the model name.
+        Get the serial number from the hardware directly.
         """
-        value = self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
+        value = await self.run_with_result_async(BaseUChromaDevice.Command.GET_SERIAL)
         return self._decode_serial(value)
 
     @property
@@ -497,36 +494,59 @@ class BaseUChromaDevice:
 
         On laptops, this is not available.
         """
-        if self._serial_number is not None:
-            return self._serial_number
-
-        serial = self._get_serial_number()
-
-        if serial is not None:
-            self._serial_number = re.sub(r"\W+", r"", serial)
-
         return self._serial_number
 
-    def _get_firmware_version(self) -> bytes | None:
+    async def _get_firmware_version_async(self) -> bytes | None:
         """
-        Get the firmware version from the hardware directly
+        Get the firmware version from the hardware directly.
         """
-        return self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
+        return await self.run_with_result_async(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
 
     @property
     def firmware_version(self) -> str:
         """
         The firmware version present on this device
         """
-        if self._firmware_version is None:
-            version = self._get_firmware_version()
+        return self._firmware_version or "(unknown)"
 
-            if version is None:
-                self._firmware_version = "(unknown)"
-            else:
-                self._firmware_version = f"v{int(version[0])}.{int(version[1])}"
+    async def refresh_device_info_async(self, force: bool = False) -> dict[str, object]:
+        updates: dict[str, object] = {}
+        async with self._info_lock:
+            if force or self._serial_number is None:
+                serial = await self._get_serial_number_async()
+                if serial is not None:
+                    serial = re.sub(r"\W+", r"", serial)
+                if serial != self._serial_number:
+                    self._serial_number = serial
 
-        return self._firmware_version
+            if force or self._firmware_version is None:
+                version = await self._get_firmware_version_async()
+                if version is None or len(version) < 2:
+                    fw = "(unknown)"
+                else:
+                    fw = f"v{int(version[0])}.{int(version[1])}"
+                self._firmware_version = fw
+
+        updates["SerialNumber"] = self._serial_number or ""
+        updates["FirmwareVersion"] = self._firmware_version or "(unknown)"
+        return updates
+
+    async def refresh_brightness_async(self) -> float | None:
+        return self.brightness
+
+    async def refresh_state_async(self) -> dict[str, object]:
+        updates: dict[str, object] = {}
+        updates.update(await self.refresh_device_info_async())
+        brightness = await self.refresh_brightness_async()
+        if brightness is not None:
+            updates["Brightness"] = float(brightness)
+        updates["Suspended"] = bool(self.suspended)
+
+        refresh_wireless = getattr(self, "refresh_wireless_state_async", None)
+        if callable(refresh_wireless):
+            updates.update(await refresh_wireless())
+
+        return updates
 
     @property
     def is_offline(self) -> bool:

@@ -4,6 +4,8 @@
 
 # pylint: disable=protected-access
 
+import asyncio
+
 from traitlets import Unicode
 from wrapt import synchronized
 
@@ -267,6 +269,8 @@ class UChromaHeadset(BaseUChromaDevice):
         self._fx_manager = FXManager(self, KrakenFX(self))
         self._rgb = None
         self._mode = None
+        self._cached_brightness = 0.0
+        self._brightness_lock = asyncio.Lock()
 
     @staticmethod
     def _pack_request(command: BaseCommand, *args) -> bytes:
@@ -351,11 +355,19 @@ class UChromaHeadset(BaseUChromaDevice):
         """
         return self._decode_serial(self.run_with_result(UChromaHeadset.Command.GET_SERIAL))
 
+    async def _get_serial_number_async(self) -> str | None:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, self._get_serial_number)
+
     def _get_firmware_version(self) -> bytes | None:
         """
         Get the firmware version from the hardware directly
         """
         return self.run_with_result(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
+
+    async def _get_firmware_version_async(self) -> bytes | None:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, self._get_firmware_version)
 
     def _get_led_mode(self) -> "UChromaHeadset.EffectBits":
         if self._mode is None:
@@ -447,7 +459,33 @@ class UChromaHeadset(BaseUChromaDevice):
             if value is None:
                 return 0.0
 
-            return scale_brightness(value[3], True)
+            self._cached_brightness = scale_brightness(value[3], True)
+            return self._cached_brightness
+
+    async def _set_brightness_async(self, level: float) -> bool:
+        loop = asyncio.get_running_loop()
+        success = await loop.run_in_executor(self._executor, self._set_brightness, level)
+        if success:
+            self._cached_brightness = level
+        return success
+
+    async def refresh_brightness_async(self) -> float | None:
+        async with self._brightness_lock:
+            loop = asyncio.get_running_loop()
+            self._cached_brightness = await loop.run_in_executor(
+                self._executor, self._get_brightness
+            )
+        return self._cached_brightness
+
+    @property
+    def brightness(self):
+        if self._suspended:
+            return self.preferences.brightness
+        return self._cached_brightness
+
+    @brightness.setter
+    def brightness(self, level: float):
+        self.set_brightness(level)
 
     def _set_brightness(self, level: float) -> bool:
         """
