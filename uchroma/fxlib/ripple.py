@@ -46,7 +46,7 @@ class Ripple(Renderer):
         super().__init__(*args, **kwargs)
 
         self._generator = ColorUtils.rainbow_generator()
-        self._max_distance = None
+        self._max_distance: float | None = None
         self._ripples: list[RippleInstance] = []
         self._last_event_ts = {}
         self.key_expire_time = DEFAULT_SPEED * EXPIRE_TIME_FACTOR
@@ -132,6 +132,8 @@ class Ripple(Renderer):
 
         now = time.time()
         active = []
+        if self._max_distance is None:
+            return False
         for ripple in self._ripples:
             elapsed = now - ripple.start_time
             if elapsed < 0:

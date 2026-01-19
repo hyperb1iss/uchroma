@@ -7,6 +7,7 @@ Parameter Inspector Panel
 Contextual parameter controls for selected effect or layer.
 """
 
+import contextlib
 from typing import ClassVar, cast
 
 import gi
@@ -87,9 +88,12 @@ class ParamInspector(Gtk.Box):
         raw = text.strip()
         if not raw:
             return None
-        if not raw.startswith("#") and all(c in "0123456789abcdefABCDEF" for c in raw):
-            if len(raw) in (3, 6):
-                raw = f"#{raw}"
+        if (
+            not raw.startswith("#")
+            and all(c in "0123456789abcdefABCDEF" for c in raw)
+            and len(raw) in (3, 6)
+        ):
+            raw = f"#{raw}"
         rgba = Gdk.RGBA()
         if rgba.parse(raw):
             hex_color = ParamInspector._rgba_to_hex(rgba)
@@ -110,7 +114,9 @@ class ParamInspector(Gtk.Box):
                 normalized.append(self._rgba_to_hex(rgba))
         return normalized
 
-    def _match_preset_name(self, colors: list[str], scheme_values: dict[str, tuple[str, ...]]) -> str | None:
+    def _match_preset_name(
+        self, colors: list[str], scheme_values: dict[str, tuple[str, ...]]
+    ) -> str | None:
         normalized = self._normalize_color_list(colors)
         if not normalized:
             return None
@@ -354,13 +360,8 @@ class ParamInspector(Gtk.Box):
             chooser.set_use_alpha(False)
         except AttributeError:
             chooser.set_property("use-alpha", False)
-        if hasattr(chooser, "set_show_editor"):
-            chooser.set_show_editor(True)
-        else:
-            try:
-                chooser.set_property("show-editor", True)
-            except (AttributeError, TypeError, ValueError):
-                pass
+        with contextlib.suppress(AttributeError, TypeError, ValueError):
+            chooser.set_property("show-editor", True)
         chooser.set_size_request(220, 180)
         chooser.set_rgba(rgba)
         btn._chooser = chooser
