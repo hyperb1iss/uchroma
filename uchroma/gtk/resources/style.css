@@ -61,9 +61,10 @@ headerbar.flat {
 }
 
 .brightness-control {
-    padding: 4px 8px;
+    padding: 6px 12px;
     background-color: @surface_light;
-    border-radius: 6px;
+    border-radius: 8px;
+    gap: 8px;
 }
 
 .brightness-icon {
@@ -133,10 +134,14 @@ headerbar.flat {
 
 .preview-frame {
     background-color: @surface_dark;
-    border-radius: 16px;
-    padding: 8px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 alpha(@text_primary, 0.05);
+    border-radius: 20px;
+    padding: 12px;
+    margin: 24px 16px 16px 16px;
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.5),
+        0 0 40px alpha(@silk_purple, 0.08),
+        inset 0 1px 0 alpha(@text_primary, 0.05);
+    border: 1px solid alpha(@silk_purple, 0.1);
 }
 
 .matrix-preview {
@@ -162,12 +167,13 @@ headerbar.flat {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .mode-toggle-bar {
-    padding: 8px 16px;
+    padding: 12px 16px;
 }
 
 .mode-toggle .mode-btn {
-    padding: 8px 20px;
-    font-weight: 500;
+    padding: 10px 24px;
+    font-weight: 600;
+    min-width: 100px;
     background-color: @surface_dark;
     color: @text_secondary;
     border: 1px solid @surface_light;
@@ -255,13 +261,14 @@ headerbar.flat {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .effect-selector {
-    padding: 8px 0;
+    padding: 12px 16px;
 }
 
 .effect-card {
-    min-width: 80px;
-    min-height: 80px;
-    padding: 8px;
+    min-width: 88px;
+    min-height: 88px;
+    padding: 10px;
+    margin: 4px;
     background-color: @surface_dark;
     border: 2px solid transparent;
     border-radius: 12px;
@@ -424,9 +431,10 @@ headerbar.flat {
 
 .layer-list-frame {
     background-color: @surface_dark;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid @surface_light;
-    min-height: 100px;
+    min-height: 120px;
+    padding: 4px;
 }
 
 .layer-list {
@@ -434,8 +442,10 @@ headerbar.flat {
 }
 
 .layer-row {
-    padding: 6px 8px;
+    padding: 8px 12px;
+    margin: 2px 0;
     border-left: 3px solid transparent;
+    border-radius: 0 6px 6px 0;
     transition: all 150ms ease;
 }
 
@@ -552,7 +562,7 @@ headerbar.flat {
 }
 
 .blend-popover contents {
-    padding: 4px;
+    padding: 8px;
 }
 
 .blend-category {
@@ -568,8 +578,9 @@ headerbar.flat {
 
 .blend-option {
     border-radius: 6px;
-    padding: 4px 8px;
-    min-width: 180px;
+    padding: 8px 12px;
+    margin: 2px 0;
+    min-width: 200px;
 }
 
 .blend-option:hover {
@@ -622,9 +633,9 @@ headerbar.flat {
 
 .param-inspector {
     background-color: @surface_dark;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-top: 8px;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 12px;
 }
 
 .param-group {
@@ -853,9 +864,9 @@ headerbar.flat {
 
 .system-control {
     background-color: @surface_dark;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-top: 8px;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 12px;
 }
 
 .system-row {
