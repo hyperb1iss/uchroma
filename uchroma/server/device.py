@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2026 UChroma Developers — LGPL-3.0-or-later
 #
-from uchroma.server import hidadapter as hidapi
+from uchroma.server import hid
 
 from .device_base import BaseUChromaDevice
 from .frame import Frame
@@ -20,7 +20,7 @@ class UChromaDevice(BaseUChromaDevice):
     def __init__(
         self,
         hardware: Hardware,
-        devinfo: hidapi.DeviceInfo,
+        devinfo: hid.DeviceInfo,
         devindex: int,
         sys_path: str,
         input_devices=None,

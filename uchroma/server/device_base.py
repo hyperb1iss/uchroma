@@ -10,7 +10,7 @@ from contextlib import contextmanager, suppress
 from wrapt import synchronized
 
 from uchroma.log import Log
-from uchroma.server import hidadapter as hidapi
+from uchroma.server import hid
 from uchroma.util import Signal, ValueAnimator
 from uchroma.version import __version__
 
@@ -19,7 +19,7 @@ from .hardware import Hardware
 from .input import InputManager
 from .prefs import PreferenceManager
 from .protocol import get_transaction_id
-from .report import RazerReport
+from .report_utils import put_arg
 from .types import BaseCommand
 
 
@@ -42,7 +42,7 @@ class BaseUChromaDevice:
     def __init__(
         self,
         hardware: Hardware,
-        devinfo: hidapi.DeviceInfo,
+        devinfo: hid.DeviceInfo,
         index: int,
         sys_path: str,
         input_devices=None,
@@ -169,7 +169,7 @@ class BaseUChromaDevice:
         return self._input_manager.input_devices
 
     @property
-    def hid(self):
+    def hid_device(self):
         """
         The lower-layer hidapi device
         """
@@ -291,7 +291,7 @@ class BaseUChromaDevice:
     def _ensure_open(self) -> bool:
         try:
             if self._dev is None:
-                self._dev = hidapi.Device(self._devinfo, blocking=False)
+                self._dev = hid.HidDevice(self._devinfo)
         except Exception as err:
             self.logger.exception("Failed to open connection", exc_info=err)
             return False
@@ -302,30 +302,26 @@ class BaseUChromaDevice:
         self,
         command_class: int,
         command_id: int,
-        data_size: int,
+        data_size: int | None,
         *args,
         transaction_id: int | None = None,
         remaining_packets: int = 0x00,
-    ) -> RazerReport:
+    ) -> hid.RazerReport:
         """
         Create and initialize a new RazerReport on this device
         """
         if transaction_id is None:
             transaction_id = get_transaction_id(self.hardware)
 
-        report = RazerReport(
-            self,
-            command_class,
-            command_id,
-            data_size,
-            transaction_id=transaction_id,
-            remaining_packets=remaining_packets,
-        )
+        report = hid.RazerReport(command_class, command_id, data_size, transaction_id)
+
+        if remaining_packets > 0:
+            report.set_remaining_packets(remaining_packets)
 
         if args is not None:
             for arg in args:
                 if arg is not None:
-                    report.args.put(arg)
+                    put_arg(report, arg)
 
         return report
 
@@ -367,24 +363,27 @@ class BaseUChromaDevice:
             transaction_id=transaction_id,
             remaining_packets=remaining_packets,
         )
-        result = None
 
-        if self.run_report(report, delay=delay):
-            result = report.result
-
-        return result
+        success, data = self.run_report(report, delay=delay)
+        return bytes(data) if success else None
 
     @synchronized
-    def run_report(self, report: RazerReport, delay: float | None = None) -> bool:
+    def run_report(self, report: hid.RazerReport, delay: float | None = None) -> tuple[bool, bytes]:
         """
         Runs a previously initialized RazerReport on the device
 
         :param report: the report to run
-        :param delay: custom delay to enforce between commands
-        :return: True if successful
+        :param delay: custom delay to enforce between commands (in seconds)
+        :return: Tuple of (success, data)
         """
         with self.device_open():
-            return report.run(delay=delay, timeout_cb=self._get_timeout_cb())
+            delay_ms = int(delay * 1000) if delay else None
+            try:
+                status, data = report.run(self._dev, delay_ms)
+                return status == hid.Status.Ok, data
+            except Exception as err:
+                self.logger.exception("Report failed", exc_info=err)
+                return False, b""
 
     def run_command(
         self,
@@ -406,7 +405,6 @@ class BaseUChromaDevice:
         :param args: The list of arguments to call the command with
         :type args: varies
         :param transaction_id: Transaction identified, defaults to 0xFF
-        :param timeout_cb: Callback to invoke on a timeout
 
         :return: True if the command was successful
         """
@@ -417,7 +415,8 @@ class BaseUChromaDevice:
             remaining_packets=remaining_packets,
         )
 
-        return self.run_report(report, delay=delay)
+        success, _ = self.run_report(report, delay=delay)
+        return success
 
     def _decode_serial(self, value: bytes | None) -> str | None:
         if value is not None:

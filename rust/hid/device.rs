@@ -54,9 +54,7 @@ impl HidDevice {
             .detach_and_claim_interface(info.interface_number as u8)
             .wait()?;
         #[cfg(not(target_os = "linux"))]
-        let interface = device
-            .claim_interface(info.interface_number as u8)
-            .wait()?;
+        let interface = device.claim_interface(info.interface_number as u8).wait()?;
 
         Ok(Self {
             interface: Arc::new(Mutex::new(Some(interface))),

@@ -14,6 +14,7 @@ from uchroma.traits import ColorSchemeTrait, ColorTrait, UseEnumCaseless
 from .effects import Effects
 from .fx import BaseFX, FXModule
 from .hardware import Hardware, Quirks
+from .report_utils import put_arg
 from .types import BaseCommand, LEDType
 
 
@@ -121,10 +122,13 @@ class StandardFX(FXModule):
                 *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id
             )
 
-        self._report.args.clear()
-        self._report.args.put_all([effect.value, *args])
+        self._report.clear()
+        put_arg(self._report, effect.value)
+        for arg in args:
+            put_arg(self._report, arg)
 
-        return self._driver.run_report(self._report)
+        success, _ = self._driver.run_report(self._report)
+        return success
 
     def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:
         # Per OpenRazer: custom_frame uses NOSTORE (0x00) and ZERO_LED (0x00)

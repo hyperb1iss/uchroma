@@ -75,12 +75,7 @@ impl RazerReport {
     ///     transaction_id: Transaction ID (default 0xFF)
     #[new]
     #[pyo3(signature = (command_class, command_id, data_size=None, transaction_id=0xFF))]
-    fn new(
-        command_class: u8,
-        command_id: u8,
-        data_size: Option<u8>,
-        transaction_id: u8,
-    ) -> Self {
+    fn new(command_class: u8, command_id: u8, data_size: Option<u8>, transaction_id: u8) -> Self {
         let mut report = Self {
             buf: [0u8; REPORT_SIZE],
             data_ptr: 0,
@@ -225,9 +220,7 @@ impl RazerReport {
             match status {
                 Status::Ok => return Ok((status, resp_data)),
                 Status::Unsupported => return Ok((status, resp_data)),
-                Status::Fail => {
-                    return Err(HidError::ProtocolError("Command failed".into()).into())
-                }
+                Status::Fail => return Err(HidError::ProtocolError("Command failed".into()).into()),
                 Status::Busy | Status::Timeout => {
                     if attempts == 0 {
                         return Err(

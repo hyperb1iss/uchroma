@@ -22,7 +22,6 @@ dependencies = [
     "dbus-fast>=2.0",
     "evdev",
     "frozendict",
-    "hid",
     "numpy",
     "pyudev",
     "ruamel.yaml",
@@ -121,7 +120,7 @@ combine-as-imports = true
 python-version = "3.11"
 
 [tool.ty.rules]
-# Ignore missing stubs for external packages (hid, pyudev, evdev, coloraide, dbus-fast)
+# Ignore missing stubs for external packages (pyudev, evdev, coloraide, dbus-fast)
 unresolved-import = "ignore"
 # Traitlets uses dynamic attributes extensively
 unresolved-attribute = "ignore"

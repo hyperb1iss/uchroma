@@ -14,6 +14,7 @@ from uchroma.color import ColorUtils
 from uchroma.layer import Layer
 
 from .hardware import Quirks
+from .report_utils import put_arg
 from .types import BaseCommand
 
 
@@ -168,9 +169,10 @@ class Frame:
             self._report = self._driver.get_report(*cmd, transaction_id=tid)
 
         self._report.clear()
-        self._report.args.put_all(args)
+        for arg in args:
+            put_arg(self._report, arg)
 
-        self._report.remaining_packets = remaining_packets
+        self._report.set_remaining_packets(remaining_packets)
         return self._report
 
     def _build_extended_frame_args(self, row: int, start_col: int, stop_col: int, data):

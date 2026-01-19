@@ -10,7 +10,7 @@ from pyudev import Context, Monitor, MonitorObserver
 from pyudev._os import pipe
 
 from uchroma.log import Log
-from uchroma.server import hidadapter as hidapi
+from uchroma.server import hid
 from uchroma.util import Signal, Singleton, ensure_future
 
 from .device import UChromaDevice
@@ -118,7 +118,7 @@ class UChromaDeviceManager(metaclass=Singleton):
         list of devices changes (monitoring for changes is beyond
         the scope of this API).
         """
-        devinfos = sorted(hidapi.enumerate(vendor_id=RAZER_VENDOR_ID), key=lambda x: x.path)
+        devinfos = sorted(hid.enumerate_devices(vendor_id=RAZER_VENDOR_ID), key=lambda x: x.path)
 
         for devinfo in devinfos:
             parent = self._get_parent(devinfo.product_id)

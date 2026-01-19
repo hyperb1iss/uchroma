@@ -6,13 +6,12 @@ from enum import Enum
 
 from uchroma.color import ColorType, colorarg
 from uchroma.colorlib import Color
-from uchroma.server import hidadapter as hidapi
+from uchroma.server import hid
 from uchroma.util import clamp, scale, scale_brightness
 
 from .device import UChromaDevice
 from .device_base import BaseCommand
 from .hardware import Hardware
-from .report import Status
 from .types import LEDType
 
 
@@ -47,7 +46,7 @@ class UChromaMouse(UChromaDevice):
     def __init__(
         self,
         hardware: Hardware,
-        devinfo: hidapi.DeviceInfo,
+        devinfo: hid.DeviceInfo,
         devindex: int,
         sys_path: str,
         input_devices=None,
@@ -146,7 +145,7 @@ class UChromaWirelessMouse(UChromaMouse):
     def __init__(
         self,
         hardware: Hardware,
-        devinfo: hidapi.DeviceInfo,
+        devinfo: hid.DeviceInfo,
         devindex: int,
         sys_path: str,
         input_devices=None,
@@ -163,7 +162,7 @@ class UChromaWirelessMouse(UChromaMouse):
         return True
 
     def _timeout_cb(self, status, data):
-        if self._offline and status == Status.OK:
+        if self._offline and status == hid.Status.Ok:
             self._offline = False
             self.close(True)
         self._offline = True

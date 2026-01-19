@@ -70,6 +70,8 @@ class InputManager:
 
                 self._logger.info("Opened event device %s", event_device)
 
+            except FileNotFoundError:
+                self._logger.warning("Input device not found: %s (stale symlink?)", input_device)
             except Exception as err:
                 self._logger.exception("Failed to open device: %s", input_device, exc_info=err)
 

@@ -9,7 +9,7 @@ from wrapt import synchronized
 
 from uchroma.color import to_color, to_rgb
 from uchroma.log import LOG_PROTOCOL_TRACE
-from uchroma.server import hidadapter as hidapi
+from uchroma.server import hid
 from uchroma.traits import ColorSchemeTrait, ColorTrait
 from uchroma.util import scale_brightness, set_bits, smart_delay, test_bit, to_byte
 
@@ -232,7 +232,7 @@ class UChromaHeadset(BaseUChromaDevice):
     def __init__(
         self,
         hardware: Hardware,
-        devinfo: hidapi.DeviceInfo,
+        devinfo: hid.DeviceInfo,
         devindex: int,
         sys_path: str,
         *args,
