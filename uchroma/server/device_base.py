@@ -28,6 +28,8 @@ class BaseUChromaDevice:
     Base class for device objects
     """
 
+    FAST_SUSPEND_FADE_TIME = 0.3
+
     class Command(BaseCommand):
         """
         Standard commands used by all Chroma devices
@@ -78,6 +80,7 @@ class BaseUChromaDevice:
             self._animation_manager = AnimationManager(self)
 
         self._brightness_animator = ValueAnimator(self._update_brightness)
+        self._fast_suspend = False
 
         self._fx_manager = None
 
@@ -196,7 +199,7 @@ class BaseUChromaDevice:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(self._executor, functools.partial(self._set_brightness, level))
 
-        suspended = self.suspended and level == 0
+        suspended = self.suspended
         self.power_state_changed.fire(level, suspended)
 
     @property
@@ -216,14 +219,18 @@ class BaseUChromaDevice:
         if self._suspended:
             return
 
-        self.preferences.brightness = self.brightness
-        if fast:
-            self._set_brightness(0)
-        else:
-            if self._device_open():
-                self._brightness_animator.animate(self.brightness, 0, done_cb=self._done_cb)
-
+        current = self.brightness
+        self.preferences.brightness = current
         self._suspended = True
+        self._fast_suspend = fast
+        self.power_state_changed.fire(current, True)
+
+        if self._device_open():
+            max_time = self.FAST_SUSPEND_FADE_TIME if fast else None
+            self._brightness_animator.animate(current, 0, done_cb=self._done_cb, max_time=max_time)
+        else:
+            self._device_close()
+            self._set_brightness(0)
 
     def resume(self):
         """
@@ -236,7 +243,12 @@ class BaseUChromaDevice:
             return
 
         self._suspended = False
-        self.brightness = self.preferences.brightness
+        max_time = self.FAST_SUSPEND_FADE_TIME if self._fast_suspend else None
+        self._fast_suspend = False
+        target = self.preferences.brightness
+        self.power_state_changed.fire(target or 0.0, False)
+        if target is not None:
+            self.set_brightness(target, max_time=max_time)
 
     @property
     def brightness(self):
@@ -255,8 +267,24 @@ class BaseUChromaDevice:
 
         :param level: Brightness level, 0-100
         """
-        if not self._suspended and self._device_open():
-            self._brightness_animator.animate(self.brightness, level, done_cb=self._done_cb)
+        self.set_brightness(level)
+
+    def set_brightness(self, level: float | None, max_time: float | None = None):
+        """
+        Set the brightness level with optional animation timing.
+
+        :param level: Brightness level, 0-100
+        :param max_time: Optional override for maximum animation time
+        """
+        if level is None:
+            return
+        if not self._suspended:
+            if self._device_open():
+                self._brightness_animator.animate(
+                    self.brightness, level, done_cb=self._done_cb, max_time=max_time
+                )
+            else:
+                self._device_close()
 
         self.preferences.brightness = level
 

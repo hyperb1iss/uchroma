@@ -29,6 +29,7 @@ class BrightnessScale(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
 
         self.add_css_class("brightness-control")
+        self._suppress_emit = False
 
         # Sun icon
         icon = Gtk.Image.new_from_icon_name("display-brightness-symbolic")
@@ -54,17 +55,23 @@ class BrightnessScale(Gtk.Box):
     def _on_value_changed(self, scale):
         value = scale.get_value()
         self._label.set_label(f"{int(value)}%")
-        self.emit("value-changed", value / 100.0)
+        if self._suppress_emit:
+            return
+        self.emit("value-changed", value)
 
     @property
     def value(self) -> float:
-        """Get brightness as 0.0-1.0."""
-        return self._scale.get_value() / 100.0
+        """Get brightness as 0-100."""
+        return self._scale.get_value()
 
     @value.setter
     def value(self, value: float):
-        """Set brightness as 0.0-1.0."""
-        self._scale.set_value(value * 100)
+        """Set brightness as 0-100."""
+        self._suppress_emit = True
+        try:
+            self._scale.set_value(value)
+        finally:
+            self._suppress_emit = False
 
     def set_sensitive(self, sensitive: bool):
         """Enable/disable the control."""

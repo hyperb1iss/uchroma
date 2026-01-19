@@ -407,9 +407,9 @@ class ValueAnimator:
         self._fps = 1.0 / float(fps)
         self._task = None
 
-    async def _animate(self, start, end):
+    async def _animate(self, start, end, max_time: float | None = None):
         # animation duration
-        duration = (abs(end - start) / self._range) * self._max_time
+        duration = (abs(end - start) / self._range) * (max_time or self._max_time)
 
         if duration == 0:
             return
@@ -429,7 +429,7 @@ class ValueAnimator:
 
         self._task = None
 
-    def animate(self, start: float, end: float, done_cb=None):
+    def animate(self, start: float, end: float, done_cb=None, max_time: float | None = None):
         """
         Executes the given callback over the period of max_time
         at the given FPS, to animate from start to end.
@@ -437,6 +437,7 @@ class ValueAnimator:
 
         :param start: Starting value
         :param end: Ending value
+        :param max_time: Optional override for maximum animation time
         """
         try:
             asyncio.get_running_loop()
@@ -448,6 +449,6 @@ class ValueAnimator:
 
         if self._task is not None:
             self._task.cancel()
-        self._task = ensure_future(self._animate(start, end))
+        self._task = ensure_future(self._animate(start, end, max_time=max_time))
         if done_cb is not None:
             self._task.add_done_callback(done_cb)
