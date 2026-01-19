@@ -506,6 +506,12 @@ children:
     quirks: TRANSACTION_CODE_1F
 
   - !device-config
+    name: Blade Mid 2019 Mercury
+    product_id: 0x0245
+    dimensions: [6, 16]
+    quirks: TRANSACTION_CODE_1F
+
+  - !device-config
     name: Blade 15 (2020)
     product_id: 0x0253
     dimensions: [6, 16]
