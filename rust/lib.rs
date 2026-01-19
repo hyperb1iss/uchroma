@@ -29,7 +29,13 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // HID types and functions
     m.add_class::<hid::DeviceInfo>()?;
     m.add_class::<hid::HidDevice>()?;
+    m.add_class::<hid::RazerReport>()?;
+    m.add_class::<hid::Status>()?;
     m.add_function(wrap_pyfunction!(hid::enumerate_devices, m)?)?;
+
+    // HID constants
+    m.add("REPORT_SIZE", hid::REPORT_SIZE)?;
+    m.add("DATA_SIZE", hid::DATA_SIZE)?;
 
     Ok(())
 }

@@ -192,6 +192,39 @@ impl HidDevice {
 }
 
 impl HidDevice {
+    /// Send a feature report (blocking, callable from Rust).
+    pub fn send_report(&self, data: Vec<u8>, report_id: u8) -> Result<usize> {
+        let interface = self.interface.clone();
+        let len = data.len();
+
+        let result = if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            rt.block_on(Self::send_feature_report_inner(interface, data, report_id))
+        } else {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(Self::send_feature_report_inner(interface, data, report_id))
+        };
+
+        result.map(|_| len)
+    }
+
+    /// Get a feature report (blocking, callable from Rust).
+    pub fn get_report(&self, report_id: u8, size: usize) -> Result<Vec<u8>> {
+        let interface = self.interface.clone();
+
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            rt.block_on(Self::get_feature_report_inner(interface, report_id, size))
+        } else {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(Self::get_feature_report_inner(interface, report_id, size))
+        }
+    }
+
     async fn send_feature_report_inner(
         interface: Arc<Mutex<Option<nusb::Interface>>>,
         data: Vec<u8>,
