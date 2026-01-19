@@ -15,6 +15,7 @@ from uchroma._native import (
     RazerReport,
     Status,
     enumerate_devices,
+    send_frame_async,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "RazerReport",
     "Status",
     "enumerate_devices",
+    "send_frame_async",
 ]

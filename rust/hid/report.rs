@@ -310,9 +310,11 @@ impl RazerReport {
                         sleep(Duration::from_millis(100)).await;
                     }
                     _ => {
-                        return Err(
-                            HidError::ProtocolError(format!("Unknown status: {:?}", status)).into(),
-                        )
+                        return Err(HidError::ProtocolError(format!(
+                            "Unknown status: {:?}",
+                            status
+                        ))
+                        .into())
                     }
                 }
             }
