@@ -91,9 +91,19 @@ headerbar.flat {
 }
 
 .brightness-label {
-    font-family: "JetBrains Mono", monospace;
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
     font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: @silk_yellow;
+    text-shadow: 0 0 8px alpha(@silk_yellow, 0.3);
+    transition: color 200ms ease, text-shadow 200ms ease;
+}
+
+.brightness-label.dim {
     color: @text_secondary;
+    text-shadow: none;
 }
 
 .power-toggle {
@@ -273,13 +283,16 @@ headerbar.flat {
 }
 
 .effect-name {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     color: @text_secondary;
+    transition: color 150ms ease, text-shadow 150ms ease;
 }
 
 .effect-card.active .effect-name {
     color: @text_primary;
+    text-shadow: 0 0 12px alpha(@silk_purple, 0.5);
 }
 
 .effect-preview {
@@ -358,9 +371,10 @@ headerbar.flat {
 }
 
 .panel-title {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: @text_dim;
 }
 
@@ -419,14 +433,18 @@ headerbar.flat {
 }
 
 .layer-zindex {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 12px;
-    font-weight: 600;
-    color: @text_dim;
-    background-color: @surface_light;
-    padding: 2px 8px;
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    color: @silk_cyan;
+    background-color: alpha(@silk_cyan, 0.12);
+    padding: 2px 6px;
     border-radius: 4px;
-    min-width: 24px;
+    min-width: 20px;
+    text-align: center;
+    border: 1px solid alpha(@silk_cyan, 0.2);
 }
 
 .layer-name {
@@ -492,13 +510,14 @@ headerbar.flat {
 }
 
 .blend-category {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
     color: @silk_purple;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 8px 8px 4px 8px;
-    margin-top: 4px;
+    letter-spacing: 0.1em;
+    padding: 12px 12px 6px 12px;
+    margin-top: 8px;
+    text-shadow: 0 0 8px alpha(@silk_purple, 0.3);
 }
 
 .blend-option {
@@ -578,9 +597,13 @@ headerbar.flat {
 }
 
 .color-hex-label {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 12px;
-    color: @text_secondary;
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    color: @text_dim;
+    text-transform: uppercase;
 }
 
 .color-popover {
@@ -600,8 +623,10 @@ headerbar.flat {
 }
 
 .color-hex-entry {
-    font-family: "JetBrains Mono", monospace;
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
     font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
     background-color: @surface_light;
     border-radius: 6px;
     padding: 4px 6px;
@@ -670,9 +695,12 @@ headerbar.flat {
 }
 
 .param-value {
-    font-family: "JetBrains Mono", monospace;
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
     font-size: 13px;
-    color: @text_secondary;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: @silk_coral;
 }
 
 .param-dropdown {
@@ -810,9 +838,12 @@ headerbar.flat {
 }
 
 .system-value {
-    font-family: "JetBrains Mono", monospace;
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
     font-size: 13px;
-    color: @text_secondary;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: @silk_coral;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
