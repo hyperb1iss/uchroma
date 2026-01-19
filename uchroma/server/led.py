@@ -9,7 +9,7 @@ from traitlets import Bool, Float, HasTraits, observe
 from uchroma.color import to_color
 from uchroma.colorlib import Color
 from uchroma.traits import ColorTrait, UseEnumCaseless, WriteOnceUseEnumCaseless
-from uchroma.util import Signal, scale_brightness
+from uchroma.util import Signal, ensure_future, scale_brightness
 
 from .hardware import Quirks
 from .types import BaseCommand, LEDType
@@ -72,6 +72,7 @@ class LED(HasTraits):
         self._restoring = True
         self._refreshing = False
         self._dirty = True
+        self._refresh_task = None
 
         # dynamic traits, since they are normally class-level
         brightness = Float(min=0.0, max=100.0, default_value=80.0, allow_none=False).tag(
@@ -90,7 +91,8 @@ class LED(HasTraits):
 
     def __getattribute__(self, name):
         if name in ("brightness", "color", "mode", "state") and self._dirty:
-            self._refresh()
+            if self._refresh_task is None or self._refresh_task.done():
+                self._refresh_task = ensure_future(self._refresh_async())
             self._dirty = False
 
         return super().__getattribute__(name)
@@ -114,31 +116,49 @@ class LED(HasTraits):
         else:
             self._set(LED.Command.SET_LED_BRIGHTNESS, value)
 
-    def _refresh(self):
+    async def _get_async(self, cmd):
+        return await self._driver.run_with_result_async(cmd, VARSTORE, self._led_type.hardware_id)
+
+    async def _set_async(self, cmd, *args):
+        return await self._driver.run_command_async(
+            cmd, *(VARSTORE, self._led_type.hardware_id, *args), delay=0.035
+        )
+
+    async def _get_brightness_async(self):
+        if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+            return await self._get_async(LED.ExtendedCommand.GET_LED_BRIGHTNESS)
+        return await self._get_async(LED.Command.GET_LED_BRIGHTNESS)
+
+    async def _set_brightness_async(self, value):
+        if self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
+            return await self._set_async(LED.ExtendedCommand.SET_LED_BRIGHTNESS, value)
+        return await self._set_async(LED.Command.SET_LED_BRIGHTNESS, value)
+
+    async def _refresh_async(self):
         try:
             self._refreshing = True
 
             # Extended FX devices don't support legacy LED state/color/mode queries
             if not self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS):
                 # state
-                value = self._get(LED.Command.GET_LED_STATE)
+                value = await self._get_async(LED.Command.GET_LED_STATE)
                 if value is not None:
                     self.state = bool(value[2])
 
                 # color
-                value = self._get(LED.Command.GET_LED_COLOR)
+                value = await self._get_async(LED.Command.GET_LED_COLOR)
                 if value is not None:
                     self.color = Color.NewFromRgb(
                         value[2] / 255.0, value[3] / 255.0, value[4] / 255.0
                     )
 
                 # mode
-                value = self._get(LED.Command.GET_LED_MODE)
+                value = await self._get_async(LED.Command.GET_LED_MODE)
                 if value is not None:
                     self.mode = LEDMode(value[2])
 
             # brightness (has extended command support)
-            value = self._get_brightness()
+            value = await self._get_brightness_async()
             if value is not None:
                 self.brightness = scale_brightness(int(value[2]), True)
 
@@ -150,32 +170,32 @@ class LED(HasTraits):
         if self._refreshing or change.old == change.new:
             return
 
-        is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
-
-        if change.name == "color":
-            # Extended FX devices use matrix effects instead of per-LED color
-            if not is_extended:
-                self._set(LED.Command.SET_LED_COLOR, to_color(change.new))
-        elif change.name == "mode":
-            # Extended FX devices use matrix effects instead of per-LED mode
-            if not is_extended:
-                self._set(LED.Command.SET_LED_MODE, change.new)
-        elif change.name == "brightness":
-            self._set_brightness(scale_brightness(change.new))
-            # Extended FX devices don't support separate LED state
-            if not is_extended:
-                if change.old == 0 and change.new > 0:
-                    self._set(LED.Command.SET_LED_STATE, 1)
-                elif change.old > 0 and change.new == 0:
-                    self._set(LED.Command.SET_LED_STATE, 0)
-        else:
-            raise ValueError(f"Unknown LED property: {change.new}")
+        ensure_future(self._apply_change_async(change))
 
         if not self._restoring:
             self._dirty = True
 
             if self.led_type != LEDType.BACKLIGHT:
                 self._update_prefs()
+
+    async def _apply_change_async(self, change):
+        is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
+
+        if change.name == "color":
+            if not is_extended:
+                await self._set_async(LED.Command.SET_LED_COLOR, to_color(change.new))
+        elif change.name == "mode":
+            if not is_extended:
+                await self._set_async(LED.Command.SET_LED_MODE, change.new)
+        elif change.name == "brightness":
+            await self._set_brightness_async(scale_brightness(change.new))
+            if not is_extended:
+                if change.old == 0 and change.new > 0:
+                    await self._set_async(LED.Command.SET_LED_STATE, 1)
+                elif change.old > 0 and change.new == 0:
+                    await self._set_async(LED.Command.SET_LED_STATE, 0)
+        else:
+            raise ValueError(f"Unknown LED property: {change.new}")
 
     def __str__(self):
         values = ", ".join(

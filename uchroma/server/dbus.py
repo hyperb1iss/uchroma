@@ -319,12 +319,12 @@ class FXManagerInterface(ServiceInterface):
         return self._current_fx
 
     @method()
-    def SetFX(self, name: "s", args: "a{sv}") -> "b":
+    async def SetFX(self, name: "s", args: "a{sv}") -> "b":
         if name not in self._fx_manager.available_fx:
             raise DBusError("io.uchroma.Error.UnknownFX", f"Unknown FX: {name}") from None
         # Extract values from variants
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in args.items()}
-        return self._fx_manager.activate(name, **kwargs)
+        return await self._fx_manager.activate_async(name, **kwargs)
 
 
 class AnimationManagerInterface(ServiceInterface):

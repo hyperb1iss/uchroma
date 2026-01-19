@@ -4,7 +4,7 @@
 
 # pylint: disable=protected-access, no-member, invalid-name
 
-import functools
+import asyncio
 import inspect
 import re
 from abc import abstractmethod
@@ -13,7 +13,7 @@ from frozendict import frozendict
 from traitlets import Bool, HasTraits, Instance, Tuple, Unicode
 
 from uchroma.traits import get_args_dict
-from uchroma.util import camel_to_snake
+from uchroma.util import camel_to_snake, ensure_future
 
 CUSTOM = "custom_frame"
 
@@ -31,6 +31,9 @@ class BaseFX(HasTraits):
     @abstractmethod
     def apply(self) -> bool:
         return False
+
+    async def apply_async(self) -> bool:
+        return await asyncio.to_thread(self.apply)
 
 
 class FXModule:
@@ -79,6 +82,7 @@ class FXManager(HasTraits):
         self._driver = driver
         self._logger = driver.logger
         self._fxmod = fxmod
+        self._async_lock = asyncio.Lock()
 
         driver.restore_prefs.connect(self._restore_prefs)
 
@@ -91,7 +95,15 @@ class FXManager(HasTraits):
             if prefs.fx_args is not None:
                 args = prefs.fx_args
 
-            self.activate(prefs.fx, **args)
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is None:
+                asyncio.run(self.activate_async(prefs.fx, **args))
+            else:
+                ensure_future(self.activate_async(prefs.fx, **args), loop=loop)
 
     @property
     def available_fx(self):
@@ -116,9 +128,19 @@ class FXManager(HasTraits):
         return False
 
     def _activate(self, fx_name, fx, future=None):
-        # need to do this as a callback if an animation
-        # is shutting down
-        if fx.apply():
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None:
+            asyncio.run(self._activate_async(fx_name, fx))
+        else:
+            ensure_future(self._activate_async(fx_name, fx), loop=loop)
+        return True
+
+    async def _activate_async(self, fx_name, fx) -> bool:
+        if await fx.apply_async():
             if fx_name != self.current_fx[0]:
                 self.current_fx = (fx_name, fx)
             if fx_name == CUSTOM:
@@ -132,19 +154,34 @@ class FXManager(HasTraits):
         return True
 
     def activate(self, fx_name, **kwargs) -> bool:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None:
+            return asyncio.run(self.activate_async(fx_name, **kwargs))
+
+        ensure_future(self.activate_async(fx_name, **kwargs), loop=loop)
+        return True
+
+    async def activate_async(self, fx_name, **kwargs) -> bool:
         fx = self.get_fx(fx_name)
         if fx is None:
             return False
 
-        if fx_name not in (CUSTOM, "disable"):
-            for k, v in kwargs.items():
-                if fx.has_trait(k):
-                    setattr(fx, k, v)
+        async with self._async_lock:
+            if fx_name not in (CUSTOM, "disable"):
+                for k, v in kwargs.items():
+                    if fx.has_trait(k):
+                        setattr(fx, k, v)
 
-            if self._driver.is_animating:
-                self._driver.animation_manager.stop(
-                    cb=functools.partial(self._activate, fx_name, fx)
-                )
-                return True
+                if self._driver.is_animating:
+                    await self._driver.animation_manager.stop_async()
 
-        return self._activate(fx_name, fx)
+            return await self._activate_async(fx_name, fx)
+
+    async def disable_async(self) -> bool:
+        if "disable" in self.available_fx:
+            return await self.activate_async("disable")
+        return False

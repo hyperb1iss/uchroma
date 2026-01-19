@@ -148,6 +148,40 @@ class StandardFX(FXModule):
             *args,
         )
 
+    async def _set_effect_basic_async(
+        self, effect: FX, *args, transaction_id: int | None = None
+    ) -> bool:
+        if self._report is None:
+            self._report = self._driver.get_report(
+                *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id
+            )
+
+        self._report.clear()
+        put_arg(self._report, effect.value)
+        for arg in args:
+            put_arg(self._report, arg)
+
+        success, _ = await self._driver.run_report_async(self._report)
+        return success
+
+    async def _set_effect_extended_async(self, effect: ExtendedFX, *args) -> bool:
+        # Per OpenRazer: custom_frame uses NOSTORE (0x00) and ZERO_LED (0x00)
+        # Other effects use VARSTORE (0x01) and BACKLIGHT_LED
+        if effect == ExtendedFX.CUSTOM_FRAME:
+            varstore = 0x00  # NOSTORE
+            led_id = 0x00  # ZERO_LED
+        else:
+            varstore = 0x01  # VARSTORE
+            led_id = LEDType.BACKLIGHT.hardware_id
+
+        return await self._driver.run_command_async(
+            StandardFX.Command.SET_EFFECT_EXTENDED,
+            varstore,
+            led_id,
+            effect.value,
+            *args,
+        )
+
     def set_effect(self, effect: FX | ExtendedFX, *args) -> bool:
         """Apply a lighting effect to the device.
 
@@ -166,6 +200,23 @@ class StandardFX(FXModule):
             return self._set_effect_extended(ExtendedFX[effect.name], *args)
         return self._set_effect_basic(FX[effect.name], *args)
 
+    async def set_effect_async(self, effect: FX | ExtendedFX, *args) -> bool:
+        """Apply a lighting effect to the device asynchronously.
+
+        Uses the Effects registry to determine protocol support.
+        """
+        uses_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
+
+        if not Effects.supports_protocol(effect.name, uses_extended):
+            self._driver.logger.warning(
+                f"Effect '{effect.name}' not supported on {'extended' if uses_extended else 'legacy'} protocol"
+            )
+            return False
+
+        if uses_extended:
+            return await self._set_effect_extended_async(ExtendedFX[effect.name], *args)
+        return await self._set_effect_basic_async(FX[effect.name], *args)
+
     class DisableFX(BaseFX):
         description = Unicode("Disable all effects")
 
@@ -176,6 +227,9 @@ class StandardFX(FXModule):
             :return: True if successful
             """
             return self._fxmod.set_effect(FX.DISABLE)
+
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(FX.DISABLE)
 
     class StaticFX(BaseFX):
         description = Unicode("Static color")
@@ -190,6 +244,9 @@ class StandardFX(FXModule):
             :return: True if successful
             """
             return self._fxmod.set_effect(FX.STATIC, self.color)
+
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(FX.STATIC, self.color)
 
     class WaveFX(BaseFX):
         description = Unicode("Waves of color")
@@ -216,6 +273,17 @@ class StandardFX(FXModule):
 
             return self._fxmod.set_effect(FX.WAVE, direction)
 
+        async def apply_async(self) -> bool:
+            direction = self.direction.value
+
+            if self.trackpad_effect:
+                if self.direction == Direction.LEFT:
+                    direction = 0x03
+                elif self.direction == Direction.RIGHT:
+                    direction = 0x04
+
+            return await self._fxmod.set_effect_async(FX.WAVE, direction)
+
     class SpectrumFX(BaseFX):
         description = Unicode("Cycle thru all colors of the spectrum")
 
@@ -226,6 +294,9 @@ class StandardFX(FXModule):
             :return: True if successful
             """
             return self._fxmod.set_effect(FX.SPECTRUM)
+
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(FX.SPECTRUM)
 
     class ReactiveFX(BaseFX):
         description = Unicode("Keys light up when pressed")
@@ -242,6 +313,9 @@ class StandardFX(FXModule):
             :return: True if successful
             """
             return self._fxmod.set_effect(FX.REACTIVE, self.speed, self.color)
+
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(FX.REACTIVE, self.speed, self.color)
 
     class SweepFX(BaseFX):
         description = Unicode("Colors sweep across the device")
@@ -268,6 +342,11 @@ class StandardFX(FXModule):
                 FX.SWEEP, self.direction, self.speed, self.base_color, self.color
             )
 
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(
+                FX.SWEEP, self.direction, self.speed, self.base_color, self.color
+            )
+
     class MorphFX(BaseFX):
         description = Unicode("Morphing colors when keys are pressed")
         color = ColorTrait(default_value="magenta").tag(config=True)
@@ -287,6 +366,11 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.MORPH, 0x04, self.speed, self.color, self.base_color)
 
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(
+                FX.MORPH, 0x04, self.speed, self.color, self.base_color
+            )
+
     class FireFX(BaseFX):
         description = Unicode("Keys on fire")
         color = ColorTrait(default_value="red").tag(config=True)
@@ -303,6 +387,9 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.FIRE, 0x01, self.speed, self.color)
 
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(FX.FIRE, 0x01, self.speed, self.color)
+
     class RippleFX(BaseFX):
         description = Unicode("Ripple effect when keys are pressed")
         color = ColorTrait(default_value="green").tag(config=True)
@@ -311,6 +398,9 @@ class StandardFX(FXModule):
         def apply(self) -> bool:
             return self._fxmod.set_effect(FX.RIPPLE, 0x01, self.speed * 10, self.color)
 
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(FX.RIPPLE, 0x01, self.speed * 10, self.color)
+
     class RippleSolidFX(BaseFX):
         description = Unicode("Ripple effect on a solid background")
         color = ColorTrait(default_value="green").tag(config=True)
@@ -318,6 +408,11 @@ class StandardFX(FXModule):
 
         def apply(self) -> bool:
             return self._fxmod.set_effect(FX.RIPPLE_SOLID, 0x01, self.speed * 10, self.color)
+
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(
+                FX.RIPPLE_SOLID, 0x01, self.speed * 10, self.color
+            )
 
     class StarlightFX(BaseFX):
         description = Unicode("Keys sparkle with color")
@@ -342,6 +437,11 @@ class StandardFX(FXModule):
                 FX.STARLIGHT, Mode(len(self.colors)), self.speed, *self.colors
             )
 
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(
+                FX.STARLIGHT, Mode(len(self.colors)), self.speed, *self.colors
+            )
+
     class BreatheFX(BaseFX):
         description = Unicode("Colors pulse in and out")
         colors = ColorSchemeTrait(minlen=0, maxlen=2).tag(config=True)
@@ -361,6 +461,11 @@ class StandardFX(FXModule):
             """
             return self._fxmod.set_effect(FX.BREATHE, Mode(len(self.colors)), *self.colors)
 
+        async def apply_async(self) -> bool:
+            return await self._fxmod.set_effect_async(
+                FX.BREATHE, Mode(len(self.colors)), *self.colors
+            )
+
     class CustomFrameFX(BaseFX):
         description = Unicode("Display custom frame")
         hidden = Bool(True, read_only=True)
@@ -379,6 +484,13 @@ class StandardFX(FXModule):
             if self._driver.device_type == Hardware.Type.MOUSE:
                 varstore = 0x00
             return self._fxmod.set_effect(FX.CUSTOM_FRAME, varstore)
+
+        async def apply_async(self) -> bool:
+            varstore = 0x01
+
+            if self._driver.device_type == Hardware.Type.MOUSE:
+                varstore = 0x00
+            return await self._fxmod.set_effect_async(FX.CUSTOM_FRAME, varstore)
 
     class RainbowFX(BaseFX):
         description = Unicode("Rainbow of hues")
@@ -410,6 +522,23 @@ class StandardFX(FXModule):
 
             return True
 
+        async def apply_async(self) -> bool:
+            frame = self._driver.frame_control
+
+            layer = frame.create_layer()
+
+            data = []
+            gradient = ColorUtils.hue_gradient(
+                self.length, layer.width + (layer.height * self.stagger)
+            )
+            for row in range(layer.height):
+                data.append([gradient[(row * self.stagger) + col] for col in range(layer.width)])
+
+            layer.put_all(data)
+            await frame.commit_async([layer])
+
+            return True
+
     class AlignmentFX(BaseFX):
         description = Unicode("Alignment test pattern")
         hidden = Bool(True, read_only=True)
@@ -436,5 +565,28 @@ class StandardFX(FXModule):
             frame.debug_opts["debug_position"] = (self.cur_row, self.cur_col)
 
             frame.commit([layer])
+
+            return True
+
+        async def apply_async(self) -> bool:
+            first = "red"
+            single = "white"
+            colors = ["yellow", "green", "purple", "blue"]
+
+            frame = self._driver.frame_control
+            layer = frame.create_layer()
+
+            for row in range(layer.height):
+                for col in range(layer.width):
+                    if col == 0:
+                        color = first
+                    else:
+                        color = colors[int((col - 1) % len(colors))]
+                    layer.put(row, col, color)
+
+            layer.put(self.cur_row, self.cur_col, single)
+            frame.debug_opts["debug_position"] = (self.cur_row, self.cur_col)
+
+            await frame.commit_async([layer])
 
             return True
