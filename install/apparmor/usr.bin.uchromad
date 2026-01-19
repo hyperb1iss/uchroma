@@ -1,0 +1,62 @@
+# AppArmor profile for uchromad - UChroma RGB Control Daemon
+# vim:syntax=apparmor
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile uchromad @{HOME}/.local/bin/uchromad flags=(attach_disconnected) {
+  include <abstractions/base>
+  include <abstractions/python>
+  include <abstractions/nameservice>
+  include <abstractions/dbus-session-strict>
+
+  # Python interpreter
+  /usr/bin/python3* rix,
+  @{HOME}/.local/bin/uchromad r,
+
+  # Python packages and site-packages
+  /usr/lib/python3/** r,
+  /usr/lib/python3*/** r,
+  /usr/local/lib/python3*/** r,
+  /usr/share/python*/** r,
+
+  # User Python packages (pip --user, uv tool, pipx)
+  owner @{HOME}/.local/lib/python3*/** r,
+  owner @{HOME}/.local/share/uv/** r,
+  owner @{HOME}/.local/share/pipx/** r,
+  owner @{HOME}/.local/bin/* r,
+
+  # HID device access for RGB control
+  /dev/hidraw* rw,
+
+  # USB device information
+  /sys/bus/usb/devices/ r,
+  /sys/bus/usb/devices/** r,
+  /sys/devices/**/usb*/** r,
+  /sys/class/hidraw/ r,
+  /sys/class/hidraw/** r,
+
+  # udev device info
+  /run/udev/data/* r,
+
+  # UChroma config directory
+  owner @{HOME}/.config/uchroma/ rw,
+  owner @{HOME}/.config/uchroma/** rw,
+
+  # D-Bus session bus
+  /usr/share/dbus-1/** r,
+  owner @{HOME}/.local/share/dbus-1/** r,
+
+  # Proc filesystem for self-inspection
+  @{PROC}/@{pid}/fd/ r,
+  @{PROC}/@{pid}/mounts r,
+  owner @{PROC}/@{pid}/stat r,
+  owner @{PROC}/@{pid}/cmdline r,
+
+  # Deny common unnecessary access (noise reduction)
+  deny /usr/share/gvfs/remote-volume-monitors/ r,
+
+  # Allow creating the config directory
+  owner @{HOME}/.config/ r,
+}

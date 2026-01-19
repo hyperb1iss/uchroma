@@ -180,6 +180,7 @@ install: install-udev install-service install-desktop ## Install all system file
 	@echo -e "\033[38;2;80;250;123m✓ Installation complete!\033[0m"
 	@echo -e "\033[38;2;241;250;140m  → Run: sudo udevadm control --reload-rules\033[0m"
 	@echo -e "\033[38;2;241;250;140m  → Run: systemctl --user daemon-reload\033[0m"
+	@echo -e "\033[38;2;241;250;140m  → Ubuntu 24.04+: sudo make install-apparmor\033[0m"
 
 .PHONY: install-udev
 install-udev: ## Install udev rules (requires sudo)
@@ -194,6 +195,12 @@ install-service: ## Install systemd user service and D-Bus activation
 install-desktop: ## Install desktop file for GTK app
 	install -Dm644 install/desktop/io.uchroma.gtk.desktop $(DESTDIR)$(PREFIX)/share/applications/io.uchroma.gtk.desktop
 	install -Dm644 install/icons/io.uchroma.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/io.uchroma.svg
+
+.PHONY: install-apparmor
+install-apparmor: ## Install AppArmor profile (Ubuntu 24.04+, requires sudo)
+	install -Dm644 install/apparmor/usr.bin.uchromad /etc/apparmor.d/usr.bin.uchromad
+	@echo -e "\033[38;2;80;250;123m✓ AppArmor profile installed\033[0m"
+	@echo -e "\033[38;2;241;250;140m  → Run: sudo apparmor_parser -r /etc/apparmor.d/usr.bin.uchromad\033[0m"
 
 .PHONY: uninstall
 uninstall: uninstall-udev uninstall-service uninstall-desktop ## Uninstall all system files
@@ -211,6 +218,11 @@ uninstall-service: ## Uninstall systemd service
 uninstall-desktop: ## Uninstall desktop file
 	rm -f $(DESTDIR)$(PREFIX)/share/applications/io.uchroma.gtk.desktop
 	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/io.uchroma.svg
+
+.PHONY: uninstall-apparmor
+uninstall-apparmor: ## Uninstall AppArmor profile
+	rm -f /etc/apparmor.d/usr.bin.uchromad
+	@echo -e "\033[38;2;80;250;123m✓ AppArmor profile removed\033[0m"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Documentation

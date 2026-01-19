@@ -1,4 +1,4 @@
 [D-BUS Service]
 Name=io.uchroma
-Exec=/usr/bin/uchromad
+Exec=%h/.local/bin/uchromad
 SystemdService=uchromad.service
