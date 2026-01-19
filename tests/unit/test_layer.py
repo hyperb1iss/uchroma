@@ -10,15 +10,11 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-from skimage import draw
 
+from uchroma import drawing
 from uchroma.blending import BlendOp
 from uchroma.colorlib import Color
 from uchroma.layer import Layer
-
-# Check if disk function exists (renamed from circle in scikit-image 0.19+)
-HAS_DISK = hasattr(draw, "disk")
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -479,7 +475,7 @@ class TestLayerCircle:
         mock_rr = np.array([4, 5, 5, 5, 6])
         mock_cc = np.array([5, 4, 5, 6, 5])
 
-        with patch.object(draw, "circle", create=True, return_value=(mock_rr, mock_cc)):
+        with patch.object(drawing, "circle", create=True, return_value=(mock_rr, mock_cc)):
             result = small_layer.circle(5, 5, 2, red_color, fill=True)
 
         assert result is small_layer
@@ -496,7 +492,7 @@ class TestLayerCircle:
         mock_rr = np.array([5])
         mock_cc = np.array([5])
 
-        with patch.object(draw, "circle", create=True, return_value=(mock_rr, mock_cc)):
+        with patch.object(drawing, "circle", create=True, return_value=(mock_rr, mock_cc)):
             result = small_layer.circle(5, 5, 1, red_color, fill=True, alpha=0.5)
 
         assert result is small_layer
@@ -576,7 +572,7 @@ class TestLayerLine:
         mock_cc = np.array([1, 2, 3, 4, 5])
         mock_aa = np.array([1.0, 0.5, 1.0, 0.5, 1.0])
 
-        with patch.object(draw, "line_aa", return_value=(mock_rr, mock_cc, mock_aa)):
+        with patch.object(drawing, "line_aa", return_value=(mock_rr, mock_cc, mock_aa)):
             small_layer.line(1, 1, 5, 5, red_color)
 
         # Some pixels should be set
@@ -601,7 +597,7 @@ class TestLayerLine:
         mock_cc = np.array([3, 4, 5])
         mock_aa = np.array([1.0, 1.0, 1.0])
 
-        with patch.object(draw, "line_aa", return_value=(mock_rr, mock_cc, mock_aa)):
+        with patch.object(drawing, "line_aa", return_value=(mock_rr, mock_cc, mock_aa)):
             small_layer.line(3, 3, 5, 5, red_color, alpha=0.5)
 
         # Some pixels should be set

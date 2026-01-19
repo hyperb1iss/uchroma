@@ -7,8 +7,8 @@
 import math
 
 import numpy as np
-from skimage import draw
 
+from uchroma import drawing
 from uchroma._layer import color_to_np, set_color
 from uchroma.blending import BlendOp
 from uchroma.color import ColorType, colorarg, to_color
@@ -213,11 +213,13 @@ class Layer:
         :return: This frame instance
         """
         if fill:
-            rr, cc = draw.circle(row, col, round(radius), shape=self.matrix.shape)
+            rr, cc = drawing.circle(row, col, round(radius), shape=self.matrix.shape)
             self._draw(rr, cc, color, alpha)
 
         else:
-            rr, cc, aa = draw.circle_perimeter_aa(row, col, round(radius), shape=self.matrix.shape)
+            rr, cc, aa = drawing.circle_perimeter_aa(
+                row, col, round(radius), shape=self.matrix.shape
+            )
             self._draw(rr, cc, color, aa)
 
         return self
@@ -247,13 +249,13 @@ class Layer:
         :return: This frame instance
         """
         if fill:
-            rr, cc = draw.ellipse(
+            rr, cc = drawing.ellipse(
                 row, col, math.floor(radius_r), math.floor(radius_c), shape=self.matrix.shape
             )
             self._draw(rr, cc, color, alpha)
 
         else:
-            rr, cc = draw.ellipse_perimeter(
+            rr, cc = drawing.ellipse_perimeter(
                 row, col, math.floor(radius_r), math.floor(radius_c), shape=self.matrix.shape
             )
             self._draw(rr, cc, color, alpha)
@@ -279,7 +281,7 @@ class Layer:
         :param col2: End column
         :param color: Color to draw with
         """
-        rr, cc, aa = draw.line_aa(
+        rr, cc, aa = drawing.line_aa(
             clamp(0, self.height, row1),
             clamp(0, self.width, col1),
             clamp(0, self.height, row2),

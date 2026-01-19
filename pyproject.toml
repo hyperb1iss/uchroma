@@ -27,7 +27,6 @@ dependencies = [
     "numpy",
     "pyudev",
     "ruamel.yaml",
-    "scikit-image",
     "traitlets",
     "wrapt",
 ]
@@ -61,7 +60,6 @@ include = [
 exclude = [
     "**/*.pyx",
     "**/*.c",
-    "**/*.so",
 ]
 
 [dependency-groups]

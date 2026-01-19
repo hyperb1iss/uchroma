@@ -14,9 +14,9 @@ from typing import Union
 
 import numpy as np
 from hsluv import hsluv_to_rgb, rgb_to_hsluv
-from skimage.util import dtype
 
 from uchroma.colorlib import Color
+from uchroma.drawing import img_as_ubyte
 from uchroma.util import autocast_decorator, clamp, lerp, lerp_degrees
 
 # Type hint for decorated color arguments
@@ -590,4 +590,4 @@ class ColorUtils:
                 (1 - alpha) * bg_color[ichan] + alpha * channels[..., ichan], a_min=0, a_max=1
             )
 
-        return dtype.img_as_ubyte(out_buf)
+        return img_as_ubyte(out_buf)
