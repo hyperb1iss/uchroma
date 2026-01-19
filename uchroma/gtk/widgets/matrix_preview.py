@@ -80,6 +80,10 @@ class MatrixPreview(Gtk.DrawingArea):
         # Background with subtle gradient
         self._draw_background(cr, width, height)
 
+        # Ambient halo (color wash based on frame content)
+        if self.glow_enabled:
+            self._draw_ambient_halo(cr, width, height)
+
         # Calculate cell dimensions
         padding = 20
         available_w = width - padding * 2
@@ -121,87 +125,226 @@ class MatrixPreview(Gtk.DrawingArea):
         self._draw_border(cr, width, height, padding)
 
     def _draw_background(self, cr, width, height):
-        """Draw gradient background."""
-        # Radial gradient from center
+        """Draw gradient background with vignette and subtle texture."""
+        # Vignette-style radial gradient
         cx, cy = width / 2, height / 2
-        pattern = cairo.RadialGradient(cx, cy, 0, cx, cy, max(width, height) / 2)
-        pattern.add_color_stop_rgb(0, 0.08, 0.06, 0.10)  # Subtle purple tint
-        pattern.add_color_stop_rgb(1, 0.04, 0.04, 0.04)
+        max_dim = max(width, height)
+
+        pattern = cairo.RadialGradient(cx, cy, 0, cx, cy, max_dim * 0.7)
+        # Center: subtle purple tint (SilkCircuit aesthetic)
+        pattern.add_color_stop_rgb(0, 0.06, 0.04, 0.08)
+        # Edge: near black
+        pattern.add_color_stop_rgb(1, 0.02, 0.02, 0.02)
 
         cr.set_source(pattern)
         self._rounded_rect(cr, 0, 0, width, height, 12)
         cr.fill()
 
+        # Subtle grid pattern for texture (adds visual interest)
+        cr.set_source_rgba(1, 1, 1, 0.012)
+        cr.set_line_width(0.5)
+        grid_size = 8
+        for gx in range(0, int(width), grid_size):
+            cr.move_to(gx, 0)
+            cr.line_to(gx, height)
+        for gy in range(0, int(height), grid_size):
+            cr.move_to(0, gy)
+            cr.line_to(width, gy)
+        cr.stroke()
+
     def _draw_glow_layer(self, cr, padding, cell_w, cell_h):
-        """Draw subtle glow behind bright cells."""
+        """Draw bloom/glow layer with two passes for depth."""
+        if self.frame_data is None:
+            return
+
+        # Pass 1: Wide diffuse bloom for overall ambiance
         for row in range(self.rows):
             for col in range(self.cols):
-                if self.frame_data is None:
-                    continue
-
                 pixel = self.frame_data[row, col]
                 if self.frame_data.dtype == np.uint8:
                     r, g, b = pixel[0] / 255, pixel[1] / 255, pixel[2] / 255
                 else:
                     r, g, b = float(pixel[0]), float(pixel[1]), float(pixel[2])
 
-                # Only glow for bright cells
-                brightness = (r + g + b) / 3
-                if brightness < 0.3:
+                # Calculate perceptual brightness (rec. 709 luma)
+                brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                if brightness < 0.25:
                     continue
 
                 x = padding + col * cell_w + cell_w / 2
                 y = padding + row * cell_h + cell_h / 2
-                glow_radius = max(cell_w, cell_h) * 1.2
 
-                # Radial gradient glow
-                pattern = cairo.RadialGradient(x, y, 0, x, y, glow_radius)
-                pattern.add_color_stop_rgba(0, r, g, b, brightness * 0.4)
+                # Wide diffuse bloom
+                wide_radius = max(cell_w, cell_h) * 2.0
+                pattern = cairo.RadialGradient(x, y, 0, x, y, wide_radius)
+                pattern.add_color_stop_rgba(0, r, g, b, brightness * 0.25)
+                pattern.add_color_stop_rgba(0.3, r, g, b, brightness * 0.12)
                 pattern.add_color_stop_rgba(1, r, g, b, 0)
 
                 cr.set_source(pattern)
-                cr.arc(x, y, glow_radius, 0, 2 * math.pi)
+                cr.arc(x, y, wide_radius, 0, 2 * math.pi)
+                cr.fill()
+
+        # Pass 2: Tight core glow for very bright cells only
+        for row in range(self.rows):
+            for col in range(self.cols):
+                pixel = self.frame_data[row, col]
+                if self.frame_data.dtype == np.uint8:
+                    r, g, b = pixel[0] / 255, pixel[1] / 255, pixel[2] / 255
+                else:
+                    r, g, b = float(pixel[0]), float(pixel[1]), float(pixel[2])
+
+                brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                if brightness < 0.5:  # Only very bright cells get core glow
+                    continue
+
+                x = padding + col * cell_w + cell_w / 2
+                y = padding + row * cell_h + cell_h / 2
+
+                # Tight bright core
+                core_radius = max(cell_w, cell_h) * 0.8
+                pattern = cairo.RadialGradient(x, y, 0, x, y, core_radius)
+                # Boost the color slightly for the core
+                boost = 1.2
+                pattern.add_color_stop_rgba(
+                    0, min(r * boost, 1), min(g * boost, 1), min(b * boost, 1), brightness * 0.5
+                )
+                pattern.add_color_stop_rgba(0.5, r, g, b, brightness * 0.2)
+                pattern.add_color_stop_rgba(1, r, g, b, 0)
+
+                cr.set_source(pattern)
+                cr.arc(x, y, core_radius, 0, 2 * math.pi)
                 cr.fill()
 
     def _draw_cell(self, cr, x, y, cell_w, cell_h, r, g, b):
-        """Draw a single LED cell."""
+        """Draw a single LED cell with dome lighting effect."""
         gap = self.cell_gap
         radius = self.cell_radius
+        brightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
 
-        # Cell background (slightly darker than color for depth)
-        cr.set_source_rgb(r * 0.3, g * 0.3, b * 0.3)
+        # Drop shadow for depth (only for lit cells)
+        if brightness > 0.1:
+            cr.set_source_rgba(0, 0, 0, 0.3)
+            self._rounded_rect(
+                cr, x + gap + 1, y + gap + 2, cell_w - gap * 2, cell_h - gap * 2, radius
+            )
+            cr.fill()
+
+        # Outer bezel (dark ring around the LED)
+        bezel_darkness = 0.15
+        cr.set_source_rgb(r * bezel_darkness, g * bezel_darkness, b * bezel_darkness)
         self._rounded_rect(cr, x + gap, y + gap, cell_w - gap * 2, cell_h - gap * 2, radius)
         cr.fill()
 
-        # Main cell color
-        cr.set_source_rgb(r, g, b)
+        # LED cavity (slightly recessed)
+        cr.set_source_rgb(r * 0.25, g * 0.25, b * 0.25)
         inset = gap + 1
         self._rounded_rect(
             cr, x + inset, y + inset, cell_w - inset * 2, cell_h - inset * 2, radius - 1
         )
         cr.fill()
 
-        # Highlight (top-left shine)
-        if r + g + b > 0.2:
-            cr.set_source_rgba(1, 1, 1, 0.15)
-            self._rounded_rect(
-                cr,
-                x + inset,
-                y + inset,
-                (cell_w - inset * 2) * 0.6,
-                (cell_h - inset * 2) * 0.4,
-                radius - 1,
-            )
+        # Main LED surface with radial gradient for dome effect
+        inner_inset = inset + 1
+        inner_w = cell_w - inner_inset * 2
+        inner_h = cell_h - inner_inset * 2
+        cx = x + inner_inset + inner_w / 2
+        cy = y + inner_inset + inner_h / 2
+        inner_r = min(inner_w, inner_h) / 2
+
+        # Offset gradient center for 3D dome effect (light from top-left)
+        offset_x = cx - inner_r * 0.3
+        offset_y = cy - inner_r * 0.3
+
+        pattern = cairo.RadialGradient(offset_x, offset_y, 0, cx, cy, inner_r * 1.2)
+        # Brighter center (light source)
+        pattern.add_color_stop_rgb(0, min(1, r * 1.4), min(1, g * 1.4), min(1, b * 1.4))
+        pattern.add_color_stop_rgb(0.6, r, g, b)
+        pattern.add_color_stop_rgb(1, r * 0.6, g * 0.6, b * 0.6)
+
+        cr.set_source(pattern)
+        self._rounded_rect(
+            cr, x + inner_inset, y + inner_inset, inner_w, inner_h, radius - 2
+        )
+        cr.fill()
+
+        # Specular highlight (top-left reflection) — only on lit cells
+        if brightness > 0.15:
+            spec_x = x + inner_inset + inner_w * 0.15
+            spec_y = y + inner_inset + inner_h * 0.15
+            spec_r = min(inner_w, inner_h) * 0.2
+
+            # Gradient for natural specular falloff
+            spec_pattern = cairo.RadialGradient(spec_x, spec_y, 0, spec_x, spec_y, spec_r)
+            spec_pattern.add_color_stop_rgba(0, 1, 1, 1, 0.35 * brightness)
+            spec_pattern.add_color_stop_rgba(1, 1, 1, 1, 0)
+
+            cr.set_source(spec_pattern)
+            cr.arc(spec_x, spec_y, spec_r, 0, 2 * math.pi)
+            cr.fill()
+
+        # Inner glow for very bright cells — makes them feel like they're emitting light
+        if brightness > 0.6:
+            glow_strength = (brightness - 0.6) / 0.4  # 0 to 1 for brightness 0.6 to 1.0
+
+            glow_pattern = cairo.RadialGradient(cx, cy, 0, cx, cy, inner_r * 0.8)
+            # Boosted white core
+            glow_pattern.add_color_stop_rgba(0, 1, 1, 1, glow_strength * 0.25)
+            glow_pattern.add_color_stop_rgba(0.4, r, g, b, glow_strength * 0.1)
+            glow_pattern.add_color_stop_rgba(1, r, g, b, 0)
+
+            cr.set_source(glow_pattern)
+            cr.arc(cx, cy, inner_r * 0.8, 0, 2 * math.pi)
             cr.fill()
 
     def _draw_border(self, cr, width, height, padding):
-        """Draw subtle border frame."""
-        cr.set_source_rgba(1, 1, 1, 0.05)
-        cr.set_line_width(1)
+        """Draw border frame with subtle glow."""
+        # Inner shadow line
+        cr.set_source_rgba(0, 0, 0, 0.3)
+        cr.set_line_width(2)
         self._rounded_rect(
-            cr, padding - 2, padding - 2, width - padding * 2 + 4, height - padding * 2 + 4, 8
+            cr, padding - 1, padding - 1, width - padding * 2 + 2, height - padding * 2 + 2, 8
         )
         cr.stroke()
+
+        # Outer highlight
+        cr.set_source_rgba(1, 1, 1, 0.04)
+        cr.set_line_width(1)
+        self._rounded_rect(
+            cr, padding - 3, padding - 3, width - padding * 2 + 6, height - padding * 2 + 6, 10
+        )
+        cr.stroke()
+
+    def _draw_ambient_halo(self, cr, width, height):
+        """Draw ambient color wash based on average frame content."""
+        if self.frame_data is None:
+            return
+
+        # Sample average color from frame
+        avg_r = float(np.mean(self.frame_data[:, :, 0]))
+        avg_g = float(np.mean(self.frame_data[:, :, 1]))
+        avg_b = float(np.mean(self.frame_data[:, :, 2]))
+
+        # Normalize if uint8
+        if self.frame_data.dtype == np.uint8:
+            avg_r, avg_g, avg_b = avg_r / 255, avg_g / 255, avg_b / 255
+
+        # Only glow if there's meaningful color
+        brightness = 0.2126 * avg_r + 0.7152 * avg_g + 0.0722 * avg_b
+        if brightness < 0.1:
+            return
+
+        # Large outer halo
+        cx, cy = width / 2, height / 2
+        max_dim = max(width, height)
+
+        pattern = cairo.RadialGradient(cx, cy, 0, cx, cy, max_dim * 0.6)
+        pattern.add_color_stop_rgba(0, avg_r, avg_g, avg_b, brightness * 0.12)
+        pattern.add_color_stop_rgba(0.5, avg_r, avg_g, avg_b, brightness * 0.04)
+        pattern.add_color_stop_rgba(1, avg_r, avg_g, avg_b, 0)
+
+        cr.set_source(pattern)
+        cr.paint()
 
     def _rounded_rect(self, cr, x, y, w, h, r):
         """Draw a rounded rectangle path."""
