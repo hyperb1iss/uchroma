@@ -90,6 +90,16 @@ headerbar.flat {
     background-color: @text_primary;
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    transition: transform 80ms ease-out, box-shadow 150ms ease-out;
+}
+
+.brightness-scale slider:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.brightness-scale slider:active {
+    transform: scale(1.05);
 }
 
 .brightness-label {
@@ -272,17 +282,32 @@ headerbar.flat {
     background-color: @surface_dark;
     border: 2px solid transparent;
     border-radius: 12px;
-    transition: all 150ms ease;
+    transition:
+        background-color 180ms ease-out,
+        border-color 180ms ease-out,
+        box-shadow 250ms ease-out,
+        transform 120ms ease-out;
 }
 
 .effect-card:hover {
     background-color: @surface_light;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.effect-card:active {
+    transform: translateY(0);
+    transition-duration: 60ms;
 }
 
 .effect-card:focus {
     outline: none;
     border-color: alpha(@silk_purple, 0.5);
+}
+
+.effect-card:focus-visible {
+    outline: 2px solid alpha(@silk_purple, 0.6);
+    outline-offset: 2px;
 }
 
 .effect-card.active {
@@ -477,14 +502,22 @@ headerbar.flat {
     color: @text_dim;
     padding: 6px;
     border-radius: 4px;
-    opacity: 0.5;
-    transition: all 150ms ease;
+    opacity: 0.7;
+    cursor: grab;
+    transition:
+        color 150ms ease-out,
+        background-color 150ms ease-out,
+        opacity 150ms ease-out;
 }
 
 .layer-handle:hover {
     color: @silk_cyan;
     background-color: alpha(@silk_cyan, 0.15);
     opacity: 1;
+}
+
+.layer-handle:active {
+    cursor: grabbing;
 }
 
 .layer-zindex {
@@ -543,11 +576,16 @@ headerbar.flat {
 .layer-delete {
     color: @text_dim;
     opacity: 0;
-    transition: all 150ms ease;
+    transform: translateX(4px);
+    transition:
+        opacity 150ms ease-out,
+        transform 150ms ease-out,
+        color 120ms ease-out;
 }
 
 .layer-row:hover .layer-delete {
     opacity: 1;
+    transform: translateX(0);
 }
 
 .layer-delete:hover {
@@ -701,6 +739,11 @@ headerbar.flat {
     padding: 4px 6px;
 }
 
+.color-hex-entry:focus-within {
+    border-color: alpha(@silk_cyan, 0.5);
+    box-shadow: 0 0 0 2px alpha(@silk_cyan, 0.15);
+}
+
 .color-hex-entry.invalid {
     border: 1px solid @silk_red;
 }
@@ -713,10 +756,18 @@ headerbar.flat {
     padding: 0;
     border-radius: 4px;
     background-color: transparent;
+    transition:
+        background-color 120ms ease-out,
+        transform 100ms ease-out;
 }
 
 .color-swatch-btn:hover {
     background-color: @surface_light;
+    transform: scale(1.08);
+}
+
+.color-swatch-btn:active {
+    transform: scale(1.02);
 }
 
 .color-swatch-row {
@@ -762,6 +813,16 @@ headerbar.flat {
     background-color: @text_primary;
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 80ms ease-out, box-shadow 150ms ease-out;
+}
+
+.param-scale slider:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.param-scale slider:active {
+    transform: scale(1.05);
 }
 
 .param-value {
@@ -824,10 +885,14 @@ headerbar.flat {
 
 .preset-item-btn {
     border-radius: 6px;
+    transition:
+        background-color 150ms ease-out,
+        transform 120ms ease-out;
 }
 
 .preset-item-btn:hover {
     background-color: @surface_light;
+    transform: translateX(2px);
 }
 
 .preset-gradient {
@@ -996,7 +1061,11 @@ scrollbar slider {
 }
 
 scrollbar slider:hover {
-    background-color: alpha(@text_secondary, 0.5);
+    background-color: alpha(@silk_purple, 0.4);
+}
+
+scrollbar slider:active {
+    background-color: alpha(@silk_purple, 0.6);
 }
 
 scrollbar.horizontal slider {
@@ -1076,10 +1145,14 @@ scrollbar.vertical slider {
 
 popover {
     background-color: @surface_dark;
-    border: 1px solid @surface_light;
+    border: 1px solid alpha(@silk_purple, 0.2);
+    border-radius: 12px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        0 0 0 1px alpha(@text_primary, 0.03);
 }
 
 popover > arrow {
     background-color: @surface_dark;
-    border-color: @surface_light;
+    border-color: alpha(@silk_purple, 0.2);
 }
