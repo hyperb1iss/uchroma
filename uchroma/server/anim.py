@@ -232,9 +232,7 @@ class AnimationLoop(HasTraits):
 
         try:
             if active_bufs:
-                # Frame commits perform synchronous HID I/O and enforce inter-command delays.
-                # Offload to a worker thread to avoid blocking the asyncio event loop.
-                await asyncio.to_thread(self._frame.commit, active_bufs)
+                await self._frame.commit_async(active_bufs)
 
         except OSError:
             self._error = True

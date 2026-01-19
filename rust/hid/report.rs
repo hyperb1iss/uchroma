@@ -15,14 +15,32 @@
 use crate::crc::fast_crc_impl;
 use crate::hid::{HidDevice, HidError};
 use pyo3::prelude::*;
+use pyo3_async_runtimes::tokio::future_into_py;
 use std::thread;
 use std::time::Duration;
+use tokio::time::sleep;
 
 pub const REPORT_SIZE: usize = 90;
 pub const DATA_SIZE: usize = 80;
 
 // Default inter-command delay
 const CMD_DELAY_MS: u64 = 7;
+
+fn parse_response_buf(response: &[u8]) -> PyResult<(Status, Vec<u8>)> {
+    if response.len() != REPORT_SIZE {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "Invalid response size: expected {}, got {}",
+            REPORT_SIZE,
+            response.len()
+        )));
+    }
+
+    let status = Status::from(response[0]);
+    let data_size = response[5] as usize;
+    let data = response[8..8 + data_size.min(DATA_SIZE)].to_vec();
+
+    Ok((status, data))
+}
 
 /// Status codes returned by Razer devices.
 #[pyclass(eq, eq_int)]
@@ -161,19 +179,7 @@ impl RazerReport {
     ///
     /// Returns (status, data_bytes) tuple.
     fn parse_response(&self, response: &[u8]) -> PyResult<(Status, Vec<u8>)> {
-        if response.len() != REPORT_SIZE {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Invalid response size: expected {}, got {}",
-                REPORT_SIZE,
-                response.len()
-            )));
-        }
-
-        let status = Status::from(response[0]);
-        let data_size = response[5] as usize;
-        let data = response[8..8 + data_size.min(DATA_SIZE)].to_vec();
-
-        Ok((status, data))
+        parse_response_buf(response)
     }
 
     /// Run the report on a device (blocking).
@@ -215,7 +221,7 @@ impl RazerReport {
 
             // Get response
             let response = device.get_report(0, REPORT_SIZE)?;
-            let (status, resp_data) = self.parse_response(&response)?;
+            let (status, resp_data) = parse_response_buf(&response)?;
 
             match status {
                 Status::Ok => return Ok((status, resp_data)),
@@ -237,6 +243,80 @@ impl RazerReport {
                 }
             }
         }
+    }
+
+    /// Run the report on a device (async).
+    ///
+    /// Sends the report and reads the response, with retry logic for BUSY status.
+    ///
+    /// Args:
+    ///     device: HidDevice to communicate with
+    ///     delay_ms: Inter-command delay in milliseconds (default 7)
+    ///     retries: Number of retries on BUSY (default 3)
+    ///
+    /// Returns:
+    ///     (status, response_data) tuple
+    #[pyo3(signature = (device, delay_ms=None, retries=3))]
+    fn run_async<'py>(
+        &mut self,
+        py: Python<'py>,
+        device: &HidDevice,
+        delay_ms: Option<u64>,
+        retries: u32,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let delay = Duration::from_millis(delay_ms.unwrap_or(CMD_DELAY_MS));
+        let data = self.pack();
+        let remaining_packets = self.get_remaining_packets();
+        let interface = device.interface_clone();
+
+        future_into_py(py, async move {
+            let mut attempts = retries;
+
+            loop {
+                // Delay before sending
+                sleep(delay).await;
+
+                // Send report
+                HidDevice::send_feature_report_inner(interface.clone(), &data, 0).await?;
+
+                // If this is a multi-packet send (remaining > 0), don't read response
+                if remaining_packets > 0 {
+                    return Ok((Status::Ok, vec![]));
+                }
+
+                // Delay before reading response
+                sleep(delay).await;
+
+                // Get response
+                let response =
+                    HidDevice::get_feature_report_inner(interface.clone(), 0, REPORT_SIZE).await?;
+                let (status, resp_data) = parse_response_buf(&response)?;
+
+                match status {
+                    Status::Ok => return Ok((status, resp_data)),
+                    Status::Unsupported => return Ok((status, resp_data)),
+                    Status::Fail => {
+                        return Err(HidError::ProtocolError("Command failed".into()).into())
+                    }
+                    Status::Busy | Status::Timeout => {
+                        if attempts == 0 {
+                            return Err(HidError::ProtocolError(format!(
+                                "Max retries: {:?}",
+                                status
+                            ))
+                            .into());
+                        }
+                        attempts -= 1;
+                        sleep(Duration::from_millis(100)).await;
+                    }
+                    _ => {
+                        return Err(
+                            HidError::ProtocolError(format!("Unknown status: {:?}", status)).into(),
+                        )
+                    }
+                }
+            }
+        })
     }
 
     /// Get the current argument data pointer position.

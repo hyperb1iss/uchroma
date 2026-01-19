@@ -86,6 +86,7 @@ class BaseUChromaDevice:
 
         self._ref_count = 0
         self._executor = futures.ThreadPoolExecutor(max_workers=1)
+        self._async_lock = None
 
     async def shutdown(self):
         """
@@ -367,6 +368,24 @@ class BaseUChromaDevice:
         success, data = self.run_report(report, delay=delay)
         return bytes(data) if success else None
 
+    async def run_with_result_async(
+        self,
+        command: BaseCommand,
+        *args,
+        transaction_id: int | None = None,
+        delay: float | None = None,
+        remaining_packets: int = 0x00,
+    ) -> bytes | None:
+        report = self.get_report(
+            *command.value,
+            *args,
+            transaction_id=transaction_id,
+            remaining_packets=remaining_packets,
+        )
+
+        success, data = await self.run_report_async(report, delay=delay)
+        return bytes(data) if success else None
+
     @synchronized
     def run_report(self, report: hid.RazerReport, delay: float | None = None) -> tuple[bool, bytes]:
         """
@@ -384,6 +403,22 @@ class BaseUChromaDevice:
             except Exception as err:
                 self.logger.exception("Report failed", exc_info=err)
                 return False, b""
+
+    async def run_report_async(
+        self, report: hid.RazerReport, delay: float | None = None
+    ) -> tuple[bool, bytes]:
+        if self._async_lock is None:
+            self._async_lock = asyncio.Lock()
+
+        async with self._async_lock:
+            with self.device_open():
+                delay_ms = int(delay * 1000) if delay else None
+                try:
+                    status, data = await report.run_async(self._dev, delay_ms)
+                    return status == hid.Status.Ok, data
+                except Exception as err:
+                    self.logger.exception("Report failed", exc_info=err)
+                    return False, b""
 
     def run_command(
         self,
@@ -416,6 +451,24 @@ class BaseUChromaDevice:
         )
 
         success, _ = self.run_report(report, delay=delay)
+        return success
+
+    async def run_command_async(
+        self,
+        command: BaseCommand,
+        *args,
+        transaction_id: int | None = None,
+        delay: float | None = None,
+        remaining_packets: int = 0x00,
+    ) -> bool:
+        report = self.get_report(
+            *command.value,
+            *args,
+            transaction_id=transaction_id,
+            remaining_packets=remaining_packets,
+        )
+
+        success, _ = await self.run_report_async(report, delay=delay)
         return success
 
     def _decode_serial(self, value: bytes | None) -> str | None:

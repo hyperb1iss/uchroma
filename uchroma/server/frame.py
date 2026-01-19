@@ -4,6 +4,7 @@
 
 # pylint: disable=invalid-name, too-many-arguments, no-member
 
+import asyncio
 import time
 import warnings
 
@@ -13,8 +14,11 @@ from uchroma.blending import blend
 from uchroma.color import ColorUtils
 from uchroma.layer import Layer
 
-from .hardware import Quirks
+from uchroma.util import ensure_future
+
+from .hardware import Hardware, Quirks
 from .report_utils import put_arg
+from .standard_fx import ExtendedFX, FX, StandardFX
 from .types import BaseCommand
 
 
@@ -153,6 +157,17 @@ class Frame:
         )
         return img
 
+    async def _set_frame_data_single_async(self, img, frame_id: int):
+        width = min(self._width, Frame.MAX_WIDTH)
+        await self._driver.run_command_async(
+            Frame.Command.SET_FRAME_DATA_SINGLE,
+            0,
+            width,
+            img[0][:width].tobytes(),
+            transaction_id=0x80,
+        )
+        return img
+
     def _get_frame_data_report(self, remaining_packets: int, *args):
         if self._report is None:
             # Determine command and transaction ID based on device quirks
@@ -245,6 +260,59 @@ class Frame:
             time.sleep(0.001)
         return img
 
+    async def _set_frame_data_matrix_async(self, img, frame_id: int):
+        width = self._width
+        multi = False
+        is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
+
+        # perform two updates if we exceeded 24 columns
+        if width > Frame.MAX_WIDTH:
+            multi = True
+            width = int(width / 2)
+
+        if hasattr(self._driver, "align_key_matrix"):
+            img = self._driver.align_key_matrix(self, img)
+
+        for row in range(self._height):
+            rowdata = img[row]
+
+            start_col = 0
+            if hasattr(self._driver, "get_row_offset"):
+                start_col = self._driver.get_row_offset(self, row)
+
+            remaining = self._height - row - 1
+            if multi:
+                remaining = (remaining * 2) + 1
+
+            data = rowdata[:width]
+            stop_col = start_col + len(data) - 1
+
+            if is_extended:
+                # Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
+                args = self._build_extended_frame_args(row, start_col, stop_col, data)
+            else:
+                # Legacy format: [frame_id, row, start, stop, rgb...]
+                args = [frame_id, row, start_col, stop_col, data]
+
+            await self._driver.run_report_async(self._get_frame_data_report(remaining, *args))
+
+            if multi:
+                await asyncio.sleep(0.001)
+                data = rowdata[width:]
+                stop_col = width + len(data) - 1
+
+                if is_extended:
+                    args = self._build_extended_frame_args(row, width, stop_col, data)
+                else:
+                    args = [frame_id, row, width, stop_col, data]
+
+                await self._driver.run_report_async(
+                    self._get_frame_data_report(remaining - 1, *args)
+                )
+
+            await asyncio.sleep(0.001)
+        return img
+
     def _set_frame_data(self, img, frame_id: int | None = None):
         if frame_id is None:
             frame_id = Frame.DEFAULT_FRAME_ID
@@ -262,6 +330,52 @@ class Frame:
     def _set_custom_frame(self):
         self._driver.fx_manager.activate("custom_frame")
 
+    async def _set_frame_data_async(self, img, frame_id: int | None = None):
+        if frame_id is None:
+            frame_id = Frame.DEFAULT_FRAME_ID
+
+        if self._height == 1:
+            img = await self._set_frame_data_single_async(img, frame_id)
+        else:
+            img = await self._set_frame_data_matrix_async(img, frame_id)
+
+        if img is not None:
+            self._last_frame = img
+            self._frame_seq += 1
+            self._last_frame_ts = time.monotonic()
+
+    async def _set_custom_frame_async(self):
+        uses_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
+
+        if uses_extended:
+            varstore = 0x00  # NOSTORE
+            led_id = 0x00  # ZERO_LED
+            await self._driver.run_command_async(
+                StandardFX.Command.SET_EFFECT_EXTENDED,
+                varstore,
+                led_id,
+                ExtendedFX.CUSTOM_FRAME.value,
+            )
+            return
+
+        varstore = 0x01
+        if self._driver.device_type == Hardware.Type.MOUSE:
+            varstore = 0x00
+
+        await self._driver.run_command_async(
+            StandardFX.Command.SET_EFFECT, FX.CUSTOM_FRAME.value, varstore
+        )
+
+    async def commit_async(
+        self, layers, frame_id: int | None = None, show=True
+    ) -> "Frame":
+        img = Frame.compose(layers)
+        await self._set_frame_data_async(img, frame_id)
+        if show:
+            await self._set_custom_frame_async()
+
+        return self
+
     def commit(self, layers, frame_id: int | None = None, show=True) -> "Frame":
         """
         Display this frame and prepare for the next frame
@@ -275,11 +389,19 @@ class Frame:
 
         :return: This Frame instance
         """
-        img = Frame.compose(layers)
-        self._set_frame_data(img, frame_id)
-        if show:
-            self._set_custom_frame()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError as err:
+            raise RuntimeError(
+                "Frame.commit requires an active event loop; use await commit_async()"
+            ) from err
 
+        ensure_future(self.commit_async(layers, frame_id=frame_id, show=show), loop=loop)
+
+        return self
+
+    async def reset_async(self, frame_id: int | None = None) -> "Frame":
+        await self.commit_async([self.create_layer()], show=False)
         return self
 
     def reset(self, frame_id: int | None = None) -> "Frame":

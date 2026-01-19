@@ -64,42 +64,18 @@ impl HidDevice {
 
     /// Close the device.
     fn close(&self) {
-        // Use tokio runtime to lock and clear
-        if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            rt.block_on(async {
-                let mut guard = self.interface.lock().await;
-                *guard = None;
-            });
-        } else {
-            // Create a simple runtime if none exists
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            rt.block_on(async {
-                let mut guard = self.interface.lock().await;
-                *guard = None;
-            });
+        if let Ok(mut guard) = self.interface.try_lock() {
+            *guard = None;
         }
     }
 
     /// Check if device is open.
     #[getter]
     fn is_open(&self) -> bool {
-        if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            rt.block_on(async {
-                let guard = self.interface.lock().await;
-                guard.is_some()
-            })
+        if let Ok(guard) = self.interface.try_lock() {
+            guard.is_some()
         } else {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            rt.block_on(async {
-                let guard = self.interface.lock().await;
-                guard.is_some()
-            })
+            true
         }
     }
 
@@ -123,13 +99,13 @@ impl HidDevice {
 
         // Get or create runtime
         let result = if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            rt.block_on(Self::send_feature_report_inner(interface, data, report_id))
+            rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         } else {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap();
-            rt.block_on(Self::send_feature_report_inner(interface, data, report_id))
+            rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         };
 
         result.map(|_| len)
@@ -168,7 +144,7 @@ impl HidDevice {
         let len = data.len();
 
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            Self::send_feature_report_inner(interface, data, report_id).await?;
+            Self::send_feature_report_inner(interface, &data, report_id).await?;
             Ok(len)
         })
     }
@@ -190,19 +166,23 @@ impl HidDevice {
 }
 
 impl HidDevice {
+    pub(crate) fn interface_clone(&self) -> Arc<Mutex<Option<nusb::Interface>>> {
+        self.interface.clone()
+    }
+
     /// Send a feature report (blocking, callable from Rust).
     pub fn send_report(&self, data: Vec<u8>, report_id: u8) -> Result<usize> {
         let interface = self.interface.clone();
         let len = data.len();
 
         let result = if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            rt.block_on(Self::send_feature_report_inner(interface, data, report_id))
+            rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         } else {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap();
-            rt.block_on(Self::send_feature_report_inner(interface, data, report_id))
+            rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         };
 
         result.map(|_| len)
@@ -223,9 +203,9 @@ impl HidDevice {
         }
     }
 
-    async fn send_feature_report_inner(
+    pub(crate) async fn send_feature_report_inner(
         interface: Arc<Mutex<Option<nusb::Interface>>>,
-        data: Vec<u8>,
+        data: &[u8],
         report_id: u8,
     ) -> Result<()> {
         let guard = interface.lock().await;
@@ -244,7 +224,7 @@ impl HidDevice {
                     request: HID_SET_REPORT,
                     value: w_value,
                     index: iface.interface_number() as u16,
-                    data: &data,
+                    data,
                 },
                 DEFAULT_TIMEOUT,
             )
@@ -253,7 +233,7 @@ impl HidDevice {
         Ok(())
     }
 
-    async fn get_feature_report_inner(
+    pub(crate) async fn get_feature_report_inner(
         interface: Arc<Mutex<Option<nusb::Interface>>>,
         report_id: u8,
         size: usize,
