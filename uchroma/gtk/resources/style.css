@@ -80,6 +80,7 @@ headerbar.flat {
 .brightness-scale highlight {
     background: linear-gradient(to right, @silk_yellow, @silk_coral);
     border-radius: 2px;
+    box-shadow: 0 0 8px alpha(@silk_yellow, 0.4);
 }
 
 .brightness-scale slider {
@@ -119,8 +120,10 @@ headerbar.flat {
 
 .power-toggle:checked,
 .power-toggle.suspended {
-    background-color: alpha(@silk_red, 0.3);
+    background-color: alpha(@silk_red, 0.2);
     color: @silk_red;
+    box-shadow: 0 0 8px alpha(@silk_red, 0.3), 0 0 16px alpha(@silk_red, 0.15);
+    animation: glow-pulse-red 2s ease-in-out infinite;
 }
 
 
@@ -185,9 +188,13 @@ headerbar.flat {
 }
 
 .mode-toggle .mode-btn:checked {
-    background-color: alpha(@silk_purple, 0.2);
+    background-color: alpha(@silk_purple, 0.15);
     color: @silk_purple;
-    border-color: @silk_purple;
+    border-color: alpha(@silk_purple, 0.6);
+    box-shadow:
+        inset 0 0 12px alpha(@silk_purple, 0.1),
+        0 0 12px alpha(@silk_purple, 0.25);
+    text-shadow: 0 0 8px alpha(@silk_purple, 0.4);
 }
 
 .status-icon {
@@ -205,6 +212,7 @@ headerbar.flat {
 
 .status-label.running {
     color: @silk_green;
+    text-shadow: 0 0 8px alpha(@silk_green, 0.4);
 }
 
 
@@ -232,9 +240,13 @@ headerbar.flat {
 }
 
 .section-switcher button:checked {
-    background-color: alpha(@silk_cyan, 0.2);
+    background-color: alpha(@silk_cyan, 0.15);
     color: @silk_cyan;
-    border-color: @silk_cyan;
+    border-color: alpha(@silk_cyan, 0.5);
+    box-shadow:
+        inset 0 0 10px alpha(@silk_cyan, 0.1),
+        0 0 10px alpha(@silk_cyan, 0.2);
+    text-shadow: 0 0 6px alpha(@silk_cyan, 0.4);
 }
 
 
@@ -267,9 +279,13 @@ headerbar.flat {
 }
 
 .effect-card.active {
-    background: linear-gradient(135deg, alpha(@silk_purple, 0.2), alpha(@silk_cyan, 0.1));
+    background: linear-gradient(135deg, alpha(@silk_purple, 0.15), alpha(@silk_cyan, 0.08));
     border-color: @silk_purple;
-    box-shadow: 0 0 20px alpha(@silk_purple, 0.3);
+    box-shadow:
+        inset 0 0 16px alpha(@silk_purple, 0.15),
+        0 0 20px alpha(@silk_purple, 0.4),
+        0 0 40px alpha(@silk_purple, 0.15);
+    animation: glow-pulse-purple 2s ease-in-out infinite;
 }
 
 .effect-icon {
@@ -277,9 +293,13 @@ headerbar.flat {
     transition: color 150ms ease;
 }
 
-.effect-card:hover .effect-icon,
+.effect-card:hover .effect-icon {
+    color: @silk_purple;
+}
+
 .effect-card.active .effect-icon {
     color: @silk_purple;
+    filter: drop-shadow(0 0 6px alpha(@silk_purple, 0.6));
 }
 
 .effect-name {
@@ -357,6 +377,30 @@ headerbar.flat {
     50% { opacity: 1; }
 }
 
+@keyframes glow-pulse-purple {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 16px alpha(@silk_purple, 0.15),
+            0 0 20px alpha(@silk_purple, 0.4),
+            0 0 40px alpha(@silk_purple, 0.15);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 20px alpha(@silk_purple, 0.2),
+            0 0 28px alpha(@silk_purple, 0.5),
+            0 0 50px alpha(@silk_purple, 0.2);
+    }
+}
+
+@keyframes glow-pulse-red {
+    0%, 100% {
+        box-shadow: 0 0 8px alpha(@silk_red, 0.3), 0 0 16px alpha(@silk_red, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 12px alpha(@silk_red, 0.5), 0 0 24px alpha(@silk_red, 0.25);
+    }
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYER PANEL
@@ -400,8 +444,9 @@ headerbar.flat {
 }
 
 .layer-row:selected {
-    background-color: alpha(@silk_purple, 0.1);
-    border-left-color: @silk_purple;
+    background: linear-gradient(90deg, alpha(@silk_cyan, 0.15), transparent);
+    border-left-color: @silk_cyan;
+    box-shadow: inset 4px 0 20px alpha(@silk_cyan, 0.1);
 }
 
 /* Drag and drop states */
@@ -477,11 +522,12 @@ headerbar.flat {
 
 .layer-visibility {
     color: @text_dim;
-    transition: color 150ms ease;
+    transition: color 150ms ease, filter 200ms ease;
 }
 
 .layer-visibility:checked {
     color: @silk_cyan;
+    filter: drop-shadow(0 0 4px alpha(@silk_cyan, 0.5));
 }
 
 .layer-delete {
@@ -543,18 +589,30 @@ headerbar.flat {
 
 .play-btn {
     color: @silk_green;
+    transition: all 150ms ease;
 }
 
 .play-btn:hover {
-    background-color: alpha(@silk_green, 0.2);
+    background-color: alpha(@silk_green, 0.15);
+    box-shadow: 0 0 12px alpha(@silk_green, 0.25);
+}
+
+.play-btn:hover image {
+    filter: drop-shadow(0 0 4px alpha(@silk_green, 0.6));
 }
 
 .stop-btn {
     color: @silk_red;
+    transition: all 150ms ease;
 }
 
 .stop-btn:hover {
-    background-color: alpha(@silk_red, 0.2);
+    background-color: alpha(@silk_red, 0.15);
+    box-shadow: 0 0 12px alpha(@silk_red, 0.25);
+}
+
+.stop-btn:hover image {
+    filter: drop-shadow(0 0 4px alpha(@silk_red, 0.6));
 }
 
 
@@ -684,6 +742,7 @@ headerbar.flat {
 .param-scale highlight {
     background: linear-gradient(to right, @silk_purple, @silk_cyan);
     border-radius: 3px;
+    box-shadow: 0 0 6px alpha(@silk_purple, 0.3);
 }
 
 .param-scale slider {
@@ -782,6 +841,9 @@ headerbar.flat {
 .param-toggle:checked {
     background-color: alpha(@silk_cyan, 0.2);
     color: @silk_cyan;
+    box-shadow:
+        inset 0 0 8px alpha(@silk_cyan, 0.15),
+        0 0 8px alpha(@silk_cyan, 0.2);
 }
 
 
