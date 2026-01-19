@@ -528,6 +528,24 @@ headerbar.flat {
     transition: all 150ms ease;
 }
 
+/* Animation for newly added layers */
+.layer-row.just-added {
+    animation: layer-appear 300ms ease-out;
+}
+
+@keyframes layer-appear {
+    from {
+        background-color: alpha(@silk_cyan, 0.25);
+        transform: translateX(-8px);
+        opacity: 0;
+    }
+    to {
+        background-color: transparent;
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
 .layer-row:hover {
     background-color: alpha(@surface_light, 0.5);
 }
@@ -728,6 +746,13 @@ headerbar.flat {
     border-radius: 12px;
     padding: 16px 20px;
     margin-top: 12px;
+    transition: opacity 200ms ease;
+}
+
+/* Loading state for param inspector */
+.param-inspector.loading {
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 .param-group {
