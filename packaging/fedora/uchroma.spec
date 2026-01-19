@@ -21,7 +21,6 @@ Requires:       python3-dbus-fast
 Requires:       python3-evdev
 Requires:       python3-frozendict
 Requires:       python3-hid
-Requires:       python3-hsluv
 Requires:       python3-numpy
 Requires:       python3-pyudev
 Requires:       python3-ruamel-yaml

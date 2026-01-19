@@ -14,7 +14,6 @@ depends=(
   "python-evdev"
   "python-frozendict"
   "python-hid"
-  "python-hsluv"
   "python-numpy"
   "python-pyudev"
   "python-ruamel-yaml"

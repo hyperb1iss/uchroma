@@ -9,6 +9,8 @@ that the uchroma codebase expects from grapefruit.
 """
 
 from coloraide import Color as _BaseColor
+from coloraide.spaces.hsluv import HSLuv
+from coloraide.spaces.luv import Luv
 
 
 class Color(_BaseColor):
@@ -38,6 +40,13 @@ class Color(_BaseColor):
     def NewFromHsl(cls, h: float, s: float, l: float, a: float = 1.0) -> "Color":
         """Create color from HSL (h: 0-360, s/l: 0-1)."""
         c = cls("hsl", [h, s * 100, l * 100])
+        c["alpha"] = a
+        return c
+
+    @classmethod
+    def NewFromHsluv(cls, h: float, s: float, l: float, a: float = 1.0) -> "Color":
+        """Create color from HSLuv (h: 0-360, s/l: 0-100)."""
+        c = cls("hsluv", [h, s, l])
         c["alpha"] = a
         return c
 
@@ -83,6 +92,13 @@ class Color(_BaseColor):
         hsv = self.convert("hsv")
         h = hsv["hue"] if hsv["hue"] == hsv["hue"] else 0
         return (h, hsv["saturation"] / 100, hsv["value"] / 100)
+
+    @property
+    def hsluv(self) -> tuple:
+        """Get HSLuv tuple (h: 0-360, s/l: 0-100)."""
+        luv = self.convert("hsluv")
+        h = luv["hue"] if luv["hue"] == luv["hue"] else 0  # Handle NaN
+        return (h, luv["saturation"], luv["lightness"])
 
     @property
     def intTuple(self) -> tuple:
@@ -146,3 +162,8 @@ class Color(_BaseColor):
     def __iter__(self):
         """Allow unpacking as RGB tuple."""
         return iter(self.rgb)
+
+
+# Register Luv and HSLuv for perceptually uniform gradient interpolation
+Color.register(Luv())
+Color.register(HSLuv())

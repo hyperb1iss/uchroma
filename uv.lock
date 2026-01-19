@@ -192,15 +192,6 @@ wheels = [
 ]
 
 [[package]]
-name = "hsluv"
-version = "5.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ac/81/af16607fa045724e515579d312577261b436f36f419e7c677e7e88fcc943/hsluv-5.0.4.tar.gz", hash = "sha256:2281f946427a882010042844a38c7bbe9e0d0aaf9d46babe46366ed6f169b72e", size = 543090, upload-time = "2023-09-11T21:46:52.022Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/36/5bddefea3d7adf22a64f9aa9701492f8a9fe6948223f5cf2602c22ec9be7/hsluv-5.0.4-py2.py3-none-any.whl", hash = "sha256:0138bd10038e2ee1b13eecae9a7d49d4ec8c320b1d7eb4f860832c792e3e4567", size = 5252, upload-time = "2023-09-11T21:46:50.407Z" },
-]
-
-[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -559,7 +550,6 @@ dependencies = [
     { name = "evdev" },
     { name = "frozendict" },
     { name = "hid" },
-    { name = "hsluv" },
     { name = "numpy" },
     { name = "pyudev" },
     { name = "ruamel-yaml" },
@@ -591,7 +581,6 @@ requires-dist = [
     { name = "evdev" },
     { name = "frozendict" },
     { name = "hid" },
-    { name = "hsluv" },
     { name = "numpy" },
     { name = "pygobject", marker = "extra == 'gtk'", specifier = ">=3.50" },
     { name = "pyudev" },

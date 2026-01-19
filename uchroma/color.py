@@ -13,7 +13,6 @@ from enum import Enum
 from typing import Union
 
 import numpy as np
-from hsluv import hsluv_to_rgb, rgb_to_hsluv
 
 from uchroma.colorlib import Color
 from uchroma.drawing import img_as_ubyte
@@ -270,7 +269,7 @@ class ColorUtils:
 
     @staticmethod
     def _hsva(color: Color) -> tuple[float, float, float, float]:
-        return (*rgb_to_hsluv(color.rgb), color.alpha())
+        return (*color.hsluv, color.alpha())
 
     @staticmethod
     @colorarg
@@ -295,8 +294,7 @@ class ColorUtils:
         for x in range(steps):
             amount = float(x) / float(steps - 1)
             i = ColorUtils._circular_interp(start, end, amount)
-            rgb = hsluv_to_rgb([i[0], i[1], i[2]])
-            gradient.append(Color.NewFromRgb(rgb[0], rgb[1], rgb[2], i[3]))
+            gradient.append(Color.NewFromHsluv(i[0], i[1], i[2], i[3]))
 
         return gradient
 
@@ -312,7 +310,7 @@ class ColorUtils:
         :return: List of colors in the gradient
         """
 
-        luv_colors = [rgb_to_hsluv(to_color(x).rgb) for x in colors]
+        luv_colors = [to_color(x).hsluv for x in colors]
         if loop:
             luv_colors.append(luv_colors[0])
 
@@ -325,8 +323,7 @@ class ColorUtils:
             for interp in range(steps):
                 amount = float(interp) / float(steps)
                 i = ColorUtils._circular_interp(start, end, amount)
-                rgb = hsluv_to_rgb([i[0], i[1], i[2]])
-                gradient.append(Color.NewFromRgb(rgb[0], rgb[1], rgb[2], i[3]))
+                gradient.append(Color.NewFromHsluv(i[0], i[1], i[2], i[3]))
 
         return gradient
 

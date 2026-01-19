@@ -23,7 +23,6 @@ dependencies = [
     "evdev",
     "frozendict",
     "hid",
-    "hsluv",
     "numpy",
     "pyudev",
     "ruamel.yaml",
