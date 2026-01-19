@@ -87,11 +87,10 @@ class UChromaDeviceManager(metaclass=Singleton):
             self._callbacks.extend(callbacks)
 
         self._loop = None
+        self._discover_lock = None
 
         self.device_added = Signal()
         self.device_removed = Signal()
-
-        self.discover()
 
     async def _fire_callbacks(self, action: str, device: BaseUChromaDevice):
         # delay for udev setup
@@ -100,66 +99,84 @@ class UChromaDeviceManager(metaclass=Singleton):
         for callback in self._callbacks:
             await callback(action, device)
 
+    def _schedule_discover(self):
+        if self._loop is None:
+            return
+        ensure_future(self.discover_async(), loop=self._loop)
+
     def discover(self):
         """
-        Perform HID device discovery
+        Schedule device discovery on the active event loop.
+
+        If no loop is running, discovery will run synchronously.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self.discover_async())
+            return
+
+        if self._loop is None:
+            self._loop = loop
+        ensure_future(self.discover_async(), loop=loop)
+
+    async def discover_async(self):
+        """
+        Perform HID device discovery (async).
 
         Iterates over all connected HID devices with RAZER_VENDOR_ID
         and checks the product ID against the Hardware descriptor.
-
-        Interface endpoint restrictions are currently hard-coded. In
-        the future this should be done by checking the HID report
-        descriptor of the endpoint, however this functionality in
-        HIDAPI is broken (report_descriptor returns garbage) on
-        Linux in the current release.
-
-        Discovery is automatically performed when the object is
-        constructed, so this should only need to be called if the
-        list of devices changes (monitoring for changes is beyond
-        the scope of this API).
         """
-        devinfos = sorted(hid.enumerate_devices(vendor_id=RAZER_VENDOR_ID), key=lambda x: x.path)
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
 
-        for devinfo in devinfos:
-            parent = self._get_parent(devinfo.product_id)
-            if parent is None:
-                continue
+        if self._discover_lock is None:
+            self._discover_lock = asyncio.Lock()
 
-            if self._key_for_path(parent.sys_path) is not None:
-                continue
+        async with self._discover_lock:
+            devinfos = await hid.enumerate_devices_async(vendor_id=RAZER_VENDOR_ID)
+            devinfos = sorted(devinfos, key=lambda x: x.path)
 
-            hardware = Hardware.get_device(devinfo.product_id)
-            if hardware is None:
-                continue
-
-            if hardware.type == Hardware.Type.HEADSET:
-                if devinfo.interface_number != 3:
-                    continue
-            elif hardware.type == Hardware.Type.LAPTOP:
-                # Blade laptops use interface 0 for control
-                if devinfo.interface_number != 0:
-                    continue
-            elif hardware.type in (Hardware.Type.KEYBOARD, Hardware.Type.KEYPAD):
-                # Modern keyboards use interface 3, legacy use interface 0
-                expected_iface = 3 if hardware.has_quirk(Quirks.CONTROL_IFACE_3) else 0
-                if devinfo.interface_number != expected_iface:
-                    continue
-            elif hardware.type in (Hardware.Type.MOUSE, Hardware.Type.MOUSEPAD):
-                if devinfo.interface_number != 1:
-                    continue
-            else:
-                if devinfo.interface_number != 0:
+            for devinfo in devinfos:
+                parent = self._get_parent(devinfo.product_id)
+                if parent is None:
                     continue
 
-            device = self._create_device(parent, hardware, devinfo)
-            if device is not None:
-                self._devices[device.key] = device
+                if self._key_for_path(parent.sys_path) is not None:
+                    continue
 
-                if hardware.type == Hardware.Type.KEYBOARD:
-                    device.set_device_mode(0)
+                hardware = Hardware.get_device(devinfo.product_id)
+                if hardware is None:
+                    continue
 
-                if self._monitor and self._callbacks:
-                    ensure_future(self._fire_callbacks("add", device), loop=self._loop)
+                if hardware.type == Hardware.Type.HEADSET:
+                    if devinfo.interface_number != 3:
+                        continue
+                elif hardware.type == Hardware.Type.LAPTOP:
+                    # Blade laptops use interface 0 for control
+                    if devinfo.interface_number != 0:
+                        continue
+                elif hardware.type in (Hardware.Type.KEYBOARD, Hardware.Type.KEYPAD):
+                    # Modern keyboards use interface 3, legacy use interface 0
+                    expected_iface = 3 if hardware.has_quirk(Quirks.CONTROL_IFACE_3) else 0
+                    if devinfo.interface_number != expected_iface:
+                        continue
+                elif hardware.type in (Hardware.Type.MOUSE, Hardware.Type.MOUSEPAD):
+                    if devinfo.interface_number != 1:
+                        continue
+                else:
+                    if devinfo.interface_number != 0:
+                        continue
+
+                device = self._create_device(parent, hardware, devinfo)
+                if device is not None:
+                    self._devices[device.key] = device
+
+                    if hardware.type == Hardware.Type.KEYBOARD:
+                        device.set_device_mode(0)
+
+                    if self._monitor and self._callbacks:
+                        ensure_future(self._fire_callbacks("add", device), loop=self._loop)
 
     def _next_index(self):
         if not self._devices:
@@ -212,8 +229,6 @@ class UChromaDeviceManager(metaclass=Singleton):
         """
         Dict of available devices, empty if no devices are detected.
         """
-        self.discover()
-
         return self._devices
 
     @property
@@ -269,8 +284,8 @@ class UChromaDeviceManager(metaclass=Singleton):
                         ensure_future(self._fire_callbacks("remove", removed), loop=self._loop)
 
         else:
-            if self._key_for_path(device.sys_path) is None:
-                self.discover()
+            if self._key_for_path(device.sys_path) is None and self._loop is not None:
+                self._loop.call_soon_threadsafe(self._schedule_discover)
 
     async def close_devices(self):
         """
@@ -292,6 +307,8 @@ class UChromaDeviceManager(metaclass=Singleton):
 
         if self._loop is None:
             self._loop = asyncio.get_running_loop()
+
+        await self.discover_async()
 
         udev_monitor = Monitor.from_netlink(self._udev_context)
         udev_monitor.filter_by_tag("uchroma")

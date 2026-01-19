@@ -293,18 +293,17 @@ class Frame:
         if self._driver._async_lock is None:
             self._driver._async_lock = asyncio.Lock()
 
-        async with self._driver._async_lock:
-            with self._driver.device_open():
-                await hid.send_frame_async(
-                    self._driver.hid_device,
-                    img,
-                    frame_id=frame_id,
-                    transaction_id=transaction_id,
-                    is_extended=is_extended,
-                    row_offsets=row_offsets,
-                    pre_delay_ms=pre_delay_ms,
-                    post_delay_ms=1,
-                )
+        async with self._driver._async_lock, self._driver.device_open_async():
+            await hid.send_frame_async(
+                self._driver.hid_device,
+                img,
+                frame_id=frame_id,
+                transaction_id=transaction_id,
+                is_extended=is_extended,
+                row_offsets=row_offsets,
+                pre_delay_ms=pre_delay_ms,
+                post_delay_ms=1,
+            )
         return img
 
     def _set_frame_data(self, img, frame_id: int | None = None):

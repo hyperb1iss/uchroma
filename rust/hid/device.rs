@@ -4,6 +4,7 @@ use crate::hid::{DeviceInfo, HidError, Result};
 use nusb::transfer::{ControlIn, ControlOut, ControlType, Recipient};
 use nusb::MaybeFuture;
 use pyo3::prelude::*;
+use pyo3_async_runtimes::tokio::future_into_py;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -13,6 +14,19 @@ use tokio::sync::Mutex;
 pub struct HidDevice {
     interface: Arc<Mutex<Option<nusb::Interface>>>,
     info: DeviceInfo,
+}
+
+fn matches_info(dev_info: &nusb::DeviceInfo, info: &DeviceInfo) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        dev_info.busnum() == info.bus_number && dev_info.device_address() == info.device_address
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        dev_info.device_address() == info.device_address
+            && dev_info.vendor_id() == info.vendor_id
+            && dev_info.product_id() == info.product_id
+    }
 }
 
 // HID class requests
@@ -33,18 +47,7 @@ impl HidDevice {
         // Find the device by bus/address
         let dev_info = nusb::list_devices()
             .wait()?
-            .find(|d| {
-                #[cfg(target_os = "linux")]
-                {
-                    d.busnum() == info.bus_number && d.device_address() == info.device_address
-                }
-                #[cfg(not(target_os = "linux"))]
-                {
-                    d.device_address() == info.device_address
-                        && d.vendor_id() == info.vendor_id
-                        && d.product_id() == info.product_id
-                }
-            })
+            .find(|d| matches_info(d, &info))
             .ok_or_else(|| HidError::DeviceNotFound(format!("{:?}", info)))?;
 
         let device = dev_info.open().wait()?;
@@ -163,6 +166,35 @@ impl HidDevice {
             Ok(result)
         })
     }
+}
+
+/// Open a HID device asynchronously from DeviceInfo.
+#[pyfunction]
+pub fn open_device_async<'py>(py: Python<'py>, info: DeviceInfo) -> PyResult<Bound<'py, PyAny>> {
+    future_into_py(py, async move {
+        let dev_info = nusb::list_devices()
+            .await
+            .map_err(HidError::UsbError)?
+            .find(|d| matches_info(d, &info))
+            .ok_or_else(|| HidError::DeviceNotFound(format!("{:?}", info)))?;
+
+        let device = dev_info.open().await.map_err(HidError::UsbError)?;
+        #[cfg(target_os = "linux")]
+        let interface = device
+            .detach_and_claim_interface(info.interface_number as u8)
+            .await
+            .map_err(HidError::UsbError)?;
+        #[cfg(not(target_os = "linux"))]
+        let interface = device
+            .claim_interface(info.interface_number as u8)
+            .await
+            .map_err(HidError::UsbError)?;
+
+        Ok(HidDevice {
+            interface: Arc::new(Mutex::new(Some(interface))),
+            info,
+        })
+    })
 }
 
 impl HidDevice {

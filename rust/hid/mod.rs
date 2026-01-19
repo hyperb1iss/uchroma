@@ -9,9 +9,11 @@ pub mod error;
 pub mod frame;
 pub mod report;
 
+pub use device::open_device_async;
 pub use device::HidDevice;
 pub use device_info::DeviceInfo;
 pub use enumerate::enumerate_devices;
+pub use enumerate::enumerate_devices_async;
 pub use error::{HidError, Result};
 pub use frame::send_frame_async;
 pub use report::{RazerReport, Status, DATA_SIZE, REPORT_SIZE};

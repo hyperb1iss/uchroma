@@ -1,9 +1,10 @@
 //! HID device enumeration
 
-use crate::hid::{DeviceInfo, Result};
+use crate::hid::{DeviceInfo, HidError, Result};
 use nusb::descriptors::ConfigurationDescriptor;
 use nusb::MaybeFuture;
 use pyo3::prelude::*;
+use pyo3_async_runtimes::tokio::future_into_py;
 
 /// Enumerate HID devices, optionally filtered by vendor/product ID.
 ///
@@ -60,6 +61,60 @@ pub fn enumerate_devices(vendor_id: u16, product_id: u16) -> Result<Vec<DeviceIn
     });
 
     Ok(results)
+}
+
+/// Enumerate HID devices asynchronously, optionally filtered by vendor/product ID.
+#[pyfunction]
+#[pyo3(signature = (vendor_id=0, product_id=0))]
+pub fn enumerate_devices_async<'py>(
+    py: Python<'py>,
+    vendor_id: u16,
+    product_id: u16,
+) -> PyResult<Bound<'py, PyAny>> {
+    future_into_py(py, async move {
+        let mut results = Vec::new();
+
+        let dev_infos = nusb::list_devices().await.map_err(HidError::UsbError)?;
+        for dev_info in dev_infos {
+            if vendor_id != 0 && dev_info.vendor_id() != vendor_id {
+                continue;
+            }
+            if product_id != 0 && dev_info.product_id() != product_id {
+                continue;
+            }
+
+            let device: nusb::Device = match dev_info.open().await.map_err(HidError::UsbError) {
+                Ok(d) => d,
+                Err(_) => continue,
+            };
+
+            let config: ConfigurationDescriptor = match device.active_configuration() {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            for iface in config.interfaces() {
+                let iface_num = iface.interface_number();
+
+                for alt in iface.alt_settings() {
+                    if alt.class() == 0x03 {
+                        results.push(DeviceInfo::from_nusb(&dev_info, iface_num));
+                        break;
+                    }
+                }
+            }
+        }
+
+        results.sort_by(|a, b| {
+            (a.bus_number, a.device_address, a.interface_number).cmp(&(
+                b.bus_number,
+                b.device_address,
+                b.interface_number,
+            ))
+        });
+
+        Ok(results)
+    })
 }
 
 #[cfg(test)]

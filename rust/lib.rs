@@ -32,6 +32,8 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<hid::RazerReport>()?;
     m.add_class::<hid::Status>()?;
     m.add_function(wrap_pyfunction!(hid::enumerate_devices, m)?)?;
+    m.add_function(wrap_pyfunction!(hid::enumerate_devices_async, m)?)?;
+    m.add_function(wrap_pyfunction!(hid::open_device_async, m)?)?;
     m.add_function(wrap_pyfunction!(hid::send_frame_async, m)?)?;
 
     // HID constants

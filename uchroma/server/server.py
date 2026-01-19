@@ -77,6 +77,8 @@ class UChromaServer:
             dbus_task = asyncio.create_task(dbus.run())
             await asyncio.wait_for(dbus.ready.wait(), timeout=10)
 
+            await dm.discover_async()
+
             # Start power monitor
             await power.start()
 

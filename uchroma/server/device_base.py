@@ -4,7 +4,7 @@
 import asyncio
 import re
 from concurrent import futures
-from contextlib import contextmanager, suppress
+from contextlib import asynccontextmanager, contextmanager, suppress
 
 from wrapt import synchronized
 
@@ -88,6 +88,7 @@ class BaseUChromaDevice:
         self._ref_count = 0
         self._executor = futures.ThreadPoolExecutor(max_workers=1)
         self._async_lock = None
+        self._open_lock = None
         self._info_lock = asyncio.Lock()
 
     async def shutdown(self):
@@ -299,6 +300,22 @@ class BaseUChromaDevice:
 
         return True
 
+    async def _ensure_open_async(self) -> bool:
+        if self._open_lock is None:
+            self._open_lock = asyncio.Lock()
+
+        async with self._open_lock:
+            if self._dev is not None:
+                return True
+
+            try:
+                self._dev = await hid.open_device_async(self._devinfo)
+            except Exception as err:
+                self.logger.exception("Failed to open connection", exc_info=err)
+                return False
+
+        return True
+
     def get_report(
         self,
         command_class: int,
@@ -410,15 +427,14 @@ class BaseUChromaDevice:
         if self._async_lock is None:
             self._async_lock = asyncio.Lock()
 
-        async with self._async_lock:
-            with self.device_open():
-                delay_ms = int(delay * 1000) if delay else None
-                try:
-                    status, data = await report.run_async(self._dev, delay_ms)
-                    return status == hid.Status.Ok, data
-                except Exception as err:
-                    self.logger.exception("Report failed", exc_info=err)
-                    return False, b""
+        async with self._async_lock, self.device_open_async():
+            delay_ms = int(delay * 1000) if delay else None
+            try:
+                status, data = await report.run_async(self._dev, delay_ms)
+                return status == hid.Status.Ok, data
+            except Exception as err:
+                self.logger.exception("Report failed", exc_info=err)
+                return False, b""
 
     def run_command(
         self,
@@ -700,6 +716,10 @@ class BaseUChromaDevice:
         self._ref_count += 1
         return self._ensure_open()
 
+    async def _device_open_async(self):
+        self._ref_count += 1
+        return await self._ensure_open_async()
+
     def _device_close(self):
         self._ref_count -= 1
         self.close()
@@ -711,6 +731,14 @@ class BaseUChromaDevice:
     def device_open(self):
         try:
             if self._device_open():
+                yield
+        finally:
+            self._device_close()
+
+    @asynccontextmanager
+    async def device_open_async(self):
+        try:
+            if await self._device_open_async():
                 yield
         finally:
             self._device_close()
