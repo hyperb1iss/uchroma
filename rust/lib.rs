@@ -50,6 +50,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // HID types and functions
     m.add_class::<hid::DeviceInfo>()?;
     m.add_class::<hid::HidDevice>()?;
+    m.add_class::<hid::HeadsetDevice>()?;
     m.add_class::<hid::RazerReport>()?;
     m.add_class::<hid::Status>()?;
     m.add_function(wrap_pyfunction!(hid::enumerate_devices, m)?)?;

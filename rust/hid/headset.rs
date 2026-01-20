@@ -71,3 +71,83 @@ impl HeadsetDevice {
         }
     }
 }
+
+fn matches_info(dev_info: &nusb::DeviceInfo, info: &DeviceInfo) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        dev_info.busnum() == info.bus_number && dev_info.device_address() == info.device_address
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        dev_info.device_address() == info.device_address
+            && dev_info.vendor_id() == info.vendor_id
+            && dev_info.product_id() == info.product_id
+    }
+}
+
+#[pymethods]
+impl HeadsetDevice {
+    /// Open a headset device from DeviceInfo.
+    #[new]
+    fn new(info: DeviceInfo) -> Result<Self> {
+        use nusb::MaybeFuture;
+
+        let dev_info = nusb::list_devices()
+            .wait()?
+            .find(|d| matches_info(d, &info))
+            .ok_or_else(|| HidError::DeviceNotFound(format!("{:?}", info)))?;
+
+        let device = dev_info.open().wait()?;
+
+        #[cfg(target_os = "linux")]
+        let interface = device
+            .detach_and_claim_interface(info.interface_number as u8)
+            .wait()?;
+        #[cfg(not(target_os = "linux"))]
+        let interface = device
+            .claim_interface(info.interface_number as u8)
+            .wait()?;
+
+        // Find interrupt endpoints
+        let (ep_out, ep_in) = Self::find_endpoints(&interface)?;
+
+        Ok(Self {
+            interface: Arc::new(Mutex::new(Some(interface))),
+            info,
+            ep_out,
+            ep_in,
+        })
+    }
+
+    /// Close the device.
+    fn close(&self) {
+        use crate::hid::device::get_or_create_runtime;
+
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            rt.block_on(async {
+                let mut guard = self.interface.lock().await;
+                *guard = None;
+            });
+        } else if let Ok(rt) = get_or_create_runtime() {
+            rt.block_on(async {
+                let mut guard = self.interface.lock().await;
+                *guard = None;
+            });
+        }
+    }
+
+    /// Check if device is open.
+    #[getter]
+    fn is_open(&self) -> bool {
+        self.interface
+            .try_lock()
+            .map(|guard| guard.is_some())
+            .unwrap_or(false)
+    }
+
+    /// Device info.
+    #[getter]
+    fn info(&self) -> DeviceInfo {
+        self.info.clone()
+    }
+}

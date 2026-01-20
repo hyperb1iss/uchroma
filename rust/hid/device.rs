@@ -41,7 +41,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_millis(1000);
 
 /// Create a new single-threaded tokio runtime.
 /// Returns HidError if runtime creation fails (e.g., under resource pressure).
-fn get_or_create_runtime() -> Result<tokio::runtime::Runtime> {
+pub(crate) fn get_or_create_runtime() -> Result<tokio::runtime::Runtime> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
