@@ -4,7 +4,7 @@
 
 use std::hint::black_box;
 
-use _native::{blend_full_impl, blend_screen_impl, fast_crc_impl};
+use _native::{blend_full_impl, blend_screen_impl, compose_layers_impl, fast_crc_impl, BlendMode};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 /// Benchmark CRC calculation
@@ -81,11 +81,7 @@ fn bench_blend_screen(c: &mut Criterion) {
             &(h, w),
             |b, _| {
                 b.iter(|| {
-                    blend_screen_impl(
-                        black_box(&base),
-                        black_box(&layer),
-                        black_box(&mut output),
-                    )
+                    blend_screen_impl(black_box(&base), black_box(&layer), black_box(&mut output))
                 })
             },
         );
@@ -149,5 +145,122 @@ fn bench_blend_full(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_crc, bench_crc_throughput, bench_blend_screen, bench_blend_full);
+/// Benchmark compose_layers at typical animation sizes.
+fn bench_compose_layers(c: &mut Criterion) {
+    let mut group = c.benchmark_group("compose_layers");
+
+    // Test keyboard (6×22) and preview (64×64) sizes
+    let configs: &[(usize, usize, &str)] = &[(6, 22, "keyboard"), (64, 64, "preview")];
+    let layer_counts = [1, 2, 3, 5];
+
+    for &(h, w, name) in configs {
+        let pixels = h * w;
+
+        for &num_layers in &layer_counts {
+            let layers: Vec<Vec<f64>> = (0..num_layers)
+                .map(|layer_idx| {
+                    (0..pixels * 4)
+                        .map(|i| {
+                            if i % 4 == 3 {
+                                0.8 - (layer_idx as f64 * 0.1)
+                            } else {
+                                ((i + layer_idx * 1000) as f64 * 0.1).sin() * 0.5 + 0.5
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+
+            let layer_refs: Vec<&[f64]> = layers.iter().map(|v| v.as_slice()).collect();
+            let blend_modes: Vec<BlendMode> = (0..num_layers)
+                .map(|i| match i % 4 {
+                    0 => BlendMode::Screen,
+                    1 => BlendMode::Multiply,
+                    2 => BlendMode::SoftLight,
+                    _ => BlendMode::Addition,
+                })
+                .collect();
+            let opacities: Vec<f64> = vec![0.85; num_layers];
+            let mut output = vec![0u8; pixels * 3];
+
+            group.throughput(Throughput::Elements((pixels * num_layers) as u64));
+
+            group.bench_with_input(
+                BenchmarkId::new(name, format!("{}_layers", num_layers)),
+                &num_layers,
+                |b, _| {
+                    b.iter(|| {
+                        compose_layers_impl(
+                            black_box(&layer_refs),
+                            black_box(&blend_modes),
+                            black_box(&opacities),
+                            black_box(h),
+                            black_box(w),
+                            black_box([0.0, 0.0, 0.0]),
+                            black_box(&mut output),
+                        )
+                    })
+                },
+            );
+        }
+    }
+
+    group.finish();
+}
+
+/// Benchmark composition at 30 FPS animation rate.
+fn bench_compose_throughput(c: &mut Criterion) {
+    let mut group = c.benchmark_group("compose_throughput");
+
+    let (h, w) = (6, 22);
+    let pixels = h * w;
+    let num_layers = 3;
+
+    let layers: Vec<Vec<f64>> = (0..num_layers)
+        .map(|layer_idx| {
+            (0..pixels * 4)
+                .map(|i| {
+                    if i % 4 == 3 {
+                        0.9
+                    } else {
+                        ((i + layer_idx * 500) as f64 * 0.15).sin() * 0.5 + 0.5
+                    }
+                })
+                .collect()
+        })
+        .collect();
+
+    let layer_refs: Vec<&[f64]> = layers.iter().map(|v| v.as_slice()).collect();
+    let blend_modes = vec![BlendMode::Screen; num_layers];
+    let opacities = vec![1.0; num_layers];
+    let mut output = vec![0u8; pixels * 3];
+
+    group.bench_function("30_fps_3_layers", |b| {
+        b.iter(|| {
+            for _ in 0..30 {
+                compose_layers_impl(
+                    black_box(&layer_refs),
+                    black_box(&blend_modes),
+                    black_box(&opacities),
+                    black_box(h),
+                    black_box(w),
+                    black_box([0.0, 0.0, 0.0]),
+                    black_box(&mut output),
+                );
+            }
+        })
+    });
+
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_crc,
+    bench_crc_throughput,
+    bench_blend_screen,
+    bench_blend_full,
+    bench_compose_layers,
+    bench_compose_throughput
+);
 criterion_main!(benches);

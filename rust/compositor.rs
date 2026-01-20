@@ -1,10 +1,12 @@
 //! Compositor operations for final frame output.
 //!
 //! Converts RGBA float layers to RGB uint8 for hardware output.
-//! The `rgba2rgb` function is the last step before sending frames to hardware.
+//! Provides both single-layer `rgba2rgb` and multi-layer `compose_layers`.
 
 use numpy::{PyArray3, PyArrayMethods, PyReadonlyArray3};
 use pyo3::prelude::*;
+
+use crate::blending::BlendMode;
 
 /// Convert RGBA f64 layer to RGB u8 for hardware output.
 ///
@@ -62,4 +64,198 @@ pub fn rgba2rgb<'py>(
     }
 
     Ok(())
+}
+
+/// Compose multiple RGBA layers into a single RGB output.
+///
+/// Fuses the entire composition pipeline into a single Rust function:
+/// 1. Starts with first layer as base
+/// 2. Blends each subsequent layer using its blend mode and opacity
+/// 3. Converts final RGBA to RGB uint8 with background color compositing
+///
+/// This eliminates N Python→Rust boundary crossings for N layers.
+#[pyfunction]
+pub fn compose_layers<'py>(
+    _py: Python<'py>,
+    layers: Vec<PyReadonlyArray3<'py, f64>>,
+    blend_modes: Vec<String>,
+    opacities: Vec<f64>,
+    bg_r: f64,
+    bg_g: f64,
+    bg_b: f64,
+    output: &Bound<'py, PyArray3<u8>>,
+) -> PyResult<()> {
+    if layers.is_empty() {
+        return Ok(());
+    }
+
+    let first = layers[0].as_array();
+    let (h, w) = (first.shape()[0], first.shape()[1]);
+    let pixels = h * w;
+
+    // Validate all layers have same shape
+    for (i, layer) in layers.iter().enumerate() {
+        let arr = layer.as_array();
+        let (lh, lw) = (arr.shape()[0], arr.shape()[1]);
+        if lh != h || lw != w {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Layer {} has shape {}x{}, expected {}x{}",
+                i, lh, lw, h, w
+            )));
+        }
+    }
+
+    // Parse blend modes upfront
+    let modes: Vec<BlendMode> = blend_modes
+        .iter()
+        .map(|s| BlendMode::from_str(s).unwrap_or(BlendMode::Screen))
+        .collect();
+
+    // Allocate intermediate RGBA buffer
+    let mut buffer = vec![0.0f64; pixels * 4];
+
+    // Copy base layer into buffer
+    {
+        let base = first;
+        for row in 0..h {
+            for col in 0..w {
+                let buf_idx = (row * w + col) * 4;
+                buffer[buf_idx] = base[[row, col, 0]];
+                buffer[buf_idx + 1] = base[[row, col, 1]];
+                buffer[buf_idx + 2] = base[[row, col, 2]];
+                buffer[buf_idx + 3] = base[[row, col, 3]];
+            }
+        }
+    }
+
+    // Blend each subsequent layer in-place
+    for (layer_idx, layer_arr) in layers.iter().enumerate().skip(1) {
+        let layer = layer_arr.as_array();
+        let mode = modes.get(layer_idx).copied().unwrap_or(BlendMode::Screen);
+        let opacity = opacities.get(layer_idx).copied().unwrap_or(1.0);
+
+        for row in 0..h {
+            for col in 0..w {
+                let buf_idx = (row * w + col) * 4;
+
+                let base_alpha = buffer[buf_idx + 3];
+                let layer_alpha = layer[[row, col, 3]];
+
+                let comp_alpha = base_alpha.min(layer_alpha) * opacity;
+                let new_alpha = base_alpha + (1.0 - base_alpha) * comp_alpha;
+
+                let ratio = if new_alpha > 0.0 {
+                    comp_alpha / new_alpha
+                } else {
+                    0.0
+                };
+
+                for c in 0..3 {
+                    let b = buffer[buf_idx + c];
+                    let l = layer[[row, col, c]];
+                    let blended = mode.apply(b, l);
+                    let blended = if blended.is_nan() { 0.0 } else { blended };
+                    buffer[buf_idx + c] = blended * ratio + b * (1.0 - ratio);
+                }
+
+                buffer[buf_idx + 3] = base_alpha;
+            }
+        }
+    }
+
+    // Fused RGBA→RGB conversion
+    let bg = [bg_r, bg_g, bg_b];
+
+    unsafe {
+        let mut out = output.as_array_mut();
+
+        for row in 0..h {
+            for col in 0..w {
+                let buf_idx = (row * w + col) * 4;
+                let alpha = buffer[buf_idx + 3];
+                let inv_alpha = 1.0 - alpha;
+
+                for c in 0..3 {
+                    let src = buffer[buf_idx + c];
+                    let composited = inv_alpha * bg[c] + alpha * src;
+                    let clamped = composited.clamp(0.0, 1.0);
+                    out[[row, col, c]] = (clamped * 255.0) as u8;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Pure Rust implementation for benchmarking
+// ============================================================================
+
+/// Compose layers entirely in Rust (for benchmarking without PyO3 overhead).
+pub fn compose_layers_impl(
+    layers: &[&[f64]],
+    blend_modes: &[BlendMode],
+    opacities: &[f64],
+    h: usize,
+    w: usize,
+    bg: [f64; 3],
+    output: &mut [u8],
+) {
+    if layers.is_empty() {
+        return;
+    }
+
+    let pixels = h * w;
+    let mut buffer = vec![0.0f64; pixels * 4];
+
+    buffer.copy_from_slice(&layers[0][..pixels * 4]);
+
+    for (layer_idx, &layer) in layers.iter().enumerate().skip(1) {
+        let mode = blend_modes
+            .get(layer_idx)
+            .copied()
+            .unwrap_or(BlendMode::Screen);
+        let opacity = opacities.get(layer_idx).copied().unwrap_or(1.0);
+
+        for p in 0..pixels {
+            let idx = p * 4;
+
+            let base_alpha = buffer[idx + 3];
+            let layer_alpha = layer[idx + 3];
+
+            let comp_alpha = base_alpha.min(layer_alpha) * opacity;
+            let new_alpha = base_alpha + (1.0 - base_alpha) * comp_alpha;
+
+            let ratio = if new_alpha > 0.0 {
+                comp_alpha / new_alpha
+            } else {
+                0.0
+            };
+
+            for c in 0..3 {
+                let b = buffer[idx + c];
+                let l = layer[idx + c];
+                let blended = mode.apply(b, l);
+                let blended = if blended.is_nan() { 0.0 } else { blended };
+                buffer[idx + c] = blended * ratio + b * (1.0 - ratio);
+            }
+
+            buffer[idx + 3] = base_alpha;
+        }
+    }
+
+    for p in 0..pixels {
+        let src_idx = p * 4;
+        let dst_idx = p * 3;
+        let alpha = buffer[src_idx + 3];
+        let inv_alpha = 1.0 - alpha;
+
+        for c in 0..3 {
+            let src = buffer[src_idx + c];
+            let composited = inv_alpha * bg[c] + alpha * src;
+            let clamped = composited.clamp(0.0, 1.0);
+            output[dst_idx + c] = (clamped * 255.0) as u8;
+        }
+    }
 }

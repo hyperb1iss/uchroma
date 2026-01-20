@@ -18,7 +18,8 @@ mod effects;
 mod hid;
 
 // Re-export for benchmarks
-pub use blending::{blend_full_impl, blend_screen_impl};
+pub use blending::{blend_full_impl, blend_screen_impl, BlendMode};
+pub use compositor::compose_layers_impl;
 pub use crc::fast_crc_impl;
 
 /// Native Rust extensions for uchroma performance-critical code.
@@ -71,13 +72,16 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Compositor
     m.add_function(wrap_pyfunction!(compositor::rgba2rgb, m)?)?;
+    m.add_function(wrap_pyfunction!(compositor::compose_layers, m)?)?;
 
     // Effect renderers
     m.add_function(wrap_pyfunction!(effects::draw_aurora, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::draw_embers, m)?)?;
     m.add_function(wrap_pyfunction!(effects::draw_kaleidoscope, m)?)?;
     m.add_function(wrap_pyfunction!(effects::compute_polar_map, m)?)?;
     m.add_function(wrap_pyfunction!(effects::draw_nebula, m)?)?;
     m.add_function(wrap_pyfunction!(effects::draw_ocean, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::draw_vortex, m)?)?;
 
     Ok(())
 }

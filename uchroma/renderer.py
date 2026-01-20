@@ -38,9 +38,9 @@ class Renderer(HasTraits):
     meta = RendererMeta("_unknown_", "Unimplemented", "Unknown", "0")
 
     fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS).tag(config=True)
-    blend_mode = DefaultCaselessStrEnum(
-        BLEND_MODES, default_value="screen", allow_none=False
-    ).tag(config=True)
+    blend_mode = DefaultCaselessStrEnum(BLEND_MODES, default_value="screen", allow_none=False).tag(
+        config=True
+    )
     opacity = Float(min=0.0, max=1.0, default_value=1.0).tag(config=True)
     background_color = ColorTrait().tag(config=True)
 

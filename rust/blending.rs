@@ -7,6 +7,80 @@ use numpy::{PyArray3, PyArrayMethods, PyReadonlyArray3};
 use pyo3::prelude::*;
 
 // ============================================================================
+// BlendMode enum for compositor
+// ============================================================================
+
+/// Blend mode variants for layer compositing.
+///
+/// Each variant implements a specific blend formula applied per-channel (RGB).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BlendMode {
+    Screen,
+    Multiply,
+    Addition,
+    LightenOnly,
+    DarkenOnly,
+    Dodge,
+    Subtract,
+    GrainExtract,
+    GrainMerge,
+    Divide,
+    SoftLight,
+    HardLight,
+    Difference,
+}
+
+impl BlendMode {
+    /// Parse blend mode from string name.
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "screen" => Some(Self::Screen),
+            "multiply" => Some(Self::Multiply),
+            "addition" => Some(Self::Addition),
+            "lighten_only" => Some(Self::LightenOnly),
+            "darken_only" => Some(Self::DarkenOnly),
+            "dodge" => Some(Self::Dodge),
+            "subtract" => Some(Self::Subtract),
+            "grain_extract" => Some(Self::GrainExtract),
+            "grain_merge" => Some(Self::GrainMerge),
+            "divide" => Some(Self::Divide),
+            "soft_light" => Some(Self::SoftLight),
+            "hard_light" => Some(Self::HardLight),
+            "difference" => Some(Self::Difference),
+            _ => None,
+        }
+    }
+
+    /// Apply this blend mode to base and layer channel values.
+    #[inline(always)]
+    pub fn apply(self, base: f64, layer: f64) -> f64 {
+        match self {
+            Self::Screen => 1.0 - (1.0 - base) * (1.0 - layer),
+            Self::Multiply => (base * layer).clamp(0.0, 1.0),
+            Self::Addition => base + layer,
+            Self::LightenOnly => base.max(layer),
+            Self::DarkenOnly => base.min(layer),
+            Self::Dodge => (base / (1.0 - layer)).min(1.0),
+            Self::Subtract => base - layer,
+            Self::GrainExtract => (base - layer + 0.5).clamp(0.0, 1.0),
+            Self::GrainMerge => (base + layer - 0.5).clamp(0.0, 1.0),
+            Self::Divide => ((256.0 / 255.0 * base) / (1.0 / 255.0 + layer)).min(1.0),
+            Self::SoftLight => {
+                (1.0 - base) * base * layer + base * (1.0 - (1.0 - base) * (1.0 - layer))
+            }
+            Self::HardLight => {
+                if layer > 0.5 {
+                    (1.0 - (1.0 - base) * (1.0 - (layer - 0.5) * 2.0)).min(1.0)
+                } else {
+                    (base * (layer * 2.0)).min(1.0)
+                }
+            }
+            Self::Difference => (base - layer).abs(),
+        }
+    }
+}
+
+// ============================================================================
 // Pure Rust implementations for benchmarking
 // ============================================================================
 

@@ -11,7 +11,6 @@ import pytest
 
 from uchroma.blending import BLEND_MODES, BlendOp, blend
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # BLEND_MODES tests
 # ─────────────────────────────────────────────────────────────────────────────
@@ -48,7 +47,7 @@ class TestBlendModes:
 
     def test_blend_modes_is_sorted(self):
         """BLEND_MODES is sorted alphabetically."""
-        assert BLEND_MODES == sorted(BLEND_MODES)
+        assert sorted(BLEND_MODES) == BLEND_MODES
 
 
 # ─────────────────────────────────────────────────────────────────────────────

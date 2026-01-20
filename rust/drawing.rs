@@ -322,13 +322,7 @@ pub fn circle_perimeter_aa(
 /// # Returns
 /// Tuple of (row_coords, col_coords, alpha_values) as numpy arrays
 #[pyfunction]
-pub fn line_aa(
-    py: Python<'_>,
-    r0: i64,
-    c0: i64,
-    r1: i64,
-    c1: i64,
-) -> PyResult<AaDrawResult> {
+pub fn line_aa(py: Python<'_>, r0: i64, c0: i64, r1: i64, c1: i64) -> PyResult<AaDrawResult> {
     let mut rows: Vec<i64> = Vec::new();
     let mut cols: Vec<i64> = Vec::new();
     let mut alphas: Vec<f64> = Vec::new();

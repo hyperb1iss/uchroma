@@ -12,7 +12,6 @@ import numpy as np
 import pytest
 
 from uchroma import drawing
-from uchroma.blending import BLEND_MODES
 from uchroma.colorlib import Color
 from uchroma.layer import Layer
 

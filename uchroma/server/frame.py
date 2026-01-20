@@ -6,12 +6,10 @@
 
 import asyncio
 import time
-import warnings
 
 import numpy as np
 
-from uchroma.blending import blend
-from uchroma.color import ColorUtils
+from uchroma._native import compose_layers as _rust_compose_layers
 from uchroma.layer import Layer
 from uchroma.util import ensure_future
 
@@ -128,23 +126,37 @@ class Frame:
         by each layer) then alpha-composited into a single RGB image
         before sending to the hardware. If the background color is
         set on a layer, it is only honored if it is the base layer.
+
+        Entire composition pipeline is fused into a single Rust call,
+        eliminating N Python→Rust boundary crossings for N layers.
         """
         if not layers:
             return None
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            out = layers[0].matrix
+        # Filter out None layers and ensure valid matrices
+        valid_layers = [l for l in layers if l is not None and l.matrix.ndim >= 3]
+        if not valid_layers:
+            return None
 
-            # blend all the layers by z-order
-            if len(layers) > 1:
-                for l_idx in range(1, len(layers)):
-                    layer = layers[l_idx]
-                    if layer is None or layer.matrix.ndim < 3:
-                        continue
-                    out = blend(out, layer.matrix, layer.blend_mode, layer.opacity)
+        # Collect layer data for Rust
+        matrices = [layer.matrix for layer in valid_layers]
+        blend_modes = [layer.blend_mode or "screen" for layer in valid_layers]
+        opacities = [layer.opacity for layer in valid_layers]
 
-            return ColorUtils.rgba2rgb(out, bg_color=layers[0].background_color)
+        # Background color from base layer
+        bg = valid_layers[0].background_color
+        if bg is not None:
+            bg_r, bg_g, bg_b = tuple(bg)[:3]
+        else:
+            bg_r, bg_g, bg_b = 0.0, 0.0, 0.0
+
+        # Pre-allocate output
+        h, w = matrices[0].shape[:2]
+        output = np.empty((h, w, 3), dtype=np.uint8)
+
+        # Single Rust call for entire composition pipeline
+        _rust_compose_layers(matrices, blend_modes, opacities, bg_r, bg_g, bg_b, output)
+        return output
 
     def _set_frame_data_single(self, img, frame_id: int):
         prefix_len = 2
