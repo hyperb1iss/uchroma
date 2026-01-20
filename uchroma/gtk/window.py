@@ -1418,9 +1418,18 @@ class UChromaWindow(Adw.ApplicationWindow):
 
     def do_close_request(self):
         """Handle window close."""
+        # Cancel all pending async tasks
+        for task in self._pending_tasks:
+            task.cancel()
+        self._pending_tasks.clear()
+
+        # Stop all preview renderers
         self._preview_renderer.stop()
         for renderer in self._device_preview_renderers.values():
             renderer.stop()
+        self._device_preview_renderers.clear()
+        self._device_previews.clear()
+
         self._stop_live_preview()
         self._stop_system_refresh()
         return False
