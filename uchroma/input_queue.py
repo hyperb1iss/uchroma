@@ -121,7 +121,7 @@ class InputQueue:
         while len(self._events) == 0:
             await self._q.get()
 
-        return self._events[:]
+        return list(self._events)
 
     @property
     def keystates(self) -> int:
@@ -162,7 +162,7 @@ class InputQueue:
                 self._q.get_nowait()
             except asyncio.QueueEmpty:
                 break
-        return self._events[:]
+        return list(self._events)
 
     async def _input_callback(self, ev):
         """

@@ -104,6 +104,24 @@ class UChromaDeviceManager(metaclass=Singleton):
             return
         ensure_future(self.discover_async(), loop=self._loop)
 
+    def _schedule_remove(self, sys_path: str):
+        """Schedule device removal on the main event loop."""
+        if self._loop is None:
+            return
+        ensure_future(self._remove_device_async(sys_path), loop=self._loop)
+
+    async def _remove_device_async(self, sys_path: str):
+        """Remove a device by its sys_path (runs on main event loop)."""
+        key = self._key_for_path(sys_path)
+        if key is None:
+            return
+
+        removed = self._devices.pop(key, None)
+        if removed is not None:
+            removed.close()
+            if self._callbacks:
+                await self._fire_callbacks("remove", removed)
+
     def discover(self):
         """
         Schedule device discovery on the active event loop.
@@ -274,17 +292,14 @@ class UChromaDeviceManager(metaclass=Singleton):
     def _udev_event(self, device):
         self._logger.debug("Device event [%s]: %s", device.action, device)
 
-        if device.action == "remove":
-            key = self._key_for_path(device.sys_path)
-            if key is not None:
-                removed = self._devices.pop(key, None)
-                if removed is not None:
-                    removed.close()
-                    if self._callbacks and self._loop is not None:
-                        ensure_future(self._fire_callbacks("remove", removed), loop=self._loop)
+        if self._loop is None:
+            return
 
+        if device.action == "remove":
+            # Schedule removal on main event loop to avoid race conditions
+            self._loop.call_soon_threadsafe(self._schedule_remove, device.sys_path)
         else:
-            if self._key_for_path(device.sys_path) is None and self._loop is not None:
+            if self._key_for_path(device.sys_path) is None:
                 self._loop.call_soon_threadsafe(self._schedule_discover)
 
     async def close_devices(self):
