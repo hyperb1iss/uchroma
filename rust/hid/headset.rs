@@ -9,9 +9,11 @@
 
 use crate::hid::{DeviceInfo, HidError, Result};
 use nusb::descriptors::TransferType;
-use nusb::transfer::Direction;
+use nusb::transfer::{Buffer, Direction, In, Interrupt, Out};
 use pyo3::prelude::*;
+use pyo3_async_runtimes::tokio::future_into_py;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
 
 // Report IDs
@@ -69,6 +71,54 @@ impl HeadsetDevice {
                 "Could not find interrupt endpoints".into(),
             )),
         }
+    }
+
+    /// Internal async write to interrupt OUT endpoint.
+    pub(crate) async fn write_interrupt(
+        interface: Arc<Mutex<Option<nusb::Interface>>>,
+        ep_addr: u8,
+        data: &[u8],
+    ) -> Result<()> {
+        let guard = interface.lock().await;
+        let iface = guard.as_ref().ok_or(HidError::Disconnected)?;
+
+        let mut ep = iface
+            .endpoint::<Interrupt, Out>(ep_addr)
+            .map_err(HidError::UsbError)?;
+
+        let buffer = Buffer::from(data.to_vec());
+        ep.submit(buffer);
+
+        let completion = ep.next_complete().await;
+        completion.status.map_err(HidError::TransferError)?;
+
+        Ok(())
+    }
+
+    /// Internal async read from interrupt IN endpoint.
+    pub(crate) async fn read_interrupt(
+        interface: Arc<Mutex<Option<nusb::Interface>>>,
+        ep_addr: u8,
+        size: usize,
+        timeout: Duration,
+    ) -> Result<Vec<u8>> {
+        let guard = interface.lock().await;
+        let iface = guard.as_ref().ok_or(HidError::Disconnected)?;
+
+        let mut ep = iface
+            .endpoint::<Interrupt, In>(ep_addr)
+            .map_err(HidError::UsbError)?;
+
+        let mut buffer = ep.allocate(size);
+        buffer.set_requested_len(size);
+        ep.submit(buffer);
+
+        let completion = tokio::time::timeout(timeout, ep.next_complete())
+            .await
+            .map_err(|_| HidError::ProtocolError("Interrupt read timeout".into()))?;
+
+        completion.status.map_err(HidError::TransferError)?;
+        Ok(completion.buffer.into_vec())
     }
 }
 
@@ -149,5 +199,64 @@ impl HeadsetDevice {
     #[getter]
     fn info(&self) -> DeviceInfo {
         self.info.clone()
+    }
+
+    /// Write data to interrupt OUT endpoint (async).
+    ///
+    /// Prepends the OUT report ID (0x04) and pads to 38 bytes (37 + 1).
+    ///
+    /// Args:
+    ///     data: Payload bytes (up to 37 bytes)
+    fn write<'py>(&self, py: Python<'py>, data: Vec<u8>) -> PyResult<Bound<'py, PyAny>> {
+        let interface = self.interface.clone();
+        let ep_addr = self.ep_out;
+
+        future_into_py(py, async move {
+            // Prepend report ID
+            let mut buf = vec![REPORT_ID_OUT];
+            buf.extend_from_slice(&data);
+            buf.resize(REPORT_LENGTH_OUT + 1, 0);
+
+            Self::write_interrupt(interface, ep_addr, &buf).await?;
+            Ok(())
+        })
+    }
+
+    /// Read data from interrupt IN endpoint (async).
+    ///
+    /// Verifies the IN report ID (0x05) and strips it from the result.
+    ///
+    /// Args:
+    ///     timeout_ms: Timeout in milliseconds
+    ///
+    /// Returns:
+    ///     Payload bytes (33 bytes, excluding report ID)
+    fn read<'py>(&self, py: Python<'py>, timeout_ms: u64) -> PyResult<Bound<'py, PyAny>> {
+        let interface = self.interface.clone();
+        let ep_addr = self.ep_in;
+        let timeout = Duration::from_millis(timeout_ms);
+
+        future_into_py(py, async move {
+            let data = Self::read_interrupt(
+                interface,
+                ep_addr,
+                REPORT_LENGTH_IN + 1, // +1 for report ID
+                timeout,
+            )
+            .await?;
+
+            // Verify report ID
+            if data.is_empty() || data[0] != REPORT_ID_IN {
+                return Err(HidError::ProtocolError(format!(
+                    "Expected report ID 0x{:02X}, got 0x{:02X}",
+                    REPORT_ID_IN,
+                    data.first().unwrap_or(&0)
+                ))
+                .into());
+            }
+
+            // Return without report ID
+            Ok(data[1..].to_vec())
+        })
     }
 }
