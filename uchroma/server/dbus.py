@@ -369,12 +369,18 @@ class AnimationManagerInterface(ServiceInterface):
             )
 
     def _layers_changed(self, action, zindex=None, *args, **kwargs):
+        if self._animgr._shutting_down:
+            return
+
         if action in {"add", "remove", "modify"}:
             self._sync_layers()
 
         self.emit_properties_changed({"CurrentRenderers": self.CurrentRenderers})
 
     def _state_changed(self, state):
+        if self._animgr._shutting_down:
+            return
+
         self._state = state
         self._logger.debug("_state_changed: %s", state)
         self.emit_properties_changed({"AnimationState": state})
