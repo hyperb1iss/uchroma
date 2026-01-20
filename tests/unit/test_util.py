@@ -544,34 +544,34 @@ class TestSmartDelay:
 
 
 # =============================================================================
-# ArgsDict tests
+# filter_none tests
 # =============================================================================
-class TestArgsDict:
-    """Tests for the ArgsDict class."""
+class TestFilterNone:
+    """Tests for the filter_none function."""
 
-    def test_argsdict_removes_none_values(self):
-        """ArgsDict removes keys with None values."""
-        from uchroma.util import ArgsDict
+    def test_filter_none_removes_none_values(self):
+        """filter_none removes keys with None values."""
+        from uchroma.util import filter_none
 
-        d = ArgsDict({"a": 1, "b": None, "c": 3})
+        d = filter_none({"a": 1, "b": None, "c": 3})
         assert "a" in d
         assert "b" not in d
         assert "c" in d
 
-    def test_argsdict_keeps_non_none(self):
-        """ArgsDict keeps all non-None values."""
-        from uchroma.util import ArgsDict
+    def test_filter_none_keeps_non_none(self):
+        """filter_none keeps all non-None values."""
+        from uchroma.util import filter_none
 
-        d = ArgsDict({"a": 0, "b": "", "c": False})
+        d = filter_none({"a": 0, "b": "", "c": False})
         assert "a" in d  # 0 is not None
         assert "b" in d  # empty string is not None
         assert "c" in d  # False is not None
 
-    def test_argsdict_empty(self):
-        """ArgsDict works with empty dict."""
-        from uchroma.util import ArgsDict
+    def test_filter_none_empty(self):
+        """filter_none works with empty dict."""
+        from uchroma.util import filter_none
 
-        d = ArgsDict()
+        d = filter_none({})
         assert len(d) == 0
 
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import tempfile
-from collections import OrderedDict
 from enum import Enum
 
 import pytest
@@ -18,11 +17,9 @@ from uchroma.server.config import (
     Configuration,
     FlowSequence,
     LowerCaseSeq,
-    represent_argsdict,
     represent_color,
     represent_enum,
 )
-from uchroma.util import ArgsDict
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Test Enums
@@ -73,51 +70,6 @@ class TestRepresentColor:
         args = dumper.represent_scalar.call_args[0]
         assert args[0] == "tag:yaml.org,2002:str"
         assert args[1].lower() == "#ff0000"
-
-
-class TestRepresentArgsdict:
-    """Tests for represent_argsdict function."""
-
-    def test_represent_argsdict_basic(self):
-        """represent_argsdict converts ArgsDict to mapping."""
-        from unittest.mock import MagicMock
-
-        dumper = MagicMock()
-        dumper.represent_mapping.return_value = "result"
-        data = ArgsDict({"key": "value", "num": 42})
-
-        represent_argsdict(dumper, data)
-
-        dumper.represent_mapping.assert_called_once()
-        args = dumper.represent_mapping.call_args[0]
-        assert args[0] == "tag:yaml.org,2002:map"
-        assert args[1] == {"key": "value", "num": 42}
-
-    def test_represent_argsdict_with_enum(self):
-        """represent_argsdict converts enum values to names."""
-        from unittest.mock import MagicMock
-
-        dumper = MagicMock()
-        dumper.represent_mapping.return_value = "result"
-        data = ArgsDict({"mode": SampleMode.FAST})
-
-        represent_argsdict(dumper, data)
-
-        args = dumper.represent_mapping.call_args[0]
-        assert args[1]["mode"] == "FAST"
-
-    def test_represent_argsdict_with_color(self):
-        """represent_argsdict converts Color to HTML."""
-        from unittest.mock import MagicMock
-
-        dumper = MagicMock()
-        dumper.represent_mapping.return_value = "result"
-        data = ArgsDict({"color": Color.NewFromRgb(0.0, 1.0, 0.0)})
-
-        represent_argsdict(dumper, data)
-
-        args = dumper.represent_mapping.call_args[0]
-        assert args[1]["color"].lower() == "#00ff00"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -364,7 +316,7 @@ class TestConfigurationSerialization:
         config = SerializableConfig(name="test", count=5)
         sparse = config.sparsedict()
 
-        assert isinstance(sparse, OrderedDict)
+        assert isinstance(sparse, dict)
         assert sparse["name"] == "test"
         assert sparse["count"] == 5
 

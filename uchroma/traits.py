@@ -25,7 +25,7 @@ from traitlets import (
 )
 
 from uchroma.color import to_color
-from uchroma.util import ArgsDict
+from uchroma.util import filter_none
 
 
 class ColorTrait(TraitType):
@@ -311,7 +311,7 @@ def get_args_dict(obj: HasTraits, incl_all=False):
     :param incl_all: If all items should be included, regardless of RO status
     :return: dict of arguments
     """
-    argsdict = ArgsDict()
+    result = {}
     for k in sorted(obj._trait_values.keys()):
         v = obj._trait_values[k]
         trait = obj.traits()[k]
@@ -319,8 +319,8 @@ def get_args_dict(obj: HasTraits, incl_all=False):
         if not trait.get_metadata("config"):
             continue
         if incl_all or (not trait.get_metadata("hidden") and is_trait_writable(trait)):
-            argsdict[k] = v
-    return argsdict
+            result[k] = v
+    return filter_none(result)
 
 
 def add_traits_to_argparse(obj: HasTraits, parser: ArgumentParser, prefix: str | None = None):

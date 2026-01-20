@@ -21,7 +21,7 @@ _yaml = YAML()
 _yaml.preserve_quotes = True
 
 from uchroma.colorlib import Color  # noqa: E402
-from uchroma.util import ArgsDict  # noqa: E402
+from uchroma.util import filter_none  # noqa: E402
 
 
 # Add YAML representers for special types
@@ -35,23 +35,8 @@ def represent_color(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data.html)
 
 
-def represent_argsdict(dumper, data):
-    """Represent ArgsDict as a regular mapping with serializable values."""
-    # Convert special types to strings for YAML serialization
-    serializable = {}
-    for k, v in data.items():
-        if isinstance(v, Enum):
-            serializable[k] = v.name
-        elif isinstance(v, Color):
-            serializable[k] = v.html
-        else:
-            serializable[k] = v
-    return dumper.represent_mapping("tag:yaml.org,2002:map", serializable)
-
-
 _yaml.representer.add_multi_representer(Enum, represent_enum)
 _yaml.representer.add_multi_representer(Color, represent_color)
-_yaml.representer.add_representer(ArgsDict, represent_argsdict)
 
 
 class Configuration:
@@ -288,9 +273,9 @@ class Configuration:
             od[slot] = value
         return od
 
-    def sparsedict(self, deep=True) -> OrderedDict:
+    def sparsedict(self, deep=True) -> dict:
         """
-        Returns a "sparse" ordereddict with the parent->child relationships
+        Returns a sparse dict with the parent->child relationships
         represented. This is used for serialization.
 
         :return: The sparse dict representation
@@ -299,7 +284,7 @@ class Configuration:
 
         fields = tuple([x for x in self.__slots__ if x not in ["parent", "_children"]])
 
-        odict = ArgsDict({x: getattr(self, x) for x in fields})
+        odict = filter_none({x: getattr(self, x) for x in fields})
 
         if self._children is not None:
             if deep:

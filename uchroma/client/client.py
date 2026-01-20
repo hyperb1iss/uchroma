@@ -23,7 +23,7 @@ from uchroma.traits import (
     apply_from_argparse,
     dict_as_class_traits,
 )
-from uchroma.util import ArgsDict, camel_to_snake, max_keylen
+from uchroma.util import camel_to_snake, filter_none, max_keylen
 
 from .cmd import UChromaConsoleUtil
 
@@ -166,7 +166,7 @@ class AbstractCommand:
             count += 1
 
     def show_meta(self, trait_data, indent):
-        meta = ArgsDict({k: v for k, v in trait_data._asdict().items() if k not in "traits"})
+        meta = filter_none({k: v for k, v in trait_data._asdict().items() if k not in "traits"})
         if len(meta) < 3:
             return
 
@@ -557,9 +557,13 @@ class AnimationCommand(AbstractCommand):
                             clean_props = {}
                             for k, v in props.items():
                                 clean_props[k] = v.value if hasattr(v, "value") else v
-                            layers[clean_props.get("Key", renderer_type)] = ArgsDict(
-                                sorted(
-                                    {camel_to_snake(k): v for k, v in clean_props.items()}.items()
+                            layers[clean_props.get("Key", renderer_type)] = filter_none(
+                                dict(
+                                    sorted(
+                                        {
+                                            camel_to_snake(k): v for k, v in clean_props.items()
+                                        }.items()
+                                    )
                                 )
                             )
                     except Exception:

@@ -15,7 +15,6 @@ import re
 import struct
 import time
 import typing
-from collections import OrderedDict
 
 from numpy import interp
 from wrapt import decorator
@@ -272,21 +271,9 @@ def ensure_future(coro, loop=None):
     return fut
 
 
-class ArgsDict(OrderedDict):
-    """
-    Extension of OrderedDict which does not allow empty keys
-
-    FIXME: Get rid of this
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        empty_keys = []
-        for k, v in self.items():
-            if v is None:
-                empty_keys.append(k)
-        for empty_key in empty_keys:
-            self.pop(empty_key)
+def filter_none(d: dict) -> dict:
+    """Return a new dict with None values removed."""
+    return {k: v for k, v in d.items() if v is not None}
 
 
 class Signal:
