@@ -6,15 +6,29 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import asyncio
+from contextlib import asynccontextmanager
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
 
 from uchroma.color import to_color
 from uchroma.layer import Layer
+from uchroma.server import hid
 from uchroma.server.frame import Frame
+from uchroma.server.hardware import Hardware
 from uchroma.server.types import BaseCommand
+
+
+def run_commit(frame, layers, **kwargs):
+    return asyncio.run(frame.commit_async(layers, **kwargs))
+
+
+def run_reset(frame, **kwargs):
+    return asyncio.run(frame.reset_async(**kwargs))
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -24,16 +38,34 @@ from uchroma.server.types import BaseCommand
 @pytest.fixture
 def mock_driver():
     """Create a mock driver for Frame testing."""
-    driver = MagicMock()
+    driver = SimpleNamespace()
     driver.name = "Test Device"
     driver.logger = MagicMock()
     driver.fx_manager = MagicMock()
     driver.fx_manager.activate = MagicMock()
     driver.run_command = MagicMock()
+    driver.run_command_async = AsyncMock(return_value=True)
     driver.run_report = MagicMock()
     driver.get_report = MagicMock()
     driver.has_quirk = MagicMock(return_value=False)
+    driver.hardware = MagicMock()
+    driver.hardware.has_quirk = MagicMock(return_value=False)
+    driver.device_type = Hardware.Type.KEYBOARD
+    driver._async_lock = None
+    driver.hid_device = MagicMock()
+
+    @asynccontextmanager
+    async def device_open_async():
+        yield
+
+    driver.device_open_async = device_open_async
     return driver
+
+
+@pytest.fixture(autouse=True)
+def mock_send_frame_async():
+    with patch("uchroma.server.frame.hid.send_frame_async", new=AsyncMock()) as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -41,6 +73,9 @@ def mock_report():
     """Create a mock report object."""
     report = MagicMock()
     report.clear = MagicMock()
+    report.put_byte = MagicMock()
+    report.put_bytes = MagicMock()
+    report.set_remaining_packets = MagicMock()
     report.args = MagicMock()
     report.args.put_all = MagicMock()
     return report
@@ -60,7 +95,7 @@ def frame_1x15(mock_driver):
 
 @pytest.fixture
 def frame_wide(mock_driver):
-    """Create a Frame wider than MAX_WIDTH (6 rows x 30 cols)."""
+    """Create a Frame wider than one report payload (6 rows x 30 cols)."""
     return Frame(mock_driver, width=30, height=6)
 
 
@@ -127,10 +162,6 @@ class TestFrameCommand:
 
 class TestFrameConstants:
     """Tests for Frame class constants."""
-
-    def test_max_width_is_24(self):
-        """MAX_WIDTH constant is 24."""
-        assert Frame.MAX_WIDTH == 24
 
     def test_default_frame_id_is_0xff(self):
         """DEFAULT_FRAME_ID constant is 0xFF."""
@@ -405,32 +436,39 @@ class TestFrameSetFrameDataSingle:
         layer = frame_1x15.create_layer()
         layer._matrix[:, :] = [1.0, 0.0, 0.0, 1.0]  # Red
 
-        frame_1x15.commit([layer])
+        run_commit(frame_1x15, [layer], show=False)
 
-        # Should call run_command for single-row device
-        mock_driver.run_command.assert_called_once()
-        call_args = mock_driver.run_command.call_args
+        # Should call run_command_async for single-row device
+        mock_driver.run_command_async.assert_called_once()
+        call_args = mock_driver.run_command_async.call_args
         assert call_args[0][0] == Frame.Command.SET_FRAME_DATA_SINGLE
 
     def test_set_frame_data_single_transaction_id(self, frame_1x15, mock_driver):
         """_set_frame_data_single uses transaction_id=0x80."""
         layer = frame_1x15.create_layer()
-        frame_1x15.commit([layer])
+        run_commit(frame_1x15, [layer], show=False)
 
-        call_kwargs = mock_driver.run_command.call_args[1]
+        call_kwargs = mock_driver.run_command_async.call_args_list[0][1]
         assert call_kwargs["transaction_id"] == 0x80
 
-    def test_set_frame_data_single_width_clamped(self, mock_driver):
-        """_set_frame_data_single clamps width to MAX_WIDTH."""
-        # Create frame wider than MAX_WIDTH for single row
+    def test_set_frame_data_single_segments_wide(self, mock_driver):
+        """_set_frame_data_single segments wider rows."""
         frame = Frame(mock_driver, width=30, height=1)
         layer = frame.create_layer()
 
-        frame.commit([layer])
+        run_commit(frame, [layer], show=False)
 
-        call_args = mock_driver.run_command.call_args[0]
-        # Second arg is start, third is width (clamped to 24)
-        assert call_args[2] == 24  # width clamped
+        max_cols = (hid.DATA_SIZE - 2) // 3
+        expected_segments = (frame.width + max_cols - 1) // max_cols
+        assert mock_driver.run_command_async.call_count == expected_segments
+
+        first_args = mock_driver.run_command_async.call_args_list[0][0]
+        second_args = mock_driver.run_command_async.call_args_list[1][0]
+
+        assert first_args[1] == 0
+        assert first_args[2] == max_cols
+        assert second_args[1] == max_cols
+        assert second_args[2] == frame.width - max_cols
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -442,59 +480,69 @@ class TestFrameSetFrameDataMatrix:
     """Tests for Frame._set_frame_data_matrix (height>1 devices)."""
 
     def test_set_frame_data_matrix_called_for_height_gt_1(
-        self, frame_6x22, mock_driver, mock_report
+        self, frame_6x22, mock_driver, mock_send_frame_async
     ):
         """_set_frame_data_matrix is called when height>1."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
         layer._matrix[:, :] = [1.0, 0.0, 0.0, 1.0]  # Red
 
-        frame_6x22.commit([layer])
+        run_commit(frame_6x22, [layer], show=False)
 
-        # Should call run_report for matrix device
-        assert mock_driver.run_report.called
-        # Should not call run_command (that's for single row)
-        mock_driver.run_command.assert_not_called()
+        mock_send_frame_async.assert_called_once()
+        mock_driver.run_command_async.assert_not_called()
 
-    def test_set_frame_data_matrix_calls_per_row(self, frame_6x22, mock_driver, mock_report):
-        """_set_frame_data_matrix calls run_report once per row."""
-        mock_driver.get_report.return_value = mock_report
+    def test_set_frame_data_matrix_passes_row_offsets_none(
+        self, frame_6x22, mock_driver, mock_send_frame_async
+    ):
+        """_set_frame_data_matrix passes None row_offsets when hook is absent."""
         layer = frame_6x22.create_layer()
 
-        frame_6x22.commit([layer])
+        run_commit(frame_6x22, [layer], show=False)
 
-        # 6 rows = 6 calls to run_report
-        assert mock_driver.run_report.call_count == 6
+        call_kwargs = mock_send_frame_async.call_args.kwargs
+        assert call_kwargs["row_offsets"] is None
+
+    def test_set_frame_data_matrix_applies_row_offset(
+        self, frame_6x22, mock_driver, mock_send_frame_async
+    ):
+        """_set_frame_data_matrix applies row offsets to column indices."""
+        mock_driver.get_row_offset = MagicMock(return_value=2)
+        layer = frame_6x22.create_layer()
+
+        run_commit(frame_6x22, [layer], show=False)
+
+        call_kwargs = mock_send_frame_async.call_args.kwargs
+        assert call_kwargs["row_offsets"] == [2] * frame_6x22.height
+        assert mock_driver.get_row_offset.call_count == frame_6x22.height
 
     def test_set_frame_data_matrix_transaction_id_default(
-        self, frame_6x22, mock_driver, mock_report
+        self, frame_6x22, mock_driver, mock_send_frame_async
     ):
         """_set_frame_data_matrix uses transaction_id=0xFF by default."""
-        mock_driver.get_report.return_value = mock_report
         mock_driver.has_quirk.return_value = False
         layer = frame_6x22.create_layer()
 
-        frame_6x22.commit([layer])
+        run_commit(frame_6x22, [layer], show=False)
 
-        # get_report should be called with transaction_id=0xFF
-        call_kwargs = mock_driver.get_report.call_args[1]
+        call_kwargs = mock_send_frame_async.call_args.kwargs
         assert call_kwargs["transaction_id"] == 0xFF
+        assert call_kwargs["is_extended"] is False
 
     def test_set_frame_data_matrix_quirk_custom_frame_80(
-        self, frame_6x22, mock_driver, mock_report
+        self, frame_6x22, mock_driver, mock_send_frame_async
     ):
         """_set_frame_data_matrix uses tid=0x80 with CUSTOM_FRAME_80 quirk."""
         from uchroma.server.hardware import Quirks
 
-        mock_driver.get_report.return_value = mock_report
         # Only CUSTOM_FRAME_80 quirk, not EXTENDED_FX_CMDS (which is checked first)
         mock_driver.has_quirk.side_effect = lambda q: q == Quirks.CUSTOM_FRAME_80
         layer = frame_6x22.create_layer()
 
-        frame_6x22.commit([layer])
+        run_commit(frame_6x22, [layer], show=False)
 
-        call_kwargs = mock_driver.get_report.call_args[1]
+        call_kwargs = mock_send_frame_async.call_args.kwargs
         assert call_kwargs["transaction_id"] == 0x80
+        assert call_kwargs["is_extended"] is False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -503,42 +551,27 @@ class TestFrameSetFrameDataMatrix:
 
 
 class TestFrameWideFrames:
-    """Tests for Frame handling of wide frames (width > MAX_WIDTH)."""
+    """Tests for Frame handling of wide frames (width > report payload)."""
 
-    def test_wide_frame_splits_into_two_updates(self, frame_wide, mock_driver, mock_report):
-        """Wide frames (>24 cols) split into two updates per row."""
-        mock_driver.get_report.return_value = mock_report
+    def test_wide_frame_calls_send_frame_async(self, frame_wide, mock_send_frame_async):
+        """Wide frames use the async sender regardless of width."""
         layer = frame_wide.create_layer()
 
-        frame_wide.commit([layer])
+        run_commit(frame_wide, [layer], show=False)
 
-        # 6 rows * 2 updates per row = 12 calls
-        assert mock_driver.run_report.call_count == 12
+        mock_send_frame_async.assert_called_once()
+        frame_arg = mock_send_frame_async.call_args.args[1]
+        assert frame_arg.shape == (frame_wide.height, frame_wide.width, 3)
 
-    def test_wide_frame_remaining_packets_calculation(self, frame_wide, mock_driver, mock_report):
-        """Wide frame remaining_packets calculated correctly."""
-        mock_driver.get_report.return_value = mock_report
+    def test_wide_frame_passes_protocol_delays(self, frame_wide, mock_send_frame_async):
+        """Wide frames pass protocol-based delay values to Rust sender."""
         layer = frame_wide.create_layer()
 
-        # Track remaining_packets values
-        remaining_values = []
-        original_clear = mock_report.clear
+        run_commit(frame_wide, [layer], show=False)
 
-        def track_remaining():
-            original_clear()
-            # Capture remaining_packets after it's set
-            if hasattr(mock_report, "remaining_packets"):
-                remaining_values.append(mock_report.remaining_packets)
-
-        mock_report.clear = track_remaining
-
-        frame_wide.commit([layer])
-
-        # For wide frames, remaining = (height - row - 1) * 2 + 1 for first half
-        # Row 0: remaining = (6-0-1)*2+1 = 11, then 10
-        # Row 5: remaining = (6-5-1)*2+1 = 1, then 0
-        # Total 12 calls (6 rows * 2 halves)
-        assert mock_driver.run_report.call_count == 12
+        call_kwargs = mock_send_frame_async.call_args.kwargs
+        assert call_kwargs["pre_delay_ms"] == 7
+        assert call_kwargs["post_delay_ms"] == 1
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -549,82 +582,89 @@ class TestFrameWideFrames:
 class TestFrameCommit:
     """Tests for Frame.commit method."""
 
-    def test_commit_calls_compose(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_calls_compose(self, frame_6x22, mock_driver):
         """commit calls compose with the layers."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        with patch.object(Frame, "compose", wraps=Frame.compose) as mock_compose:
-            frame_6x22.commit([layer])
+        with (
+            patch.object(Frame, "compose", wraps=Frame.compose) as mock_compose,
+            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
+        ):
+            run_commit(frame_6x22, [layer], show=False)
             mock_compose.assert_called_once_with([layer])
 
-    def test_commit_calls_set_frame_data(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_calls_set_frame_data(self, frame_6x22, mock_driver):
         """commit calls _set_frame_data with composed image."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        with patch.object(frame_6x22, "_set_frame_data") as mock_set:
-            frame_6x22.commit([layer])
+        with patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()) as mock_set:
+            run_commit(frame_6x22, [layer], show=False)
             mock_set.assert_called_once()
 
-    def test_commit_activates_custom_frame_when_show_true(
-        self, frame_6x22, mock_driver, mock_report
-    ):
+    def test_commit_activates_custom_frame_when_show_true(self, frame_6x22, mock_driver):
         """commit activates custom_frame effect when show=True."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        frame_6x22.commit([layer], show=True)
+        with (
+            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()) as mock_custom,
+        ):
+            run_commit(frame_6x22, [layer], show=True)
 
-        mock_driver.fx_manager.activate.assert_called_once_with("custom_frame")
+        mock_custom.assert_called_once()
 
-    def test_commit_does_not_activate_when_show_false(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_does_not_activate_when_show_false(self, frame_6x22, mock_driver):
         """commit does not activate effect when show=False."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        frame_6x22.commit([layer], show=False)
+        with (
+            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()) as mock_custom,
+        ):
+            run_commit(frame_6x22, [layer], show=False)
 
-        mock_driver.fx_manager.activate.assert_not_called()
+        mock_custom.assert_not_called()
 
-    def test_commit_default_show_is_true(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_default_show_is_true(self, frame_6x22, mock_driver):
         """commit defaults to show=True."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        frame_6x22.commit([layer])
+        with (
+            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()) as mock_custom,
+        ):
+            run_commit(frame_6x22, [layer])
 
-        mock_driver.fx_manager.activate.assert_called_once()
+        mock_custom.assert_called_once()
 
-    def test_commit_returns_frame_instance(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_returns_frame_instance(self, frame_6x22, mock_driver):
         """commit returns the Frame instance for chaining."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        result = frame_6x22.commit([layer])
+        with (
+            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()),
+        ):
+            result = run_commit(frame_6x22, [layer])
 
         assert result is frame_6x22
 
-    def test_commit_with_custom_frame_id(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_with_custom_frame_id(self, frame_6x22, mock_driver):
         """commit passes frame_id to _set_frame_data."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        with patch.object(frame_6x22, "_set_frame_data") as mock_set:
-            frame_6x22.commit([layer], frame_id=0x01)
+        with patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()) as mock_set:
+            run_commit(frame_6x22, [layer], frame_id=0x01, show=False)
             mock_set.assert_called_once()
-            # Second argument is frame_id
-            assert mock_set.call_args[0][1] == 0x01
+            assert mock_set.call_args.args[1] == 0x01
 
-    def test_commit_with_none_frame_id_uses_default(self, frame_6x22, mock_driver, mock_report):
+    def test_commit_with_none_frame_id_uses_default(self, frame_6x22, mock_driver):
         """commit with frame_id=None uses DEFAULT_FRAME_ID."""
-        mock_driver.get_report.return_value = mock_report
         layer = frame_6x22.create_layer()
 
-        with patch.object(frame_6x22, "_set_frame_data") as mock_set:
-            frame_6x22.commit([layer], frame_id=None)
-            # frame_id None passed, _set_frame_data handles default
-            assert mock_set.call_args[0][1] is None
+        with patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()) as mock_set:
+            run_commit(frame_6x22, [layer], frame_id=None, show=False)
+            assert mock_set.call_args.args[1] is None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -635,45 +675,36 @@ class TestFrameCommit:
 class TestFrameReset:
     """Tests for Frame.reset method."""
 
-    def test_reset_commits_empty_layer(self, frame_6x22, mock_driver, mock_report):
+    def test_reset_commits_empty_layer(self, frame_6x22, mock_driver):
         """reset commits an empty (black) layer."""
-        mock_driver.get_report.return_value = mock_report
-
-        with patch.object(frame_6x22, "commit", wraps=frame_6x22.commit) as mock_commit:
-            frame_6x22.reset()
+        with patch.object(frame_6x22, "commit_async", new=AsyncMock()) as mock_commit:
+            run_reset(frame_6x22)
 
             mock_commit.assert_called_once()
-            # Check that a layer list was passed
-            layers = mock_commit.call_args[0][0]
+            layers = mock_commit.call_args.args[0]
             assert len(layers) == 1
             assert isinstance(layers[0], Layer)
 
-    def test_reset_uses_show_false(self, frame_6x22, mock_driver, mock_report):
+    def test_reset_uses_show_false(self, frame_6x22, mock_driver):
         """reset commits with show=False."""
-        mock_driver.get_report.return_value = mock_report
+        with patch.object(frame_6x22, "commit_async", new=AsyncMock()) as mock_commit:
+            run_reset(frame_6x22)
 
-        with patch.object(frame_6x22, "commit") as mock_commit:
-            frame_6x22.reset()
-
-            call_kwargs = mock_commit.call_args[1]
+            call_kwargs = mock_commit.call_args.kwargs
             assert call_kwargs.get("show") is False
 
-    def test_reset_returns_frame_instance(self, frame_6x22, mock_driver, mock_report):
+    def test_reset_returns_frame_instance(self, frame_6x22, mock_driver):
         """reset returns the Frame instance for chaining."""
-        mock_driver.get_report.return_value = mock_report
-
-        result = frame_6x22.reset()
+        with patch.object(frame_6x22, "commit_async", new=AsyncMock()):
+            result = run_reset(frame_6x22)
 
         assert result is frame_6x22
 
-    def test_reset_clears_hardware_frame(self, frame_6x22, mock_driver, mock_report):
+    def test_reset_clears_hardware_frame(self, frame_6x22, mock_send_frame_async):
         """reset sends black pixels to hardware."""
-        mock_driver.get_report.return_value = mock_report
+        run_reset(frame_6x22)
 
-        frame_6x22.reset()
-
-        # Hardware should receive data (run_report called)
-        assert mock_driver.run_report.called
+        mock_send_frame_async.assert_called_once()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -692,11 +723,8 @@ class TestFrameSetFrameData:
             frame_1x15._set_frame_data(img)
             mock_single.assert_called_once()
 
-    def test_set_frame_data_routes_to_matrix_for_height_gt_1(
-        self, frame_6x22, mock_driver, mock_report
-    ):
+    def test_set_frame_data_routes_to_matrix_for_height_gt_1(self, frame_6x22, mock_driver):
         """_set_frame_data calls _set_frame_data_matrix for height>1."""
-        mock_driver.get_report.return_value = mock_report
         img = np.zeros((6, 22, 3), dtype=np.uint8)
 
         with patch.object(frame_6x22, "_set_frame_data_matrix") as mock_matrix:
@@ -722,10 +750,10 @@ class TestFrameSetFrameData:
 class TestFrameIntegration:
     """Integration tests for Frame class."""
 
-    def test_full_workflow_create_and_commit_layer(self, frame_6x22, mock_driver, mock_report):
+    def test_full_workflow_create_and_commit_layer(
+        self, frame_6x22, mock_driver, mock_send_frame_async
+    ):
         """Full workflow: create layer, draw, commit."""
-        mock_driver.get_report.return_value = mock_report
-
         # Create a layer
         layer = frame_6x22.create_layer()
 
@@ -733,17 +761,15 @@ class TestFrameIntegration:
         layer._matrix[0, 0] = [1.0, 0.0, 0.0, 1.0]
 
         # Commit
-        result = frame_6x22.commit([layer])
+        result = run_commit(frame_6x22, [layer])
 
         # Should complete without error
         assert result is frame_6x22
-        assert mock_driver.run_report.called
-        assert mock_driver.fx_manager.activate.called
+        assert mock_driver.run_command_async.called
+        assert mock_send_frame_async.called
 
-    def test_multiple_layer_composition(self, frame_6x22, mock_driver, mock_report):
+    def test_multiple_layer_composition(self, frame_6x22, mock_driver, mock_send_frame_async):
         """Multiple layers can be composed and committed."""
-        mock_driver.get_report.return_value = mock_report
-
         # Create two layers
         base = frame_6x22.create_layer()
         base._matrix[:, :] = [1.0, 0.0, 0.0, 1.0]  # Red base
@@ -752,27 +778,27 @@ class TestFrameIntegration:
         overlay._matrix[:, :] = [0.0, 1.0, 0.0, 0.5]  # Green overlay, 50% alpha
 
         # Commit both
-        result = frame_6x22.commit([base, overlay])
+        result = run_commit(frame_6x22, [base, overlay], show=False)
 
         assert result is frame_6x22
+        assert mock_send_frame_async.called
 
-    def test_driver_alignment_hook_called(self, frame_6x22, mock_driver, mock_report):
+    def test_driver_alignment_hook_called(self, frame_6x22, mock_driver, mock_send_frame_async):
         """Driver's align_key_matrix is called if present."""
-        mock_driver.get_report.return_value = mock_report
         mock_driver.align_key_matrix = MagicMock(side_effect=lambda f, img: img)
 
         layer = frame_6x22.create_layer()
-        frame_6x22.commit([layer])
+        run_commit(frame_6x22, [layer], show=False)
 
         mock_driver.align_key_matrix.assert_called()
+        assert mock_send_frame_async.called
 
-    def test_driver_row_offset_hook_called(self, frame_6x22, mock_driver, mock_report):
+    def test_driver_row_offset_hook_called(self, frame_6x22, mock_driver):
         """Driver's get_row_offset is called if present."""
-        mock_driver.get_report.return_value = mock_report
         mock_driver.get_row_offset = MagicMock(return_value=0)
 
         layer = frame_6x22.create_layer()
-        frame_6x22.commit([layer])
+        run_commit(frame_6x22, [layer], show=False)
 
         # Should be called once per row
         assert mock_driver.get_row_offset.call_count == 6
@@ -781,14 +807,14 @@ class TestFrameIntegration:
         """Report object is cached after first use."""
         mock_driver.get_report.return_value = mock_report
 
-        layer = frame_6x22.create_layer()
+        img = np.zeros((6, 22, 3), dtype=np.uint8)
 
         # First commit
-        frame_6x22.commit([layer])
+        frame_6x22._set_frame_data_matrix(img, Frame.DEFAULT_FRAME_ID)
         first_call_count = mock_driver.get_report.call_count
 
         # Second commit
-        frame_6x22.commit([layer])
+        frame_6x22._set_frame_data_matrix(img, Frame.DEFAULT_FRAME_ID)
 
         # get_report should only be called once (cached)
         assert mock_driver.get_report.call_count == first_call_count

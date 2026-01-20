@@ -5,7 +5,7 @@
 # uchroma - FX module unit tests
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from frozendict import frozendict
@@ -136,6 +136,7 @@ def mock_driver(mock_hardware, mock_preferences):
     driver.preferences = mock_preferences
     driver.is_animating = False
     driver.animation_manager = MagicMock()
+    driver.animation_manager.stop_async = AsyncMock()
     driver.restore_prefs = MagicMock()
     driver.restore_prefs.connect = MagicMock()
     driver.logger = MagicMock()
@@ -501,7 +502,7 @@ class TestFXManager:
         result = fxmanager.activate("static")
 
         assert result is True
-        mock_driver.animation_manager.stop.assert_called_once()
+        mock_driver.animation_manager.stop_async.assert_called_once()
 
     def test_disable_activates_disable_effect(self, fxmanager, mock_driver):
         """disable should activate the 'disable' effect."""

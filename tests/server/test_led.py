@@ -5,8 +5,10 @@
 # uchroma - LED module unit tests
 from __future__ import annotations
 
+import asyncio
 from collections import OrderedDict
-from unittest.mock import MagicMock, call, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -122,6 +124,8 @@ def mock_led_driver():
     driver.logger = MagicMock()
     driver.run_with_result = MagicMock(return_value=None)
     driver.run_command = MagicMock(return_value=True)
+    driver.run_with_result_async = AsyncMock(return_value=None)
+    driver.run_command_async = AsyncMock(return_value=True)
     driver.has_quirk = MagicMock(return_value=False)
     driver.preferences = MagicMock()
     driver.preferences.leds = None
@@ -132,11 +136,21 @@ def mock_led_driver():
     return driver
 
 
+@pytest.fixture(autouse=True)
+def run_led_tasks_immediately():
+    def _run(coro, loop=None):
+        asyncio.run(coro)
+        return SimpleNamespace(done=lambda: True)
+
+    with patch("uchroma.server.led.ensure_future", side_effect=_run):
+        yield
+
+
 @pytest.fixture
 def logo_led(mock_led_driver):
     """Create an LED instance for LOGO type."""
     # Mock the initial refresh to avoid hardware calls
-    with patch.object(LED, "_refresh"):
+    with patch.object(LED, "_refresh_async", new=AsyncMock()):
         led = LED(mock_led_driver, LEDType.LOGO)
         led._dirty = False
         return led
@@ -145,7 +159,7 @@ def logo_led(mock_led_driver):
 @pytest.fixture
 def scroll_led(mock_led_driver):
     """Create an LED instance for SCROLL_WHEEL type (has RGB and modes)."""
-    with patch.object(LED, "_refresh"):
+    with patch.object(LED, "_refresh_async", new=AsyncMock()):
         led = LED(mock_led_driver, LEDType.SCROLL_WHEEL)
         led._dirty = False
         return led
@@ -161,26 +175,26 @@ class TestLEDInit:
 
     def test_led_init_stores_driver(self, mock_led_driver):
         """LED should store driver reference."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         assert led._driver is mock_led_driver
 
     def test_led_init_stores_led_type(self, mock_led_driver):
         """LED should store led_type."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         assert led._led_type == LEDType.LOGO
         assert led.led_type == LEDType.LOGO
 
     def test_led_init_sets_logger(self, mock_led_driver):
         """LED should get logger from driver."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         assert led._logger is mock_led_driver.logger
 
     def test_led_init_state_flags(self, mock_led_driver):
         """LED should initialize with correct state flags."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         assert led._restoring is False
         assert led._refreshing is False
@@ -188,7 +202,7 @@ class TestLEDInit:
 
     def test_led_init_adds_dynamic_traits(self, mock_led_driver):
         """LED should add brightness, color, and mode traits."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.SCROLL_WHEEL)
         assert hasattr(led, "brightness")
         assert hasattr(led, "color")
@@ -197,21 +211,21 @@ class TestLEDInit:
 
     def test_led_init_default_brightness(self, mock_led_driver):
         """LED brightness should default to 80.0."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
             led._dirty = False
         assert led.brightness == 80.0
 
     def test_led_init_default_mode(self, mock_led_driver):
         """LED mode should default to STATIC."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.SCROLL_WHEEL)
             led._dirty = False
         assert led.mode == LEDMode.STATIC
 
     def test_led_init_default_state(self, mock_led_driver):
         """LED state should default to False."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
             led._dirty = False
         assert led.state is False
@@ -222,7 +236,7 @@ class TestLEDInit:
     )
     def test_led_init_with_different_types(self, mock_led_driver, led_type):
         """LED should initialize with different LED types."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, led_type)
         assert led.led_type == led_type
 
@@ -317,12 +331,12 @@ class TestLEDBrightnessCommands:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LED _refresh Tests
+# LED _refresh_async Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestLEDRefresh:
-    """Tests for LED _refresh method."""
+    """Tests for LED _refresh_async method."""
 
     def _make_refresh_side_effect(self, state=None, color=None, mode=None, brightness=None):
         """Create a side_effect function that returns appropriate values for each command."""
@@ -341,72 +355,72 @@ class TestLEDRefresh:
         return side_effect
 
     def test_refresh_reads_state(self, mock_led_driver):
-        """_refresh should read LED state from device."""
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        """_refresh_async should read LED state from device."""
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 1], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result.reset_mock()
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result_async.reset_mock()
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 1], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
-        led._refresh()
-        calls = mock_led_driver.run_with_result.call_args_list
+        asyncio.run(led._refresh_async())
+        calls = mock_led_driver.run_with_result_async.call_args_list
         state_call = call(LED.Command.GET_LED_STATE, VARSTORE, LEDType.LOGO.hardware_id)
         assert state_call in calls
 
     def test_refresh_reads_color(self, mock_led_driver):
-        """_refresh should read LED color from device."""
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        """_refresh_async should read LED color from device."""
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 255, 128, 64], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result.reset_mock()
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result_async.reset_mock()
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 255, 128, 64], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
-        led._refresh()
-        calls = mock_led_driver.run_with_result.call_args_list
+        asyncio.run(led._refresh_async())
+        calls = mock_led_driver.run_with_result_async.call_args_list
         color_call = call(LED.Command.GET_LED_COLOR, VARSTORE, LEDType.LOGO.hardware_id)
         assert color_call in calls
 
     def test_refresh_reads_mode(self, mock_led_driver):
-        """_refresh should read LED mode from device."""
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        """_refresh_async should read LED mode from device."""
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0x02], brightness=[0, 0, 128]
         )
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result.reset_mock()
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result_async.reset_mock()
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0x02], brightness=[0, 0, 128]
         )
-        led._refresh()
-        calls = mock_led_driver.run_with_result.call_args_list
+        asyncio.run(led._refresh_async())
+        calls = mock_led_driver.run_with_result_async.call_args_list
         mode_call = call(LED.Command.GET_LED_MODE, VARSTORE, LEDType.LOGO.hardware_id)
         assert mode_call in calls
 
     def test_refresh_reads_brightness(self, mock_led_driver):
-        """_refresh should read LED brightness from device."""
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        """_refresh_async should read LED brightness from device."""
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 200]
         )
         mock_led_driver.has_quirk.return_value = False
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result.reset_mock()
-        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result_async.reset_mock()
+        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 200]
         )
-        led._refresh()
-        calls = mock_led_driver.run_with_result.call_args_list
+        asyncio.run(led._refresh_async())
+        calls = mock_led_driver.run_with_result_async.call_args_list
         brightness_call = call(LED.Command.GET_LED_BRIGHTNESS, VARSTORE, LEDType.LOGO.hardware_id)
         assert brightness_call in calls
 
     def test_refresh_sets_state_from_response(self, mock_led_driver):
-        """_refresh should set state from device response."""
+        """_refresh_async should set state from device response."""
 
         # Return state=1 (True)
         def side_effect(cmd, *args):
@@ -414,79 +428,78 @@ class TestLEDRefresh:
                 return [0, 0, 1]
             return None
 
-        mock_led_driver.run_with_result.side_effect = side_effect
-        with patch.object(LED, "_refresh"):
+        mock_led_driver.run_with_result_async.side_effect = side_effect
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        led._refresh()
+        asyncio.run(led._refresh_async())
         assert led.state is True
 
     def test_refresh_sets_color_from_response(self, mock_led_driver):
-        """_refresh should set color from device response (RGB bytes)."""
+        """_refresh_async should set color from device response (RGB bytes)."""
 
         def side_effect(cmd, *args):
             if cmd == LED.Command.GET_LED_COLOR:
                 return [0, 0, 255, 128, 64]  # R=255, G=128, B=64
             return None
 
-        mock_led_driver.run_with_result.side_effect = side_effect
-        with patch.object(LED, "_refresh"):
+        mock_led_driver.run_with_result_async.side_effect = side_effect
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        led._refresh()
+        asyncio.run(led._refresh_async())
         assert led.color.rgb[0] == pytest.approx(1.0, abs=0.01)
         assert led.color.rgb[1] == pytest.approx(128 / 255.0, abs=0.01)
         assert led.color.rgb[2] == pytest.approx(64 / 255.0, abs=0.01)
 
     def test_refresh_sets_mode_from_response(self, mock_led_driver):
-        """_refresh should set mode from device response."""
+        """_refresh_async should set mode from device response."""
 
         def side_effect(cmd, *args):
             if cmd == LED.Command.GET_LED_MODE:
                 return [0, 0, 0x02]  # PULSE mode
             return None
 
-        mock_led_driver.run_with_result.side_effect = side_effect
-        with patch.object(LED, "_refresh"):
+        mock_led_driver.run_with_result_async.side_effect = side_effect
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        led._refresh()
+        asyncio.run(led._refresh_async())
         assert led.mode == LEDMode.PULSE
 
     def test_refresh_sets_brightness_from_response(self, mock_led_driver):
-        """_refresh should set brightness from device response (scaled)."""
+        """_refresh_async should set brightness from device response (scaled)."""
 
         def side_effect(cmd, *args):
             if cmd == LED.Command.GET_LED_BRIGHTNESS:
                 return [0, 0, 255]  # Max brightness
             return None
 
-        mock_led_driver.run_with_result.side_effect = side_effect
+        mock_led_driver.run_with_result_async.side_effect = side_effect
         mock_led_driver.has_quirk.return_value = False
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        led._refresh()
+        asyncio.run(led._refresh_async())
         assert led.brightness == 100.0
 
     def test_refresh_handles_none_responses(self, mock_led_driver):
-        """_refresh should handle None responses gracefully."""
-        mock_led_driver.run_with_result.return_value = None
-        with patch.object(LED, "_refresh"):
+        """_refresh_async should handle None responses gracefully."""
+        mock_led_driver.run_with_result_async.return_value = None
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         # Should not raise
-        led._refresh()
+        asyncio.run(led._refresh_async())
 
     def test_refresh_sets_refreshing_flag(self, mock_led_driver):
-        """_refresh should set _refreshing flag during execution."""
+        """_refresh_async should set _refreshing flag during execution."""
         refreshing_during_call = []
 
-        def capture_refreshing(cmd, *args):
-            with patch.object(LED, "_refresh"):
-                led = LED(mock_led_driver, LEDType.LOGO)
+        async def capture_refreshing(cmd, *args):
             refreshing_during_call.append(led._refreshing)
             return None
 
-        mock_led_driver.run_with_result.side_effect = capture_refreshing
-        with patch.object(LED, "_refresh"):
+        mock_led_driver.run_with_result_async.side_effect = capture_refreshing
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        led._refresh()
+        asyncio.run(led._refresh_async())
+        assert any(refreshing_during_call)
         # After refresh, flag should be False
         assert led._refreshing is False
 
@@ -502,14 +515,14 @@ class TestLEDObserver:
     def test_observer_skips_during_refresh(self, logo_led, mock_led_driver):
         """Observer should not trigger commands during refresh."""
         logo_led._refreshing = True
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         logo_led.brightness = 50.0
-        mock_led_driver.run_command.assert_not_called()
+        mock_led_driver.run_command_async.assert_not_called()
 
     def test_observer_skips_when_value_unchanged(self, logo_led, mock_led_driver):
         """Observer should not trigger when old == new."""
         logo_led._dirty = False
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         original = logo_led.brightness
         logo_led.brightness = original  # Same value
         # traitlets may or may not call observer, but _set commands shouldn't run
@@ -518,34 +531,36 @@ class TestLEDObserver:
     def test_observer_sets_color(self, scroll_led, mock_led_driver):
         """Observer should send SET_LED_COLOR when color changes."""
         scroll_led._dirty = False
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         new_color = Color.NewFromRgb(1.0, 0.0, 0.0)
         scroll_led.color = new_color
         # Check that SET_LED_COLOR was called
         assert any(
-            c[0][0] == LED.Command.SET_LED_COLOR for c in mock_led_driver.run_command.call_args_list
+            c.args[0] == LED.Command.SET_LED_COLOR
+            for c in mock_led_driver.run_command_async.call_args_list
         )
 
     def test_observer_sets_mode(self, scroll_led, mock_led_driver):
         """Observer should send SET_LED_MODE when mode changes."""
         scroll_led._dirty = False
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         scroll_led.mode = LEDMode.PULSE
-        mock_led_driver.run_command.assert_called()
+        mock_led_driver.run_command_async.assert_called()
         assert any(
-            c[0][0] == LED.Command.SET_LED_MODE for c in mock_led_driver.run_command.call_args_list
+            c.args[0] == LED.Command.SET_LED_MODE
+            for c in mock_led_driver.run_command_async.call_args_list
         )
 
     def test_observer_sets_brightness(self, logo_led, mock_led_driver):
         """Observer should send brightness command when brightness changes."""
         logo_led._dirty = False
         mock_led_driver.has_quirk.return_value = False
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         logo_led.brightness = 50.0
         # Should call SET_LED_BRIGHTNESS
         assert any(
-            c[0][0] == LED.Command.SET_LED_BRIGHTNESS
-            for c in mock_led_driver.run_command.call_args_list
+            c.args[0] == LED.Command.SET_LED_BRIGHTNESS
+            for c in mock_led_driver.run_command_async.call_args_list
         )
 
     def test_observer_turns_on_led_when_brightness_goes_from_zero(self, logo_led, mock_led_driver):
@@ -554,16 +569,16 @@ class TestLEDObserver:
         logo_led._refreshing = True
         logo_led.brightness = 0.0
         logo_led._refreshing = False
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         logo_led.brightness = 50.0
         # Should have called SET_LED_STATE with 1
         state_calls = [
             c
-            for c in mock_led_driver.run_command.call_args_list
-            if c[0][0] == LED.Command.SET_LED_STATE
+            for c in mock_led_driver.run_command_async.call_args_list
+            if c.args[0] == LED.Command.SET_LED_STATE
         ]
         assert len(state_calls) > 0
-        assert state_calls[0][0][-1] == 1
+        assert state_calls[0].args[-1] == 1
 
     def test_observer_turns_off_led_when_brightness_goes_to_zero(self, logo_led, mock_led_driver):
         """Observer should set state=0 when brightness goes from >0 to 0."""
@@ -571,33 +586,33 @@ class TestLEDObserver:
         logo_led._refreshing = True
         logo_led.brightness = 50.0
         logo_led._refreshing = False
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         logo_led.brightness = 0.0
         # Should have called SET_LED_STATE with 0
         state_calls = [
             c
-            for c in mock_led_driver.run_command.call_args_list
-            if c[0][0] == LED.Command.SET_LED_STATE
+            for c in mock_led_driver.run_command_async.call_args_list
+            if c.args[0] == LED.Command.SET_LED_STATE
         ]
         assert len(state_calls) > 0
-        assert state_calls[0][0][-1] == 0
+        assert state_calls[0].args[-1] == 0
 
     def test_observer_updates_prefs_for_non_backlight(self, logo_led, mock_led_driver):
         """Observer should update preferences for non-BACKLIGHT LEDs."""
         logo_led._dirty = False
         mock_led_driver.preferences.leds = None
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         logo_led.brightness = 50.0
         # Check preferences were updated
         assert mock_led_driver.preferences.leds is not None
 
     def test_observer_skips_prefs_for_backlight(self, mock_led_driver):
         """Observer should NOT update preferences for BACKLIGHT LED."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             backlight_led = LED(mock_led_driver, LEDType.BACKLIGHT)
             backlight_led._dirty = False
         mock_led_driver.preferences.leds = None
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         backlight_led.brightness = 50.0
         # Preferences should not be updated for BACKLIGHT
         # (The code checks led_type != LEDType.BACKLIGHT before _update_prefs)
@@ -613,7 +628,7 @@ class TestLEDLazyRefresh:
 
     def test_accessing_brightness_triggers_refresh_when_dirty(self, mock_led_driver):
         """Accessing brightness should trigger refresh when _dirty is True."""
-        with patch.object(LED, "_refresh") as mock_refresh:
+        with patch.object(LED, "_refresh_async", new=AsyncMock()) as mock_refresh:
             led = LED(mock_led_driver, LEDType.LOGO)
             led._dirty = True
             _ = led.brightness
@@ -621,7 +636,7 @@ class TestLEDLazyRefresh:
 
     def test_accessing_color_triggers_refresh_when_dirty(self, mock_led_driver):
         """Accessing color should trigger refresh when _dirty is True."""
-        with patch.object(LED, "_refresh") as mock_refresh:
+        with patch.object(LED, "_refresh_async", new=AsyncMock()) as mock_refresh:
             led = LED(mock_led_driver, LEDType.LOGO)
             led._dirty = True
             _ = led.color
@@ -629,7 +644,7 @@ class TestLEDLazyRefresh:
 
     def test_accessing_mode_triggers_refresh_when_dirty(self, mock_led_driver):
         """Accessing mode should trigger refresh when _dirty is True."""
-        with patch.object(LED, "_refresh") as mock_refresh:
+        with patch.object(LED, "_refresh_async", new=AsyncMock()) as mock_refresh:
             led = LED(mock_led_driver, LEDType.LOGO)
             led._dirty = True
             _ = led.mode
@@ -637,7 +652,7 @@ class TestLEDLazyRefresh:
 
     def test_accessing_state_triggers_refresh_when_dirty(self, mock_led_driver):
         """Accessing state should trigger refresh when _dirty is True."""
-        with patch.object(LED, "_refresh") as mock_refresh:
+        with patch.object(LED, "_refresh_async", new=AsyncMock()) as mock_refresh:
             led = LED(mock_led_driver, LEDType.LOGO)
             led._dirty = True
             _ = led.state
@@ -646,13 +661,13 @@ class TestLEDLazyRefresh:
     def test_no_refresh_when_not_dirty(self, logo_led, mock_led_driver):
         """Accessing traits should NOT refresh when _dirty is False."""
         logo_led._dirty = False
-        mock_led_driver.run_with_result.reset_mock()
+        mock_led_driver.run_with_result_async.reset_mock()
         _ = logo_led.brightness
         _ = logo_led.color
         _ = logo_led.mode
         _ = logo_led.state
-        # run_with_result is used by _get, which is called in _refresh
-        mock_led_driver.run_with_result.assert_not_called()
+        # run_with_result_async is used by _get_async, which is called in _refresh_async
+        mock_led_driver.run_with_result_async.assert_not_called()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -693,7 +708,7 @@ class TestLEDGetSetValues:
 
     def test_set_values_restores_brightness(self, logo_led, mock_led_driver):
         """set_values should restore brightness."""
-        mock_led_driver.run_command.reset_mock()
+        mock_led_driver.run_command_async.reset_mock()
         logo_led.set_values({"brightness": 42.0})
         assert logo_led.brightness == 42.0
 
@@ -811,7 +826,7 @@ class TestLEDManagerGet:
         """get() should create LED instance for supported type."""
         mock_led_driver.supported_leds = [LEDType.LOGO]
         manager = LEDManager(mock_led_driver)
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = manager.get(LEDType.LOGO)
         assert led is not None
         assert isinstance(led, LED)
@@ -821,7 +836,7 @@ class TestLEDManagerGet:
         """get() should cache and return same LED instance."""
         mock_led_driver.supported_leds = [LEDType.LOGO]
         manager = LEDManager(mock_led_driver)
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led1 = manager.get(LEDType.LOGO)
             led2 = manager.get(LEDType.LOGO)
         assert led1 is led2
@@ -830,7 +845,7 @@ class TestLEDManagerGet:
         """get() should store LED in _leds dict."""
         mock_led_driver.supported_leds = [LEDType.LOGO]
         manager = LEDManager(mock_led_driver)
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = manager.get(LEDType.LOGO)
         assert LEDType.LOGO in manager._leds
         assert manager._leds[LEDType.LOGO] is led
@@ -845,7 +860,7 @@ class TestLEDManagerGet:
             handler_called.append(led)
 
         manager.led_changed.connect(handler)
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = manager.get(LEDType.LOGO)
             led._dirty = False
         # Trigger a change
@@ -864,7 +879,7 @@ class TestLEDManagerRestorePrefs:
         manager = LEDManager(mock_led_driver)
         prefs = MagicMock()
         prefs.leds = {"backlight": {"brightness": 50.0}, "logo": {"brightness": 75.0}}
-        with patch.object(LED, "_refresh"), patch.object(LED, "set_values"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()), patch.object(LED, "set_values"):
             manager._restore_prefs(prefs)
         # Only LOGO should have set_values called, not BACKLIGHT
         # Check the calls don't include backlight brightness setting
@@ -876,7 +891,7 @@ class TestLEDManagerRestorePrefs:
         manager = LEDManager(mock_led_driver)
         prefs = MagicMock()
         prefs.leds = {"logo": {"brightness": 65.0}}
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             manager._restore_prefs(prefs)
             led = manager.get(LEDType.LOGO)
         # LED should have restored brightness
@@ -889,7 +904,7 @@ class TestLEDManagerRestorePrefs:
         manager = LEDManager(mock_led_driver)
         prefs = MagicMock()
         prefs.leds = {}  # No logo prefs
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             # Should not raise
             manager._restore_prefs(prefs)
 
@@ -900,7 +915,7 @@ class TestLEDManagerRestorePrefs:
         manager = LEDManager(mock_led_driver)
         prefs = MagicMock()
         prefs.leds = None
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             # Should not raise
             manager._restore_prefs(prefs)
 
@@ -918,7 +933,7 @@ class TestLEDManagerLedChanged:
             received.append(led)
 
         manager.led_changed.connect(handler)
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = manager.get(LEDType.LOGO)
             led._dirty = False
         # Trigger a change on the LED
@@ -942,7 +957,7 @@ class TestLEDIntegration:
         mock_led_driver.has_quirk.return_value = False
         manager = LEDManager(mock_led_driver)
 
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = manager.get(LEDType.SCROLL_WHEEL)
             led._dirty = False
 
@@ -958,7 +973,7 @@ class TestLEDIntegration:
         assert values["brightness"] == 75.0
 
         # Create new LED and restore
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led2 = LED(mock_led_driver, LEDType.SCROLL_WHEEL)
             led2._dirty = False
         led2.set_values(values)
@@ -977,7 +992,7 @@ class TestLEDIntegration:
     )
     def test_led_capabilities_match_type(self, mock_led_driver, led_type, has_rgb, has_modes):
         """LED capabilities should match LEDType properties."""
-        with patch.object(LED, "_refresh"):
+        with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, led_type)
         # The trait's config tag determines if it's included in get_values
         values = led.get_values()

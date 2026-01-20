@@ -10,7 +10,6 @@ use pyo3_async_runtimes::tokio::future_into_py;
 use std::time::Duration;
 use tokio::time::sleep;
 
-const FRAME_MAX_WIDTH: usize = 24;
 const REPORT_DATA_OFFSET: usize = 8;
 const REPORT_CRC_OFFSET: usize = 88;
 const COMMAND_CLASS_LEGACY: u8 = 0x03;
@@ -82,11 +81,18 @@ pub fn send_frame_async<'py>(
             }
         }
 
-        let multi = width > FRAME_MAX_WIDTH;
-        let split_width = if multi { width / 2 } else { width };
-        let packets_per_row = if multi { 2 } else { 1 };
+        let prefix_len = if is_extended { 5 } else { 4 };
+        let usable = DATA_SIZE
+            .checked_sub(prefix_len)
+            .ok_or_else(|| HidError::ProtocolError("segment payload too small".into()))?;
+        let max_cols = usable / channels;
+        if max_cols == 0 {
+            return Err(HidError::ProtocolError("segment payload too small".into()).into());
+        }
+
+        let segments_per_row = width.div_ceil(max_cols);
         let total_packets = height
-            .checked_mul(packets_per_row)
+            .checked_mul(segments_per_row)
             .ok_or_else(|| HidError::ProtocolError("packet count overflow".into()))?;
 
         if total_packets > u16::MAX as usize {
@@ -120,28 +126,9 @@ pub fn send_frame_async<'py>(
                 .and_then(|vals| vals.get(row).copied())
                 .unwrap_or(0);
 
-            let first_len = split_width;
-            packet_index = send_segment(
-                interface.clone(),
-                &frame_data,
-                &mut report,
-                row,
-                width,
-                channels,
-                0,
-                row_offset,
-                first_len,
-                frame_id,
-                is_extended,
-                total_packets,
-                packet_index,
-                pre_delay,
-                post_delay,
-            )
-            .await?;
-
-            if multi {
-                let second_len = width - split_width;
+            let mut start_col = 0;
+            while start_col < width {
+                let segment_width = (width - start_col).min(max_cols);
                 packet_index = send_segment(
                     interface.clone(),
                     &frame_data,
@@ -149,9 +136,9 @@ pub fn send_frame_async<'py>(
                     row,
                     width,
                     channels,
-                    split_width,
-                    split_width,
-                    second_len,
+                    row_offset,
+                    start_col,
+                    segment_width,
                     frame_id,
                     is_extended,
                     total_packets,
@@ -160,6 +147,7 @@ pub fn send_frame_async<'py>(
                     post_delay,
                 )
                 .await?;
+                start_col += segment_width;
             }
         }
 
@@ -175,8 +163,8 @@ async fn send_segment(
     row: usize,
     width: usize,
     channels: usize,
-    data_start_col: usize,
-    header_start_col: usize,
+    row_offset: usize,
+    start_col: usize,
     segment_width: usize,
     frame_id: u8,
     is_extended: bool,
@@ -202,7 +190,7 @@ async fn send_segment(
         .and_then(|v| v.checked_mul(channels))
         .ok_or_else(|| HidError::ProtocolError("frame index overflow".into()))?;
     let data_start = row_base
-        .checked_add(data_start_col * channels)
+        .checked_add(start_col * channels)
         .ok_or_else(|| HidError::ProtocolError("frame index overflow".into()))?;
     let data_end = data_start
         .checked_add(data_len)
@@ -218,7 +206,12 @@ async fn send_segment(
     let remaining_u16 = u16::try_from(remaining)
         .map_err(|_| HidError::ProtocolError("remaining packet overflow".into()))?;
 
-    let stop_col = header_start_col + segment_width - 1;
+    let header_start_col = row_offset
+        .checked_add(start_col)
+        .ok_or_else(|| HidError::ProtocolError("column index overflow".into()))?;
+    let stop_col = header_start_col
+        .checked_add(segment_width - 1)
+        .ok_or_else(|| HidError::ProtocolError("column index overflow".into()))?;
     if stop_col > u8::MAX as usize || header_start_col > u8::MAX as usize {
         return Err(HidError::ProtocolError("column index overflow".into()));
     }

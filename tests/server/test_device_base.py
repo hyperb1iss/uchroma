@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -234,8 +235,8 @@ class TestBaseUChromaDeviceProperties:
         assert device.key_mapping == {"KEY_A": [[0, 1]]}
 
     def test_hid_property_initially_none(self, device):
-        """hid property is None when not opened."""
-        assert device.hid is None
+        """hid_device property is None when not opened."""
+        assert device.hid_device is None
 
     def test_is_offline_property(self, device):
         """is_offline returns offline state."""
@@ -448,7 +449,7 @@ class TestBaseUChromaDeviceReports:
     def test_get_report_creates_report(self, device):
         """get_report creates a RazerReport."""
         with (
-            patch("uchroma.server.device_base.RazerReport") as mock_report,
+            patch("uchroma.server.device_base.hid.RazerReport") as mock_report,
             patch("uchroma.server.device_base.get_transaction_id", return_value=0xFF),
         ):
             device.get_report(0x03, 0x00, 0x08)
@@ -457,16 +458,17 @@ class TestBaseUChromaDeviceReports:
     def test_get_report_with_args(self, device):
         """get_report passes args to report."""
         with (
-            patch("uchroma.server.device_base.RazerReport") as mock_report,
+            patch("uchroma.server.device_base.hid.RazerReport") as mock_report,
             patch("uchroma.server.device_base.get_transaction_id", return_value=0xFF),
         ):
             mock_instance = MagicMock()
+            mock_instance.put_byte = MagicMock()
             mock_report.return_value = mock_instance
 
             device.get_report(0x03, 0x00, 0x08, 0x01, 0x02)
 
             # Args should have been put
-            assert mock_instance.args.put.call_count == 2
+            assert mock_instance.put_byte.call_count == 2
 
     def test_get_timeout_cb_returns_none(self, device):
         """_get_timeout_cb returns None by default."""
@@ -504,15 +506,17 @@ class TestBaseUChromaDeviceSerialFirmware:
 
     def test_firmware_version_formats(self, device):
         """firmware_version formats version correctly."""
-        with patch.object(device, "_get_firmware_version", return_value=bytes([1, 5])):
-            version = device.firmware_version
-            assert version == "v1.5"
+        device._serial_number = "CACHED"
+        with patch.object(device, "_get_firmware_version_async", return_value=bytes([1, 5])):
+            asyncio.run(device.refresh_device_info_async())
+            assert device.firmware_version == "v1.5"
 
     def test_firmware_version_unknown(self, device):
         """firmware_version returns unknown if None."""
-        with patch.object(device, "_get_firmware_version", return_value=None):
-            version = device.firmware_version
-            assert version == "(unknown)"
+        device._serial_number = "CACHED"
+        with patch.object(device, "_get_firmware_version_async", return_value=None):
+            asyncio.run(device.refresh_device_info_async())
+            assert device.firmware_version == "(unknown)"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -134,6 +134,7 @@ gtk-debug: ## Run GTK frontend in debug mode
 .PHONY: test
 test: ## Run tests
 	uv run pytest $(ARGS)
+	cargo test --no-default-features --features auto-initialize
 
 .PHONY: test-v
 test-v: ## Run tests with verbose output
@@ -150,7 +151,7 @@ cov-html: ## Generate HTML coverage report
 
 .PHONY: test-rust
 test-rust: ## Run Rust unit tests
-	cargo test
+	cargo test --no-default-features --features auto-initialize
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development

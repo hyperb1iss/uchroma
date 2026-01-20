@@ -40,7 +40,6 @@ class Frame:
     is introduced in a future release.
     """
 
-    MAX_WIDTH = 24
     DEFAULT_FRAME_ID = 0xFF
 
     class Command(BaseCommand):
@@ -148,25 +147,49 @@ class Frame:
             return ColorUtils.rgba2rgb(out, bg_color=layers[0].background_color)
 
     def _set_frame_data_single(self, img, frame_id: int):
-        width = min(self._width, Frame.MAX_WIDTH)
-        self._driver.run_command(
-            Frame.Command.SET_FRAME_DATA_SINGLE,
-            0,
-            width,
-            img[0][:width].tobytes(),
-            transaction_id=0x80,
-        )
+        prefix_len = 2
+        max_cols = (hid.DATA_SIZE - prefix_len) // 3
+        if max_cols <= 0:
+            raise ValueError("frame payload too small")
+        width = self._width
+        start_col = 0
+
+        while start_col < width:
+            segment = img[0][start_col : start_col + max_cols]
+            seg_width = len(segment)
+            self._driver.run_command(
+                Frame.Command.SET_FRAME_DATA_SINGLE,
+                start_col,
+                seg_width,
+                segment.tobytes(),
+                transaction_id=0x80,
+            )
+            start_col += seg_width
+            if start_col < width:
+                time.sleep(0.001)
         return img
 
     async def _set_frame_data_single_async(self, img, frame_id: int):
-        width = min(self._width, Frame.MAX_WIDTH)
-        await self._driver.run_command_async(
-            Frame.Command.SET_FRAME_DATA_SINGLE,
-            0,
-            width,
-            img[0][:width].tobytes(),
-            transaction_id=0x80,
-        )
+        prefix_len = 2
+        max_cols = (hid.DATA_SIZE - prefix_len) // 3
+        if max_cols <= 0:
+            raise ValueError("frame payload too small")
+        width = self._width
+        start_col = 0
+
+        while start_col < width:
+            segment = img[0][start_col : start_col + max_cols]
+            seg_width = len(segment)
+            await self._driver.run_command_async(
+                Frame.Command.SET_FRAME_DATA_SINGLE,
+                start_col,
+                seg_width,
+                segment.tobytes(),
+                transaction_id=0x80,
+            )
+            start_col += seg_width
+            if start_col < width:
+                await asyncio.sleep(0.001)
         return img
 
     def _get_frame_data_report(self, remaining_packets: int, *args):
@@ -212,13 +235,14 @@ class Frame:
 
     def _set_frame_data_matrix(self, img, frame_id: int):
         width = self._width
-        multi = False
         is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
-
-        # perform two updates if we exceeded 24 columns
-        if width > Frame.MAX_WIDTH:
-            multi = True
-            width = int(width / 2)
+        prefix_len = 5 if is_extended else 4
+        max_cols = (hid.DATA_SIZE - prefix_len) // 3
+        if max_cols <= 0:
+            raise ValueError("frame payload too small")
+        segments_per_row = max(1, (width + max_cols - 1) // max_cols)
+        total_packets = self._height * segments_per_row
+        packet_index = 0
 
         if hasattr(self._driver, "align_key_matrix"):
             img = self._driver.align_key_matrix(self, img)
@@ -226,39 +250,30 @@ class Frame:
         for row in range(self._height):
             rowdata = img[row]
 
-            start_col = 0
+            row_offset = 0
             if hasattr(self._driver, "get_row_offset"):
-                start_col = self._driver.get_row_offset(self, row)
+                row_offset = self._driver.get_row_offset(self, row)
 
-            remaining = self._height - row - 1
-            if multi:
-                remaining = (remaining * 2) + 1
-
-            data = rowdata[:width]
-            stop_col = start_col + len(data) - 1
-
-            if is_extended:
-                # Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
-                args = self._build_extended_frame_args(row, start_col, stop_col, data)
-            else:
-                # Legacy format: [frame_id, row, start, stop, rgb...]
-                args = [frame_id, row, start_col, stop_col, data]
-
-            self._driver.run_report(self._get_frame_data_report(remaining, *args))
-
-            if multi:
-                time.sleep(0.001)
-                data = rowdata[width:]
-                stop_col = width + len(data) - 1
+            start_col = 0
+            while start_col < width:
+                data = rowdata[start_col : start_col + max_cols]
+                seg_width = len(data)
+                start_idx = row_offset + start_col
+                stop_col = start_idx + seg_width - 1
+                remaining = total_packets - packet_index - 1
 
                 if is_extended:
-                    args = self._build_extended_frame_args(row, width, stop_col, data)
+                    # Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
+                    args = self._build_extended_frame_args(row, start_idx, stop_col, data)
                 else:
-                    args = [frame_id, row, width, stop_col, data]
+                    # Legacy format: [frame_id, row, start, stop, rgb...]
+                    args = [frame_id, row, start_idx, stop_col, data]
 
-                self._driver.run_report(self._get_frame_data_report(remaining - 1, *args))
-
-            time.sleep(0.001)
+                self._driver.run_report(self._get_frame_data_report(remaining, *args))
+                packet_index += 1
+                start_col += seg_width
+                if start_col < width:
+                    time.sleep(0.001)
         return img
 
     async def _set_frame_data_matrix_async(self, img, frame_id: int):
