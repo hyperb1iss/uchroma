@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from .commands import Commands
 from .hardware import Capability, Quirks
@@ -105,19 +105,6 @@ class HyperPollingRate(Enum):
         return None
 
 
-class HasHardwareAndCommands(Protocol):
-    """Protocol defining the interface required by PollingMixin."""
-
-    @property
-    def hardware(self) -> Hardware: ...
-
-    def has_quirk(self, *quirks: Quirks) -> bool: ...
-
-    def run_with_result(self, command: Commands, *args: int) -> bytes | None: ...
-
-    def run_command(self, command: Commands, *args: int) -> bool: ...
-
-
 class PollingMixin:
     """
     Mixin for polling rate control.
@@ -132,7 +119,7 @@ class PollingMixin:
     - run_command(command, *args) method
     """
 
-    # These methods must be provided by the host class (see HasHardwareAndCommands Protocol)
+    # These methods must be provided by the host class (see protocols.HasHardwareAndCommands)
     hardware: Hardware
     has_quirk: Callable[..., bool]
     run_with_result: Callable[..., bytes | None]
