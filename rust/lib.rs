@@ -16,8 +16,6 @@ mod crc;
 mod drawing;
 mod effects;
 mod hid;
-mod metaballs;
-mod plasma;
 
 // Re-export for benchmarks
 pub use blending::{blend_full_impl, blend_screen_impl};
@@ -28,8 +26,8 @@ pub use crc::fast_crc_impl;
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Existing functions
     m.add_function(wrap_pyfunction!(crc::fast_crc, m)?)?;
-    m.add_function(wrap_pyfunction!(plasma::draw_plasma, m)?)?;
-    m.add_function(wrap_pyfunction!(metaballs::draw_metaballs, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::draw_plasma, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::draw_metaballs, m)?)?;
 
     // Blending functions - individual blend modes
     m.add_function(wrap_pyfunction!(blending::blend_screen, m)?)?;
