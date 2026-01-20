@@ -27,8 +27,22 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(plasma::draw_plasma, m)?)?;
     m.add_function(wrap_pyfunction!(metaballs::draw_metaballs, m)?)?;
 
-    // Blending functions
+    // Blending functions - individual blend modes
     m.add_function(wrap_pyfunction!(blending::blend_screen, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_multiply, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_addition, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_lighten_only, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_darken_only, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_dodge, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_subtract, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_grain_extract, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_grain_merge, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_divide, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_soft_light, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_hard_light, m)?)?;
+    m.add_function(wrap_pyfunction!(blending::blend_difference, m)?)?;
+    // Full blend with alpha composition
+    m.add_function(wrap_pyfunction!(blending::blend_full, m)?)?;
 
     // HID types and functions
     m.add_class::<hid::DeviceInfo>()?;
