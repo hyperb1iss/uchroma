@@ -57,6 +57,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hid::enumerate_devices_async, m)?)?;
     m.add_function(wrap_pyfunction!(hid::open_device_async, m)?)?;
     m.add_function(wrap_pyfunction!(hid::send_frame_async, m)?)?;
+    m.add_function(wrap_pyfunction!(hid::headset_constants, m)?)?;
 
     // HID constants
     m.add("REPORT_SIZE", hid::REPORT_SIZE)?;

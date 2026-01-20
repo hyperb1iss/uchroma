@@ -17,5 +17,5 @@ pub use enumerate::enumerate_devices;
 pub use enumerate::enumerate_devices_async;
 pub use error::{HidError, Result};
 pub use frame::send_frame_async;
-pub use headset::HeadsetDevice;
+pub use headset::{headset_constants, HeadsetDevice};
 pub use report::{RazerReport, Status, DATA_SIZE, REPORT_SIZE};

@@ -15,6 +15,7 @@ use pyo3_async_runtimes::tokio::future_into_py;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use tokio::time::sleep;
 
 // Report IDs
 const REPORT_ID_OUT: u8 = 0x04;
@@ -259,4 +260,97 @@ impl HeadsetDevice {
             Ok(data[1..].to_vec())
         })
     }
+
+    /// Run a headset command (async).
+    ///
+    /// Args:
+    ///     destination: READ_RAM (0x00), READ_EEPROM (0x20), or WRITE_RAM (0x40)
+    ///     length: Expected response length
+    ///     address: Memory address (16-bit big-endian)
+    ///     args: Optional argument bytes
+    ///     delay_ms: Inter-command delay (default 25)
+    ///     timeout_ms: Read timeout (default 500)
+    ///
+    /// Returns:
+    ///     Response bytes (excluding header) or None for write-only commands
+    #[pyo3(signature = (destination, length, address, args=None, delay_ms=25, timeout_ms=500))]
+    fn run_command<'py>(
+        &self,
+        py: Python<'py>,
+        destination: u8,
+        length: u8,
+        address: u16,
+        args: Option<Vec<u8>>,
+        delay_ms: u64,
+        timeout_ms: u64,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let interface = self.interface.clone();
+        let ep_out = self.ep_out;
+        let ep_in = self.ep_in;
+
+        future_into_py(py, async move {
+            // Build request packet
+            let mut req = vec![0u8; REPORT_LENGTH_OUT];
+            req[0] = destination;
+            req[1] = length;
+            req[2] = (address >> 8) as u8; // Big-endian
+            req[3] = (address & 0xFF) as u8;
+
+            // Copy args if provided
+            if let Some(arg_data) = args {
+                let copy_len = arg_data.len().min(REPORT_LENGTH_OUT - 4);
+                req[4..4 + copy_len].copy_from_slice(&arg_data[..copy_len]);
+            }
+
+            // Pre-delay
+            sleep(Duration::from_millis(delay_ms)).await;
+
+            // Send command
+            let mut buf = vec![REPORT_ID_OUT];
+            buf.extend_from_slice(&req);
+            Self::write_interrupt(interface.clone(), ep_out, &buf).await?;
+
+            // For read operations, get response
+            let is_read = destination == READ_RAM || destination == READ_EEPROM;
+            if is_read && length > 0 {
+                // Post-delay before read
+                sleep(Duration::from_millis(delay_ms)).await;
+
+                let resp = Self::read_interrupt(
+                    interface,
+                    ep_in,
+                    REPORT_LENGTH_IN + 1,
+                    Duration::from_millis(timeout_ms),
+                )
+                .await?;
+
+                // Verify report ID
+                if resp.is_empty() || resp[0] != REPORT_ID_IN {
+                    return Err(
+                        HidError::ProtocolError("Invalid response report ID".into()).into(),
+                    );
+                }
+
+                // Return response data (up to requested length)
+                let data_len = (length as usize).min(resp.len() - 1);
+                Ok(Some(resp[1..1 + data_len].to_vec()))
+            } else {
+                Ok(None)
+            }
+        })
+    }
+}
+
+/// Headset protocol constants.
+///
+/// Returns: (READ_RAM, READ_EEPROM, WRITE_RAM, REPORT_LENGTH_OUT, REPORT_LENGTH_IN)
+#[pyfunction]
+pub fn headset_constants() -> (u8, u8, u8, usize, usize) {
+    (
+        READ_RAM,
+        READ_EEPROM,
+        WRITE_RAM,
+        REPORT_LENGTH_OUT,
+        REPORT_LENGTH_IN,
+    )
 }
