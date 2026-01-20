@@ -14,6 +14,7 @@ mod blending;
 mod compositor;
 mod crc;
 mod drawing;
+mod effects;
 mod hid;
 mod metaballs;
 mod plasma;
@@ -72,6 +73,9 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Compositor
     m.add_function(wrap_pyfunction!(compositor::rgba2rgb, m)?)?;
+
+    // Effect renderers
+    m.add_function(wrap_pyfunction!(effects::draw_aurora, m)?)?;
 
     Ok(())
 }
