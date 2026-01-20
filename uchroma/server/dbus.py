@@ -824,22 +824,35 @@ class DeviceManagerAPI:
         """
         Connect to D-Bus and publish the service.
         """
-        self._bus = await MessageBus(bus_type=BusType.SESSION).connect()
+        try:
+            self._bus = await MessageBus(bus_type=BusType.SESSION).connect()
 
-        # Create and export manager interface
-        self._manager_iface = DeviceManagerInterface()
-        self._object_manager_iface = ObjectManagerInterface(self)
-        self._bus.export(ROOT_PATH, self._manager_iface)
-        self._bus.export(ROOT_PATH, self._object_manager_iface)
+            # Create and export manager interface
+            self._manager_iface = DeviceManagerInterface()
+            self._object_manager_iface = ObjectManagerInterface(self)
+            self._bus.export(ROOT_PATH, self._manager_iface)
+            self._bus.export(ROOT_PATH, self._object_manager_iface)
 
-        # Request the bus name
-        await self._bus.request_name(BUS_NAME)
+            # Request the bus name
+            await self._bus.request_name(BUS_NAME)
 
-        self._logger.info("D-Bus service published as %s", BUS_NAME)
-        self.ready.set()
+            self._logger.info("D-Bus service published as %s", BUS_NAME)
+            self.ready.set()
 
-        # Keep the connection alive
-        await self._bus.wait_for_disconnect()
+            # Keep the connection alive
+            await self._bus.wait_for_disconnect()
+        finally:
+            if self._bus is not None:
+                self._bus.disconnect()
+                self._bus = None
+                self._logger.info("D-Bus connection closed")
+
+    def stop(self):
+        """
+        Stop the D-Bus service by disconnecting from the bus.
+        """
+        if self._bus is not None:
+            self._bus.disconnect()
 
     def run_sync(self):
         """
