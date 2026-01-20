@@ -129,6 +129,12 @@ pub fn send_frame_async<'py>(
             let mut start_col = 0;
             while start_col < width {
                 let segment_width = (width - start_col).min(max_cols);
+
+                // Only apply pre_delay before FIRST packet, post_delay after LAST packet
+                // This prevents 7ms * N delays per frame (was killing framerate)
+                let is_first = packet_index == 0;
+                let is_last = packet_index + 1 == total_packets;
+
                 packet_index = send_segment(
                     interface.clone(),
                     &frame_data,
@@ -143,8 +149,8 @@ pub fn send_frame_async<'py>(
                     is_extended,
                     total_packets,
                     packet_index,
-                    pre_delay,
-                    post_delay,
+                    if is_first { pre_delay } else { Duration::ZERO },
+                    if is_last { post_delay } else { Duration::ZERO },
                 )
                 .await?;
                 start_col += segment_width;
@@ -221,12 +227,22 @@ async fn send_segment(
     report[5] = (prefix_len + data_len) as u8;
 
     if is_extended {
+        // Extended frame format (0x0F/0x03 command):
+        // Bytes 0-1: Reserved, must be 0x00 (Razer protocol requirement)
+        // Byte 2: Row index
+        // Byte 3: Start column (with offset applied)
+        // Byte 4: End column (with offset applied)
         report[REPORT_DATA_OFFSET] = 0x00;
         report[REPORT_DATA_OFFSET + 1] = 0x00;
         report[REPORT_DATA_OFFSET + 2] = row as u8;
         report[REPORT_DATA_OFFSET + 3] = header_start_col as u8;
         report[REPORT_DATA_OFFSET + 4] = stop_col as u8;
     } else {
+        // Legacy frame format (0x03/0x0B command):
+        // Byte 0: Frame ID (for double-buffering)
+        // Byte 1: Row index
+        // Byte 2: Start column (with offset applied)
+        // Byte 3: End column (with offset applied)
         report[REPORT_DATA_OFFSET] = frame_id;
         report[REPORT_DATA_OFFSET + 1] = row as u8;
         report[REPORT_DATA_OFFSET + 2] = header_start_col as u8;
@@ -239,13 +255,13 @@ async fn send_segment(
 
     report[REPORT_CRC_OFFSET] = fast_crc_impl(report);
 
-    if pre_delay.as_millis() > 0 {
+    if !pre_delay.is_zero() {
         sleep(pre_delay).await;
     }
 
     HidDevice::send_feature_report_inner(interface, report, 0).await?;
 
-    if post_delay.as_millis() > 0 {
+    if !post_delay.is_zero() {
         sleep(post_delay).await;
     }
 
