@@ -8,22 +8,16 @@ Shimmering vertical curtains of light that undulate horizontally,
 with colors flowing through greens, teals, and purples.
 """
 
-import math
-
+import numpy as np
 from traitlets import Float, observe
 
+from uchroma._native import draw_aurora as _rust_draw_aurora
 from uchroma.color import ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorSchemeTrait
 
 # Default aurora palette: green -> teal -> purple
 AURORA_COLORS = ["#00ff87", "#00d9ff", "#bf00ff", "#00ff87"]
-
-
-def smoothstep(edge0: float, edge1: float, x: float) -> float:
-    """Smooth interpolation between edges."""
-    t = max(0.0, min(1.0, (x - edge0) / (edge1 - edge0)))
-    return t * t * (3.0 - 2.0 * t)
 
 
 class Aurora(Renderer):
@@ -47,16 +41,17 @@ class Aurora(Renderer):
     color_scheme = ColorSchemeTrait(minlen=2, default_value=AURORA_COLORS).tag(config=True)
 
     def __init__(self, *args, **kwargs):
-        # Must set gradient_length BEFORE super().__init__ because the
-        # color_scheme observer fires during init and needs this value
         self.gradient_length = 180
         self._gradient = None
+        self._gradient_array = None
         self._time = 0.0
         super().__init__(*args, **kwargs)
         self.fps = 15
 
     def _gen_gradient(self):
         self._gradient = ColorUtils.gradient(self.gradient_length, *self.color_scheme)
+        # Pre-convert to numpy array for Rust
+        self._gradient_array = np.array([c.rgb for c in self._gradient], dtype=np.float64)
 
     @observe("color_scheme")
     def _scheme_changed(self, changed):
@@ -70,57 +65,21 @@ class Aurora(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
-        gradient = self._gradient
-        if gradient is None:
+        if self._gradient_array is None:
             return False
 
-        width = layer.width
-        height = layer.height
-        grad_len = len(gradient)
-
-        t = self._time
-        speed = self.speed
-        drift = self.drift
-        base_height = self.curtain_height
-        shimmer = self.shimmer
-        color_drift = self.color_drift
-        floor_glow = self.floor_glow
-
-        for col in range(width):
-            # Curtain height oscillates via layered sines
-            wave1 = math.sin(col * 0.4 + t * speed)
-            wave2 = math.sin(t * drift * 0.7) * 0.5
-            curtain_h = base_height + wave1 * wave2 * 0.3
-
-            # Convert to row threshold (0 = top, height-1 = bottom)
-            curtain_row = (1.0 - curtain_h) * height
-
-            # Color shifts across columns and time
-            hue_offset = col * 3 + t * color_drift * 20
-            base_color_idx = int(hue_offset) % grad_len
-
-            for row in range(height):
-                # Intensity falls off below curtain edge with extended range
-                # Use height-proportional fade so bottom rows still get light
-                fade_range = height * 0.8  # Fade spans most of the height
-                intensity = smoothstep(curtain_row + fade_range, curtain_row - 1, row)
-
-                # Ensure minimum brightness at bottom (aurora glow floor)
-                row_norm = row / (height - 1) if height > 1 else 0.0
-                min_intensity = floor_glow * row_norm
-                intensity = max(min_intensity, intensity)
-
-                # High-frequency shimmer
-                if shimmer > 0:
-                    shimmer_val = math.sin(col * 2.1 + row * 1.3 + t * 8) * shimmer * 0.15
-                    intensity = max(0.0, min(1.0, intensity + shimmer_val))
-
-                if intensity > 0.01:
-                    # Gradient shifts slightly per row for depth
-                    color_idx = (base_color_idx + row * 2) % grad_len
-                    color = gradient[color_idx]
-                    layer.matrix[row][col] = (*color.rgb, intensity)
-                else:
-                    layer.matrix[row][col] = (0.0, 0.0, 0.0, 0.0)
+        _rust_draw_aurora(
+            width=layer.width,
+            height=layer.height,
+            matrix=layer.matrix,
+            gradient=self._gradient_array,
+            time=self._time,
+            speed=self.speed,
+            drift=self.drift,
+            curtain_height=self.curtain_height,
+            shimmer=self.shimmer,
+            color_drift=self.color_drift,
+            floor_glow=self.floor_glow,
+        )
 
         return True
