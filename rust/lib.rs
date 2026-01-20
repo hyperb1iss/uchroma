@@ -12,6 +12,7 @@ use pyo3::prelude::*;
 
 mod blending;
 mod crc;
+mod drawing;
 mod hid;
 mod metaballs;
 mod plasma;
@@ -58,6 +59,10 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // HID constants
     m.add("REPORT_SIZE", hid::REPORT_SIZE)?;
     m.add("DATA_SIZE", hid::DATA_SIZE)?;
+
+    // Drawing primitives
+    m.add_function(wrap_pyfunction!(drawing::circle_perimeter_aa, m)?)?;
+    m.add_function(wrap_pyfunction!(drawing::line_aa, m)?)?;
 
     Ok(())
 }
