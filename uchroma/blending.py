@@ -8,6 +8,15 @@ from collections.abc import Callable
 
 import numpy as np
 
+# Try to import Rust backend
+try:
+    from uchroma._native import blend_full as _rust_blend_full
+
+    USE_RUST_BACKEND = True
+except ImportError:
+    USE_RUST_BACKEND = False
+    _rust_blend_full = None
+
 # Copyright (c) 2016 Florian Roscheck
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -184,15 +193,31 @@ def blend(
     assert img_layer.shape[2] == 4, "Input variable img_layer should be of shape [:, :,4]."
     assert 0.0 <= opacity <= 1.0, "Opacity needs to be between 0.0 and 1.0."
 
+    # Resolve blend_mode to a string name for Rust backend
+    if blend_op is None:
+        blend_mode_name = "screen"
+    elif isinstance(blend_op, str):
+        if hasattr(BlendOp, blend_op):
+            blend_mode_name = blend_op
+        else:
+            raise ValueError(f"Invalid blend mode: {blend_op}")
+    else:
+        # Callable - get the function name from BlendOp
+        blend_mode_name = getattr(blend_op, "__name__", None)
+
+    # Use Rust backend if available and we have a valid mode name
+    if USE_RUST_BACKEND and blend_mode_name is not None:
+        output = np.empty_like(img_in)
+        _rust_blend_full(img_in, img_layer, output, blend_mode_name, opacity)
+        return output
+
+    # Fall through to Python implementation
     ratio = _compose_alpha(img_in, img_layer, opacity)
 
     if blend_op is None:
         blend_op = BlendOp.screen
     elif isinstance(blend_op, str):
-        if hasattr(BlendOp, blend_op):
-            blend_op = getattr(BlendOp, blend_op)
-        else:
-            raise ValueError(f"Invalid blend mode: {blend_op}")
+        blend_op = getattr(BlendOp, blend_op)
 
     comp = blend_op(img_in, img_layer)
 
