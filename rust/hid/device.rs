@@ -39,6 +39,15 @@ const HID_REPORT_TYPE_FEATURE: u16 = 0x03;
 // Default timeout for USB transfers
 const DEFAULT_TIMEOUT: Duration = Duration::from_millis(1000);
 
+/// Create a new single-threaded tokio runtime.
+/// Returns HidError if runtime creation fails (e.g., under resource pressure).
+fn get_or_create_runtime() -> Result<tokio::runtime::Runtime> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| HidError::ProtocolError(format!("Failed to create tokio runtime: {}", e)))
+}
+
 #[pymethods]
 impl HidDevice {
     /// Open a HID device from DeviceInfo.
@@ -66,20 +75,36 @@ impl HidDevice {
     }
 
     /// Close the device.
+    ///
+    /// Blocks until any in-progress operation completes, then closes the device.
+    /// If runtime creation fails, the device will be cleaned up on drop.
     fn close(&self) {
-        if let Ok(mut guard) = self.interface.try_lock() {
-            *guard = None;
+        // Use blocking approach to ensure we actually close
+        // This is acceptable since close() is inherently a sync operation
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            rt.block_on(async {
+                let mut guard = self.interface.lock().await;
+                *guard = None;
+            });
+        } else if let Ok(rt) = get_or_create_runtime() {
+            rt.block_on(async {
+                let mut guard = self.interface.lock().await;
+                *guard = None;
+            });
         }
+        // If runtime creation fails, device will be cleaned up on drop
     }
 
     /// Check if device is open.
+    ///
+    /// Returns false if the device is closed OR if the lock is currently held
+    /// (state cannot be determined while another operation is in progress).
     #[getter]
     fn is_open(&self) -> bool {
-        if let Ok(guard) = self.interface.try_lock() {
-            guard.is_some()
-        } else {
-            true
-        }
+        self.interface
+            .try_lock()
+            .map(|guard| guard.is_some())
+            .unwrap_or(false)
     }
 
     /// Device info.
@@ -104,10 +129,7 @@ impl HidDevice {
         let result = if let Ok(rt) = tokio::runtime::Handle::try_current() {
             rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         } else {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+            let rt = get_or_create_runtime()?;
             rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         };
 
@@ -128,10 +150,7 @@ impl HidDevice {
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
             rt.block_on(Self::get_feature_report_inner(interface, report_id, size))
         } else {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+            let rt = get_or_create_runtime()?;
             rt.block_on(Self::get_feature_report_inner(interface, report_id, size))
         }
     }
@@ -210,10 +229,7 @@ impl HidDevice {
         let result = if let Ok(rt) = tokio::runtime::Handle::try_current() {
             rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         } else {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+            let rt = get_or_create_runtime()?;
             rt.block_on(Self::send_feature_report_inner(interface, &data, report_id))
         };
 
@@ -227,10 +243,7 @@ impl HidDevice {
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
             rt.block_on(Self::get_feature_report_inner(interface, report_id, size))
         } else {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+            let rt = get_or_create_runtime()?;
             rt.block_on(Self::get_feature_report_inner(interface, report_id, size))
         }
     }
