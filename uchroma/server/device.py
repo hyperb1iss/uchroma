@@ -97,9 +97,9 @@ class UChromaDevice(BaseUChromaDevice):
     def led_manager(self) -> LEDManager:
         return self._led_manager
 
-    def reset(self) -> bool:
+    async def reset(self) -> bool:
         """
-        Clear all effects and custom frame
+        Clear all effects and custom frame.
 
         :return: True if successful
         """
@@ -107,9 +107,9 @@ class UChromaDevice(BaseUChromaDevice):
             frame = self.frame_control
             if frame is not None:
                 frame.background_color = None
-                frame.reset()
+                await frame.reset()
 
         if hasattr(self, "fx_manager"):
-            self.fx_manager.disable()
+            await self.fx_manager.disable()
 
         return True

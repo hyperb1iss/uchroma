@@ -214,8 +214,8 @@ class DeviceInterface(ServiceInterface):
             self.emit_properties_changed({"Suspended": self._driver.suspended})
 
     @method()
-    def Reset(self):
-        self._driver.reset()
+    async def Reset(self):
+        await self._driver.reset()
 
     @method()
     async def Refresh(self) -> "a{sv}":
@@ -332,7 +332,7 @@ class FXManagerInterface(ServiceInterface):
             raise DBusError("io.uchroma.Error.UnknownFX", f"Unknown FX: {name}") from None
         # Extract values from variants
         kwargs = {k: (v.value if isinstance(v, Variant) else v) for k, v in args.items()}
-        return await self._fx_manager.activate_async(name, **kwargs)
+        return await self._fx_manager.activate(name, **kwargs)
 
 
 class AnimationManagerInterface(ServiceInterface):
@@ -535,14 +535,14 @@ class SystemControlInterface(ServiceInterface):
     @method()
     async def SetFanAuto(self) -> "b":
         """Set fans to automatic EC control."""
-        return await self._driver.set_fan_auto_async()
+        return await self._driver.set_fan_auto()
 
     @method()
     async def SetFanRPM(self, rpm: "i", fan2_rpm: "i") -> "b":
         """Set manual fan RPM. Use fan2_rpm=-1 to ignore second fan."""
         try:
             fan2 = fan2_rpm if fan2_rpm >= 0 else None
-            return await self._driver.set_fan_rpm_async(rpm, fan2)
+            return await self._driver.set_fan_rpm(rpm, fan2)
         except ValueError as e:
             self._logger.warning("SetFanRPM failed: %s", e)
             return False
@@ -560,7 +560,7 @@ class SystemControlInterface(ServiceInterface):
     def PowerMode(self, mode: "s"):
         """Set power mode by name."""
         try:
-            ensure_future(self._driver.set_power_mode_async(PowerMode[mode.upper()]))
+            ensure_future(self._driver.set_power_mode(PowerMode[mode.upper()]))
         except KeyError:
             self._logger.warning("Unknown power mode: %s", mode)
 
@@ -582,7 +582,7 @@ class SystemControlInterface(ServiceInterface):
     def CPUBoost(self, mode: "s"):
         """Set CPU boost mode (requires custom power mode)."""
         try:
-            ensure_future(self._driver.set_cpu_boost_async(BoostMode[mode.upper()]))
+            ensure_future(self._driver.set_cpu_boost(BoostMode[mode.upper()]))
         except KeyError:
             self._logger.warning("Unknown boost mode: %s", mode)
 
@@ -595,7 +595,7 @@ class SystemControlInterface(ServiceInterface):
     def GPUBoost(self, mode: "s"):
         """Set GPU boost mode (requires custom power mode)."""
         try:
-            ensure_future(self._driver.set_gpu_boost_async(BoostMode[mode.upper()]))
+            ensure_future(self._driver.set_gpu_boost(BoostMode[mode.upper()]))
         except KeyError:
             self._logger.warning("Unknown boost mode: %s", mode)
 
@@ -622,7 +622,7 @@ class SystemControlInterface(ServiceInterface):
 
     @method()
     async def Refresh(self) -> "a{sv}":
-        updates = await self._driver.refresh_system_state_async()
+        updates = await self._driver.refresh_system_state()
         if updates:
             self.emit_properties_changed(updates)
         return dbus_prepare(updates, variant=True)[0]

@@ -88,22 +88,13 @@ class FXManager(HasTraits):
 
     def _restore_prefs(self, prefs):
         """
-        Restore last FX from preferences
+        Restore last FX from preferences (signal handler).
         """
         if prefs.fx is not None:
             args = {}
             if prefs.fx_args is not None:
                 args = prefs.fx_args
-
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-
-            if loop is None:
-                asyncio.run(self.activate_async(prefs.fx, **args))
-            else:
-                ensure_future(self.activate_async(prefs.fx, **args), loop=loop)
+            ensure_future(self.activate(prefs.fx, **args))
 
     @property
     def available_fx(self):
@@ -122,24 +113,7 @@ class FXManager(HasTraits):
 
         return self._fxmod.create_fx(fx_name)
 
-    def disable(self) -> bool:
-        if "disable" in self.available_fx:
-            return self.activate("disable")
-        return False
-
-    def _activate(self, fx_name, fx, future=None):
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is None:
-            asyncio.run(self._activate_async(fx_name, fx))
-        else:
-            ensure_future(self._activate_async(fx_name, fx), loop=loop)
-        return True
-
-    async def _activate_async(self, fx_name, fx) -> bool:
+    async def _activate(self, fx_name, fx) -> bool:
         if await fx.apply_async():
             if fx_name != self.current_fx[0]:
                 self.current_fx = (fx_name, fx)
@@ -153,19 +127,7 @@ class FXManager(HasTraits):
             self._driver.preferences.fx_args = argsdict
         return True
 
-    def activate(self, fx_name, **kwargs) -> bool:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is None:
-            return asyncio.run(self.activate_async(fx_name, **kwargs))
-
-        ensure_future(self.activate_async(fx_name, **kwargs), loop=loop)
-        return True
-
-    async def activate_async(self, fx_name, **kwargs) -> bool:
+    async def activate(self, fx_name, **kwargs) -> bool:
         fx = self.get_fx(fx_name)
         if fx is None:
             return False
@@ -179,9 +141,9 @@ class FXManager(HasTraits):
                 if self._driver.is_animating:
                     await self._driver.animation_manager.stop_async()
 
-            return await self._activate_async(fx_name, fx)
+            return await self._activate(fx_name, fx)
 
-    async def disable_async(self) -> bool:
+    async def disable(self) -> bool:
         if "disable" in self.available_fx:
-            return await self.activate_async("disable")
+            return await self.activate("disable")
         return False

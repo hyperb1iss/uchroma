@@ -27,7 +27,7 @@ def run_commit(frame, layers, **kwargs):
 
 
 def run_reset(frame, **kwargs):
-    return asyncio.run(frame.reset_async(**kwargs))
+    return asyncio.run(frame.reset(**kwargs))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

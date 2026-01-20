@@ -483,10 +483,13 @@ class AnimationManager(HasTraits):
         self.state_changed.fire(value)
 
     def _loop_running_changed(self, change):
-        try:
-            self._driver.reset()
-        except OSError:
-            self._error = True
+        async def _do_reset():
+            try:
+                await self._driver.reset()
+            except OSError:
+                self._error = True
+
+        ensure_future(_do_reset())
         self._state_changed(change)
 
     def _loop_layers_changed(self, *args, error=False):

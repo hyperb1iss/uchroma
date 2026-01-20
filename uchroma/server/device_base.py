@@ -687,9 +687,9 @@ class BaseUChromaDevice:
             self._prefs = PreferenceManager().get(self.serial_number)
         return self._prefs
 
-    def reset(self) -> bool:
+    async def reset(self) -> bool:
         """
-        Reset effects and other configuration to defaults
+        Reset effects and other configuration to defaults.
         """
         return True
 

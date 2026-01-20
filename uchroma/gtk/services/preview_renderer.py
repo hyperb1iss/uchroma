@@ -14,6 +14,7 @@ import numpy as np
 from gi.repository import GLib
 
 from uchroma.color import to_rgb
+from uchroma.colorlib import Color
 
 
 class PreviewRenderer:
@@ -133,14 +134,12 @@ class PreviewRenderer:
                 phase = (1 - col / self.cols + t * speed * 0.1) % 1.0
 
             # Rainbow gradient
-            r, g, b = self._hsv_to_rgb(phase, 1.0, 1.0)
-            self.frame[:, col] = [r, g, b]
+            self.frame[:, col] = Color.NewFromHsv(phase * 360, 1.0, 1.0).rgb
 
     def _render_spectrum(self, t: float):
         """Render spectrum cycle effect."""
         hue = (t * 0.1) % 1.0
-        r, g, b = self._hsv_to_rgb(hue, 1.0, 1.0)
-        self.frame[:, :] = [r, g, b]
+        self.frame[:, :] = Color.NewFromHsv(hue * 360, 1.0, 1.0).rgb
 
     def _render_breathe(self, t: float):
         """Render breathing effect."""
@@ -225,8 +224,7 @@ class PreviewRenderer:
 
         for col in range(self.cols):
             hue = (col / self.cols + t * speed * 0.1) % 1.0
-            r, g, b = self._hsv_to_rgb(hue, 1.0, 1.0)
-            self.frame[:, col] = [r, g, b]
+            self.frame[:, col] = Color.NewFromHsv(hue * 360, 1.0, 1.0).rgb
 
     def _parse_color(self, color_str: str) -> tuple:
         """Parse hex color to RGB floats."""
@@ -237,27 +235,3 @@ class PreviewRenderer:
         except Exception:
             pass
         return (1.0, 1.0, 1.0)
-
-    def _hsv_to_rgb(self, h: float, s: float, v: float) -> tuple:
-        """Convert HSV to RGB."""
-        if s == 0:
-            return (v, v, v)
-
-        i = int(h * 6)
-        f = (h * 6) - i
-        p = v * (1 - s)
-        q = v * (1 - s * f)
-        t = v * (1 - s * (1 - f))
-        i = i % 6
-
-        if i == 0:
-            return (v, t, p)
-        if i == 1:
-            return (q, v, p)
-        if i == 2:
-            return (p, v, t)
-        if i == 3:
-            return (p, q, v)
-        if i == 4:
-            return (t, p, v)
-        return (v, p, q)

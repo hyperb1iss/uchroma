@@ -555,11 +555,10 @@ class TestColorNewFromHsv:
         assert color.rgb == pytest.approx((0.0, 0.0, 0.0), abs=0.02)
 
     def test_hsv_small_values_work(self):
-        """Small s/v values (0.01) produce expected results due to *100 bug."""
-        # s=0.01, v=0.01 becomes s=1, v=1 in coloraide (valid range)
-        # This produces red since h=0
+        """Small s/v values (0.01) produce expected results."""
+        # s=0.01, v=0.01 produces a very dark, nearly desaturated color
         color = Color.NewFromHsv(0, 0.01, 0.01)
-        assert color.rgb == pytest.approx((1.0, 0.0, 0.0), abs=0.02)
+        assert color.rgb == pytest.approx((0.01, 0.0099, 0.0099), abs=0.02)
 
     def test_hsv_creates_color_object(self):
         """NewFromHsv returns a Color instance."""
@@ -733,16 +732,14 @@ class TestColorProperties:
         h, _, _ = red_color.hsl
         assert h == pytest.approx(0, abs=1)
 
-    def test_hsl_property_bug_divides_by_100(self, red_color):
-        """hsl property incorrectly divides s/l by 100 (documents bug).
+    def test_hsl_property_saturation_lightness(self, red_color):
+        """hsl property returns correct saturation and lightness.
 
-        The hsl property divides by 100, but coloraide uses 0-1 range,
-        so red's saturation (1.0) becomes 0.01.
+        Red in HSL is (0, 1.0, 0.5) - fully saturated, mid lightness.
         """
         _, s, l = red_color.hsl
-        # Due to the bug, values are 100x smaller than expected
-        assert s == pytest.approx(0.01, abs=0.001)
-        assert l == pytest.approx(0.005, abs=0.001)
+        assert s == pytest.approx(1.0, abs=0.01)
+        assert l == pytest.approx(0.5, abs=0.01)
 
     def test_hsla_property(self):
         """hsla property returns HSLA tuple."""
@@ -798,15 +795,13 @@ class TestColorManipulation:
         blended = red_color.blend(blue_color, 0.5)
         assert isinstance(blended, Color)
 
-    def test_blend_bug_returns_second_color(self, red_color, blue_color):
-        """blend method has a bug - always returns the second color.
+    def test_blend_interpolates_correctly(self, red_color, blue_color):
+        """blend method correctly interpolates between colors.
 
-        The blend implementation calls self.interpolate([other]) but
-        coloraide's interpolate needs [self, other] as a class method.
+        50% blend of red and blue produces magenta (0.5, 0, 0.5).
         """
-        # Due to the bug, blend always returns the second color
         blended = red_color.blend(blue_color, 0.5)
-        assert blended.rgb == pytest.approx((0.0, 0.0, 1.0), abs=0.01)
+        assert blended.rgb == pytest.approx((0.5, 0.0, 0.5), abs=0.01)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

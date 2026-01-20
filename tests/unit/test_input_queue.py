@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections import deque
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -368,7 +369,7 @@ class TestInputQueueExpire:
             coords=None,
             data={},
         )
-        input_queue._events = [old_event, new_event]
+        input_queue._events = deque([old_event, new_event])
 
         input_queue._expire()
 
@@ -378,11 +379,11 @@ class TestInputQueueExpire:
     def test_expire_noop_when_no_expire_time(self, input_queue):
         """_expire does nothing when expire_time is None."""
         input_queue._expire_time = None
-        input_queue._events = ["should_stay"]
+        input_queue._events = deque(["should_stay"])
 
         input_queue._expire()
 
-        assert input_queue._events == ["should_stay"]
+        assert list(input_queue._events) == ["should_stay"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

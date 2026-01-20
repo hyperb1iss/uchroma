@@ -138,9 +138,9 @@ class SystemControlMixin:
             return
 
         if self._refresh_task is None or self._refresh_task.done():
-            self._refresh_task = ensure_future(self._refresh_state_async())
+            self._refresh_task = ensure_future(self._refresh_state())
 
-    async def _refresh_state_async(self):
+    async def _refresh_state(self):
         if not self.supports_system_control and not self.supports_boost:
             return
 
@@ -237,35 +237,6 @@ class SystemControlMixin:
     # Fan Control
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _get_fan_state(self) -> tuple[PowerMode, int, int | None]:
-        """
-        Get combined fan/power state from GET_FAN_MODE.
-
-        Returns:
-            Tuple of (power_mode, fan1_rpm, fan2_rpm)
-        """
-        result = self.run_with_result(ECCommand.GET_FAN_MODE, 0x00, 0x00, 0x00, 0x00)
-        if result is None or len(result) < 4:
-            return (PowerMode.BALANCED, 0, None)
-
-        # args[2] = game_mode (power profile)
-        # args[3] = fan_speed (RPM/100, 0 = auto)
-        try:
-            power_mode = PowerMode(result[2])
-        except ValueError:
-            power_mode = PowerMode.BALANCED
-
-        fan1_rpm = result[3] * 100
-
-        # Query fan 2 if dual-fan
-        fan2_rpm = None
-        if self.fan_limits.supports_dual_fan:
-            result2 = self.run_with_result(ECCommand.GET_FAN_MODE, 0x00, 0x01, 0x00, 0x00)
-            if result2 is not None and len(result2) >= 4:
-                fan2_rpm = result2[3] * 100
-
-        return (power_mode, fan1_rpm, fan2_rpm)
-
     @property
     def fan_rpm(self) -> tuple[int, int | None]:
         """
@@ -291,9 +262,7 @@ class SystemControlMixin:
         self._schedule_refresh()
         return self._cached_fan_mode
 
-    async def _set_fan_power_async(
-        self, power_mode: PowerMode, fan_rpm: int, fan_id: int = 0
-    ) -> bool:
+    async def _set_fan_power(self, power_mode: PowerMode, fan_rpm: int, fan_id: int = 0) -> bool:
         """
         Set combined fan/power state using SET_FAN_MODE.
 
@@ -313,7 +282,7 @@ class SystemControlMixin:
             ECCommand.SET_FAN_MODE, 0x00, fan_id, power_mode.value, rpm_value
         )
 
-    async def set_fan_auto_async(self) -> bool:
+    async def set_fan_auto(self) -> bool:
         """Set fans to automatic EC control (keeps current power mode)."""
         if not self.supports_system_control:
             return False
@@ -321,14 +290,14 @@ class SystemControlMixin:
         # Get current power mode to preserve it
         current_power = self._cached_power_mode
         if current_power is None:
-            await self._refresh_state_async()
+            await self._refresh_state()
             current_power = self._cached_power_mode or PowerMode.BALANCED
 
         # Set fan to auto (rpm=0) while keeping power mode
-        success = await self._set_fan_power_async(current_power, 0, 0)
+        success = await self._set_fan_power(current_power, 0, 0)
 
         if success and self.fan_limits.supports_dual_fan:
-            await self._set_fan_power_async(current_power, 0, 1)
+            await self._set_fan_power(current_power, 0, 1)
 
         if success:
             self._cached_fan_mode = FanMode.AUTO
@@ -338,7 +307,7 @@ class SystemControlMixin:
             self.fan_changed.fire(self)
         return success
 
-    async def set_fan_rpm_async(self, rpm: int, fan2_rpm: int | None = None) -> bool:
+    async def set_fan_rpm(self, rpm: int, fan2_rpm: int | None = None) -> bool:
         """
         Set manual fan RPM.
 
@@ -359,7 +328,7 @@ class SystemControlMixin:
 
         # RPM 0 means auto mode
         if rpm == 0:
-            return await self.set_fan_auto_async()
+            return await self.set_fan_auto()
 
         # Validate RPM limits
         if rpm < limits.min_manual_rpm:
@@ -374,13 +343,13 @@ class SystemControlMixin:
         current_power = self._cached_power_mode or PowerMode.CUSTOM
 
         # Set fan 1
-        success = await self._set_fan_power_async(current_power, rpm, 0)
+        success = await self._set_fan_power(current_power, rpm, 0)
 
         # Set fan 2 if dual-fan and specified
         if success and fan2_rpm is not None and limits.supports_dual_fan:
             if fan2_rpm < limits.min_manual_rpm or fan2_rpm > limits.max_rpm:
                 raise ValueError(f"Fan 2 RPM {fan2_rpm} outside limits")
-            success = await self._set_fan_power_async(current_power, fan2_rpm, 1)
+            success = await self._set_fan_power(current_power, fan2_rpm, 1)
 
         if success:
             self._cached_fan_mode = FanMode.MANUAL
@@ -390,24 +359,6 @@ class SystemControlMixin:
             self.fan_changed.fire(self)
 
         return success
-
-    def set_fan_auto(self) -> bool:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(self.set_fan_auto_async())
-
-        ensure_future(self.set_fan_auto_async(), loop=loop)
-        return True
-
-    def set_fan_rpm(self, rpm: int, fan2_rpm: int | None = None) -> bool:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(self.set_fan_rpm_async(rpm, fan2_rpm))
-
-        ensure_future(self.set_fan_rpm_async(rpm, fan2_rpm), loop=loop)
-        return True
 
     # ─────────────────────────────────────────────────────────────────────────
     # Power Modes
@@ -424,15 +375,9 @@ class SystemControlMixin:
     @power_mode.setter
     def power_mode(self, mode: PowerMode):
         """Set power mode (preserves current fan setting)."""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self.set_power_mode_async(mode))
-            return
+        ensure_future(self.set_power_mode(mode))
 
-        ensure_future(self.set_power_mode_async(mode), loop=loop)
-
-    async def set_power_mode_async(self, mode: PowerMode) -> bool:
+    async def set_power_mode(self, mode: PowerMode) -> bool:
         if not self.supports_system_control:
             return False
 
@@ -441,39 +386,19 @@ class SystemControlMixin:
         if result is not None and len(result) >= 4:
             current_fan_rpm = result[3] * 100
 
-        success = await self._set_fan_power_async(mode, current_fan_rpm, 0)
+        success = await self._set_fan_power(mode, current_fan_rpm, 0)
 
         if success and self.fan_limits.supports_dual_fan:
             result2 = await self.run_with_result_async(
                 ECCommand.GET_FAN_MODE, 0x00, 0x01, 0x00, 0x00
             )
             fan2_rpm = result2[3] * 100 if result2 and len(result2) >= 4 else 0
-            await self._set_fan_power_async(mode, fan2_rpm, 1)
+            await self._set_fan_power(mode, fan2_rpm, 1)
 
         if success:
             self._cached_power_mode = mode
             self.power_mode_changed.fire(self, mode)
         return success
-
-    def set_gaming_mode(self) -> bool:
-        """Enable gaming mode (~55W CPU TDP, aggressive cooling)."""
-        self.power_mode = PowerMode.GAMING
-        return True
-
-    def set_balanced_mode(self) -> bool:
-        """Enable balanced mode (~35W CPU TDP, quiet operation)."""
-        self.power_mode = PowerMode.BALANCED
-        return True
-
-    def set_creator_mode(self) -> bool:
-        """Enable creator mode (higher GPU TDP)."""
-        self.power_mode = PowerMode.CREATOR
-        return True
-
-    def set_custom_mode(self) -> bool:
-        """Enable custom mode (manual fan/boost control)."""
-        self.power_mode = PowerMode.CUSTOM
-        return True
 
     # ─────────────────────────────────────────────────────────────────────────
     # Boost Control (for CUSTOM power mode)
@@ -491,13 +416,7 @@ class SystemControlMixin:
     @cpu_boost.setter
     def cpu_boost(self, mode: BoostMode):
         """Set CPU boost mode (requires CUSTOM power mode)."""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self.set_cpu_boost_async(mode))
-            return
-
-        ensure_future(self.set_cpu_boost_async(mode), loop=loop)
+        ensure_future(self.set_cpu_boost(mode))
 
     @property
     def gpu_boost(self) -> BoostMode:
@@ -510,15 +429,9 @@ class SystemControlMixin:
     @gpu_boost.setter
     def gpu_boost(self, mode: BoostMode):
         """Set GPU boost mode (requires CUSTOM power mode)."""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self.set_gpu_boost_async(mode))
-            return
+        ensure_future(self.set_gpu_boost(mode))
 
-        ensure_future(self.set_gpu_boost_async(mode), loop=loop)
-
-    async def set_cpu_boost_async(self, mode: BoostMode) -> bool:
+    async def set_cpu_boost(self, mode: BoostMode) -> bool:
         if not self.supports_boost:
             return False
         success = await self.run_command_async(ECCommand.SET_BOOST, 0x01, 0x00, mode.value)
@@ -526,7 +439,7 @@ class SystemControlMixin:
             self._cached_cpu_boost = mode
         return success
 
-    async def set_gpu_boost_async(self, mode: BoostMode) -> bool:
+    async def set_gpu_boost(self, mode: BoostMode) -> bool:
         if not self.supports_boost:
             return False
         success = await self.run_command_async(ECCommand.SET_BOOST, 0x01, 0x01, mode.value)
@@ -534,8 +447,8 @@ class SystemControlMixin:
             self._cached_gpu_boost = mode
         return success
 
-    async def refresh_system_state_async(self) -> dict[str, object]:
-        await self._refresh_state_async()
+    async def refresh_system_state(self) -> dict[str, object]:
+        await self._refresh_state()
 
         rpm1, rpm2 = self._cached_fan_rpm
         fan_rpm = [rpm1] if rpm2 is None else [rpm1, rpm2]

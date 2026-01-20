@@ -5,7 +5,8 @@
 # uchroma - FX module unit tests
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from frozendict import frozendict
@@ -381,7 +382,7 @@ class TestFXManager:
         """activate should call fx.apply()."""
         mock_driver.is_animating = False
 
-        result = fxmanager.activate("static")
+        result = asyncio.run(fxmanager.activate("static"))
 
         assert result is True
 
@@ -389,7 +390,7 @@ class TestFXManager:
         """activate should update current_fx tuple."""
         mock_driver.is_animating = False
 
-        fxmanager.activate("static")
+        asyncio.run(fxmanager.activate("static"))
 
         assert fxmanager.current_fx[0] == "static"
         assert fxmanager.current_fx[1] is not None
@@ -412,7 +413,7 @@ class TestFXManager:
         fxmod = TraitFXModule(mock_driver)
         manager = FXManager(mock_driver, fxmod)
 
-        manager.activate("configurable", color="blue", speed="fast")
+        asyncio.run(manager.activate("configurable", color="blue", speed="fast"))
 
         fx = manager.current_fx[1]
         assert fx.color == "blue"
@@ -436,7 +437,9 @@ class TestFXManager:
         manager = FXManager(mock_driver, fxmod)
 
         # Should not raise even with invalid kwargs
-        result = manager.activate("simple", valid_trait="changed", invalid_trait="ignored")
+        result = asyncio.run(
+            manager.activate("simple", valid_trait="changed", invalid_trait="ignored")
+        )
 
         assert result is True
         assert manager.current_fx[1].valid_trait == "changed"
@@ -445,7 +448,7 @@ class TestFXManager:
         """activate should save fx name and args to driver.preferences."""
         mock_driver.is_animating = False
 
-        fxmanager.activate("static")
+        asyncio.run(fxmanager.activate("static"))
 
         assert mock_preferences.fx == "static"
 
@@ -464,7 +467,7 @@ class TestFXManager:
         fxmod = ArgFXModule(mock_driver)
         manager = FXManager(mock_driver, fxmod)
 
-        manager.activate("test", setting="custom")
+        asyncio.run(manager.activate("test", setting="custom"))
 
         assert mock_preferences.fx == "test"
         # fx_args should be set (may be dict or None depending on implementation)
@@ -472,7 +475,7 @@ class TestFXManager:
 
     def test_activate_returns_false_for_unknown_fx(self, fxmanager):
         """activate should return False for unknown effect."""
-        result = fxmanager.activate("nonexistent_effect")
+        result = asyncio.run(fxmanager.activate("nonexistent_effect"))
         assert result is False
 
     def test_activate_custom_frame_skips_prefs(self, mock_driver, mock_hardware, mock_preferences):
@@ -490,7 +493,7 @@ class TestFXManager:
         manager = FXManager(mock_driver, fxmod)
 
         original_fx = mock_preferences.fx
-        manager.activate(CUSTOM)
+        asyncio.run(manager.activate(CUSTOM))
 
         # Preferences should not be updated for custom_frame
         assert mock_preferences.fx == original_fx
@@ -499,7 +502,7 @@ class TestFXManager:
         """activate should stop animation when driver is animating."""
         mock_driver.is_animating = True
 
-        result = fxmanager.activate("static")
+        result = asyncio.run(fxmanager.activate("static"))
 
         assert result is True
         mock_driver.animation_manager.stop_async.assert_called_once()
@@ -508,7 +511,7 @@ class TestFXManager:
         """disable should activate the 'disable' effect."""
         mock_driver.is_animating = False
 
-        result = fxmanager.disable()
+        result = asyncio.run(fxmanager.disable())
 
         assert result is True
         assert fxmanager.current_fx[0] == "disable"
@@ -520,7 +523,7 @@ class TestFXManager:
         fxmod = _SampleFXModule(mock_driver)
         manager = FXManager(mock_driver, fxmod)
 
-        result = manager.disable()
+        result = asyncio.run(manager.disable())
 
         assert result is False
 
@@ -532,7 +535,9 @@ class TestFXManager:
         prefs.fx = "wave"
         prefs.fx_args = None
 
-        fxmanager._restore_prefs(prefs)
+        # Patch ensure_future to run coroutine immediately
+        with patch("uchroma.server.fx.ensure_future", lambda coro: asyncio.run(coro)):
+            fxmanager._restore_prefs(prefs)
 
         assert fxmanager.current_fx[0] == "wave"
 
@@ -557,7 +562,9 @@ class TestFXManager:
         prefs.fx = "config"
         prefs.fx_args = {"speed": "fast"}
 
-        manager._restore_prefs(prefs)
+        # Patch ensure_future to run coroutine immediately
+        with patch("uchroma.server.fx.ensure_future", lambda coro: asyncio.run(coro)):
+            manager._restore_prefs(prefs)
 
         assert manager.current_fx[0] == "config"
         assert manager.current_fx[1].speed == "fast"
@@ -576,7 +583,7 @@ class TestFXManager:
         mock_driver.is_animating = False
 
         # Should not raise even with kwargs
-        result = fxmanager.activate("disable", some_trait="value")
+        result = asyncio.run(fxmanager.activate("disable", some_trait="value"))
 
         assert result is True
 
@@ -596,7 +603,7 @@ class TestFXManager:
         manager = FXManager(mock_driver, fxmod)
         mock_driver.is_animating = False
 
-        result = manager.activate(CUSTOM, some_trait="should_be_ignored")
+        result = asyncio.run(manager.activate(CUSTOM, some_trait="should_be_ignored"))
 
         assert result is True
         # Trait should remain at default since it's custom_frame
@@ -606,10 +613,10 @@ class TestFXManager:
         """activate should reuse current_fx if name matches."""
         mock_driver.is_animating = False
 
-        fxmanager.activate("static")
+        asyncio.run(fxmanager.activate("static"))
         first_fx = fxmanager.current_fx[1]
 
-        fxmanager.activate("static")
+        asyncio.run(fxmanager.activate("static"))
         second_fx = fxmanager.current_fx[1]
 
         # Should be the same instance
@@ -632,7 +639,7 @@ class TestFXManager:
         manager = FXManager(mock_driver, fxmod)
         mock_driver.is_animating = False
 
-        result = manager.activate("failing")
+        result = asyncio.run(manager.activate("failing"))
 
         # _activate always returns True
         assert result is True
@@ -700,7 +707,7 @@ class TestEdgeCases:
         manager = FXManager(mock_driver, fxmod)
         mock_driver.is_animating = False
 
-        manager.activate("counting")
+        asyncio.run(manager.activate("counting"))
 
         assert apply_count == 1
 
@@ -708,7 +715,7 @@ class TestEdgeCases:
         """current_fx tuple should be immutable."""
         mock_driver.is_animating = False
 
-        fxmanager.activate("static")
+        asyncio.run(fxmanager.activate("static"))
 
         # Tuples are immutable by nature
         assert isinstance(fxmanager.current_fx, tuple)

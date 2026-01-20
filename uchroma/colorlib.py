@@ -32,14 +32,14 @@ class Color(_BaseColor):
     @classmethod
     def NewFromHsv(cls, h: float, s: float, v: float, a: float = 1.0) -> "Color":
         """Create color from HSV (h: 0-360, s/v: 0-1)."""
-        c = cls("hsv", [h, s * 100, v * 100])
+        c = cls("hsv", [h, s, v])
         c["alpha"] = a
         return c
 
     @classmethod
     def NewFromHsl(cls, h: float, s: float, l: float, a: float = 1.0) -> "Color":
         """Create color from HSL (h: 0-360, s/l: 0-1)."""
-        c = cls("hsl", [h, s * 100, l * 100])
+        c = cls("hsl", [h, s, l])
         c["alpha"] = a
         return c
 
@@ -78,7 +78,7 @@ class Color(_BaseColor):
         """Get HSL tuple (h: 0-360, s/l: 0-1)."""
         hsl = self.convert("hsl")
         h = hsl["hue"] if hsl["hue"] == hsl["hue"] else 0  # Handle NaN
-        return (h, hsl["saturation"] / 100, hsl["lightness"] / 100)
+        return (h, hsl["saturation"], hsl["lightness"])
 
     @property
     def hsla(self) -> tuple:
@@ -91,7 +91,7 @@ class Color(_BaseColor):
         """Get HSV tuple (h: 0-360, s/v: 0-1)."""
         hsv = self.convert("hsv")
         h = hsv["hue"] if hsv["hue"] == hsv["hue"] else 0
-        return (h, hsv["saturation"] / 100, hsv["value"] / 100)
+        return (h, hsv["saturation"], hsv["value"])
 
     @property
     def hsluv(self) -> tuple:
@@ -121,13 +121,13 @@ class Color(_BaseColor):
     def ColorWithSaturation(self, saturation: float) -> "Color":
         """Return new color with modified saturation (0-1)."""
         hsl = self.convert("hsl").clone()
-        hsl["saturation"] = saturation * 100
+        hsl["saturation"] = saturation
         return Color(hsl.convert("srgb"))
 
     def ColorWithLightness(self, lightness: float) -> "Color":
         """Return new color with modified lightness (0-1)."""
         hsl = self.convert("hsl").clone()
-        hsl["lightness"] = lightness * 100
+        hsl["lightness"] = lightness
         return Color(hsl.convert("srgb"))
 
     def ColorWithAlpha(self, alpha: float) -> "Color":
@@ -157,7 +157,7 @@ class Color(_BaseColor):
 
     def blend(self, other: "Color", percent: float = 0.5) -> "Color":
         """Blend with another color."""
-        return Color(self.interpolate([other], space="srgb")(percent))
+        return Color(self.mix(other, percent, space="srgb"))
 
     def __iter__(self):
         """Allow unpacking as RGB tuple."""

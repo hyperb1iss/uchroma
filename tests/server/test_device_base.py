@@ -545,7 +545,7 @@ class TestBaseUChromaDevicePreferences:
 
     def test_reset_returns_true(self, device):
         """reset returns True by default."""
-        assert device.reset() is True
+        assert asyncio.run(device.reset()) is True
 
     def test_fire_restore_prefs(self, device):
         """fire_restore_prefs fires signal with preferences."""

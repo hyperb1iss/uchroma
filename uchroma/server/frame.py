@@ -418,16 +418,11 @@ class Frame:
 
         return self
 
-    async def reset_async(self, frame_id: int | None = None) -> "Frame":
-        await self.commit_async([self.create_layer()], show=False)
-        return self
-
-    def reset(self, frame_id: int | None = None) -> "Frame":
+    async def reset(self, frame_id: int | None = None) -> "Frame":
         """
         Clear the frame on the hardware.
 
         :return: This frame instance
         """
-        self.commit([self.create_layer()], show=False)
-
+        await self.commit_async([self.create_layer()], show=False)
         return self
