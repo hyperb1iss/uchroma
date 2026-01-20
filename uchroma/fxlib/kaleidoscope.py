@@ -8,15 +8,21 @@ Symmetric patterns that rotate and morph, creating hypnotic
 geometric shapes using polar coordinate transforms and n-fold symmetry.
 """
 
-import math
-
+import numpy as np
 from traitlets import Float, Int, observe
 
+from uchroma._native import (
+    compute_polar_map as _rust_compute_polar_map,
+    draw_kaleidoscope as _rust_draw_kaleidoscope,
+)
 from uchroma.color import ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorSchemeTrait, DefaultCaselessStrEnum
 
 KALEIDOSCOPE_COLORS = ["#ff006e", "#ffbe0b", "#00f5d4", "#8338ec"]
+
+# Pattern mode mapping: string -> u8 for Rust
+_PATTERN_MODES = {"spiral": 0, "rings": 1, "waves": 2}
 
 
 class Kaleidoscope(Renderer):
@@ -44,32 +50,22 @@ class Kaleidoscope(Renderer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._gradient = None
-        self._polar_map = None
+        self._gradient_array: np.ndarray | None = None
+        self._polar_map: np.ndarray | None = None
         self._time = 0.0
         self.fps = 15
 
     def _gen_gradient(self):
+        """Generate gradient and convert to numpy array for Rust."""
         gradient = ColorUtils.gradient(360, *self.color_scheme)
         if self.saturation < 1.0:
             gradient = [c.ColorWithSaturation(self.saturation) for c in gradient]
-        self._gradient = gradient
+        # Pre-convert to numpy array for Rust
+        self._gradient_array = np.array([c.rgb for c in gradient], dtype=np.float64)
 
     def _compute_polar_map(self):
-        """Precompute polar coordinates for each pixel."""
-        width = self.width
-        height = self.height
-        cx = width / 2.0
-        cy = height / 2.0
-
-        self._polar_map = []
-        for row in range(height):
-            for col in range(width):
-                dx = col - cx
-                dy = (row - cy) * (width / height)  # Aspect ratio correction
-                angle = math.atan2(dy, dx)
-                radius = math.sqrt(dx * dx + dy * dy)
-                self._polar_map.append((angle, radius))
+        """Precompute polar coordinates using Rust."""
+        self._polar_map = _rust_compute_polar_map(self.width, self.height)
 
     @observe("color_scheme", "saturation")
     def _scheme_changed(self, changed):
@@ -85,59 +81,22 @@ class Kaleidoscope(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
-        gradient = self._gradient
-        if gradient is None:
+        if self._gradient_array is None or self._polar_map is None:
             return False
 
-        width = layer.width
-        grad_len = len(gradient)
-
-        t = self._time
-        sym = self.symmetry
-        rot_spd = self.rotation_speed
-        ring_freq = self.ring_frequency
-        spiral_tw = self.spiral_twist
-        hue_rot = self.hue_rotation
-        mode = self.pattern_mode
-
-        # Symmetry wedge angle
-        wedge = 2.0 * math.pi / sym
-
-        assert self._polar_map is not None
-        for idx, (angle, radius) in enumerate(self._polar_map):
-            row = idx // width
-            col = idx % width
-
-            # Apply rotation
-            rotated_angle = angle - t * rot_spd
-
-            # Apply n-fold symmetry (fold into first wedge)
-            sym_angle = rotated_angle % wedge
-            # Mirror for kaleidoscope effect
-            if int(rotated_angle / wedge) % 2 == 1:
-                sym_angle = wedge - sym_angle
-
-            # Pattern value based on mode
-            if mode == "rings":
-                value = math.sin(radius * ring_freq * 3.0 + t * 2.0)
-            elif mode == "spiral":
-                value = math.sin(radius * ring_freq + sym_angle * spiral_tw + t)
-            else:  # waves
-                value = math.sin(sym_angle * 4.0 + t * 2.0) * math.cos(radius * ring_freq)
-
-            # Color from symmetric angle + time rotation
-            hue_idx = int((sym_angle / wedge) * grad_len * 0.5 + t * hue_rot) % grad_len
-            color = gradient[hue_idx]
-            r, g, b = color.rgb
-
-            # Brightness: never fully dark (0.3 to 1.0)
-            brightness = (value + 1.0) / 2.0 * 0.7 + 0.3
-
-            layer.matrix[row][col] = (
-                r * brightness,
-                g * brightness,
-                b * brightness,
-                1.0,
-            )
+        _rust_draw_kaleidoscope(
+            width=layer.width,
+            height=layer.height,
+            matrix=layer.matrix,
+            gradient=self._gradient_array,
+            polar_map=self._polar_map,
+            time=self._time,
+            symmetry=self.symmetry,
+            rotation_speed=self.rotation_speed,
+            pattern_mode=_PATTERN_MODES.get(self.pattern_mode, 0),
+            ring_frequency=self.ring_frequency,
+            spiral_twist=self.spiral_twist,
+            hue_rotation=self.hue_rotation,
+        )
 
         return True
