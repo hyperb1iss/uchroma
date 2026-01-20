@@ -10,6 +10,7 @@
 
 use pyo3::prelude::*;
 
+mod blending;
 mod crc;
 mod hid;
 mod metaballs;
@@ -25,6 +26,9 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crc::fast_crc, m)?)?;
     m.add_function(wrap_pyfunction!(plasma::draw_plasma, m)?)?;
     m.add_function(wrap_pyfunction!(metaballs::draw_metaballs, m)?)?;
+
+    // Blending functions
+    m.add_function(wrap_pyfunction!(blending::blend_screen, m)?)?;
 
     // HID types and functions
     m.add_class::<hid::DeviceInfo>()?;
