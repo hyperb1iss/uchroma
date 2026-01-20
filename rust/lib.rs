@@ -17,6 +17,7 @@ mod metaballs;
 mod plasma;
 
 // Re-export for benchmarks
+pub use blending::{blend_full_impl, blend_screen_impl};
 pub use crc::fast_crc_impl;
 
 /// Native Rust extensions for uchroma performance-critical code.

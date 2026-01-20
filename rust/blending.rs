@@ -6,6 +6,59 @@
 use numpy::{PyArray3, PyArrayMethods, PyReadonlyArray3};
 use pyo3::prelude::*;
 
+// ============================================================================
+// Pure Rust implementations for benchmarking
+// ============================================================================
+
+/// Screen blend on flat RGB arrays (no alpha).
+/// Arrays must be same length, representing height * width * 3 elements.
+#[inline]
+pub fn blend_screen_impl(base: &[f64], layer: &[f64], output: &mut [f64]) {
+    debug_assert_eq!(base.len(), layer.len());
+    debug_assert_eq!(base.len(), output.len());
+
+    for i in 0..base.len() {
+        output[i] = 1.0 - (1.0 - base[i]) * (1.0 - layer[i]);
+    }
+}
+
+/// Full blend with alpha composition on flat RGBA arrays.
+/// Arrays must be same length (height * width * 4 elements).
+#[inline]
+pub fn blend_full_impl(base: &[f64], layer: &[f64], output: &mut [f64], opacity: f64) {
+    debug_assert_eq!(base.len(), layer.len());
+    debug_assert_eq!(base.len(), output.len());
+    debug_assert_eq!(base.len() % 4, 0); // Must be multiple of 4 (RGBA)
+
+    let pixels = base.len() / 4;
+    for p in 0..pixels {
+        let i = p * 4;
+
+        let base_alpha = base[i + 3];
+        let layer_alpha = layer[i + 3];
+
+        // Alpha composition
+        let comp_alpha = base_alpha.min(layer_alpha) * opacity;
+        let new_alpha = base_alpha + (1.0 - base_alpha) * comp_alpha;
+        let ratio = if new_alpha > 0.0 {
+            comp_alpha / new_alpha
+        } else {
+            0.0
+        };
+
+        // Apply screen blend and interpolate for RGB
+        for c in 0..3 {
+            let b = base[i + c];
+            let l = layer[i + c];
+            let blended = 1.0 - (1.0 - b) * (1.0 - l); // screen
+            output[i + c] = blended * ratio + b * (1.0 - ratio);
+        }
+
+        // Preserve base alpha
+        output[i + 3] = base_alpha;
+    }
+}
+
 /// Macro for simple blend modes that operate element-wise on RGB channels.
 /// Generates a #[pyfunction] with the standard signature.
 macro_rules! simple_blend {

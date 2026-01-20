@@ -4,8 +4,8 @@
 
 use std::hint::black_box;
 
-use _native::fast_crc_impl;
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use _native::{blend_full_impl, blend_screen_impl, fast_crc_impl};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 /// Benchmark CRC calculation
 ///
@@ -53,5 +53,101 @@ fn bench_crc_throughput(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_crc, bench_crc_throughput);
+/// Benchmark blend_screen at various frame sizes.
+///
+/// Tests the core screen blend operation used in layer compositing.
+/// This is called multiple times per frame when layers are stacked.
+fn bench_blend_screen(c: &mut Criterion) {
+    let mut group = c.benchmark_group("blend_screen");
+
+    // Test sizes matching typical LED matrix dimensions
+    let sizes: &[(usize, usize)] = &[(32, 32), (64, 64), (128, 128)];
+
+    for &(h, w) in sizes {
+        let elements = h * w * 3; // RGB, no alpha for simple blend
+        group.throughput(Throughput::Elements(elements as u64));
+
+        // Create test data with realistic RGB values
+        let base: Vec<f64> = (0..elements)
+            .map(|i| (i as f64 * 0.1).sin() * 0.5 + 0.5)
+            .collect();
+        let layer: Vec<f64> = (0..elements)
+            .map(|i| (i as f64 * 0.2).cos() * 0.5 + 0.5)
+            .collect();
+        let mut output = vec![0.0f64; elements];
+
+        group.bench_with_input(
+            BenchmarkId::new("rust", format!("{}x{}", h, w)),
+            &(h, w),
+            |b, _| {
+                b.iter(|| {
+                    blend_screen_impl(
+                        black_box(&base),
+                        black_box(&layer),
+                        black_box(&mut output),
+                    )
+                })
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark full blend with alpha composition.
+///
+/// Tests the complete blend pipeline including alpha handling,
+/// which is the hot path during animation compositing.
+fn bench_blend_full(c: &mut Criterion) {
+    let mut group = c.benchmark_group("blend_full");
+
+    let sizes: &[(usize, usize)] = &[(32, 32), (64, 64), (128, 128)];
+
+    for &(h, w) in sizes {
+        let elements = h * w * 4; // RGBA
+        group.throughput(Throughput::Elements(elements as u64));
+
+        // Create RGBA test data
+        let base: Vec<f64> = (0..elements)
+            .enumerate()
+            .map(|(i, _)| {
+                if i % 4 == 3 {
+                    0.9 // Alpha channel
+                } else {
+                    (i as f64 * 0.1).sin() * 0.5 + 0.5
+                }
+            })
+            .collect();
+        let layer: Vec<f64> = (0..elements)
+            .enumerate()
+            .map(|(i, _)| {
+                if i % 4 == 3 {
+                    0.7 // Alpha channel
+                } else {
+                    (i as f64 * 0.2).cos() * 0.5 + 0.5
+                }
+            })
+            .collect();
+        let mut output = vec![0.0f64; elements];
+
+        group.bench_with_input(
+            BenchmarkId::new("rust", format!("{}x{}", h, w)),
+            &(h, w),
+            |b, _| {
+                b.iter(|| {
+                    blend_full_impl(
+                        black_box(&base),
+                        black_box(&layer),
+                        black_box(&mut output),
+                        black_box(0.8), // 80% opacity
+                    )
+                })
+            },
+        );
+    }
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_crc, bench_crc_throughput, bench_blend_screen, bench_blend_full);
 criterion_main!(benches);
