@@ -5,35 +5,27 @@
 # pylint: disable=protected-access
 
 import asyncio
+import struct
 
 from traitlets import Unicode
-from wrapt import synchronized
 
 from uchroma.color import to_color, to_rgb
-from uchroma.log import LOG_PROTOCOL_TRACE
+from uchroma.colorlib import Color
 from uchroma.server import hid
 from uchroma.traits import ColorSchemeTrait, ColorTrait
-from uchroma.util import scale_brightness, set_bits, smart_delay, test_bit, to_byte
+from uchroma.util import scale_brightness, set_bits, test_bit
 
-from .byte_args import ByteArgs
 from .device_base import BaseUChromaDevice
 from .fx import BaseFX, FXManager, FXModule
 from .hardware import Hardware
 from .types import BaseCommand
 
-# Output report 4, input report 5
-REPORT_ID_OUT = 4
-REPORT_ID_IN = 5
-REPORT_LENGTH_OUT = 37
-REPORT_LENGTH_IN = 33
-
-# Sleep time 25ms
-DELAY_TIME = 0.025
-
-# Destination for requests
-READ_RAM = 0x00
-READ_EEPROM = 0x20
-WRITE_RAM = 0x40
+# Use constants from Rust HeadsetDevice
+READ_RAM = hid.READ_RAM
+READ_EEPROM = hid.READ_EEPROM
+WRITE_RAM = hid.WRITE_RAM
+REPORT_LENGTH_OUT = hid.HEADSET_REPORT_OUT_LEN
+REPORT_LENGTH_IN = hid.HEADSET_REPORT_IN_LEN
 
 # EEPROM
 ADDR_FIRMWARE_VERSION = 0x0030
@@ -102,7 +94,7 @@ class KrakenFX(FXModule):
     class DisableFX(BaseFX):
         description = Unicode("Disable all effects")
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             """
             Disable all effects
 
@@ -110,12 +102,12 @@ class KrakenFX(FXModule):
             """
             bits = EffectBits()
             bits.spectrum = True
-            return self._driver._set_led_mode(bits)
+            return await self._driver._set_led_mode(bits)
 
     class SpectrumFX(BaseFX):
         description = Unicode("Cycle thru all colors of the spectrum")
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             """
             Cycle thru all colors of the spectrum
 
@@ -123,13 +115,13 @@ class KrakenFX(FXModule):
             """
             bits = EffectBits()
             bits.on = bits.spectrum = True
-            return self._driver._set_led_mode(bits)
+            return await self._driver._set_led_mode(bits)
 
     class StaticFX(BaseFX):
         description = Unicode("Static color")
         color = ColorTrait(default_value="green").tag(config=True)
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             """
             Sets lighting to a static color
 
@@ -139,10 +131,8 @@ class KrakenFX(FXModule):
             """
             bits = EffectBits()
             bits.on = True
-            with self._driver.device_open():
-                if self._driver._set_rgb(self.color):
-                    return self._driver._set_led_mode(bits)
-
+            if await self._driver._set_rgb(self.color):
+                return await self._driver._set_led_mode(bits)
             return False
 
     class BreatheFX(BaseFX):
@@ -151,7 +141,7 @@ class KrakenFX(FXModule):
             config=True
         )
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             """
             Breathing color effect. Accepts up to three colors on v2 hardware
 
@@ -172,10 +162,8 @@ class KrakenFX(FXModule):
             elif len(self.colors) == 1:
                 bits.breathe_single = True
 
-            with self._driver.device_open():
-                if self._driver._set_rgb(*self.colors):
-                    return self._driver._set_led_mode(bits)
-
+            if await self._driver._set_rgb(*self.colors):
+                return await self._driver._set_led_mode(bits)
             return False
 
 
@@ -272,54 +260,61 @@ class UChromaHeadset(BaseUChromaDevice):
         self._cached_brightness = 0.0
         self._brightness_lock = asyncio.Lock()
 
-    @staticmethod
-    def _pack_request(command: BaseCommand, *args) -> bytes:
-        req = ByteArgs(REPORT_LENGTH_OUT)
-        req.put(command.destination)
-        req.put(command.length)
-        req.put(command.address, packing=">H")
-
-        if args is not None:
-            for arg in args:
-                if arg is not None:
-                    req.put(arg)
-
-        return req.data
-
-    def _hexdump(self, data: bytes, tag=""):
-        if data is not None and self.logger.isEnabledFor(LOG_PROTOCOL_TRACE):
-            self.logger.debug("%s%s", tag, "".join(f"{b:02x} " for b in data))
-
-    def _run_command(self, command: BaseCommand, *args) -> bool:
+    def _ensure_open(self) -> bool:
+        """Open the headset device using HeadsetDevice (interrupt transfers)."""
         try:
-            data = UChromaHeadset._pack_request(command, *args)
-            self._hexdump(data, "--> ")
-            self._last_cmd_time = smart_delay(DELAY_TIME, self._last_cmd_time, 0)
-            self._dev.write(data, report_id=to_byte(REPORT_ID_OUT))
-            return True
+            if self._dev is None:
+                self._dev = hid.HeadsetDevice(self._devinfo)
+        except Exception as err:
+            self.logger.exception("Failed to open headset connection", exc_info=err)
+            return False
+        return True
 
-        except OSError as err:
-            self.logger.exception("Caught exception running command", exc_info=err)
+    def _pack_args(self, args) -> bytes | None:
+        """Pack command arguments into bytes for the headset protocol."""
+        if not args:
+            return None
 
-        return False
+        result = bytearray()
+        for arg in args:
+            if arg is None:
+                continue
+            elif isinstance(arg, Color):
+                rgb = arg.convert("srgb")
+                result.extend(struct.pack("=BBB", int(rgb["red"] * 255), int(rgb["green"] * 255), int(rgb["blue"] * 255)))
+            elif isinstance(arg, (bytes, bytearray)):
+                result.extend(arg)
+            elif isinstance(arg, int):
+                result.append(arg & 0xFF)
+            else:
+                result.extend(bytes(arg))
+        return bytes(result) if result else None
 
-    @synchronized
-    def run_command(self, command: BaseCommand, *args) -> bool:
+    async def run_command(self, command: BaseCommand, *args) -> bool:
         """
-        Run a command against the Kraken hardware
+        Run a command against the Kraken hardware (async).
 
         :param command: The command tuple
         :param args: Argument list (varargs)
 
         :return: True if successful
         """
-        with self.device_open():
-            return self._run_command(command, *args)
+        try:
+            arg_bytes = self._pack_args(args) if args else None
+            await self._dev.run_command(
+                command.destination,
+                command.length,
+                command.address,
+                list(arg_bytes) if arg_bytes else None,
+            )
+            return True
+        except OSError as err:
+            self.logger.exception("Caught exception running command", exc_info=err)
+            return False
 
-    @synchronized
-    def run_with_result(self, command: BaseCommand, *args) -> bytes | None:
+    async def run_with_result(self, command: BaseCommand, *args) -> bytes | None:
         """
-        Run a command against the Kraken hardware and fetch the result
+        Run a command against the Kraken hardware and fetch the result (async).
 
         :param command: The command tuple
         :param args: Argument list (varargs)
@@ -327,81 +322,57 @@ class UChromaHeadset(BaseUChromaDevice):
         :return: Raw response bytes
         """
         try:
-            with self.device_open():
-                if not self._run_command(command, *args):
-                    return None
-
-                self._last_cmd_time = smart_delay(DELAY_TIME, self._last_cmd_time, 0)
-                resp = self._dev.read(REPORT_LENGTH_IN, timeout_ms=500)
-                self._hexdump(resp, "<-- ")
-
-                if not resp:
-                    return None
-
-                assert resp[0] == REPORT_ID_IN, (
-                    f"Inbound report should have id {REPORT_ID_IN:02x} (was {resp[0]:02x})"
-                )
-
-                return resp[1 : command.length + 1]
-
+            arg_bytes = self._pack_args(args) if args else None
+            result = await self._dev.run_command(
+                command.destination,
+                command.length,
+                command.address,
+                list(arg_bytes) if arg_bytes else None,
+            )
+            return bytes(result) if result else None
         except OSError as err:
             self.logger.exception("Caught exception running command", exc_info=err)
-
-        return None
-
-    def _get_serial_number(self) -> str | None:
-        """
-        Get the serial number from the hardware directly
-        """
-        return self._decode_serial(self.run_with_result(UChromaHeadset.Command.GET_SERIAL))
+            return None
 
     async def _get_serial_number_async(self) -> str | None:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._executor, self._get_serial_number)
-
-    def _get_firmware_version(self) -> bytes | None:
-        """
-        Get the firmware version from the hardware directly
-        """
-        return self.run_with_result(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
+        """Get the serial number from the hardware directly."""
+        result = await self.run_with_result(UChromaHeadset.Command.GET_SERIAL)
+        return self._decode_serial(result)
 
     async def _get_firmware_version_async(self) -> bytes | None:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._executor, self._get_firmware_version)
+        """Get the firmware version from the hardware directly."""
+        return await self.run_with_result(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
 
-    def _get_led_mode(self) -> "UChromaHeadset.EffectBits":
+    async def _get_led_mode(self) -> "EffectBits":
         if self._mode is None:
-            with self.device_open():
-                value = self.run_with_result(self._cmd_get_led)
-                bits = 0
-                if value:
-                    bits = value[0]
-                self._mode = EffectBits(bits)
+            value = await self.run_with_result(self._cmd_get_led)
+            bits = 0
+            if value:
+                bits = value[0]
+            self._mode = EffectBits(bits)
         return self._mode
 
-    def _set_led_mode(self, bits: EffectBits) -> bool:
-        status = self.run_command(self._cmd_set_led, bits.value)
+    async def _set_led_mode(self, bits: EffectBits) -> bool:
+        status = await self.run_command(self._cmd_set_led, bits.value)
         if status:
             self._mode = bits
-
         return status
 
-    def _get_rgb(self) -> list | None:
-        with self.device_open():
-            bits = self._get_led_mode()
-            if bits.color_count == 0:
-                return None
+    async def _get_rgb(self) -> list | None:
+        bits = await self._get_led_mode()
+        if bits.color_count == 0:
+            return None
 
-            value = self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
-            if value is None:
-                return None
+        value = await self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
+        if value is None:
+            return None
 
-            it = iter(value)
-            values = list(iter(zip(it, it, it, it, strict=False)))
+        it = iter(value)
+        values = list(iter(zip(it, it, it, it, strict=False)))
 
-            return [to_color(x) for x in values]
+        return [to_color(x) for x in values]
 
-    def _set_rgb(self, *colors, brightness: float | None = None) -> bool:
+    async def _set_rgb(self, *colors, brightness: float | None = None) -> bool:
         if not colors:
             self.logger.error("RGB group out of range")
             return False
@@ -409,72 +380,64 @@ class UChromaHeadset(BaseUChromaDevice):
         # only allow what the hardware permits
         colors = colors[0 : len(self._cmd_set_rgb)]
 
-        with self.device_open():
-            if brightness is None:
-                brightness = self._get_brightness()
-                if brightness == 0.0:
-                    brightness = 80.0
+        if brightness is None:
+            brightness = await self._get_brightness()
+            if brightness == 0.0:
+                brightness = 80.0
 
-            brightness = scale_brightness(brightness)
+        brightness = scale_brightness(brightness)
 
-            args = []
-            for color in colors:
-                args.append(to_color(color))
-                args.append(brightness)
+        args = []
+        for color in colors:
+            args.append(to_color(color))
+            args.append(brightness)
 
-            return self.run_command(self._cmd_set_rgb[len(colors) - 1], *args)
+        return await self.run_command(self._cmd_set_rgb[len(colors) - 1], *args)
 
-    def get_current_effect(self) -> EffectBits:
+    async def get_current_effect(self) -> EffectBits:
         """
         Gets the current effects configuration
 
         :return: EffectBits populated from the hardware
         """
-        return self._get_led_mode()
+        return await self._get_led_mode()
 
-    def get_current_colors(self) -> list | None:
+    async def get_current_colors(self) -> list | None:
         """
         Gets the colors currently in use
 
         :return: List of RGB tuples
         """
-        colors = self._get_rgb()
+        colors = await self._get_rgb()
         if not colors:
             return None
 
         return [to_rgb(color) for color in colors]
 
-    def _get_brightness(self) -> float:
-        """
-        The current brightness level
-        """
-        with self.device_open():
-            bits = self._get_led_mode()
-            if bits.color_count == 0:
-                if bits.on:
-                    return 100.0
-                return 0.0
+    async def _get_brightness(self) -> float:
+        """The current brightness level."""
+        bits = await self._get_led_mode()
+        if bits.color_count == 0:
+            if bits.on:
+                return 100.0
+            return 0.0
 
-            value = self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
-            if value is None:
-                return 0.0
+        value = await self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
+        if value is None:
+            return 0.0
 
-            self._cached_brightness = scale_brightness(value[3], True)
-            return self._cached_brightness
+        self._cached_brightness = scale_brightness(value[3], True)
+        return self._cached_brightness
 
     async def _set_brightness_async(self, level: float) -> bool:
-        loop = asyncio.get_running_loop()
-        success = await loop.run_in_executor(self._executor, self._set_brightness, level)
+        success = await self._set_brightness(level)
         if success:
             self._cached_brightness = level
         return success
 
     async def refresh_brightness_async(self) -> float | None:
         async with self._brightness_lock:
-            loop = asyncio.get_running_loop()
-            self._cached_brightness = await loop.run_in_executor(
-                self._executor, self._get_brightness
-            )
+            self._cached_brightness = await self._get_brightness()
         return self._cached_brightness
 
     @property
@@ -487,23 +450,20 @@ class UChromaHeadset(BaseUChromaDevice):
     def brightness(self, level: float):
         self.set_brightness(level)
 
-    def _set_brightness(self, level: float) -> bool:
-        """
-        Set the brightness level
-        """
-        with self.device_open():
-            bits = self._get_led_mode()
-            if bits.color_count == 0:
-                return False
+    async def _set_brightness(self, level: float) -> bool:
+        """Set the brightness level."""
+        bits = await self._get_led_mode()
+        if bits.color_count == 0:
+            return False
 
-            value = self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
-            if value is None:
-                return False
+        value = await self.run_with_result(self._cmd_get_rgb[bits.color_count - 1])
+        if value is None:
+            return False
 
-            scaled_level = scale_brightness(level)
+        scaled_level = scale_brightness(level)
 
-            data = bytearray(value)
-            for num in range(bits.color_count):
-                data[(num * 4) + 3] = scaled_level
+        data = bytearray(value)
+        for num in range(bits.color_count):
+            data[(num * 4) + 3] = scaled_level
 
-            return self.run_command(self._cmd_set_rgb[bits.color_count - 1], data)
+        return await self.run_command(self._cmd_set_rgb[bits.color_count - 1], data)
