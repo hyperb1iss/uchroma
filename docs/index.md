@@ -10,7 +10,7 @@ hero:
       link: /guide/
     - theme: alt
       text: View on GitHub
-      link: https://github.com/cyanogen/uchroma
+      link: https://github.com/hyperb1iss/uchroma
 features:
   - icon: 💜
     title: Hardware Effects

@@ -100,11 +100,11 @@ export default withMermaid(
         provider: 'local',
       },
 
-      socialLinks: [{ icon: 'github', link: 'https://github.com/cyanogen/uchroma' }],
+      socialLinks: [{ icon: 'github', link: 'https://github.com/hyperb1iss/uchroma' }],
 
       footer: {
         message: 'Released under the LGPL-3.0 License.',
-        copyright: 'Copyright © 2017-present cyanogen',
+        copyright: 'Copyright © 2017-present Stefanie Jane',
       },
     },
 
