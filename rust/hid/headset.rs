@@ -155,9 +155,7 @@ impl HeadsetDevice {
             .detach_and_claim_interface(info.interface_number as u8)
             .wait()?;
         #[cfg(not(target_os = "linux"))]
-        let interface = device
-            .claim_interface(info.interface_number as u8)
-            .wait()?;
+        let interface = device.claim_interface(info.interface_number as u8).wait()?;
 
         // Find interrupt endpoints
         let (ep_out, ep_in) = Self::find_endpoints(&interface)?;
@@ -326,9 +324,7 @@ impl HeadsetDevice {
 
                 // Verify report ID
                 if resp.is_empty() || resp[0] != REPORT_ID_IN {
-                    return Err(
-                        HidError::ProtocolError("Invalid response report ID".into()).into(),
-                    );
+                    return Err(HidError::ProtocolError("Invalid response report ID".into()).into());
                 }
 
                 // Return response data (up to requested length)
@@ -353,4 +349,89 @@ pub fn headset_constants() -> (u8, u8, u8, usize, usize) {
         REPORT_LENGTH_OUT,
         REPORT_LENGTH_IN,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_report_constants() {
+        assert_eq!(REPORT_ID_OUT, 0x04);
+        assert_eq!(REPORT_ID_IN, 0x05);
+        assert_eq!(REPORT_LENGTH_OUT, 37);
+        assert_eq!(REPORT_LENGTH_IN, 33);
+        assert_eq!(DELAY_MS, 25);
+    }
+
+    #[test]
+    fn test_destination_constants() {
+        assert_eq!(READ_RAM, 0x00);
+        assert_eq!(READ_EEPROM, 0x20);
+        assert_eq!(WRITE_RAM, 0x40);
+    }
+
+    #[test]
+    fn test_destinations_are_distinct() {
+        // Ensure destination values don't overlap (different high nibble bits)
+        let destinations = [READ_RAM, READ_EEPROM, WRITE_RAM];
+        for (i, &a) in destinations.iter().enumerate() {
+            for &b in &destinations[i + 1..] {
+                assert_ne!(a, b, "Destination values must be distinct");
+            }
+        }
+    }
+
+    #[test]
+    fn test_destination_bit_patterns() {
+        // READ_RAM: 0b0000_0000 - no bits set
+        assert_eq!(READ_RAM & 0x60, 0x00);
+        // READ_EEPROM: 0b0010_0000 - bit 5 set
+        assert_eq!(READ_EEPROM & 0x60, 0x20);
+        // WRITE_RAM: 0b0100_0000 - bit 6 set
+        assert_eq!(WRITE_RAM & 0x60, 0x40);
+    }
+
+    #[test]
+    fn test_headset_constants_fn() {
+        let (read_ram, read_eeprom, write_ram, len_out, len_in) = headset_constants();
+        assert_eq!(read_ram, READ_RAM);
+        assert_eq!(read_eeprom, READ_EEPROM);
+        assert_eq!(write_ram, WRITE_RAM);
+        assert_eq!(len_out, REPORT_LENGTH_OUT);
+        assert_eq!(len_in, REPORT_LENGTH_IN);
+    }
+
+    #[test]
+    fn test_packet_header_layout() {
+        // Verify the command packet structure:
+        // [0] = destination
+        // [1] = length
+        // [2] = address high byte
+        // [3] = address low byte
+        // [4..] = args
+
+        let destination: u8 = WRITE_RAM;
+        let length: u8 = 3;
+        let address: u16 = 0x1234;
+
+        let mut req = [0u8; REPORT_LENGTH_OUT];
+        req[0] = destination;
+        req[1] = length;
+        req[2] = (address >> 8) as u8; // Big-endian high byte
+        req[3] = (address & 0xFF) as u8; // Big-endian low byte
+
+        assert_eq!(req[0], 0x40, "destination at offset 0");
+        assert_eq!(req[1], 3, "length at offset 1");
+        assert_eq!(req[2], 0x12, "address high byte at offset 2");
+        assert_eq!(req[3], 0x34, "address low byte at offset 3");
+    }
+
+    #[test]
+    fn test_report_sizes_with_id() {
+        // Output: report ID + 37 bytes = 38 total
+        // Input: report ID + 33 bytes = 34 total
+        assert_eq!(REPORT_LENGTH_OUT + 1, 38);
+        assert_eq!(REPORT_LENGTH_IN + 1, 34);
+    }
 }
