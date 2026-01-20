@@ -93,9 +93,9 @@ class TestRustDrawingBackend:
 
     def test_ellipse_zero_radius(self):
         """ellipse with zero radius returns empty arrays."""
-        rr, cc = ellipse(5, 5, 0, 5)
+        rr, _cc = ellipse(5, 5, 0, 5)
         assert len(rr) == 0
-        rr, cc = ellipse(5, 5, 5, 0)
+        rr, _cc = ellipse(5, 5, 5, 0)
         assert len(rr) == 0
 
     def test_ellipse_asymmetric(self):
@@ -124,9 +124,9 @@ class TestRustDrawingBackend:
 
     def test_ellipse_perimeter_zero_radius(self):
         """ellipse_perimeter with zero radius returns empty arrays."""
-        rr, cc = ellipse_perimeter(5, 5, 0, 5)
+        rr, _cc = ellipse_perimeter(5, 5, 0, 5)
         assert len(rr) == 0
-        rr, cc = ellipse_perimeter(5, 5, 5, 0)
+        rr, _cc = ellipse_perimeter(5, 5, 5, 0)
         assert len(rr) == 0
 
     def test_ellipse_perimeter_is_outline(self):
@@ -153,12 +153,12 @@ class TestRustDrawingBackend:
 
     def test_line_aa_horizontal(self):
         """line_aa works for horizontal lines."""
-        rr, cc, aa = line_aa(5, 0, 5, 10)
+        rr, _cc, aa = line_aa(5, 0, 5, 10)
         assert len(rr) > 0
         assert np.all(aa >= 0.0)
 
     def test_line_aa_vertical(self):
         """line_aa works for vertical lines."""
-        rr, cc, aa = line_aa(0, 5, 10, 5)
+        rr, _cc, aa = line_aa(0, 5, 10, 5)
         assert len(rr) > 0
         assert np.all(aa >= 0.0)
