@@ -74,6 +74,9 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Effect renderers
     m.add_function(wrap_pyfunction!(effects::draw_aurora, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::draw_kaleidoscope, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::compute_polar_map, m)?)?;
+    m.add_function(wrap_pyfunction!(effects::draw_nebula, m)?)?;
     m.add_function(wrap_pyfunction!(effects::draw_ocean, m)?)?;
 
     Ok(())
