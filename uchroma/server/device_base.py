@@ -87,8 +87,8 @@ class BaseUChromaDevice:
 
         self._ref_count = 0
         self._executor = futures.ThreadPoolExecutor(max_workers=1)
-        self._async_lock = None
-        self._open_lock = None
+        self._async_lock = asyncio.Lock()
+        self._open_lock = asyncio.Lock()
         self._info_lock = asyncio.Lock()
 
     async def shutdown(self):
@@ -103,7 +103,7 @@ class BaseUChromaDevice:
 
         self.close(True)
         if hasattr(self, "_executor") and self._executor is not None:
-            self._executor.shutdown(wait=False, cancel_futures=True)
+            self._executor.shutdown(wait=True, cancel_futures=True)
             self._executor = None
 
     def close(self, force: bool = False):
@@ -301,9 +301,6 @@ class BaseUChromaDevice:
         return True
 
     async def _ensure_open_async(self) -> bool:
-        if self._open_lock is None:
-            self._open_lock = asyncio.Lock()
-
         async with self._open_lock:
             if self._dev is not None:
                 return True
@@ -424,9 +421,6 @@ class BaseUChromaDevice:
     async def run_report_async(
         self, report: hid.RazerReport, delay: float | None = None
     ) -> tuple[bool, bytes]:
-        if self._async_lock is None:
-            self._async_lock = asyncio.Lock()
-
         async with self._async_lock, self.device_open_async():
             delay_ms = int(delay * 1000) if delay else None
             try:

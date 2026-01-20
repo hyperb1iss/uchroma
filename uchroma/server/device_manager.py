@@ -58,7 +58,7 @@ class AsyncMonitorObserver:
             await self._run_future
 
         self._run_future = None
-        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor.shutdown(wait=True, cancel_futures=True)
 
 
 class UChromaDeviceManager(metaclass=Singleton):
