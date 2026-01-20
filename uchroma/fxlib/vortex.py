@@ -8,10 +8,13 @@ A swirling vortex centered on the keyboard with spiral arms
 flowing inward or outward, creating a tunnel effect.
 """
 
-import math
-
+import numpy as np
 from traitlets import Float, Int, observe
 
+from uchroma._native import (
+    compute_polar_map as _rust_compute_polar_map,
+    draw_vortex as _rust_draw_vortex,
+)
 from uchroma.color import ColorUtils
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorSchemeTrait
@@ -42,29 +45,20 @@ class Vortex(Renderer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._gradient = None
-        self._polar_map = None
+        self._gradient_array: np.ndarray | None = None
+        self._polar_map: np.ndarray | None = None
         self._time = 0.0
         self.fps = 15
 
     def _gen_gradient(self):
-        self._gradient = ColorUtils.gradient(360, *self.color_scheme)
+        """Generate gradient and convert to numpy array for Rust."""
+        gradient = ColorUtils.gradient(360, *self.color_scheme)
+        # Pre-convert to numpy array for Rust
+        self._gradient_array = np.array([c.rgb for c in gradient], dtype=np.float64)
 
     def _compute_polar_map(self):
-        """Precompute polar coordinates for each pixel."""
-        width = self.width
-        height = self.height
-        cx = width / 2.0
-        cy = height / 2.0
-
-        self._polar_map = []
-        for row in range(height):
-            for col in range(width):
-                dx = col - cx
-                dy = (row - cy) * (width / height)  # Aspect ratio correction
-                angle = math.atan2(dy, dx)
-                radius = math.sqrt(dx * dx + dy * dy)
-                self._polar_map.append((angle, radius))
+        """Precompute polar coordinates using Rust."""
+        self._polar_map = _rust_compute_polar_map(self.width, self.height)
 
     @observe("color_scheme")
     def _scheme_changed(self, changed):
@@ -79,57 +73,23 @@ class Vortex(Renderer):
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
-        gradient = self._gradient
-        if gradient is None:
+        if self._gradient_array is None or self._polar_map is None:
             return False
 
-        width = layer.width
-        grad_len = len(gradient)
-
-        t = self._time
-        arms = self.arm_count
-        twist = self.twist
-        flow_spd = self.flow_speed
-        flow_dir = self.flow_direction
-        rot_spd = self.rotation_speed
-        center_g = self.center_glow
-        ring_dens = self.ring_density
-
-        assert self._polar_map is not None
-        for idx, (angle, radius) in enumerate(self._polar_map):
-            row = idx // width
-            col = idx % width
-
-            # Spiral: angle offset by radius creates twist
-            spiral_angle = angle - radius * twist - t * rot_spd
-
-            # Multiple spiral arms
-            arm_value = math.sin(spiral_angle * arms)
-
-            # Radial "depth" rings
-            depth_value = math.sin(radius * ring_dens * 2.0 - t * flow_spd * flow_dir)
-
-            # Combine spiral and depth
-            value = arm_value * 0.5 + depth_value * 0.5
-
-            # Color: hue from angle
-            hue_idx = int((angle / math.pi + 1.0) * 180 + t * 30) % grad_len
-            color = gradient[hue_idx]
-            r, g, b = color.rgb
-
-            # Brightness from combined value (0.4 to 1.0)
-            brightness = (value + 1.0) / 2.0 * 0.6 + 0.4
-
-            # Center glow boost
-            if radius < center_g:
-                center_boost = math.exp(-(radius**2) / (2 * (center_g / 2) ** 2))
-                brightness = min(1.0, brightness + center_boost * 0.4)
-
-            layer.matrix[row][col] = (
-                r * brightness,
-                g * brightness,
-                b * brightness,
-                1.0,
-            )
+        _rust_draw_vortex(
+            width=layer.width,
+            height=layer.height,
+            matrix=layer.matrix,
+            gradient=self._gradient_array,
+            polar_map=self._polar_map,
+            time=self._time,
+            arm_count=self.arm_count,
+            twist=self.twist,
+            flow_speed=self.flow_speed,
+            flow_direction=self.flow_direction,
+            rotation_speed=self.rotation_speed,
+            center_glow=self.center_glow,
+            ring_density=self.ring_density,
+        )
 
         return True

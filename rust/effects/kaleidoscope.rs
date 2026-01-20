@@ -87,7 +87,8 @@ pub fn draw_kaleidoscope<'py>(
             };
 
             // Color from symmetric angle + time rotation
-            let hue_idx = ((sym_angle / wedge) * glen_f * 0.5 + time * hue_rotation) as usize % glen;
+            let hue_idx =
+                ((sym_angle / wedge) * glen_f * 0.5 + time * hue_rotation) as usize % glen;
             let r = grad[[hue_idx, 0]];
             let g = grad[[hue_idx, 1]];
             let b = grad[[hue_idx, 2]];

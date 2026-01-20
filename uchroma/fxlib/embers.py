@@ -7,14 +7,18 @@ Embers - Glowing particle field effect.
 A field of warm glowing particles that drift slowly upward,
 pulse in brightness, and occasionally flare brighter.
 Like embers in a dying fire — warm and well-lit.
+
+Particle state management stays in Python; Rust handles the hot rendering loop.
 """
 
 import math
 import random
 from dataclasses import dataclass
 
+import numpy as np
 from traitlets import Float, Int, observe
 
+from uchroma._native import draw_embers as _rust_draw_embers
 from uchroma.color import to_color
 from uchroma.renderer import Renderer, RendererMeta
 from uchroma.traits import ColorTrait
@@ -88,27 +92,26 @@ class Embers(Renderer):
         self._embers = [self._spawn_ember() for _ in range(self.particle_count)]
         return True
 
+    def _calc_brightness(self, ember: Ember) -> float:
+        """Calculate brightness for an ember (pulse + flare)."""
+        brightness = (
+            self.base_brightness + math.sin(self._time * self.pulse_speed + ember.phase) * 0.2
+        )
+
+        # Random flare
+        if random.random() < self.flare_chance:
+            brightness = 1.0
+
+        return max(0.0, min(1.0, brightness))
+
     async def draw(self, layer, timestamp):
         self._time += 1.0 / self.fps
 
         width = layer.width
         height = layer.height
         t = self._time
-        pulse_spd = self.pulse_speed
-        base_bright = self.base_brightness
-        flare = self.flare_chance
-        r, g, b = self._color_rgb
 
-        # Clear layer with slight ambient warmth
-        ambient_r = r * 0.05
-        ambient_g = g * 0.03
-        ambient_b = b * 0.02
-        layer.matrix[:, :, 0] = ambient_r
-        layer.matrix[:, :, 1] = ambient_g
-        layer.matrix[:, :, 2] = ambient_b
-        layer.matrix[:, :, 3] = 1.0
-
-        # Update and render each ember
+        # Update particle positions (stays in Python)
         for ember in self._embers:
             # Drift upward
             ember.y -= ember.velocity / self.fps
@@ -120,40 +123,26 @@ class Embers(Renderer):
                 ember.y = height + 0.5
                 ember.x = random.random() * width
 
-            # Pulsing brightness
-            brightness = base_bright + math.sin(t * pulse_spd + ember.phase) * 0.2
+        # Pack particle data for Rust: [x, y, brightness, radius, ...]
+        particles = np.array(
+            [
+                val
+                for ember in self._embers
+                for val in (ember.x, ember.y, self._calc_brightness(ember), ember.radius)
+            ],
+            dtype=np.float64,
+        )
 
-            # Random flare
-            if random.random() < flare:
-                brightness = 1.0
-
-            brightness = max(0.0, min(1.0, brightness))
-
-            # Render with Gaussian falloff
-            radius_sq = ember.radius * ember.radius
-            sigma_sq = radius_sq / 2.0
-
-            for row in range(
-                max(0, int(ember.y - ember.radius - 1)),
-                min(height, int(ember.y + ember.radius + 2)),
-            ):
-                for col in range(
-                    max(0, int(ember.x - ember.radius - 1)),
-                    min(width, int(ember.x + ember.radius + 2)),
-                ):
-                    dx = col - ember.x
-                    dy = row - ember.y
-                    dist_sq = dx * dx + dy * dy
-
-                    if dist_sq < radius_sq * 2:
-                        glow = brightness * math.exp(-dist_sq / sigma_sq)
-                        # Additive blend
-                        existing = layer.matrix[row][col]
-                        layer.matrix[row][col] = (
-                            min(1.0, existing[0] + r * glow),
-                            min(1.0, existing[1] + g * glow),
-                            min(1.0, existing[2] + b * glow),
-                            1.0,
-                        )
+        r, g, b = self._color_rgb
+        _rust_draw_embers(
+            width=width,
+            height=height,
+            matrix=layer.matrix,
+            particles=particles,
+            color_r=r,
+            color_g=g,
+            color_b=b,
+            ambient_factor=0.05,
+        )
 
         return True

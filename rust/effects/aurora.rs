@@ -68,26 +68,17 @@ pub fn draw_aurora<'py>(
 
                 // Intensity falls off below curtain edge
                 let fade_range = h_f * 0.8;
-                let intensity_raw = smoothstep(
-                    curtain_row + fade_range,
-                    curtain_row - 1.0,
-                    row_f,
-                );
+                let intensity_raw = smoothstep(curtain_row + fade_range, curtain_row - 1.0, row_f);
 
                 // Minimum brightness at bottom (aurora glow floor)
-                let row_norm = if height > 1 {
-                    row_f / (h_f - 1.0)
-                } else {
-                    0.0
-                };
+                let row_norm = if height > 1 { row_f / (h_f - 1.0) } else { 0.0 };
                 let min_intensity = floor_glow * row_norm;
                 let mut intensity = intensity_raw.max(min_intensity);
 
                 // High-frequency shimmer
                 if shimmer > 0.0 {
-                    let shimmer_val = (col_f * 2.1 + row_f * 1.3 + time * 8.0).sin()
-                        * shimmer
-                        * 0.15;
+                    let shimmer_val =
+                        (col_f * 2.1 + row_f * 1.3 + time * 8.0).sin() * shimmer * 0.15;
                     intensity = (intensity + shimmer_val).clamp(0.0, 1.0);
                 }
 
