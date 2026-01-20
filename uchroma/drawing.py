@@ -2,12 +2,26 @@
 Pure numpy implementations of drawing primitives.
 
 Replaces scikit-image.draw to eliminate heavy scipy/matplotlib dependencies.
+Uses Rust backend when available for performance-critical functions.
 """
 
 from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
+
+# Try to import Rust backend
+try:
+    from uchroma._native import (
+        circle_perimeter_aa as _rust_circle_perimeter_aa,
+        line_aa as _rust_line_aa,
+    )
+
+    USE_RUST_DRAWING = True
+except ImportError:
+    USE_RUST_DRAWING = False
+    _rust_circle_perimeter_aa = None
+    _rust_line_aa = None
 
 
 def _clip_to_shape(
@@ -65,6 +79,7 @@ def circle_perimeter_aa(
     Generate coordinates for an anti-aliased circle perimeter.
 
     Uses Xiaolin Wu's algorithm for anti-aliased circles.
+    Uses Rust backend when available for better performance.
 
     :param r: Row (y) coordinate of center
     :param c: Column (x) coordinate of center
@@ -72,6 +87,16 @@ def circle_perimeter_aa(
     :param shape: Optional (rows, cols) to clip coordinates
     :returns: Tuple of (row_coords, col_coords, alpha_values)
     """
+    # Use Rust backend if available
+    if USE_RUST_DRAWING and _rust_circle_perimeter_aa is not None:
+        # Ensure shape is a 2-tuple (height, width) if provided
+        rust_shape = None
+        if shape is not None:
+            rust_shape = (shape[0], shape[1])
+        rr, cc, aa = _rust_circle_perimeter_aa(r, c, radius, rust_shape)
+        return rr.astype(np.intp), cc.astype(np.intp), aa
+
+    # Python fallback
     if radius <= 0:
         return (
             np.array([], dtype=np.intp),
@@ -212,12 +237,20 @@ def line_aa(
     """
     Generate coordinates for an anti-aliased line using Xiaolin Wu's algorithm.
 
+    Uses Rust backend when available for better performance.
+
     :param r0: Starting row
     :param c0: Starting column
     :param r1: Ending row
     :param c1: Ending column
     :returns: Tuple of (row_coords, col_coords, alpha_values)
     """
+    # Use Rust backend if available
+    if USE_RUST_DRAWING and _rust_line_aa is not None:
+        rr, cc, aa = _rust_line_aa(r0, c0, r1, c1)
+        return rr.astype(np.intp), cc.astype(np.intp), aa
+
+    # Python fallback
     rows = []
     cols = []
     alphas = []
