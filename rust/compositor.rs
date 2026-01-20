@@ -2,11 +2,22 @@
 //!
 //! Converts RGBA float layers to RGB uint8 for hardware output.
 //! Provides both single-layer `rgba2rgb` and multi-layer `compose_layers`.
+//!
+//! Uses thread-local buffer pooling to eliminate per-frame allocations.
+
+use std::cell::RefCell;
 
 use numpy::{PyArray3, PyArrayMethods, PyReadonlyArray3};
 use pyo3::prelude::*;
 
 use crate::blending::BlendMode;
+
+// Thread-local buffer pool for intermediate RGBA composition.
+// Reused across frames to avoid allocation overhead (typically ~4KB for keyboards,
+// ~130KB for 64x64 previews). Buffer grows as needed but never shrinks.
+thread_local! {
+    static COMPOSE_BUFFER: RefCell<Vec<f64>> = const { RefCell::new(Vec::new()) };
+}
 
 /// Convert RGBA f64 layer to RGB u8 for hardware output.
 ///
@@ -111,79 +122,88 @@ pub fn compose_layers<'py>(
         .map(|s| BlendMode::from_str(s).unwrap_or(BlendMode::Screen))
         .collect();
 
-    // Allocate intermediate RGBA buffer
-    let mut buffer = vec![0.0f64; pixels * 4];
-
-    // Copy base layer into buffer
-    {
-        let base = first;
-        for row in 0..h {
-            for col in 0..w {
-                let buf_idx = (row * w + col) * 4;
-                buffer[buf_idx] = base[[row, col, 0]];
-                buffer[buf_idx + 1] = base[[row, col, 1]];
-                buffer[buf_idx + 2] = base[[row, col, 2]];
-                buffer[buf_idx + 3] = base[[row, col, 3]];
-            }
-        }
-    }
-
-    // Blend each subsequent layer in-place
-    for (layer_idx, layer_arr) in layers.iter().enumerate().skip(1) {
-        let layer = layer_arr.as_array();
-        let mode = modes.get(layer_idx).copied().unwrap_or(BlendMode::Screen);
-        let opacity = opacities.get(layer_idx).copied().unwrap_or(1.0);
-
-        for row in 0..h {
-            for col in 0..w {
-                let buf_idx = (row * w + col) * 4;
-
-                let base_alpha = buffer[buf_idx + 3];
-                let layer_alpha = layer[[row, col, 3]];
-
-                let comp_alpha = base_alpha.min(layer_alpha) * opacity;
-                let new_alpha = base_alpha + (1.0 - base_alpha) * comp_alpha;
-
-                let ratio = if new_alpha > 0.0 {
-                    comp_alpha / new_alpha
-                } else {
-                    0.0
-                };
-
-                for c in 0..3 {
-                    let b = buffer[buf_idx + c];
-                    let l = layer[[row, col, c]];
-                    let blended = mode.apply(b, l);
-                    let blended = if blended.is_nan() { 0.0 } else { blended };
-                    buffer[buf_idx + c] = blended * ratio + b * (1.0 - ratio);
-                }
-
-                buffer[buf_idx + 3] = base_alpha;
-            }
-        }
-    }
-
-    // Fused RGBA→RGB conversion
+    let required_size = pixels * 4;
     let bg = [bg_r, bg_g, bg_b];
 
-    unsafe {
-        let mut out = output.as_array_mut();
+    // Use thread-local buffer pool to avoid per-frame allocation
+    COMPOSE_BUFFER.with(|cell| {
+        let mut buffer = cell.borrow_mut();
 
-        for row in 0..h {
-            for col in 0..w {
-                let buf_idx = (row * w + col) * 4;
-                let alpha = buffer[buf_idx + 3];
-                let inv_alpha = 1.0 - alpha;
+        // Grow buffer if needed (never shrinks - amortized O(1))
+        if buffer.len() < required_size {
+            buffer.resize(required_size, 0.0);
+        }
 
-                for c in 0..3 {
-                    let src = buffer[buf_idx + c];
-                    let composited = inv_alpha * bg[c] + alpha * src;
-                    let clamped = composited.clamp(0.0, 1.0);
-                    out[[row, col, c]] = (clamped * 255.0) as u8;
+        // Copy base layer into buffer
+        {
+            let base = first;
+            for row in 0..h {
+                for col in 0..w {
+                    let buf_idx = (row * w + col) * 4;
+                    buffer[buf_idx] = base[[row, col, 0]];
+                    buffer[buf_idx + 1] = base[[row, col, 1]];
+                    buffer[buf_idx + 2] = base[[row, col, 2]];
+                    buffer[buf_idx + 3] = base[[row, col, 3]];
                 }
             }
         }
-    }
+
+        // Blend each subsequent layer in-place
+        for (layer_idx, layer_arr) in layers.iter().enumerate().skip(1) {
+            let layer = layer_arr.as_array();
+            let mode = modes.get(layer_idx).copied().unwrap_or(BlendMode::Screen);
+            let opacity = opacities.get(layer_idx).copied().unwrap_or(1.0);
+
+            for row in 0..h {
+                for col in 0..w {
+                    let buf_idx = (row * w + col) * 4;
+
+                    let base_alpha = buffer[buf_idx + 3];
+                    let layer_alpha = layer[[row, col, 3]];
+
+                    let comp_alpha = base_alpha.min(layer_alpha) * opacity;
+                    let new_alpha = base_alpha + (1.0 - base_alpha) * comp_alpha;
+
+                    let ratio = if new_alpha > 0.0 {
+                        comp_alpha / new_alpha
+                    } else {
+                        0.0
+                    };
+
+                    for c in 0..3 {
+                        let b = buffer[buf_idx + c];
+                        let l = layer[[row, col, c]];
+                        let blended = mode.apply(b, l);
+                        let blended = if blended.is_nan() { 0.0 } else { blended };
+                        buffer[buf_idx + c] = blended * ratio + b * (1.0 - ratio);
+                    }
+
+                    buffer[buf_idx + 3] = base_alpha;
+                }
+            }
+        }
+
+        // Fused RGBA→RGB conversion
+        // SAFETY: We have exclusive write access to output through PyO3's borrow rules
+        unsafe {
+            let mut out = output.as_array_mut();
+
+            for row in 0..h {
+                for col in 0..w {
+                    let buf_idx = (row * w + col) * 4;
+                    let alpha = buffer[buf_idx + 3];
+                    let inv_alpha = 1.0 - alpha;
+
+                    for c in 0..3 {
+                        let src = buffer[buf_idx + c];
+                        let composited = inv_alpha * bg[c] + alpha * src;
+                        let clamped = composited.clamp(0.0, 1.0);
+                        out[[row, col, c]] = (clamped * 255.0) as u8;
+                    }
+                }
+            }
+        }
+    });
 
     Ok(())
 }

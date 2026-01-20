@@ -621,6 +621,14 @@ class AnimationManager(HasTraits):
 
         return False
 
+    async def stop_async(self) -> bool:
+        """
+        Stop the animation and wait for shutdown to complete.
+        """
+        if self._loop is not None:
+            return await self._loop.stop_async()
+        return False
+
     async def shutdown(self):
         """
         Shuts down the animation service, waiting for all layers to

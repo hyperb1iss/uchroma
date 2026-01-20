@@ -25,6 +25,22 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   GENERIC SCALE / SLIDER FALLBACK
+   Prevents GTK warning about negative min-height for unstyled sliders
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+scale trough {
+    min-height: 6px;
+    min-width: 6px;
+}
+
+scale slider {
+    min-width: 14px;
+    min-height: 14px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
    WINDOW & BASE
    ═══════════════════════════════════════════════════════════════════════════ */
 
