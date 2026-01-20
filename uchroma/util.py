@@ -138,20 +138,16 @@ def scale_brightness(brightness, from_hw=False):
     :return: The scaled value
     """
     if from_hw:
-        if brightness < 0 or brightness > 255:
-            raise ValueError(f"Integer brightness must be between 0 and 255 ({brightness})")
-
         if brightness is None:
             return 0.0
-
+        if brightness < 0 or brightness > 255:
+            raise ValueError(f"Integer brightness must be between 0 and 255 ({brightness})")
         return round(float(brightness) * (100.0 / 255.0), 2)
-
-    if brightness < 0.0 or brightness > 100.0:
-        raise ValueError(f"Float brightness must be between 0 and 100 ({brightness:f})")
 
     if brightness is None:
         return 0
-
+    if brightness < 0.0 or brightness > 100.0:
+        raise ValueError(f"Float brightness must be between 0 and 100 ({brightness:f})")
     return round(brightness * (255.0 / 100.0))
 
 
@@ -372,7 +368,7 @@ class Ticker:
         return self.__enter__()
 
     async def __aexit__(self, *args):
-        self.__exit__(self, *args)
+        self.__exit__(*args)
         await self.tick()
 
     @property
