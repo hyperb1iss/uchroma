@@ -10,7 +10,7 @@ from typing import NamedTuple
 
 from traitlets import Bool, Float, HasTraits, Int, observe
 
-from uchroma.blending import BlendOp
+from uchroma.blending import BLEND_MODES
 from uchroma.input_queue import InputQueue
 from uchroma.layer import Layer
 from uchroma.log import Log
@@ -39,7 +39,7 @@ class Renderer(HasTraits):
 
     fps = Float(min=0.0, max=MAX_FPS, default_value=DEFAULT_FPS).tag(config=True)
     blend_mode = DefaultCaselessStrEnum(
-        BlendOp.get_modes(), default_value="screen", allow_none=False
+        BLEND_MODES, default_value="screen", allow_none=False
     ).tag(config=True)
     opacity = Float(min=0.0, max=1.0, default_value=1.0).tag(config=True)
     background_color = ColorTrait().tag(config=True)

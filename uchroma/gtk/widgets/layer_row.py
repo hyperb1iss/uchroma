@@ -15,9 +15,7 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import Gdk, GObject, Gtk, Pango  # noqa: E402
 
-from uchroma.blending import BlendOp  # noqa: E402
-
-BLEND_MODES = BlendOp.get_modes()
+from uchroma.blending import BLEND_MODES  # noqa: E402
 
 # Blend mode metadata: (display_name, description, category)
 BLEND_INFO = {

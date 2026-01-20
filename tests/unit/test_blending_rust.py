@@ -9,11 +9,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from uchroma.blending import USE_RUST_BACKEND, BlendOp, blend
+from uchroma.blending import BlendOp, blend
 
 
 class TestRustBlendingBackend:
-    """Tests that Rust backend produces same results as Python."""
+    """Tests that Rust blending produces correct results."""
 
     @pytest.fixture
     def rgba_half(self) -> np.ndarray:
@@ -25,13 +25,9 @@ class TestRustBlendingBackend:
         """4x4 RGBA image filled with ones."""
         return np.ones((4, 4, 4), dtype=np.float64)
 
-    def test_rust_backend_available(self):
-        """Rust backend should be available."""
-        assert USE_RUST_BACKEND, "Rust blending backend not available"
-
     @pytest.mark.parametrize("mode", BlendOp.get_modes())
-    def test_rust_matches_python_all_modes(self, rgba_half, mode):
-        """Rust blend results match Python for all modes."""
+    def test_rust_all_blend_modes(self, rgba_half, mode):
+        """Rust blend results are valid for all modes."""
         result = blend(rgba_half, rgba_half, mode, opacity=1.0)
         assert result.shape == (4, 4, 4)
         assert result.dtype == np.float64

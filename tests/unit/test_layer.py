@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from uchroma import drawing
-from uchroma.blending import BlendOp
+from uchroma.blending import BLEND_MODES
 from uchroma.colorlib import Color
 from uchroma.layer import Layer
 
@@ -159,11 +159,11 @@ class TestLayerBlendMode:
         # Mode should remain unchanged when invalid
         assert small_layer.blend_mode == "multiply"
 
-    def test_blend_mode_function_is_callable(self, small_layer):
-        """Internal blend mode function is callable."""
+    def test_blend_mode_stores_string(self, small_layer):
+        """Internal blend mode is stored as string."""
         small_layer.blend_mode = "multiply"
-        assert callable(small_layer._blend_mode)
-        assert small_layer._blend_mode is BlendOp.multiply
+        assert isinstance(small_layer._blend_mode, str)
+        assert small_layer._blend_mode == "multiply"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

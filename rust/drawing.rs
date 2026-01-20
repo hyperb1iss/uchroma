@@ -3,16 +3,208 @@
 //! Rust implementations of the drawing primitives from uchroma/drawing.py.
 //! Moves the hot Python loops into Rust for significant speedup.
 //!
+//! - `circle` - Filled circle
 //! - `circle_perimeter_aa` - Xiaolin Wu-style anti-aliased circle perimeter
+//! - `ellipse` - Filled ellipse
+//! - `ellipse_perimeter` - Ellipse outline
 //! - `line_aa` - Xiaolin Wu's anti-aliased line algorithm
 
 use numpy::PyArray1;
 use pyo3::prelude::*;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::f64::consts::PI;
+
+/// Return type for non-AA drawing functions: (rows, cols) as numpy arrays
+type DrawResult = (Py<PyArray1<i64>>, Py<PyArray1<i64>>);
 
 /// Return type for anti-aliased drawing functions: (rows, cols, alphas) as numpy arrays
 type AaDrawResult = (Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<f64>>);
+
+/// Generate coordinates for a filled circle.
+///
+/// Uses the equation x² + y² <= r² to determine which points are inside.
+///
+/// # Arguments
+/// * `r` - Row (y) coordinate of center
+/// * `c` - Column (x) coordinate of center
+/// * `radius` - Radius of circle
+/// * `shape` - Optional (rows, cols) tuple for clipping coordinates
+///
+/// # Returns
+/// Tuple of (row_coords, col_coords) as numpy arrays
+#[pyfunction]
+#[pyo3(signature = (r, c, radius, shape=None))]
+pub fn circle(
+    py: Python<'_>,
+    r: i64,
+    c: i64,
+    radius: i64,
+    shape: Option<(i64, i64)>,
+) -> PyResult<DrawResult> {
+    if radius <= 0 {
+        let empty = PyArray1::<i64>::zeros(py, [0], false);
+        return Ok((empty.clone().unbind(), empty.unbind()));
+    }
+
+    let mut rows: Vec<i64> = Vec::new();
+    let mut cols: Vec<i64> = Vec::new();
+    let r_sq = radius * radius;
+
+    // Iterate over bounding box and check circle equation
+    for dy in -radius..=radius {
+        for dx in -radius..=radius {
+            if dx * dx + dy * dy <= r_sq {
+                let row = r + dy;
+                let col = c + dx;
+
+                // Apply shape clipping if provided
+                if let Some((h, w)) = shape {
+                    if row < 0 || row >= h || col < 0 || col >= w {
+                        continue;
+                    }
+                }
+
+                rows.push(row);
+                cols.push(col);
+            }
+        }
+    }
+
+    let rows_arr = PyArray1::from_vec(py, rows);
+    let cols_arr = PyArray1::from_vec(py, cols);
+
+    Ok((rows_arr.unbind(), cols_arr.unbind()))
+}
+
+/// Generate coordinates for a filled ellipse.
+///
+/// Uses the equation (x/a)² + (y/b)² <= 1 to determine which points are inside.
+///
+/// # Arguments
+/// * `r` - Row (y) coordinate of center
+/// * `c` - Column (x) coordinate of center
+/// * `r_radius` - Radius in row (y) direction
+/// * `c_radius` - Radius in column (x) direction
+/// * `shape` - Optional (rows, cols) tuple for clipping coordinates
+///
+/// # Returns
+/// Tuple of (row_coords, col_coords) as numpy arrays
+#[pyfunction]
+#[pyo3(signature = (r, c, r_radius, c_radius, shape=None))]
+pub fn ellipse(
+    py: Python<'_>,
+    r: i64,
+    c: i64,
+    r_radius: i64,
+    c_radius: i64,
+    shape: Option<(i64, i64)>,
+) -> PyResult<DrawResult> {
+    if r_radius <= 0 || c_radius <= 0 {
+        let empty = PyArray1::<i64>::zeros(py, [0], false);
+        return Ok((empty.clone().unbind(), empty.unbind()));
+    }
+
+    let mut rows: Vec<i64> = Vec::new();
+    let mut cols: Vec<i64> = Vec::new();
+
+    let r_rad_sq = (r_radius * r_radius) as f64;
+    let c_rad_sq = (c_radius * c_radius) as f64;
+
+    // Iterate over bounding box and check ellipse equation
+    for dy in -r_radius..=r_radius {
+        for dx in -c_radius..=c_radius {
+            let dy_f = dy as f64;
+            let dx_f = dx as f64;
+
+            // Check if point is inside ellipse: (dx/c_radius)² + (dy/r_radius)² <= 1
+            if (dx_f * dx_f) / c_rad_sq + (dy_f * dy_f) / r_rad_sq <= 1.0 {
+                let row = r + dy;
+                let col = c + dx;
+
+                // Apply shape clipping if provided
+                if let Some((h, w)) = shape {
+                    if row < 0 || row >= h || col < 0 || col >= w {
+                        continue;
+                    }
+                }
+
+                rows.push(row);
+                cols.push(col);
+            }
+        }
+    }
+
+    let rows_arr = PyArray1::from_vec(py, rows);
+    let cols_arr = PyArray1::from_vec(py, cols);
+
+    Ok((rows_arr.unbind(), cols_arr.unbind()))
+}
+
+/// Generate coordinates for an ellipse perimeter (outline).
+///
+/// Uses parametric representation to generate points around the ellipse.
+///
+/// # Arguments
+/// * `r` - Row (y) coordinate of center
+/// * `c` - Column (x) coordinate of center
+/// * `r_radius` - Radius in row (y) direction
+/// * `c_radius` - Radius in column (x) direction
+/// * `shape` - Optional (rows, cols) tuple for clipping coordinates
+///
+/// # Returns
+/// Tuple of (row_coords, col_coords) as numpy arrays
+#[pyfunction]
+#[pyo3(signature = (r, c, r_radius, c_radius, shape=None))]
+pub fn ellipse_perimeter(
+    py: Python<'_>,
+    r: i64,
+    c: i64,
+    r_radius: i64,
+    c_radius: i64,
+    shape: Option<(i64, i64)>,
+) -> PyResult<DrawResult> {
+    if r_radius <= 0 || c_radius <= 0 {
+        let empty = PyArray1::<i64>::zeros(py, [0], false);
+        return Ok((empty.clone().unbind(), empty.unbind()));
+    }
+
+    // Use enough points for smooth curve
+    let max_radius = r_radius.max(c_radius) as f64;
+    let n_points = 64.max((2.0 * PI * max_radius) as usize);
+
+    // Use HashSet to deduplicate coordinates
+    let mut seen: HashSet<(i64, i64)> = HashSet::with_capacity(n_points);
+    let mut rows: Vec<i64> = Vec::new();
+    let mut cols: Vec<i64> = Vec::new();
+
+    for i in 0..n_points {
+        let theta = 2.0 * PI * (i as f64) / (n_points as f64);
+
+        let row = (r as f64 + (r_radius as f64) * theta.sin()).round() as i64;
+        let col = (c as f64 + (c_radius as f64) * theta.cos()).round() as i64;
+
+        // Skip duplicates
+        if !seen.insert((row, col)) {
+            continue;
+        }
+
+        // Apply shape clipping if provided
+        if let Some((h, w)) = shape {
+            if row < 0 || row >= h || col < 0 || col >= w {
+                continue;
+            }
+        }
+
+        rows.push(row);
+        cols.push(col);
+    }
+
+    let rows_arr = PyArray1::from_vec(py, rows);
+    let cols_arr = PyArray1::from_vec(py, cols);
+
+    Ok((rows_arr.unbind(), cols_arr.unbind()))
+}
 
 /// Generate coordinates for an anti-aliased circle perimeter.
 ///

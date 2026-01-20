@@ -62,7 +62,10 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("DATA_SIZE", hid::DATA_SIZE)?;
 
     // Drawing primitives
+    m.add_function(wrap_pyfunction!(drawing::circle, m)?)?;
     m.add_function(wrap_pyfunction!(drawing::circle_perimeter_aa, m)?)?;
+    m.add_function(wrap_pyfunction!(drawing::ellipse, m)?)?;
+    m.add_function(wrap_pyfunction!(drawing::ellipse_perimeter, m)?)?;
     m.add_function(wrap_pyfunction!(drawing::line_aa, m)?)?;
 
     // Compositor

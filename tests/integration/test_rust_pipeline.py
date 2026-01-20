@@ -9,20 +9,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from uchroma.blending import USE_RUST_BACKEND, blend
-from uchroma.color import USE_RUST_COMPOSITOR, ColorUtils
-from uchroma.drawing import USE_RUST_DRAWING
+from uchroma.blending import blend
+from uchroma.color import ColorUtils
 from uchroma.layer import Layer
 
 
 class TestRustPipelineIntegration:
     """End-to-end tests exercising the full Rust pipeline."""
-
-    def test_all_rust_backends_available(self):
-        """All Rust backends should be available."""
-        assert USE_RUST_BACKEND, "Blending backend missing"
-        assert USE_RUST_COMPOSITOR, "Compositor backend missing"
-        assert USE_RUST_DRAWING, "Drawing backend missing"
 
     def test_layer_draw_blend_compose(self):
         """Full pipeline: draw on layers, blend, compose to RGB."""
@@ -52,7 +45,7 @@ class TestRustPipelineIntegration:
         """Drawing primitives use Rust backend."""
         layer = Layer(width=20, height=20)
 
-        # These should use Rust circle_perimeter_aa and line_aa
+        # These use Rust circle_perimeter_aa and line_aa
         layer.circle(10, 10, 5, "green", fill=False)
         layer.line(0, 0, 19, 19, "yellow")
 

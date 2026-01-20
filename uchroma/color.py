@@ -14,18 +14,10 @@ from typing import Union
 
 import numpy as np
 
-from uchroma.colorlib import Color
-from uchroma.drawing import img_as_ubyte
-from uchroma.util import autocast_decorator, clamp, lerp, lerp_degrees
-
 # Rust compositor backend
-try:
-    from uchroma._native import rgba2rgb as _rust_rgba2rgb
-
-    USE_RUST_COMPOSITOR = True
-except ImportError:
-    USE_RUST_COMPOSITOR = False
-    _rust_rgba2rgb = None
+from uchroma._native import rgba2rgb as _rust_rgba2rgb
+from uchroma.colorlib import Color
+from uchroma.util import autocast_decorator, clamp, lerp, lerp_degrees
 
 # Type hint for decorated color arguments
 ColorType = Union[Color, str, Iterable[int], Iterable[float], None]
@@ -585,23 +577,6 @@ class ColorUtils:
         else:
             bg = tuple(bg_color)[:3]
 
-        # Use Rust backend if available
-        if USE_RUST_COMPOSITOR and _rust_rgba2rgb is not None:
-            output = np.empty((arr.shape[0], arr.shape[1], 3), dtype=np.uint8)
-            _rust_rgba2rgb(arr, output, bg[0], bg[1], bg[2])
-            return output
-
-        # Python fallback
-        bg_arr = np.array([bg[0], bg[1], bg[2], 1.0], dtype=np.float64)
-
-        alpha = arr[..., -1]
-        channels = arr[..., :-1]
-
-        out_buf = np.empty_like(channels)
-
-        for ichan in range(channels.shape[-1]):
-            out_buf[..., ichan] = np.clip(
-                (1 - alpha) * bg_arr[ichan] + alpha * channels[..., ichan], a_min=0, a_max=1
-            )
-
-        return img_as_ubyte(out_buf)
+        output = np.empty((arr.shape[0], arr.shape[1], 3), dtype=np.uint8)
+        _rust_rgba2rgb(arr, output, bg[0], bg[1], bg[2])
+        return output

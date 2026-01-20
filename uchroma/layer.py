@@ -10,7 +10,7 @@ import numpy as np
 
 from uchroma import drawing
 from uchroma._layer import color_to_np, set_color
-from uchroma.blending import BlendOp
+from uchroma.blending import BLEND_MODES
 from uchroma.color import ColorType, colorarg, to_color
 from uchroma.colorlib import Color
 from uchroma.log import Log
@@ -35,30 +35,29 @@ class Layer:
         self._matrix = np.zeros(shape=(self._height, self._width, 4), dtype=np.float64)
 
         self._bg_color = None
-        self._blend_mode = BlendOp.screen
+        self._blend_mode = "screen"
         self._opacity = 1.0
 
     @property
     def blend_mode(self) -> str:
         """
-        Get name of the blending function for this layer (when stacked)
+        Get the blend mode name for this layer (when stacked).
 
-        Defaults to BlendOp.screen
+        Defaults to "screen".
         """
-        return self._blend_mode.__name__
+        return self._blend_mode
 
     @blend_mode.setter
     def blend_mode(self, mode: str | None):
         """
-        Set the blending function for this layer.
+        Set the blend mode for this layer.
 
-        Corresponds to a function in uchroma.blending.BlendOp
+        Must be one of the modes in BLEND_MODES.
         """
         if mode is None:
-            self._blend_mode = BlendOp.screen
-
-        elif isinstance(mode, str) and mode in BlendOp.get_modes():
-            self._blend_mode = getattr(BlendOp, mode)
+            self._blend_mode = "screen"
+        elif mode in BLEND_MODES:
+            self._blend_mode = mode
 
     @property
     def opacity(self) -> float:
