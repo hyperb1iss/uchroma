@@ -23,11 +23,18 @@ from uchroma._native import (
 )
 
 # Headset protocol constants
-READ_RAM, READ_EEPROM, WRITE_RAM, HEADSET_REPORT_OUT_LEN, HEADSET_REPORT_IN_LEN = headset_constants()
+READ_RAM, READ_EEPROM, WRITE_RAM, HEADSET_REPORT_OUT_LEN, HEADSET_REPORT_IN_LEN = (
+    headset_constants()
+)
 
 __all__ = [
     "DATA_SIZE",
+    "HEADSET_REPORT_IN_LEN",
+    "HEADSET_REPORT_OUT_LEN",
+    "READ_EEPROM",
+    "READ_RAM",
     "REPORT_SIZE",
+    "WRITE_RAM",
     "DeviceInfo",
     "HeadsetDevice",
     "HidDevice",
@@ -37,9 +44,4 @@ __all__ = [
     "enumerate_devices_async",
     "open_device_async",
     "send_frame_async",
-    "READ_RAM",
-    "READ_EEPROM",
-    "WRITE_RAM",
-    "HEADSET_REPORT_OUT_LEN",
-    "HEADSET_REPORT_IN_LEN",
 ]
