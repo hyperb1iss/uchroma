@@ -278,6 +278,7 @@ impl HidDevice {
         Ok(())
     }
 
+    #[must_use = "report data should be processed"]
     pub(crate) async fn get_feature_report_inner(
         interface: Arc<Mutex<Option<nusb::Interface>>>,
         report_id: u8,

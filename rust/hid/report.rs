@@ -26,6 +26,7 @@ pub const DATA_SIZE: usize = 80;
 // Default inter-command delay
 const CMD_DELAY_MS: u64 = 7;
 
+#[must_use = "response data should be examined"]
 fn parse_response_buf(response: &[u8]) -> PyResult<(Status, Vec<u8>)> {
     if response.len() != REPORT_SIZE {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
@@ -164,6 +165,7 @@ impl RazerReport {
     /// Pack the report for sending.
     ///
     /// Returns the 90-byte report with CRC calculated.
+    #[must_use = "packed report should be sent to device"]
     fn pack(&mut self) -> Vec<u8> {
         // Set data size
         let size = self.data_size.unwrap_or(self.data_ptr as u8);
