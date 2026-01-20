@@ -11,6 +11,7 @@
 use pyo3::prelude::*;
 
 mod blending;
+mod compositor;
 mod crc;
 mod drawing;
 mod hid;
@@ -63,6 +64,9 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Drawing primitives
     m.add_function(wrap_pyfunction!(drawing::circle_perimeter_aa, m)?)?;
     m.add_function(wrap_pyfunction!(drawing::line_aa, m)?)?;
+
+    // Compositor
+    m.add_function(wrap_pyfunction!(compositor::rgba2rgb, m)?)?;
 
     Ok(())
 }
