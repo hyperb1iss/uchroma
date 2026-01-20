@@ -86,6 +86,7 @@ pub fn rgba2rgb<'py>(
 ///
 /// This eliminates N Python→Rust boundary crossings for N layers.
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub fn compose_layers<'py>(
     _py: Python<'py>,
     layers: Vec<PyReadonlyArray3<'py, f64>>,
@@ -119,7 +120,7 @@ pub fn compose_layers<'py>(
     // Parse blend modes upfront
     let modes: Vec<BlendMode> = blend_modes
         .iter()
-        .map(|s| BlendMode::from_str(s).unwrap_or(BlendMode::Screen))
+        .map(|s| s.parse().unwrap_or(BlendMode::Screen))
         .collect();
 
     let required_size = pixels * 4;

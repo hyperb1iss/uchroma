@@ -30,27 +30,30 @@ pub enum BlendMode {
     Difference,
 }
 
-impl BlendMode {
-    /// Parse blend mode from string name.
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for BlendMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "screen" => Some(Self::Screen),
-            "multiply" => Some(Self::Multiply),
-            "addition" => Some(Self::Addition),
-            "lighten_only" => Some(Self::LightenOnly),
-            "darken_only" => Some(Self::DarkenOnly),
-            "dodge" => Some(Self::Dodge),
-            "subtract" => Some(Self::Subtract),
-            "grain_extract" => Some(Self::GrainExtract),
-            "grain_merge" => Some(Self::GrainMerge),
-            "divide" => Some(Self::Divide),
-            "soft_light" => Some(Self::SoftLight),
-            "hard_light" => Some(Self::HardLight),
-            "difference" => Some(Self::Difference),
-            _ => None,
+            "screen" => Ok(Self::Screen),
+            "multiply" => Ok(Self::Multiply),
+            "addition" => Ok(Self::Addition),
+            "lighten_only" => Ok(Self::LightenOnly),
+            "darken_only" => Ok(Self::DarkenOnly),
+            "dodge" => Ok(Self::Dodge),
+            "subtract" => Ok(Self::Subtract),
+            "grain_extract" => Ok(Self::GrainExtract),
+            "grain_merge" => Ok(Self::GrainMerge),
+            "divide" => Ok(Self::Divide),
+            "soft_light" => Ok(Self::SoftLight),
+            "hard_light" => Ok(Self::HardLight),
+            "difference" => Ok(Self::Difference),
+            _ => Err(()),
         }
     }
+}
 
+impl BlendMode {
     /// Apply this blend mode to base and layer channel values.
     #[inline(always)]
     pub fn apply(self, base: f64, layer: f64) -> f64 {

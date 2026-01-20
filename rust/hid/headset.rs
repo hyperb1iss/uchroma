@@ -272,6 +272,7 @@ impl HeadsetDevice {
     /// Returns:
     ///     Response bytes (excluding header) or None for write-only commands
     #[pyo3(signature = (destination, length, address, args=None, delay_ms=25, timeout_ms=500))]
+    #[allow(clippy::too_many_arguments)]
     fn run_command<'py>(
         &self,
         py: Python<'py>,
