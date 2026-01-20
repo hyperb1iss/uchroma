@@ -133,6 +133,10 @@ class AnimationLoop(HasTraits):
         self._error = False
         self.layers_changed = Signal()
 
+        # Cache for sorted layers to avoid sorting every frame
+        self._sorted_layers = []
+        self._layers_dirty = True
+
     @observe("layers")
     def _start_stop(self, change):
         old = 0
@@ -224,9 +228,14 @@ class AnimationLoop(HasTraits):
         if self._logger.isEnabledFor(LOG_TRACE - 1):
             self._logger.debug("Layers: %s", self.layers)
 
+        # Update cached sort order only when layers change
+        if self._layers_dirty:
+            self._sorted_layers = sorted(self.layers, key=lambda z: z.zindex)
+            self._layers_dirty = False
+
         active_bufs = [
             layer.active_buf
-            for layer in sorted(self.layers, key=lambda z: z.zindex)
+            for layer in self._sorted_layers
             if layer is not None and layer.active_buf is not None
         ]
 
@@ -284,6 +293,7 @@ class AnimationLoop(HasTraits):
 
         # fires trait observer
         self.layers = tmp_list
+        self._layers_dirty = True
 
     def _layer_traits_changed(self, *args):
         self.layers_changed.fire("modify", *args)
