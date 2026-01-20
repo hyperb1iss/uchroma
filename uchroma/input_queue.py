@@ -6,6 +6,7 @@
 
 import asyncio
 import time
+from collections import deque
 from typing import NamedTuple
 
 from uchroma.log import LOG_TRACE
@@ -68,7 +69,7 @@ class InputQueue:
         self._attached = False
 
         self._q = asyncio.Queue()
-        self._events = []
+        self._events: deque[KeyInputEvent] = deque()
         self._keystates = InputQueue.KEY_DOWN
 
     def attach(self) -> bool:
@@ -200,7 +201,7 @@ class InputQueue:
             return
 
         had_events = bool(self._events)
-        self._events = [x for x in self._events if x.keycode != event.keycode]
+        self._events = deque(x for x in self._events if x.keycode != event.keycode)
         self._events.append(event)
 
         # Use the queue as a wakeup signal when transitioning from empty -> non-empty.
@@ -217,9 +218,9 @@ class InputQueue:
 
         now = time.time()
 
-        # Remove expired events from queue
+        # Remove expired events from queue (O(1) with deque)
         while self._events and self._events[0].expire_time < now:
-            self._events.pop(0)
+            self._events.popleft()
 
     @property
     def expire_time(self):

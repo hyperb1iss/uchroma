@@ -25,7 +25,7 @@ class ArgSpec(NamedTuple):
     type: str
 
 
-logger = Log.get("uchroma.util")
+logger = Log.get("uchroma.dbus_utils")
 
 
 def _check_variance(items: list):
