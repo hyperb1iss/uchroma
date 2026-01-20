@@ -281,7 +281,14 @@ class UChromaHeadset(BaseUChromaDevice):
                 continue
             elif isinstance(arg, Color):
                 rgb = arg.convert("srgb")
-                result.extend(struct.pack("=BBB", int(rgb["red"] * 255), int(rgb["green"] * 255), int(rgb["blue"] * 255)))
+                result.extend(
+                    struct.pack(
+                        "=BBB",
+                        int(rgb["red"] * 255),
+                        int(rgb["green"] * 255),
+                        int(rgb["blue"] * 255),
+                    )
+                )
             elif isinstance(arg, (bytes, bytearray)):
                 result.extend(arg)
             elif isinstance(arg, int):
