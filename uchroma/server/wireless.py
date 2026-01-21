@@ -59,7 +59,7 @@ class WirelessMixin:
         if not self.is_wireless:
             return -1.0
 
-        result = self.run_with_result(Commands.GET_BATTERY_LEVEL)
+        result = self.run_with_result_sync(Commands.GET_BATTERY_LEVEL)
         if result is None or len(result) < 2:
             return -1.0
 
@@ -77,7 +77,7 @@ class WirelessMixin:
         if not self.is_wireless:
             return False
 
-        result = self.run_with_result(Commands.GET_CHARGING_STATUS)
+        result = self.run_with_result_sync(Commands.GET_CHARGING_STATUS)
         if result is None or len(result) < 2:
             return False
 
@@ -96,7 +96,7 @@ class WirelessMixin:
         if not self.is_wireless:
             return 0
 
-        result = self.run_with_result(Commands.GET_IDLE_TIME)
+        result = self.run_with_result_sync(Commands.GET_IDLE_TIME)
         if result is None or len(result) < 2:
             return 0
 
@@ -122,7 +122,7 @@ class WirelessMixin:
         high = (seconds >> 8) & 0xFF
         low = seconds & 0xFF
 
-        self.run_command(Commands.SET_IDLE_TIME, high, low)
+        self.run_command_sync(Commands.SET_IDLE_TIME, high, low)
 
     @property
     def low_battery_threshold(self) -> int:
@@ -134,7 +134,7 @@ class WirelessMixin:
         if not self.is_wireless:
             return 0
 
-        result = self.run_with_result(Commands.GET_LOW_BATTERY_THRESHOLD)
+        result = self.run_with_result_sync(Commands.GET_LOW_BATTERY_THRESHOLD)
         if result is None or len(result) < 1:
             return 0
 
@@ -152,7 +152,7 @@ class WirelessMixin:
 
         # Clamp to valid range
         percent = max(5, min(50, percent))
-        self.run_command(Commands.SET_LOW_BATTERY_THRESHOLD, percent)
+        self.run_command_sync(Commands.SET_LOW_BATTERY_THRESHOLD, percent)
 
     def get_battery_info(self) -> dict[str, float | bool | int]:
         """

@@ -61,7 +61,7 @@ class UChromaMouse(UChromaDevice):
         """
         Get the current polling rate
         """
-        value = self.run_with_result(UChromaMouse.Command.GET_POLLING_RATE)
+        value = self.run_with_result_sync(UChromaMouse.Command.GET_POLLING_RATE)
         if value is None:
             return PollingRate.INVALID
 
@@ -75,14 +75,14 @@ class UChromaMouse(UChromaDevice):
         if isinstance(rate, str):
             rate = PollingRate.__members__[rate.upper()]
 
-        self.run_command(UChromaMouse.Command.SET_POLLING_RATE, rate.value)
+        self.run_command_sync(UChromaMouse.Command.SET_POLLING_RATE, rate.value)
 
     @property
     def dpi_xy(self) -> tuple:
         """
         Get an (x, y) tuple of the current device DPI
         """
-        value = self.run_with_result(UChromaMouse.Command.GET_DPI_XY)
+        value = self.run_with_result_sync(UChromaMouse.Command.GET_DPI_XY)
         if value is None:
             return (-1, -1)
 
@@ -101,7 +101,7 @@ class UChromaMouse(UChromaDevice):
         else:
             raise ValueError("Must specify one (x) or two (x, y) integers to set DPI")
 
-        self.run_with_result(UChromaMouse.Command.SET_DPI_XY, 0x01, args)
+        self.run_with_result_sync(UChromaMouse.Command.SET_DPI_XY, 0x01, args)
 
     def set_idle_time(self, idle_time: int):
         """
@@ -115,7 +115,7 @@ class UChromaMouse(UChromaDevice):
         idle_time = clamp(idle_time, 60, 900)
         arg = struct.pack(">H", idle_time)
 
-        return self.run_command(UChromaMouse.Command.SET_IDLE_TIME, arg)
+        return self.run_command_sync(UChromaMouse.Command.SET_IDLE_TIME, arg)
 
     @property
     def is_wireless(self):
@@ -176,14 +176,14 @@ class UChromaWirelessMouse(UChromaMouse):
 
     @property
     def dock_brightness(self) -> float:
-        value = self.run_with_result(UChromaWirelessMouse.Command.GET_DOCK_BRIGHTNESS)
+        value = self.run_with_result_sync(UChromaWirelessMouse.Command.GET_DOCK_BRIGHTNESS)
         if value is None:
             return 0.0
         return scale_brightness(int(value[0]), True)
 
     @dock_brightness.setter
     def dock_brightness(self, brightness: float) -> None:
-        self.run_command(
+        self.run_command_sync(
             UChromaWirelessMouse.Command.SET_DOCK_BRIGHTNESS, scale_brightness(brightness)
         )
 
@@ -201,17 +201,15 @@ class UChromaWirelessMouse(UChromaMouse):
         """
         return self._cached_is_charging
 
-    async def refresh_wireless_state_async(self) -> dict[str, object]:
+    async def refresh_wireless_state(self) -> dict[str, object]:
         async with self._wireless_lock:
-            value = await self.run_with_result_async(UChromaWirelessMouse.Command.GET_BATTERY_LEVEL)
+            value = await self.run_with_result(UChromaWirelessMouse.Command.GET_BATTERY_LEVEL)
             if value is None or len(value) < 2:
                 self._cached_battery_level = -1.0
             else:
                 self._cached_battery_level = (value[1] / 255) * 100
 
-            value = await self.run_with_result_async(
-                UChromaWirelessMouse.Command.GET_CHARGING_STATUS
-            )
+            value = await self.run_with_result(UChromaWirelessMouse.Command.GET_CHARGING_STATUS)
             self._cached_is_charging = bool(value is not None and len(value) > 1 and value[1] == 1)
 
         return {
@@ -227,7 +225,9 @@ class UChromaWirelessMouse(UChromaMouse):
 
         :return: True if successful
         """
-        return self.run_command(UChromaWirelessMouse.Command.SET_DOCK_CHARGE_EFFECT, int(enable))
+        return self.run_command_sync(
+            UChromaWirelessMouse.Command.SET_DOCK_CHARGE_EFFECT, int(enable)
+        )
 
     @property
     def dock_charge_color(self) -> Color | None:
@@ -260,4 +260,4 @@ class UChromaWirelessMouse(UChromaMouse):
         :return: True if successful
         """
         arg = scale(threshold, 5.0, 25.0, 0x0C, 0x3F, True)
-        return self.run_command(UChromaWirelessMouse.Command.SET_LOW_BATTERY_THRESHOLD, arg)
+        return self.run_command_sync(UChromaWirelessMouse.Command.SET_LOW_BATTERY_THRESHOLD, arg)

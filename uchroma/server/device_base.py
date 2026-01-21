@@ -227,7 +227,7 @@ class BaseUChromaDevice:
         self._fast_suspend = fast
         self.power_state_changed.fire(current, True)
 
-        if self._device_open():
+        if self._device_open_sync():
             max_time = self.FAST_SUSPEND_FADE_TIME if fast else None
             self._brightness_animator.animate(current, 0, done_cb=self._done_cb, max_time=max_time)
         else:
@@ -281,7 +281,7 @@ class BaseUChromaDevice:
         if level is None:
             return
         if not self._suspended:
-            if self._device_open():
+            if self._device_open_sync():
                 self._brightness_animator.animate(
                     self.brightness, level, done_cb=self._done_cb, max_time=max_time
                 )
@@ -290,7 +290,7 @@ class BaseUChromaDevice:
 
         self.preferences.brightness = level
 
-    def _ensure_open(self) -> bool:
+    def _ensure_open_sync(self) -> bool:
         try:
             if self._dev is None:
                 self._dev = hid.HidDevice(self._devinfo)
@@ -300,7 +300,7 @@ class BaseUChromaDevice:
 
         return True
 
-    async def _ensure_open_async(self) -> bool:
+    async def _ensure_open(self) -> bool:
         async with self._open_lock:
             if self._dev is not None:
                 return True
@@ -346,7 +346,7 @@ class BaseUChromaDevice:
         """
         return None
 
-    def run_with_result(
+    def run_with_result_sync(
         self,
         command: BaseCommand,
         *args,
@@ -355,22 +355,10 @@ class BaseUChromaDevice:
         remaining_packets: int = 0x00,
     ) -> bytes | None:
         """
-        Run a command and return the result
+        Run a command synchronously and return the result.
 
-        Executes the given command with the provided list of arguments, returning
-        the result report.
-
-        Transaction id is only necessary for specialized commands or hardware.
-
-        The connection to the device will be automatically closed by default.
-
-        :param command: The command to run
-
-        :param args: The list of arguments to call the command with
-        :type args: varies
-        :param transaction_id: Transaction identified, defaults to 0xFF
-
-        :return: The result report from the hardware
+        Prefer the async version (run_with_result) for hot paths.
+        This sync version is for property accessors and setup code.
         """
         report = self.get_report(
             *command.value,
@@ -379,10 +367,10 @@ class BaseUChromaDevice:
             remaining_packets=remaining_packets,
         )
 
-        success, data = self.run_report(report, delay=delay)
+        success, data = self.run_report_sync(report, delay=delay)
         return bytes(data) if success else None
 
-    async def run_with_result_async(
+    async def run_with_result(
         self,
         command: BaseCommand,
         *args,
@@ -397,19 +385,20 @@ class BaseUChromaDevice:
             remaining_packets=remaining_packets,
         )
 
-        success, data = await self.run_report_async(report, delay=delay)
+        success, data = await self.run_report(report, delay=delay)
         return bytes(data) if success else None
 
     @synchronized
-    def run_report(self, report: hid.RazerReport, delay: float | None = None) -> tuple[bool, bytes]:
+    def run_report_sync(
+        self, report: hid.RazerReport, delay: float | None = None
+    ) -> tuple[bool, bytes]:
         """
-        Runs a previously initialized RazerReport on the device
+        Runs a previously initialized RazerReport synchronously.
 
-        :param report: the report to run
-        :param delay: custom delay to enforce between commands (in seconds)
-        :return: Tuple of (success, data)
+        Prefer the async version (run_report) for hot paths.
+        This sync version is for property accessors and setup code.
         """
-        with self.device_open():
+        with self.device_open_sync():
             delay_ms = int(delay * 1000) if delay else None
             try:
                 status, data = report.run(self._dev, delay_ms)
@@ -418,10 +407,17 @@ class BaseUChromaDevice:
                 self.logger.exception("Report failed", exc_info=err)
                 return False, b""
 
-    async def run_report_async(
+    async def run_report(
         self, report: hid.RazerReport, delay: float | None = None
     ) -> tuple[bool, bytes]:
-        async with self._async_lock, self.device_open_async():
+        """
+        Runs a previously initialized RazerReport on the device.
+
+        :param report: the report to run
+        :param delay: custom delay to enforce between commands (in seconds)
+        :return: Tuple of (success, data)
+        """
+        async with self._async_lock, self.device_open():
             delay_ms = int(delay * 1000) if delay else None
             try:
                 status, data = await report.run_async(self._dev, delay_ms)
@@ -430,7 +426,7 @@ class BaseUChromaDevice:
                 self.logger.exception("Report failed", exc_info=err)
                 return False, b""
 
-    def run_command(
+    def run_command_sync(
         self,
         command: BaseCommand,
         *args,
@@ -439,12 +435,34 @@ class BaseUChromaDevice:
         remaining_packets: int = 0x00,
     ) -> bool:
         """
-        Run a command
+        Run a command synchronously.
+
+        Prefer the async version (run_command) for hot paths.
+        This sync version is for property accessors and setup code.
+        """
+        report = self.get_report(
+            *command.value,
+            *args,
+            transaction_id=transaction_id,
+            remaining_packets=remaining_packets,
+        )
+
+        success, _ = self.run_report_sync(report, delay=delay)
+        return success
+
+    async def run_command(
+        self,
+        command: BaseCommand,
+        *args,
+        transaction_id: int | None = None,
+        delay: float | None = None,
+        remaining_packets: int = 0x00,
+    ) -> bool:
+        """
+        Run a command.
 
         Executes the given command with the provided list of arguments.
         Transaction id is only necessary for specialized commands or hardware.
-
-        The connection to the device will be automatically closed by default.
 
         :param command: The command to run
         :param args: The list of arguments to call the command with
@@ -460,25 +478,7 @@ class BaseUChromaDevice:
             remaining_packets=remaining_packets,
         )
 
-        success, _ = self.run_report(report, delay=delay)
-        return success
-
-    async def run_command_async(
-        self,
-        command: BaseCommand,
-        *args,
-        transaction_id: int | None = None,
-        delay: float | None = None,
-        remaining_packets: int = 0x00,
-    ) -> bool:
-        report = self.get_report(
-            *command.value,
-            *args,
-            transaction_id=transaction_id,
-            remaining_packets=remaining_packets,
-        )
-
-        success, _ = await self.run_report_async(report, delay=delay)
+        success, _ = await self.run_report(report, delay=delay)
         return success
 
     def _decode_serial(self, value: bytes | None) -> str | None:
@@ -490,11 +490,11 @@ class BaseUChromaDevice:
 
         return None
 
-    async def _get_serial_number_async(self) -> str | None:
+    async def _get_serial_number(self) -> str | None:
         """
         Get the serial number from the hardware directly.
         """
-        value = await self.run_with_result_async(BaseUChromaDevice.Command.GET_SERIAL)
+        value = await self.run_with_result(BaseUChromaDevice.Command.GET_SERIAL)
         return self._decode_serial(value)
 
     @property
@@ -506,11 +506,11 @@ class BaseUChromaDevice:
         """
         return self._serial_number
 
-    async def _get_firmware_version_async(self) -> bytes | None:
+    async def _get_firmware_version(self) -> bytes | None:
         """
         Get the firmware version from the hardware directly.
         """
-        return await self.run_with_result_async(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
+        return await self.run_with_result(BaseUChromaDevice.Command.GET_FIRMWARE_VERSION)
 
     @property
     def firmware_version(self) -> str:
@@ -519,18 +519,18 @@ class BaseUChromaDevice:
         """
         return self._firmware_version or "(unknown)"
 
-    async def refresh_device_info_async(self, force: bool = False) -> dict[str, object]:
+    async def refresh_device_info(self, force: bool = False) -> dict[str, object]:
         updates: dict[str, object] = {}
         async with self._info_lock:
             if force or self._serial_number is None:
-                serial = await self._get_serial_number_async()
+                serial = await self._get_serial_number()
                 if serial is not None:
                     serial = re.sub(r"\W+", r"", serial)
                 if serial != self._serial_number:
                     self._serial_number = serial
 
             if force or self._firmware_version is None:
-                version = await self._get_firmware_version_async()
+                version = await self._get_firmware_version()
                 if version is None or len(version) < 2:
                     fw = "(unknown)"
                 else:
@@ -541,18 +541,18 @@ class BaseUChromaDevice:
         updates["FirmwareVersion"] = self._firmware_version or "(unknown)"
         return updates
 
-    async def refresh_brightness_async(self) -> float | None:
+    async def refresh_brightness(self) -> float | None:
         return self.brightness
 
-    async def refresh_state_async(self) -> dict[str, object]:
+    async def refresh_state(self) -> dict[str, object]:
         updates: dict[str, object] = {}
-        updates.update(await self.refresh_device_info_async())
-        brightness = await self.refresh_brightness_async()
+        updates.update(await self.refresh_device_info())
+        brightness = await self.refresh_brightness()
         if brightness is not None:
             updates["Brightness"] = float(brightness)
         updates["Suspended"] = bool(self.suspended)
 
-        refresh_wireless = getattr(self, "refresh_wireless_state_async", None)
+        refresh_wireless = getattr(self, "refresh_wireless_state", None)
         if callable(refresh_wireless):
             updates.update(await refresh_wireless())
 
@@ -706,13 +706,13 @@ class BaseUChromaDevice:
     def __repr__(self):
         return f"{self.__class__.__name__}(name={self.name}, type={self.device_type.value}, product_id=0x{self.product_id:04x}, index={self.device_index}, quirks={self.hardware.quirks})"
 
-    def _device_open(self):
+    def _device_open_sync(self):
         self._ref_count += 1
-        return self._ensure_open()
+        return self._ensure_open_sync()
 
-    async def _device_open_async(self):
+    async def _device_open(self):
         self._ref_count += 1
-        return await self._ensure_open_async()
+        return await self._ensure_open()
 
     def _device_close(self):
         self._ref_count -= 1
@@ -722,17 +722,19 @@ class BaseUChromaDevice:
         self._device_close()
 
     @contextmanager
-    def device_open(self):
+    def device_open_sync(self):
+        """Sync context manager for device access. Use device_open() for async."""
         try:
-            if self._device_open():
+            if self._device_open_sync():
                 yield
         finally:
             self._device_close()
 
     @asynccontextmanager
-    async def device_open_async(self):
+    async def device_open(self):
+        """Async context manager for device access."""
         try:
-            if await self._device_open_async():
+            if await self._device_open():
                 yield
         finally:
             self._device_close()

@@ -127,7 +127,7 @@ class StandardFX(FXModule):
         for arg in args:
             put_arg(self._report, arg)
 
-        success, _ = self._driver.run_report(self._report)
+        success, _ = self._driver.run_report_sync(self._report)
         return success
 
     def _set_effect_extended(self, effect: ExtendedFX, *args) -> bool:
@@ -140,7 +140,7 @@ class StandardFX(FXModule):
             varstore = 0x01  # VARSTORE
             led_id = LEDType.BACKLIGHT.hardware_id
 
-        return self._driver.run_command(
+        return self._driver.run_command_sync(
             StandardFX.Command.SET_EFFECT_EXTENDED,
             varstore,
             led_id,
@@ -161,7 +161,7 @@ class StandardFX(FXModule):
         for arg in args:
             put_arg(self._report, arg)
 
-        success, _ = await self._driver.run_report_async(self._report)
+        success, _ = await self._driver.run_report(self._report)
         return success
 
     async def _set_effect_extended_async(self, effect: ExtendedFX, *args) -> bool:
@@ -174,7 +174,7 @@ class StandardFX(FXModule):
             varstore = 0x01  # VARSTORE
             led_id = LEDType.BACKLIGHT.hardware_id
 
-        return await self._driver.run_command_async(
+        return await self._driver.run_command(
             StandardFX.Command.SET_EFFECT_EXTENDED,
             varstore,
             led_id,
@@ -535,7 +535,7 @@ class StandardFX(FXModule):
                 data.append([gradient[(row * self.stagger) + col] for col in range(layer.width)])
 
             layer.put_all(data)
-            await frame.commit_async([layer])
+            await frame.commit([layer])
 
             return True
 
@@ -544,29 +544,6 @@ class StandardFX(FXModule):
         hidden = Bool(True, read_only=True)
         cur_row = Int(min=0, default_value=0)
         cur_col = Int(min=0, default_value=0)
-
-        def apply(self) -> bool:
-            first = "red"
-            single = "white"
-            colors = ["yellow", "green", "purple", "blue"]
-
-            frame = self._driver.frame_control
-            layer = frame.create_layer()
-
-            for row in range(layer.height):
-                for col in range(layer.width):
-                    if col == 0:
-                        color = first
-                    else:
-                        color = colors[int((col - 1) % len(colors))]
-                    layer.put(row, col, color)
-
-            layer.put(self.cur_row, self.cur_col, single)
-            frame.debug_opts["debug_position"] = (self.cur_row, self.cur_col)
-
-            frame.commit([layer])
-
-            return True
 
         async def apply_async(self) -> bool:
             first = "red"
@@ -587,6 +564,6 @@ class StandardFX(FXModule):
             layer.put(self.cur_row, self.cur_col, single)
             frame.debug_opts["debug_position"] = (self.cur_row, self.cur_col)
 
-            await frame.commit_async([layer])
+            await frame.commit([layer])
 
             return True

@@ -276,7 +276,7 @@ class UChromaHeadset(BaseUChromaDevice):
         self._cached_brightness = 0.0
         self._brightness_lock = asyncio.Lock()
 
-    def _ensure_open(self) -> bool:
+    def _ensure_open_sync(self) -> bool:
         """Open the headset device using HeadsetDevice (interrupt transfers)."""
         try:
             if self._dev is None:
@@ -357,12 +357,12 @@ class UChromaHeadset(BaseUChromaDevice):
             self.logger.exception("Caught exception running command", exc_info=err)
             return None
 
-    async def _get_serial_number_async(self) -> str | None:
+    async def _get_serial_number(self) -> str | None:
         """Get the serial number from the hardware directly."""
         result = await self._run_with_result_async(UChromaHeadset.Command.GET_SERIAL)
         return self._decode_serial(result)
 
-    async def _get_firmware_version_async(self) -> bytes | None:
+    async def _get_firmware_version(self) -> bytes | None:
         """Get the firmware version from the hardware directly."""
         return await self._run_with_result_async(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
 
@@ -462,7 +462,7 @@ class UChromaHeadset(BaseUChromaDevice):
             self._cached_brightness = level
         return success
 
-    async def refresh_brightness_async(self) -> float | None:
+    async def refresh_brightness(self) -> float | None:
         async with self._brightness_lock:
             self._cached_brightness = await self._get_brightness_impl()
         return self._cached_brightness

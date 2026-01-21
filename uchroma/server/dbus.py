@@ -219,7 +219,7 @@ class DeviceInterface(ServiceInterface):
 
     @method()
     async def Refresh(self) -> "a{sv}":
-        updates = await self._driver.refresh_state_async()
+        updates = await self._driver.refresh_state()
         if updates:
             self.emit_properties_changed(updates)
         return dbus_prepare(updates, variant=True)[0]
@@ -818,7 +818,7 @@ class DeviceManagerAPI:
 
         if action == "add":
             with suppress(Exception):
-                await device.refresh_device_info_async()
+                await device.refresh_device_info()
             path = self._publish_device(device)
             device.fire_restore_prefs()
 

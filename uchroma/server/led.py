@@ -98,10 +98,10 @@ class LED(HasTraits):
         return super().__getattribute__(name)
 
     def _get(self, cmd):
-        return self._driver.run_with_result(cmd, VARSTORE, self._led_type.hardware_id)
+        return self._driver.run_with_result_sync(cmd, VARSTORE, self._led_type.hardware_id)
 
     def _set(self, cmd, *args):
-        return self._driver.run_command(
+        return self._driver.run_command_sync(
             cmd, *(VARSTORE, self._led_type.hardware_id, *args), delay=0.035
         )
 
@@ -117,10 +117,10 @@ class LED(HasTraits):
             self._set(LED.Command.SET_LED_BRIGHTNESS, value)
 
     async def _get_async(self, cmd):
-        return await self._driver.run_with_result_async(cmd, VARSTORE, self._led_type.hardware_id)
+        return await self._driver.run_with_result(cmd, VARSTORE, self._led_type.hardware_id)
 
     async def _set_async(self, cmd, *args):
-        return await self._driver.run_command_async(
+        return await self._driver.run_command(
             cmd, *(VARSTORE, self._led_type.hardware_id, *args), delay=0.035
         )
 

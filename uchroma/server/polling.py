@@ -143,7 +143,7 @@ class PollingMixin:
 
         :return: Polling rate in Hz, or 0 if query failed
         """
-        result = self.run_with_result(Commands.GET_POLLING_RATE)
+        result = self.run_with_result_sync(Commands.GET_POLLING_RATE)
         if result is None or len(result) < 1:
             return 0
 
@@ -174,13 +174,13 @@ class PollingMixin:
         if self.supports_hyperpolling:
             hp_rate = HyperPollingRate.from_rate(rate)
             if hp_rate is not None:
-                self.run_command(Commands.SET_POLLING_RATE, hp_rate.code)
+                self.run_command_sync(Commands.SET_POLLING_RATE, hp_rate.code)
                 return
 
         # Fall back to standard rates
         std_rate = PollingRate.from_rate(rate)
         if std_rate is not None:
-            self.run_command(Commands.SET_POLLING_RATE, std_rate.code)
+            self.run_command_sync(Commands.SET_POLLING_RATE, std_rate.code)
             return
 
         valid_rates = self.get_available_rates()

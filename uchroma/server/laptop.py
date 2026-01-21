@@ -58,7 +58,7 @@ class UChromaLaptop(SystemControlMixin, UChromaKeyboard):
         return self._cached_brightness
 
     async def _set_brightness_async(self, level: float) -> bool:
-        success = await self.run_command_async(
+        success = await self.run_command(
             UChromaLaptop.Command.SET_BRIGHTNESS,
             VARSTORE,
             BACKLIGHT_LED,
@@ -68,9 +68,9 @@ class UChromaLaptop(SystemControlMixin, UChromaKeyboard):
             self._cached_brightness = level
         return success
 
-    async def refresh_brightness_async(self) -> float | None:
+    async def refresh_brightness(self) -> float | None:
         async with self._brightness_lock:
-            value = await self.run_with_result_async(
+            value = await self.run_with_result(
                 UChromaLaptop.Command.GET_BRIGHTNESS, VARSTORE, BACKLIGHT_LED, 0x00
             )
             if value is not None and len(value) > 2:

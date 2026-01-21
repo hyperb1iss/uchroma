@@ -189,9 +189,7 @@ class SystemControlMixin:
             fan_setting_rpm2 = None
 
             if self.supports_system_control:
-                result = await self.run_with_result_async(
-                    ECCommand.GET_FAN_MODE, 0x00, 0x00, 0x00, 0x00
-                )
+                result = await self.run_with_result(ECCommand.GET_FAN_MODE, 0x00, 0x00, 0x00, 0x00)
                 if result is not None and len(result) >= 4:
                     try:
                         self._cached_power_mode = PowerMode(result[2])
@@ -202,7 +200,7 @@ class SystemControlMixin:
                     self._cached_fan_mode = FanMode.MANUAL if result[3] > 0 else FanMode.AUTO
 
                 if self.fan_limits.supports_dual_fan:
-                    result2 = await self.run_with_result_async(
+                    result2 = await self.run_with_result(
                         ECCommand.GET_FAN_MODE, 0x00, 0x01, 0x00, 0x00
                     )
                     if result2 is not None and len(result2) >= 4:
@@ -211,14 +209,12 @@ class SystemControlMixin:
                 if self.supports_fan_speed:
                     rpm1 = 0
                     rpm2 = None
-                    result = await self.run_with_result_async(ECCommand.GET_FAN_SPEED, 0x00, 0x00)
+                    result = await self.run_with_result(ECCommand.GET_FAN_SPEED, 0x00, 0x00)
                     if result is not None and len(result) >= 3:
                         rpm1 = result[2] * 100
 
                     if self.fan_limits.supports_dual_fan:
-                        result2 = await self.run_with_result_async(
-                            ECCommand.GET_FAN_SPEED, 0x00, 0x01
-                        )
+                        result2 = await self.run_with_result(ECCommand.GET_FAN_SPEED, 0x00, 0x01)
                         if result2 is not None and len(result2) >= 3:
                             rpm2 = result2[2] * 100
                     self._cached_fan_rpm = (rpm1, rpm2)
@@ -228,14 +224,14 @@ class SystemControlMixin:
             self._cached_fan_setting_rpm = (fan_setting_rpm1, fan_setting_rpm2)
 
             if self.supports_boost:
-                result = await self.run_with_result_async(ECCommand.GET_BOOST, 0x01, 0x00)
+                result = await self.run_with_result(ECCommand.GET_BOOST, 0x01, 0x00)
                 if result is not None and len(result) >= 1:
                     try:
                         self._cached_cpu_boost = BoostMode(result[0])
                     except ValueError:
                         self._cached_cpu_boost = BoostMode.LOW
 
-                result = await self.run_with_result_async(ECCommand.GET_BOOST, 0x01, 0x01)
+                result = await self.run_with_result(ECCommand.GET_BOOST, 0x01, 0x01)
                 if result is not None and len(result) >= 1:
                     try:
                         self._cached_gpu_boost = BoostMode(result[0])
@@ -313,7 +309,7 @@ class SystemControlMixin:
         rpm_value = fan_rpm // 100 if fan_rpm > 0 else 0
 
         # SET_FAN_MODE: [reserved, fan_id, game_mode, fan_speed]
-        return await self.run_command_async(
+        return await self.run_command(
             ECCommand.SET_FAN_MODE, 0x00, fan_id, power_mode.value, rpm_value
         )
 
@@ -417,16 +413,14 @@ class SystemControlMixin:
             return False
 
         current_fan_rpm = 0
-        result = await self.run_with_result_async(ECCommand.GET_FAN_MODE, 0x00, 0x00, 0x00, 0x00)
+        result = await self.run_with_result(ECCommand.GET_FAN_MODE, 0x00, 0x00, 0x00, 0x00)
         if result is not None and len(result) >= 4:
             current_fan_rpm = result[3] * 100
 
         success = await self._set_fan_power(mode, current_fan_rpm, 0)
 
         if success and self.fan_limits.supports_dual_fan:
-            result2 = await self.run_with_result_async(
-                ECCommand.GET_FAN_MODE, 0x00, 0x01, 0x00, 0x00
-            )
+            result2 = await self.run_with_result(ECCommand.GET_FAN_MODE, 0x00, 0x01, 0x00, 0x00)
             fan2_rpm = result2[3] * 100 if result2 and len(result2) >= 4 else 0
             await self._set_fan_power(mode, fan2_rpm, 1)
 
@@ -469,7 +463,7 @@ class SystemControlMixin:
     async def set_cpu_boost(self, mode: BoostMode) -> bool:
         if not self.supports_boost:
             return False
-        success = await self.run_command_async(ECCommand.SET_BOOST, 0x01, 0x00, mode.value)
+        success = await self.run_command(ECCommand.SET_BOOST, 0x01, 0x00, mode.value)
         if success:
             self._cached_cpu_boost = mode
         return success
@@ -477,7 +471,7 @@ class SystemControlMixin:
     async def set_gpu_boost(self, mode: BoostMode) -> bool:
         if not self.supports_boost:
             return False
-        success = await self.run_command_async(ECCommand.SET_BOOST, 0x01, 0x01, mode.value)
+        success = await self.run_command(ECCommand.SET_BOOST, 0x01, 0x01, mode.value)
         if success:
             self._cached_gpu_boost = mode
         return success

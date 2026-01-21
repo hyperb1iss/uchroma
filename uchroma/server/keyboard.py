@@ -42,7 +42,7 @@ class UChromaKeyboard(UChromaDevice, KeyboardFixup):
         if self.device_type == Hardware.Type.LAPTOP:
             return None
 
-        value = self.run_with_result(UChromaKeyboard.Command.GET_DEVICE_MODE)
+        value = self.run_with_result_sync(UChromaKeyboard.Command.GET_DEVICE_MODE)
         if value is None:
             return None
 
@@ -55,4 +55,4 @@ class UChromaKeyboard(UChromaDevice, KeyboardFixup):
         if self.device_type == Hardware.Type.LAPTOP:
             return None
 
-        return self.run_command(UChromaKeyboard.Command.SET_DEVICE_MODE, mode, param)
+        return self.run_command_sync(UChromaKeyboard.Command.SET_DEVICE_MODE, mode, param)
