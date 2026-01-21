@@ -241,7 +241,7 @@ class AnimationLoop(HasTraits):
 
         try:
             if active_bufs:
-                await self._frame.commit_async(active_bufs)
+                await self._frame.commit(active_bufs)
 
         except OSError:
             self._error = True

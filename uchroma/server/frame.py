@@ -11,7 +11,6 @@ import numpy as np
 
 from uchroma._native import compose_layers as _rust_compose_layers
 from uchroma.layer import Layer
-from uchroma.util import ensure_future
 
 from . import hid
 from .hardware import Hardware, Quirks
@@ -62,6 +61,9 @@ class Frame:
         self._last_frame_ts = 0.0
 
         self._debug_opts = {}
+
+        # Track custom frame mode to avoid redundant USB commands
+        self._custom_frame_active = False
 
     def create_layer(self) -> Layer:
         """
@@ -158,7 +160,7 @@ class Frame:
         _rust_compose_layers(matrices, blend_modes, opacities, bg_r, bg_g, bg_b, output)
         return output
 
-    def _set_frame_data_single(self, img, frame_id: int):
+    async def _set_frame_data_single(self, img, frame_id: int):
         prefix_len = 2
         max_cols = (hid.DATA_SIZE - prefix_len) // 3
         if max_cols <= 0:
@@ -169,30 +171,7 @@ class Frame:
         while start_col < width:
             segment = img[0][start_col : start_col + max_cols]
             seg_width = len(segment)
-            self._driver.run_command(
-                Frame.Command.SET_FRAME_DATA_SINGLE,
-                start_col,
-                seg_width,
-                segment.tobytes(),
-                transaction_id=0x80,
-            )
-            start_col += seg_width
-            if start_col < width:
-                time.sleep(0.001)
-        return img
-
-    async def _set_frame_data_single_async(self, img, frame_id: int):
-        prefix_len = 2
-        max_cols = (hid.DATA_SIZE - prefix_len) // 3
-        if max_cols <= 0:
-            raise ValueError("frame payload too small")
-        width = self._width
-        start_col = 0
-
-        while start_col < width:
-            segment = img[0][start_col : start_col + max_cols]
-            seg_width = len(segment)
-            await self._driver.run_command_async(
+            await self._driver.run_command(
                 Frame.Command.SET_FRAME_DATA_SINGLE,
                 start_col,
                 seg_width,
@@ -245,50 +224,7 @@ class Frame:
             data,  # arguments[5+] - RGB data
         ]
 
-    def _set_frame_data_matrix(self, img, frame_id: int):
-        width = self._width
-        is_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
-        prefix_len = 5 if is_extended else 4
-        max_cols = (hid.DATA_SIZE - prefix_len) // 3
-        if max_cols <= 0:
-            raise ValueError("frame payload too small")
-        segments_per_row = max(1, (width + max_cols - 1) // max_cols)
-        total_packets = self._height * segments_per_row
-        packet_index = 0
-
-        if hasattr(self._driver, "align_key_matrix"):
-            img = self._driver.align_key_matrix(self, img)
-
-        for row in range(self._height):
-            rowdata = img[row]
-
-            row_offset = 0
-            if hasattr(self._driver, "get_row_offset"):
-                row_offset = self._driver.get_row_offset(self, row)
-
-            start_col = 0
-            while start_col < width:
-                data = rowdata[start_col : start_col + max_cols]
-                seg_width = len(data)
-                start_idx = row_offset + start_col
-                stop_col = start_idx + seg_width - 1
-                remaining = total_packets - packet_index - 1
-
-                if is_extended:
-                    # Extended format: [varstore, led_id, effect_id, reserved, row, start, stop, rgb...]
-                    args = self._build_extended_frame_args(row, start_idx, stop_col, data)
-                else:
-                    # Legacy format: [frame_id, row, start, stop, rgb...]
-                    args = [frame_id, row, start_idx, stop_col, data]
-
-                self._driver.run_report(self._get_frame_data_report(remaining, *args))
-                packet_index += 1
-                start_col += seg_width
-                if start_col < width:
-                    time.sleep(0.001)
-        return img
-
-    async def _set_frame_data_matrix_async(self, img, frame_id: int):
+    async def _set_frame_data_matrix(self, img, frame_id: int):
         if hasattr(self._driver, "align_key_matrix"):
             img = self._driver.align_key_matrix(self, img)
 
@@ -320,7 +256,7 @@ class Frame:
         if self._driver._async_lock is None:
             self._driver._async_lock = asyncio.Lock()
 
-        async with self._driver._async_lock, self._driver.device_open_async():
+        async with self._driver._async_lock, self._driver.device_open():
             await hid.send_frame_async(
                 self._driver.hid_device,
                 img,
@@ -333,88 +269,79 @@ class Frame:
             )
         return img
 
-    def _set_frame_data(self, img, frame_id: int | None = None):
+    async def _set_frame_data(self, img, frame_id: int | None = None):
         if frame_id is None:
             frame_id = Frame.DEFAULT_FRAME_ID
 
         if self._height == 1:
-            img = self._set_frame_data_single(img, frame_id)
+            img = await self._set_frame_data_single(img, frame_id)
         else:
-            img = self._set_frame_data_matrix(img, frame_id)
+            img = await self._set_frame_data_matrix(img, frame_id)
 
         if img is not None:
             self._last_frame = img
             self._frame_seq += 1
             self._last_frame_ts = time.monotonic()
 
-    def _set_custom_frame(self):
-        self._driver.fx_manager.activate("custom_frame")
+    async def _set_custom_frame(self):
+        """
+        Activate custom frame mode on the device.
 
-    async def _set_frame_data_async(self, img, frame_id: int | None = None):
-        if frame_id is None:
-            frame_id = Frame.DEFAULT_FRAME_ID
+        Only sends the USB command if custom frame mode isn't already active,
+        avoiding redundant commands on every frame.
+        """
+        if self._custom_frame_active:
+            return
 
-        if self._height == 1:
-            img = await self._set_frame_data_single_async(img, frame_id)
-        else:
-            img = await self._set_frame_data_matrix_async(img, frame_id)
-
-        if img is not None:
-            self._last_frame = img
-            self._frame_seq += 1
-            self._last_frame_ts = time.monotonic()
-
-    async def _set_custom_frame_async(self):
         uses_extended = self._driver.has_quirk(Quirks.EXTENDED_FX_CMDS)
 
         if uses_extended:
             varstore = 0x00  # NOSTORE
             led_id = 0x00  # ZERO_LED
-            await self._driver.run_command_async(
+            await self._driver.run_command(
                 StandardFX.Command.SET_EFFECT_EXTENDED,
                 varstore,
                 led_id,
                 ExtendedFX.CUSTOM_FRAME.value,
             )
-            return
+        else:
+            varstore = 0x01
+            if self._driver.device_type == Hardware.Type.MOUSE:
+                varstore = 0x00
 
-        varstore = 0x01
-        if self._driver.device_type == Hardware.Type.MOUSE:
-            varstore = 0x00
+            await self._driver.run_command(
+                StandardFX.Command.SET_EFFECT, FX.CUSTOM_FRAME.value, varstore
+            )
 
-        await self._driver.run_command_async(
-            StandardFX.Command.SET_EFFECT, FX.CUSTOM_FRAME.value, varstore
-        )
+        self._custom_frame_active = True
 
-    async def commit_async(self, layers, frame_id: int | None = None, show=True) -> "Frame":
-        img = Frame.compose(layers)
-        await self._set_frame_data_async(img, frame_id)
-        if show:
-            await self._set_custom_frame_async()
-
-        return self
-
-    def commit(self, layers, frame_id: int | None = None, show=True) -> "Frame":
+    def reset_custom_frame_state(self):
         """
-        Display this frame and prepare for the next frame
+        Reset the custom frame tracking state.
 
-        Atomically sends this frame to the hardware and displays it.
-        The buffer is then cleared by default and the next frame
-        can be drawn.
+        Call this when switching away from custom frame mode (e.g., to a
+        hardware effect) so the next animation will re-activate custom frame.
+        """
+        self._custom_frame_active = False
 
-        :param clear: True if the buffer should be cleared after commit
+    async def commit(self, layers, frame_id: int | None = None, show=True) -> "Frame":
+        """
+        Display this frame and prepare for the next frame.
+
+        Composes layers, sends RGB data to hardware, and activates custom
+        frame mode if needed. This is the main entry point for the animation
+        loop.
+
+        :param layers: List of Layer objects to composite
         :param frame_id: Internal frame identifier
+        :param show: If True, activate custom frame mode (default)
 
         :return: This Frame instance
         """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as err:
-            raise RuntimeError(
-                "Frame.commit requires an active event loop; use await commit_async()"
-            ) from err
-
-        ensure_future(self.commit_async(layers, frame_id=frame_id, show=show), loop=loop)
+        img = Frame.compose(layers)
+        await self._set_frame_data(img, frame_id)
+        if show:
+            await self._set_custom_frame()
 
         return self
 
@@ -424,5 +351,6 @@ class Frame:
 
         :return: This frame instance
         """
-        await self.commit_async([self.create_layer()], show=False)
+        self.reset_custom_frame_state()
+        await self.commit([self.create_layer()], show=False)
         return self
