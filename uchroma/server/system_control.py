@@ -23,10 +23,22 @@ from .types import BaseCommand
 class PowerMode(IntEnum):
     """Laptop power profiles."""
 
-    BALANCED = 0  # ~35W CPU TDP, quiet fans
-    GAMING = 1  # ~55W CPU TDP, aggressive cooling
-    CREATOR = 2  # Higher GPU TDP, select models only
-    CUSTOM = 4  # Manual fan/boost control active
+    BALANCED = 0
+    GAMING = 1
+    CREATOR = 2
+    CUSTOM = 4
+
+    @property
+    def description(self) -> str:
+        return POWER_MODE_DESCRIPTIONS.get(self, "")
+
+
+POWER_MODE_DESCRIPTIONS: dict[PowerMode, str] = {
+    PowerMode.BALANCED: "Quiet operation with ~35W CPU TDP and conservative cooling",
+    PowerMode.GAMING: "Maximum performance with ~55W CPU TDP and aggressive cooling",
+    PowerMode.CREATOR: "Optimized for GPU workloads with higher GPU TDP",
+    PowerMode.CUSTOM: "Manual control of fan speeds and boost levels",
+}
 
 
 class BoostMode(IntEnum):
@@ -128,6 +140,29 @@ class SystemControlMixin:
         self._last_refresh_ts = 0.0
         self._refresh_task = None
         self._refresh_lock = asyncio.Lock()
+
+        # Connect to restore_prefs signal for persistence
+        if hasattr(self, "restore_prefs"):
+            self.restore_prefs.connect(self._restore_system_prefs)
+
+        # Save power mode when it changes
+        self.power_mode_changed.connect(self._save_power_mode)
+
+    def _restore_system_prefs(self, prefs):
+        """Restore power mode from preferences."""
+        if not self.supports_system_control:
+            return
+        if prefs.power_mode:
+            try:
+                mode = PowerMode[prefs.power_mode.upper()]
+                ensure_future(self.set_power_mode(mode))
+            except (KeyError, ValueError):
+                pass
+
+    def _save_power_mode(self, device, mode: PowerMode):
+        """Save power mode to preferences when it changes."""
+        if hasattr(self, "preferences"):
+            self.preferences.power_mode = mode.name.lower()
 
     def _schedule_refresh(self):
         if not self.supports_system_control and not self.supports_boost:

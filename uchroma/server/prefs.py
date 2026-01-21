@@ -30,6 +30,7 @@ _Preferences = Configuration.create(
         ("fx", str),
         ("fx_args", OrderedDict),
         ("layers", OrderedDict),
+        ("power_mode", str),
     ],
     mutable=True,
     yaml_name="!preferences",

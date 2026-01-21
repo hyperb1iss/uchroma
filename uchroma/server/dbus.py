@@ -575,6 +575,11 @@ class SystemControlInterface(ServiceInterface):
         """List of available power modes."""
         return [m.name.lower() for m in PowerMode]
 
+    @dbus_property(access=PropertyAccess.READ)
+    def PowerModeDescriptions(self) -> "a{ss}":
+        """Descriptions for each power mode."""
+        return {m.name.lower(): m.description for m in PowerMode}
+
     # ─────────────────────────────────────────────────────────────────────────
     # Boost Control
     # ─────────────────────────────────────────────────────────────────────────
