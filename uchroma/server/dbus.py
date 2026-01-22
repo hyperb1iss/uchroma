@@ -490,6 +490,11 @@ class AnimationManagerInterface(ServiceInterface):
         return self._animgr.stop()
 
     @method()
+    async def StopAnimationAsync(self) -> "b":
+        """Stop animation and wait for cleanup to complete."""
+        return await self._animgr.stop_async()
+
+    @method()
     def PauseAnimation(self) -> "b":
         return self._animgr.pause()
 

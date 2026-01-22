@@ -12,6 +12,8 @@ from typing import ClassVar
 from dbus_fast import BusType, Variant
 from dbus_fast.aio import MessageBus
 
+from uchroma.dbus_utils import dbus_prepare
+
 BASE_PATH = "/io/uchroma"
 SERVICE = "io.uchroma"
 
@@ -328,11 +330,20 @@ class DeviceProxy:
         loop = self._get_loop()
         return loop.run_until_complete(self._anim_iface.get_current_renderers())
 
+    @property
+    def AnimationState(self):
+        """Get animation state: 'running', 'paused', or 'stopped'."""
+        if self._anim_iface is None:
+            return None
+        loop = self._get_loop()
+        return loop.run_until_complete(self._anim_iface.get_animation_state())
+
     def AddRenderer(self, name, zindex, traits):
         if self._anim_iface is None:
             return None
         loop = self._get_loop()
-        return loop.run_until_complete(self._anim_iface.call_add_renderer(name, zindex, traits))
+        prepared, _sig = dbus_prepare(traits or {}, variant=True)
+        return loop.run_until_complete(self._anim_iface.call_add_renderer(name, zindex, prepared))
 
     def RemoveRenderer(self, zindex):
         if self._anim_iface is None:
@@ -344,7 +355,14 @@ class DeviceProxy:
         if self._anim_iface is None:
             return False
         loop = self._get_loop()
-        return loop.run_until_complete(self._anim_iface.call_set_layer_traits(zindex, traits))
+        prepared, _sig = dbus_prepare(traits or {}, variant=True)
+        return loop.run_until_complete(self._anim_iface.call_set_layer_traits(zindex, prepared))
+
+    def StopAnimation(self):
+        if self._anim_iface is None:
+            return False
+        loop = self._get_loop()
+        return loop.run_until_complete(self._anim_iface.call_stop_animation())
 
     # LED Manager properties and methods
     @property

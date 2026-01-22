@@ -38,6 +38,7 @@ gtk = [
 uchroma = "uchroma.client.main:cli_entry"
 uchromad = "uchroma.server.server:run_server"
 uchroma-gtk = "uchroma.gtk:main"
+uchroma-keyconfig = "uchroma.tools.keyconfig:main"
 
 [project.entry-points."uchroma.plugins"]
 renderers = "uchroma.fxlib"

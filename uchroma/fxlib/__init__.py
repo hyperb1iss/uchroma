@@ -5,6 +5,7 @@
 
 # Original effects
 # New demoscene-inspired effects
+from .alignment import Alignment as Alignment
 from .aurora import Aurora as Aurora
 from .comets import Comets as Comets
 from .copper import CopperBars as CopperBars
@@ -19,3 +20,4 @@ from .reaction import Reaction as Reaction
 from .ripple import Ripple as Ripple
 from .typewriter import Typewriter as Typewriter
 from .vortex import Vortex as Vortex
+from .wipe import Wipe as Wipe

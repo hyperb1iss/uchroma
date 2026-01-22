@@ -35,8 +35,15 @@ def represent_color(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data.html)
 
 
+def represent_int_subclass(dumper, data):
+    """Represent int subclasses as plain integers."""
+    return dumper.represent_int(int(data))
+
+
 _yaml.representer.add_multi_representer(Enum, represent_enum)
 _yaml.representer.add_multi_representer(Color, represent_color)
+# Handle int subclasses (like HexQuad) that ruamel.yaml doesn't recognize
+_yaml.representer.add_multi_representer(int, represent_int_subclass)
 
 
 class Configuration:
