@@ -89,7 +89,13 @@ class FXManager(HasTraits):
     def _restore_prefs(self, prefs):
         """
         Restore last FX from preferences (signal handler).
+
+        Skip if animation layers are being restored - animations take priority
+        over hardware FX and will manage the display themselves.
         """
+        if prefs.layers:
+            return
+
         if prefs.fx is not None:
             args = {}
             if prefs.fx_args is not None:

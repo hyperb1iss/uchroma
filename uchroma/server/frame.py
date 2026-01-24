@@ -339,6 +339,8 @@ class Frame:
         :return: This Frame instance
         """
         img = Frame.compose(layers)
+        if img is None:
+            return self
         await self._set_frame_data(img, frame_id)
         if show:
             await self._set_custom_frame()

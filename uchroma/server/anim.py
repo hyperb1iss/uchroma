@@ -243,7 +243,10 @@ class AnimationLoop(HasTraits):
             if active_bufs:
                 await self._frame.commit(active_bufs)
 
-        except OSError:
+        except Exception as err:
+            self._logger.error(
+                "Frame commit failed (%s), stopping animation: %s", type(err).__name__, err
+            )
             self._error = True
             await self._stop()
 
@@ -475,21 +478,28 @@ class AnimationManager(HasTraits):
     def _state_changed(self, change):
         # aggregate the trait notifications to a single signal
         value = "stopped"
-        if change.name == "paused" and change.new and self.running:
-            value = "paused"
+        if change.name == "paused" and self.running:
+            value = "paused" if change.new else "running"
         elif change.name == "running" and change.new and not self.paused:
             value = "running"
 
         self.state_changed.fire(value)
 
     def _loop_running_changed(self, change):
-        async def _do_reset():
-            try:
-                await self._driver.reset()
-            except OSError:
-                self._error = True
+        # Only reset when animation STOPS (not when starting)
+        # Starting: animation will draw its own first frame
+        # Stopping: clear the last frame so hardware effects can take over
+        if not change.new:
 
-        ensure_future(_do_reset())
+            async def _do_reset():
+                try:
+                    await self._driver.reset()
+                except OSError as err:
+                    self._logger.error("Device reset failed: %s", err)
+                    self._error = True
+
+            ensure_future(_do_reset())
+
         self._state_changed(change)
 
     def _loop_layers_changed(self, *args, error=False):

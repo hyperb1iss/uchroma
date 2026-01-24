@@ -534,6 +534,7 @@ class TestFXManager:
         prefs = MagicMock()
         prefs.fx = "wave"
         prefs.fx_args = None
+        prefs.layers = None  # No animation layers
 
         # Patch ensure_future to run coroutine immediately
         with patch("uchroma.server.fx.ensure_future", lambda coro: asyncio.run(coro)):
@@ -561,6 +562,7 @@ class TestFXManager:
         prefs = MagicMock()
         prefs.fx = "config"
         prefs.fx_args = {"speed": "fast"}
+        prefs.layers = None  # No animation layers
 
         # Patch ensure_future to run coroutine immediately
         with patch("uchroma.server.fx.ensure_future", lambda coro: asyncio.run(coro)):
@@ -576,6 +578,20 @@ class TestFXManager:
 
         fxmanager._restore_prefs(prefs)
 
+        assert fxmanager.current_fx == (None, None)
+
+    def test_restore_prefs_skips_when_animation_layers_exist(self, fxmanager, mock_driver):
+        """_restore_prefs should skip FX restore when animation layers are present."""
+        mock_driver.is_animating = False
+
+        prefs = MagicMock()
+        prefs.fx = "wave"
+        prefs.fx_args = None
+        prefs.layers = {"uchroma.fxlib.plasma.Plasma": {}}  # Animation layers exist
+
+        fxmanager._restore_prefs(prefs)
+
+        # FX should NOT be restored because animations take priority
         assert fxmanager.current_fx == (None, None)
 
     def test_activate_skips_traits_for_disable(self, fxmanager, mock_driver):

@@ -244,13 +244,22 @@ class BaseUChromaDevice:
         if not self._suspended:
             return
 
+        # Force close the device handle - it may be stale after system suspend
+        self.close(force=True)
+
+        # Reset frame state so custom frame mode is re-activated
+        if hasattr(self, "frame_control") and self.frame_control is not None:
+            self.frame_control.reset_custom_frame_state()
+
         self._suspended = False
-        max_time = self.FAST_SUSPEND_FADE_TIME if self._fast_suspend else None
         self._fast_suspend = False
         target = self.preferences.brightness
-        self.power_state_changed.fire(target or 0.0, False)
+
+        # Start brightness restore - animate from 0 since device was off during suspend
         if target is not None:
-            self.set_brightness(target, max_time=max_time)
+            self.set_brightness(target, max_time=0.15, from_value=0)
+
+        self.power_state_changed.fire(target or 0.0, False)
 
     @property
     def brightness(self):
@@ -271,19 +280,26 @@ class BaseUChromaDevice:
         """
         self.set_brightness(level)
 
-    def set_brightness(self, level: float | None, max_time: float | None = None):
+    def set_brightness(
+        self,
+        level: float | None,
+        max_time: float | None = None,
+        from_value: float | None = None,
+    ):
         """
         Set the brightness level with optional animation timing.
 
         :param level: Brightness level, 0-100
         :param max_time: Optional override for maximum animation time
+        :param from_value: Explicit starting value (default: read from hardware)
         """
         if level is None:
             return
         if not self._suspended:
+            start = from_value if from_value is not None else self.brightness
             if self._device_open_sync():
                 self._brightness_animator.animate(
-                    self.brightness, level, done_cb=self._done_cb, max_time=max_time
+                    start, level, done_cb=self._done_cb, max_time=max_time
                 )
             else:
                 self._device_close()
@@ -699,7 +715,8 @@ class BaseUChromaDevice:
         """
         with self.preferences.observers_paused():
             if hasattr(self, "brightness") and self.preferences.brightness is not None:
-                self.brightness = self.preferences.brightness
+                # Animate from 0 on startup - hardware state may be stale
+                self.set_brightness(self.preferences.brightness, from_value=0)
 
             self.restore_prefs.fire(self.preferences)
 
