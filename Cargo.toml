@@ -1,6 +1,6 @@
 [package]
 name = "uchroma-native"
-version = "0.1.0"
+version = "1.9.90"
 edition = "2021"
 description = "Native Rust extensions for uchroma"
 license = "LGPL-3.0-only"

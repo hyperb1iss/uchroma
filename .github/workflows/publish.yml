@@ -30,7 +30,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libhidapi-dev libudev-dev
+          sudo apt-get install -y libudev-dev
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -89,7 +89,6 @@ jobs:
             cargo \
             rustc \
             maturin \
-            libhidapi-dev \
             libudev-dev
 
       - name: Build Debian package
@@ -150,7 +149,7 @@ jobs:
     steps:
       - name: Install base dependencies
         run: |
-          dnf install -y git python3-devel python3-installer rust cargo maturin hidapi-devel rpm-build
+          dnf install -y git python3-devel python3-installer rust cargo maturin rpm-build
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -168,7 +167,7 @@ jobs:
 
           # Build in current directory
           make build MATURIN=maturin
-          python3 -m installer --destdir=buildroot dist/*.whl
+          python3 -m installer --destdir=buildroot target/wheels/*.whl
           make install DESTDIR=buildroot
 
           # Create RPM
@@ -179,50 +178,6 @@ jobs:
         with:
           name: fedora-packages
           path: ~/rpmbuild/RPMS/**/*.rpm
-
-  build-snap:
-    name: Build Snap Package
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag }}
-
-      - name: Update snap version
-        run: |
-          VERSION="${{ inputs.tag }}"
-          VERSION="${VERSION#v}"
-          sed -i "s/^version:.*/version: '$VERSION'/" snap/snapcraft.yaml
-
-      - name: Build snap
-        uses: snapcore/action-build@v1
-        id: snapcraft
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: snap-packages
-          path: ${{ steps.snapcraft.outputs.snap }}
-
-  publish-snap:
-    name: Publish to Snap Store
-    needs: build-snap
-    runs-on: ubuntu-latest
-    if: ${{ !inputs.dry_run }}
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: snap-packages
-
-      - name: Publish to Snap Store
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN }}
-        with:
-          snap: "*.snap"
-          release: stable
 
   update-aur:
     name: Update AUR Package
@@ -285,7 +240,6 @@ jobs:
         build-debian,
         build-arch,
         build-fedora,
-        publish-snap,
         update-aur,
       ]
     runs-on: ubuntu-latest
@@ -301,7 +255,6 @@ jobs:
           else
             echo "### Published to:" >> $GITHUB_STEP_SUMMARY
             echo "- [PyPI](https://pypi.org/project/uchroma/)" >> $GITHUB_STEP_SUMMARY
-            echo "- [Snap Store](https://snapcraft.io/uchroma)" >> $GITHUB_STEP_SUMMARY
             echo "- [AUR](https://aur.archlinux.org/packages/uchroma)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Artifacts available:" >> $GITHUB_STEP_SUMMARY
