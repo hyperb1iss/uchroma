@@ -16,6 +16,9 @@ make fix          # Auto-fix lint + format
 
 ## Tooling
 
+> **Note**: For detailed info about uv, ty, or ruff, invoke the corresponding astral skill:
+> `astral:uv`, `astral:ty`, or `astral:ruff`
+
 **Package manager**: uv (not pip/poetry). All commands use `uv run`.
 
 **Linting**: ruff — configured in `pyproject.toml [tool.ruff]`
@@ -277,7 +280,7 @@ UCHROMA_LOG_LEVEL=DEBUG uv run python -m uchroma.gtk
 
 ## Dependencies
 
-Core: numpy, traitlets, dbus-fast, hid, pyudev, coloraide, scikit-image, ruamel.yaml, evdev
+Core: numpy, traitlets, dbus-fast, pyudev, coloraide, ruamel.yaml, evdev, argcomplete
 
 GTK: pygobject (optional extra)
 
