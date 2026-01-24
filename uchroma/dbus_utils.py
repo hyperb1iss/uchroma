@@ -6,11 +6,11 @@
 
 import enum
 from collections import OrderedDict
+from types import MappingProxyType
 from typing import NamedTuple
 
 import numpy as np
 from dbus_fast import Variant
-from frozendict import frozendict
 from traitlets import HasTraits, TraitType, Undefined, UseEnum
 
 from uchroma.colorlib import Color
@@ -175,8 +175,8 @@ def dbus_prepare(obj, variant: bool = False, camel_keys: bool = False) -> tuple:
 
             obj = tmp
 
-        elif isinstance(obj, (dict, frozendict)):
-            if isinstance(obj, frozendict):
+        elif isinstance(obj, (dict, MappingProxyType)):
+            if isinstance(obj, MappingProxyType):
                 tmp = {}
             else:
                 tmp = obj.__class__()

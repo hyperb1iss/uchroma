@@ -6,10 +6,10 @@
 from __future__ import annotations
 
 import asyncio
+from types import MappingProxyType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from frozendict import frozendict
 from traitlets import Unicode
 
 from uchroma.server.fx import CUSTOM, BaseFX, FXManager, FXModule
@@ -277,13 +277,13 @@ class TestFXModule:
         assert "wave" in available
         assert "spectrum" in available
 
-    def test_available_fx_returns_frozendict(self, sample_fxmod):
-        """available_fx should return a frozendict."""
+    def test_available_fx_returns_MappingProxyType(self, sample_fxmod):
+        """available_fx should return a MappingProxyType."""
         available = sample_fxmod.available_fx
-        assert isinstance(available, frozendict)
+        assert isinstance(available, MappingProxyType)
 
     def test_available_fx_is_immutable(self, sample_fxmod):
-        """available_fx frozendict should be immutable."""
+        """available_fx MappingProxyType should be immutable."""
         available = sample_fxmod.available_fx
 
         with pytest.raises(TypeError):

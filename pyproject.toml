@@ -18,15 +18,12 @@ classifiers = [
 dependencies = [
     "argcomplete",
     "coloraide>=4.0",
-    "colorlog",
     "dbus-fast>=2.0",
     "evdev",
-    "frozendict",
     "numpy",
     "pyudev",
     "ruamel.yaml",
     "traitlets",
-    "wrapt",
 ]
 
 [project.optional-dependencies]

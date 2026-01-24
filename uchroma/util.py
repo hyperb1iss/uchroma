@@ -15,9 +15,9 @@ import re
 import struct
 import time
 import typing
+from functools import wraps
 
 from numpy import interp
-from wrapt import decorator
 
 AUTOCAST_CACHE = {}
 
@@ -34,39 +34,42 @@ def autocast_decorator(type_hint, fix_arg_func):
     :return: decorator
     """
 
-    @decorator
-    def wrapper(wrapped, instance, args, kwargs):
-        hinted_args = names = None
-        cache_key = f"{wrapped.__class__.__name__}-{wrapped.__name__}-{type_hint!s}"
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            hinted_args = names = None
+            cache_key = f"{func.__class__.__name__}-{func.__name__}-{type_hint!s}"
 
-        if cache_key in AUTOCAST_CACHE:
-            hinted_args, names = AUTOCAST_CACHE[cache_key]
-        else:
-            sig = inspect.signature(wrapped)
-            names = list(sig.parameters.keys())
-            hinted_args = [
-                x[0]
-                for x in typing.get_type_hints(wrapped).items()
-                if x[1] == type_hint or x[1] == typing.Union[type_hint, None]
-            ]
-            AUTOCAST_CACHE[cache_key] = hinted_args, names
+            if cache_key in AUTOCAST_CACHE:
+                hinted_args, names = AUTOCAST_CACHE[cache_key]
+            else:
+                sig = inspect.signature(func)
+                names = list(sig.parameters.keys())
+                hinted_args = [
+                    x[0]
+                    for x in typing.get_type_hints(func).items()
+                    if x[1] == type_hint or x[1] == typing.Union[type_hint, None]
+                ]
+                AUTOCAST_CACHE[cache_key] = hinted_args, names
 
-        if len(hinted_args) == 0:
-            raise ValueError(f"No arguments with {type_hint} hint found")
+            if len(hinted_args) == 0:
+                raise ValueError(f"No arguments with {type_hint} hint found")
 
-        new_args = list(args)
-        for hinted_arg in hinted_args:
-            if hinted_arg in kwargs:
-                kwargs[hinted_arg] = fix_arg_func(kwargs[hinted_arg])
+            new_args = list(args)
+            for hinted_arg in hinted_args:
+                if hinted_arg in kwargs:
+                    kwargs[hinted_arg] = fix_arg_func(kwargs[hinted_arg])
 
-            elif hinted_arg in names:
-                idx = names.index(hinted_arg)
-                if idx < len(new_args):
-                    new_args[idx] = fix_arg_func(new_args[idx])
+                elif hinted_arg in names:
+                    idx = names.index(hinted_arg)
+                    if idx < len(new_args):
+                        new_args[idx] = fix_arg_func(new_args[idx])
 
-        return wrapped(*new_args, **kwargs)
+            return func(*new_args, **kwargs)
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 def snake_to_camel(name: str) -> str:

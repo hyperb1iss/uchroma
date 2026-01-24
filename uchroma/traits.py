@@ -9,8 +9,8 @@ import importlib
 import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
+from types import MappingProxyType
 
-from frozendict import frozendict
 from traitlets import (
     CaselessStrEnum,
     Container,
@@ -102,12 +102,12 @@ class WriteOnceInt(WriteOnceMixin, Int):
 
 class FrozenDict(WriteOnceMixin, Dict):
     """
-    Subclass of Dict which converts the value to a frozendict on
-    the first setting.
+    Subclass of Dict which converts the value to a MappingProxyType on
+    the first setting, making it immutable.
     """
 
     def validate(self, obj, value):
-        return frozendict(super().validate(obj, value))
+        return MappingProxyType(super().validate(obj, value))
 
 
 class UseEnumCaseless(UseEnum):

@@ -8,8 +8,8 @@ import asyncio
 import inspect
 import re
 from abc import abstractmethod
+from types import MappingProxyType
 
-from frozendict import frozendict
 from traitlets import Bool, HasTraits, Instance, Tuple, Unicode
 
 from uchroma.traits import get_args_dict
@@ -36,7 +36,7 @@ class BaseFX(HasTraits):
 class FXModule:
     def __init__(self, driver):
         self._driver = driver
-        self._available_fx = frozendict(self._load_fx())
+        self._available_fx = MappingProxyType(self._load_fx())
 
     def _load_fx(self) -> dict:
         fx = {}

@@ -3,10 +3,9 @@
 #
 import asyncio
 import re
+import threading
 from concurrent import futures
 from contextlib import asynccontextmanager, contextmanager, suppress
-
-from wrapt import synchronized
 
 from uchroma.log import Log
 from uchroma.server import hid
@@ -90,6 +89,7 @@ class BaseUChromaDevice:
         self._async_lock = asyncio.Lock()
         self._open_lock = asyncio.Lock()
         self._info_lock = asyncio.Lock()
+        self._sync_lock = threading.Lock()
 
     async def shutdown(self):
         """
@@ -404,7 +404,6 @@ class BaseUChromaDevice:
         success, data = await self.run_report(report, delay=delay)
         return bytes(data) if success else None
 
-    @synchronized
     def run_report_sync(
         self, report: hid.RazerReport, delay: float | None = None
     ) -> tuple[bool, bytes]:
@@ -414,7 +413,7 @@ class BaseUChromaDevice:
         Prefer the async version (run_report) for hot paths.
         This sync version is for property accessors and setup code.
         """
-        with self.device_open_sync():
+        with self._sync_lock, self.device_open_sync():
             delay_ms = int(delay * 1000) if delay else None
             try:
                 status, data = report.run(self._dev, delay_ms)

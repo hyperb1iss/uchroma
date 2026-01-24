@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import enum
 from argparse import ArgumentParser, Namespace
+from types import MappingProxyType
 
 import pytest
-from frozendict import frozendict
 from traitlets import Float, HasTraits, Int, List, TraitError
 
 from uchroma.traits import (
@@ -249,18 +249,18 @@ class TestWriteOnceInt:
 class TestFrozenDict:
     """Tests for FrozenDict."""
 
-    def test_converts_to_frozendict(self):
-        """FrozenDict converts value to frozendict."""
+    def test_converts_to_MappingProxyType(self):
+        """FrozenDict converts value to MappingProxyType."""
 
         class Obj(HasTraits):
             data = FrozenDict()
 
         obj = Obj()
         obj.data = {"key": "value"}
-        assert isinstance(obj.data, frozendict)
+        assert isinstance(obj.data, MappingProxyType)
 
     def test_frozen_dict_immutable(self):
-        """Resulting frozendict is immutable."""
+        """Resulting MappingProxyType is immutable."""
 
         class Obj(HasTraits):
             data = FrozenDict()

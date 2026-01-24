@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import OrderedDict
+from types import MappingProxyType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -490,8 +491,8 @@ class TestAnimationManager:
 class TestDiscoverRenderers:
     """Tests for renderer discovery."""
 
-    def test_discover_returns_ordered_dict(self, mock_driver):
-        """_discover_renderers returns OrderedDict."""
+    def test_discover_returns_mapping_proxy(self, mock_driver):
+        """_discover_renderers returns immutable MappingProxyType."""
         from uchroma.server.anim import AnimationManager
 
         mock_driver.frame_control = MagicMock()
@@ -502,7 +503,7 @@ class TestDiscoverRenderers:
             # Clear any existing subclasses
             with patch.object(Renderer, "__subclasses__", return_value=[]):
                 mgr = AnimationManager(mock_driver)
-                assert isinstance(mgr._renderer_info, (OrderedDict, dict))
+                assert isinstance(mgr._renderer_info, MappingProxyType)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
