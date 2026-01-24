@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/GTK4-Frontend-4a86cf?style=for-the-badge&logo=gtk&logoColor=white" alt="GTK4">
   <img src="https://img.shields.io/badge/D--Bus-API-e135ff?style=for-the-badge&logo=freedesktoporg&logoColor=white" alt="D-Bus">
   <img src="https://img.shields.io/badge/License-LGPL--3.0-50fa7b?style=for-the-badge&logo=gnu&logoColor=white" alt="License">
@@ -36,35 +36,63 @@ The Razer Chroma line of peripherals have flashy features such as embedded LED m
 
 ## 📦 Installation
 
-#### Debian/Ubuntu
+#### Ubuntu/Debian (PPA)
 
-Packaging assets live in `debian/` and target modern Python (3.10+). If you're building locally,
-use your distro's standard `dpkg-buildpackage` workflow.
-
----
-
-#### Arch
-
-An AUR package is available, and `packaging/arch/PKGBUILD` provides a modern PKGBUILD baseline.
+```bash
+sudo add-apt-repository ppa:hyperb1iss/ppa
+sudo apt update
+sudo apt install uchroma
+```
 
 ---
 
-#### Snap
+#### Arch Linux (AUR)
 
-Snap packaging is provided in `snap/snapcraft.yaml` (strict confinement, session D-Bus).
+```bash
+yay -S uchroma
+# or
+paru -S uchroma
+```
+
+---
+
+#### Fedora
+
+```bash
+# Build from packaging/fedora/uchroma.spec
+sudo dnf install rpm-build rust cargo maturin python3-devel
+rpmbuild -bb packaging/fedora/uchroma.spec
+sudo dnf install ~/rpmbuild/RPMS/x86_64/uchroma-*.rpm
+```
+
+---
+
+#### PyPI
+
+```bash
+pipx install uchroma
+# or
+uv tool install uchroma
+```
 
 ---
 
 #### From Source
 
-UChroma requires Python 3.10 or newer and uses `uv` for dependency management.
+UChroma requires Python 3.11+ and uses `uv` for dependency management.
 
-System integration (udev + systemd user service):
+```bash
+# Clone and install dependencies
+git clone https://github.com/hyperbliss/uchroma.git
+cd uchroma
+make sync
 
-    sudo make install-udev
-    sudo make install-service
-    systemctl --user daemon-reload
-    systemctl --user enable --now uchromad.service
+# System integration (udev rules + systemd user service)
+sudo make install-udev
+make install-service
+systemctl --user daemon-reload
+systemctl --user enable --now uchromad.service
+```
 
 Be sure to uninstall any other software which might alter permissions or change behavior of the devices or kernel HID drivers.
 
@@ -321,13 +349,12 @@ Send a pull request if you implement a new renderer and would like to have it in
 #### _Awesome libraries used by UChroma:_
 
 - [Numpy](http://numpy.org)
-- [Scikit-Image](http://scikit-image.org)
 - [ColorAide](https://facelessuser.github.io/coloraide/)
-- [HIDAPI](https://github.com/NF6X/pyhidapi)
 - [Traitlets](https://github.com/ipython/traitlets)
 - [dbus-fast](https://github.com/Bluetooth-Devices/dbus-fast)
 - [pyudev](https://pyudev.readthedocs.io/en/latest/)
 - [python-evdev](https://python-evdev.readthedocs.io/en/latest/)
+- [nusb](https://github.com/kevinmehall/nusb) (Rust USB/HID)
 
 ## Credits
 
