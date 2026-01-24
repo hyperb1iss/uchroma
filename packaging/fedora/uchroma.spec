@@ -11,7 +11,6 @@ BuildRequires:  python3-installer
 BuildRequires:  rust
 BuildRequires:  cargo
 BuildRequires:  maturin
-BuildRequires:  hidapi-devel
 BuildRequires:  systemd-rpm-macros
 
 Requires:       python3-argcomplete
@@ -20,15 +19,14 @@ Requires:       python3-colorlog
 Requires:       python3-dbus-fast
 Requires:       python3-evdev
 Requires:       python3-frozendict
-Requires:       python3-hid
 Requires:       python3-numpy
 Requires:       python3-pyudev
 Requires:       python3-ruamel-yaml
-Requires:       python3-scikit-image
 Requires:       python3-traitlets
 Requires:       python3-wrapt
 
 Recommends:     python3-gobject
+Recommends:     libadwaita
 
 %description
 An advanced driver for the Razer Chroma line of peripherals.
@@ -41,7 +39,7 @@ Supports lighting effects, custom animations, and more.
 make build MATURIN=maturin
 
 %install
-python3 -m installer --destdir=%{buildroot} dist/*.whl
+python3 -m installer --destdir=%{buildroot} target/wheels/*.whl
 make install DESTDIR=%{buildroot}
 
 %post

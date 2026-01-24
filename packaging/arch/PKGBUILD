@@ -13,16 +13,15 @@ depends=(
   "python-dbus-fast"
   "python-evdev"
   "python-frozendict"
-  "python-hid"
   "python-numpy"
   "python-pyudev"
   "python-ruamel-yaml"
-  "python-scikit-image"
   "python-traitlets"
   "python-wrapt"
 )
 optdepends=(
   "python-gobject: GTK frontend"
+  "libadwaita: GTK frontend (Adwaita widgets)"
 )
 makedepends=(
   "rust"
@@ -40,6 +39,6 @@ build() {
 
 package() {
   cd "$pkgname-$pkgver"
-  python -m installer --destdir="$pkgdir" dist/*.whl
+  python -m installer --destdir="$pkgdir" target/wheels/*.whl
   make install DESTDIR="$pkgdir"
 }
