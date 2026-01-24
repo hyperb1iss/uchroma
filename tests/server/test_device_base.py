@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -396,9 +396,9 @@ class TestBaseUChromaDeviceOpenClose:
     """Tests for device open/close functionality."""
 
     def test_device_open_increments_ref_count(self, device):
-        """_device_open increments ref count."""
-        with patch.object(device, "_ensure_open", return_value=True):
-            device._device_open()
+        """_device_open_sync increments ref count."""
+        with patch.object(device, "_ensure_open_sync", return_value=True):
+            device._device_open_sync()
             assert device._ref_count == 1
 
     def test_device_close_decrements_ref_count(self, device):
@@ -428,12 +428,12 @@ class TestBaseUChromaDeviceOpenClose:
         assert device._dev is None
 
     def test_device_open_context_manager(self, device):
-        """device_open context manager handles open/close."""
+        """device_open_sync context manager handles open/close."""
         with (
-            patch.object(device, "_device_open", return_value=True) as mock_open,
+            patch.object(device, "_device_open_sync", return_value=True) as mock_open,
             patch.object(device, "_device_close") as mock_close,
         ):
-            with device.device_open():
+            with device.device_open_sync():
                 mock_open.assert_called_once()
             mock_close.assert_called_once()
 
@@ -507,15 +507,17 @@ class TestBaseUChromaDeviceSerialFirmware:
     def test_firmware_version_formats(self, device):
         """firmware_version formats version correctly."""
         device._serial_number = "CACHED"
-        with patch.object(device, "_get_firmware_version_async", return_value=bytes([1, 5])):
-            asyncio.run(device.refresh_device_info_async())
+        with patch.object(
+            device, "_get_firmware_version", new=AsyncMock(return_value=bytes([1, 5]))
+        ):
+            asyncio.run(device.refresh_device_info())
             assert device.firmware_version == "v1.5"
 
     def test_firmware_version_unknown(self, device):
         """firmware_version returns unknown if None."""
         device._serial_number = "CACHED"
-        with patch.object(device, "_get_firmware_version_async", return_value=None):
-            asyncio.run(device.refresh_device_info_async())
+        with patch.object(device, "_get_firmware_version", new=AsyncMock(return_value=None)):
+            asyncio.run(device.refresh_device_info())
             assert device.firmware_version == "(unknown)"
 
 

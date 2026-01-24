@@ -122,10 +122,12 @@ def mock_led_driver():
     """Create a mock driver for LED testing."""
     driver = MagicMock()
     driver.logger = MagicMock()
-    driver.run_with_result = MagicMock(return_value=None)
-    driver.run_command = MagicMock(return_value=True)
-    driver.run_with_result_async = AsyncMock(return_value=None)
-    driver.run_command_async = AsyncMock(return_value=True)
+    # Sync methods (used by _get/_set)
+    driver.run_with_result_sync = MagicMock(return_value=None)
+    driver.run_command_sync = MagicMock(return_value=True)
+    # Async methods (used by _get_async/_set_async)
+    driver.run_with_result = AsyncMock(return_value=None)
+    driver.run_command = AsyncMock(return_value=True)
     driver.has_quirk = MagicMock(return_value=False)
     driver.preferences = MagicMock()
     driver.preferences.leds = None
@@ -253,7 +255,7 @@ class TestLEDGetSet:
         """_get should call driver.run_with_result with correct args."""
         cmd = LED.Command.GET_LED_STATE
         logo_led._get(cmd)
-        mock_led_driver.run_with_result.assert_called_once_with(
+        mock_led_driver.run_with_result_sync.assert_called_once_with(
             cmd, VARSTORE, LEDType.LOGO.hardware_id
         )
 
@@ -261,7 +263,7 @@ class TestLEDGetSet:
         """_set should call driver.run_command with correct args."""
         cmd = LED.Command.SET_LED_STATE
         logo_led._set(cmd, 1)
-        mock_led_driver.run_command.assert_called_once_with(
+        mock_led_driver.run_command_sync.assert_called_once_with(
             cmd, VARSTORE, LEDType.LOGO.hardware_id, 1, delay=0.035
         )
 
@@ -269,14 +271,14 @@ class TestLEDGetSet:
         """_set should pass multiple args correctly."""
         cmd = LED.Command.SET_LED_COLOR
         logo_led._set(cmd, 255, 128, 64)
-        mock_led_driver.run_command.assert_called_once_with(
+        mock_led_driver.run_command_sync.assert_called_once_with(
             cmd, VARSTORE, LEDType.LOGO.hardware_id, 255, 128, 64, delay=0.035
         )
 
     def test_get_returns_driver_result(self, logo_led, mock_led_driver):
         """_get should return what driver returns."""
         expected = [0, 0, 1]
-        mock_led_driver.run_with_result.return_value = expected
+        mock_led_driver.run_with_result_sync.return_value = expected
         result = logo_led._get(LED.Command.GET_LED_STATE)
         assert result == expected
 
@@ -294,7 +296,7 @@ class TestLEDBrightnessCommands:
         mock_led_driver.has_quirk.return_value = False
         logo_led._get_brightness()
         mock_led_driver.has_quirk.assert_called_with(Quirks.EXTENDED_FX_CMDS)
-        mock_led_driver.run_with_result.assert_called_once_with(
+        mock_led_driver.run_with_result_sync.assert_called_once_with(
             LED.Command.GET_LED_BRIGHTNESS, VARSTORE, LEDType.LOGO.hardware_id
         )
 
@@ -303,7 +305,7 @@ class TestLEDBrightnessCommands:
         mock_led_driver.has_quirk.return_value = True
         logo_led._get_brightness()
         mock_led_driver.has_quirk.assert_called_with(Quirks.EXTENDED_FX_CMDS)
-        mock_led_driver.run_with_result.assert_called_once_with(
+        mock_led_driver.run_with_result_sync.assert_called_once_with(
             LED.ExtendedCommand.GET_LED_BRIGHTNESS, VARSTORE, LEDType.LOGO.hardware_id
         )
 
@@ -312,7 +314,7 @@ class TestLEDBrightnessCommands:
         mock_led_driver.has_quirk.return_value = False
         logo_led._set_brightness(128)
         mock_led_driver.has_quirk.assert_called_with(Quirks.EXTENDED_FX_CMDS)
-        mock_led_driver.run_command.assert_called_once_with(
+        mock_led_driver.run_command_sync.assert_called_once_with(
             LED.Command.SET_LED_BRIGHTNESS, VARSTORE, LEDType.LOGO.hardware_id, 128, delay=0.035
         )
 
@@ -321,7 +323,7 @@ class TestLEDBrightnessCommands:
         mock_led_driver.has_quirk.return_value = True
         logo_led._set_brightness(200)
         mock_led_driver.has_quirk.assert_called_with(Quirks.EXTENDED_FX_CMDS)
-        mock_led_driver.run_command.assert_called_once_with(
+        mock_led_driver.run_command_sync.assert_called_once_with(
             LED.ExtendedCommand.SET_LED_BRIGHTNESS,
             VARSTORE,
             LEDType.LOGO.hardware_id,
@@ -356,66 +358,66 @@ class TestLEDRefresh:
 
     def test_refresh_reads_state(self, mock_led_driver):
         """_refresh_async should read LED state from device."""
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 1], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result_async.reset_mock()
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.reset_mock()
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 1], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
         asyncio.run(led._refresh_async())
-        calls = mock_led_driver.run_with_result_async.call_args_list
+        calls = mock_led_driver.run_with_result.call_args_list
         state_call = call(LED.Command.GET_LED_STATE, VARSTORE, LEDType.LOGO.hardware_id)
         assert state_call in calls
 
     def test_refresh_reads_color(self, mock_led_driver):
         """_refresh_async should read LED color from device."""
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 255, 128, 64], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result_async.reset_mock()
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.reset_mock()
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 255, 128, 64], mode=[0, 0, 0], brightness=[0, 0, 128]
         )
         asyncio.run(led._refresh_async())
-        calls = mock_led_driver.run_with_result_async.call_args_list
+        calls = mock_led_driver.run_with_result.call_args_list
         color_call = call(LED.Command.GET_LED_COLOR, VARSTORE, LEDType.LOGO.hardware_id)
         assert color_call in calls
 
     def test_refresh_reads_mode(self, mock_led_driver):
         """_refresh_async should read LED mode from device."""
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0x02], brightness=[0, 0, 128]
         )
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result_async.reset_mock()
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.reset_mock()
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0x02], brightness=[0, 0, 128]
         )
         asyncio.run(led._refresh_async())
-        calls = mock_led_driver.run_with_result_async.call_args_list
+        calls = mock_led_driver.run_with_result.call_args_list
         mode_call = call(LED.Command.GET_LED_MODE, VARSTORE, LEDType.LOGO.hardware_id)
         assert mode_call in calls
 
     def test_refresh_reads_brightness(self, mock_led_driver):
         """_refresh_async should read LED brightness from device."""
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 200]
         )
         mock_led_driver.has_quirk.return_value = False
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
-        mock_led_driver.run_with_result_async.reset_mock()
-        mock_led_driver.run_with_result_async.side_effect = self._make_refresh_side_effect(
+        mock_led_driver.run_with_result.reset_mock()
+        mock_led_driver.run_with_result.side_effect = self._make_refresh_side_effect(
             state=[0, 0, 0], color=[0, 0, 0, 255, 0], mode=[0, 0, 0], brightness=[0, 0, 200]
         )
         asyncio.run(led._refresh_async())
-        calls = mock_led_driver.run_with_result_async.call_args_list
+        calls = mock_led_driver.run_with_result.call_args_list
         brightness_call = call(LED.Command.GET_LED_BRIGHTNESS, VARSTORE, LEDType.LOGO.hardware_id)
         assert brightness_call in calls
 
@@ -428,7 +430,7 @@ class TestLEDRefresh:
                 return [0, 0, 1]
             return None
 
-        mock_led_driver.run_with_result_async.side_effect = side_effect
+        mock_led_driver.run_with_result.side_effect = side_effect
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         asyncio.run(led._refresh_async())
@@ -442,7 +444,7 @@ class TestLEDRefresh:
                 return [0, 0, 255, 128, 64]  # R=255, G=128, B=64
             return None
 
-        mock_led_driver.run_with_result_async.side_effect = side_effect
+        mock_led_driver.run_with_result.side_effect = side_effect
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         asyncio.run(led._refresh_async())
@@ -458,7 +460,7 @@ class TestLEDRefresh:
                 return [0, 0, 0x02]  # PULSE mode
             return None
 
-        mock_led_driver.run_with_result_async.side_effect = side_effect
+        mock_led_driver.run_with_result.side_effect = side_effect
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         asyncio.run(led._refresh_async())
@@ -472,7 +474,7 @@ class TestLEDRefresh:
                 return [0, 0, 255]  # Max brightness
             return None
 
-        mock_led_driver.run_with_result_async.side_effect = side_effect
+        mock_led_driver.run_with_result.side_effect = side_effect
         mock_led_driver.has_quirk.return_value = False
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
@@ -481,7 +483,7 @@ class TestLEDRefresh:
 
     def test_refresh_handles_none_responses(self, mock_led_driver):
         """_refresh_async should handle None responses gracefully."""
-        mock_led_driver.run_with_result_async.return_value = None
+        mock_led_driver.run_with_result.return_value = None
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         # Should not raise
@@ -495,7 +497,7 @@ class TestLEDRefresh:
             refreshing_during_call.append(led._refreshing)
             return None
 
-        mock_led_driver.run_with_result_async.side_effect = capture_refreshing
+        mock_led_driver.run_with_result.side_effect = capture_refreshing
         with patch.object(LED, "_refresh_async", new=AsyncMock()):
             led = LED(mock_led_driver, LEDType.LOGO)
         asyncio.run(led._refresh_async())
@@ -515,14 +517,14 @@ class TestLEDObserver:
     def test_observer_skips_during_refresh(self, logo_led, mock_led_driver):
         """Observer should not trigger commands during refresh."""
         logo_led._refreshing = True
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         logo_led.brightness = 50.0
-        mock_led_driver.run_command_async.assert_not_called()
+        mock_led_driver.run_command.assert_not_called()
 
     def test_observer_skips_when_value_unchanged(self, logo_led, mock_led_driver):
         """Observer should not trigger when old == new."""
         logo_led._dirty = False
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         original = logo_led.brightness
         logo_led.brightness = original  # Same value
         # traitlets may or may not call observer, but _set commands shouldn't run
@@ -531,36 +533,36 @@ class TestLEDObserver:
     def test_observer_sets_color(self, scroll_led, mock_led_driver):
         """Observer should send SET_LED_COLOR when color changes."""
         scroll_led._dirty = False
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         new_color = Color.NewFromRgb(1.0, 0.0, 0.0)
         scroll_led.color = new_color
         # Check that SET_LED_COLOR was called
         assert any(
             c.args[0] == LED.Command.SET_LED_COLOR
-            for c in mock_led_driver.run_command_async.call_args_list
+            for c in mock_led_driver.run_command.call_args_list
         )
 
     def test_observer_sets_mode(self, scroll_led, mock_led_driver):
         """Observer should send SET_LED_MODE when mode changes."""
         scroll_led._dirty = False
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         scroll_led.mode = LEDMode.PULSE
-        mock_led_driver.run_command_async.assert_called()
+        mock_led_driver.run_command.assert_called()
         assert any(
             c.args[0] == LED.Command.SET_LED_MODE
-            for c in mock_led_driver.run_command_async.call_args_list
+            for c in mock_led_driver.run_command.call_args_list
         )
 
     def test_observer_sets_brightness(self, logo_led, mock_led_driver):
         """Observer should send brightness command when brightness changes."""
         logo_led._dirty = False
         mock_led_driver.has_quirk.return_value = False
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         logo_led.brightness = 50.0
         # Should call SET_LED_BRIGHTNESS
         assert any(
             c.args[0] == LED.Command.SET_LED_BRIGHTNESS
-            for c in mock_led_driver.run_command_async.call_args_list
+            for c in mock_led_driver.run_command.call_args_list
         )
 
     def test_observer_turns_on_led_when_brightness_goes_from_zero(self, logo_led, mock_led_driver):
@@ -569,12 +571,12 @@ class TestLEDObserver:
         logo_led._refreshing = True
         logo_led.brightness = 0.0
         logo_led._refreshing = False
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         logo_led.brightness = 50.0
         # Should have called SET_LED_STATE with 1
         state_calls = [
             c
-            for c in mock_led_driver.run_command_async.call_args_list
+            for c in mock_led_driver.run_command.call_args_list
             if c.args[0] == LED.Command.SET_LED_STATE
         ]
         assert len(state_calls) > 0
@@ -586,12 +588,12 @@ class TestLEDObserver:
         logo_led._refreshing = True
         logo_led.brightness = 50.0
         logo_led._refreshing = False
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         logo_led.brightness = 0.0
         # Should have called SET_LED_STATE with 0
         state_calls = [
             c
-            for c in mock_led_driver.run_command_async.call_args_list
+            for c in mock_led_driver.run_command.call_args_list
             if c.args[0] == LED.Command.SET_LED_STATE
         ]
         assert len(state_calls) > 0
@@ -601,7 +603,7 @@ class TestLEDObserver:
         """Observer should update preferences for non-BACKLIGHT LEDs."""
         logo_led._dirty = False
         mock_led_driver.preferences.leds = None
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         logo_led.brightness = 50.0
         # Check preferences were updated
         assert mock_led_driver.preferences.leds is not None
@@ -612,7 +614,7 @@ class TestLEDObserver:
             backlight_led = LED(mock_led_driver, LEDType.BACKLIGHT)
             backlight_led._dirty = False
         mock_led_driver.preferences.leds = None
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         backlight_led.brightness = 50.0
         # Preferences should not be updated for BACKLIGHT
         # (The code checks led_type != LEDType.BACKLIGHT before _update_prefs)
@@ -661,13 +663,13 @@ class TestLEDLazyRefresh:
     def test_no_refresh_when_not_dirty(self, logo_led, mock_led_driver):
         """Accessing traits should NOT refresh when _dirty is False."""
         logo_led._dirty = False
-        mock_led_driver.run_with_result_async.reset_mock()
+        mock_led_driver.run_with_result.reset_mock()
         _ = logo_led.brightness
         _ = logo_led.color
         _ = logo_led.mode
         _ = logo_led.state
-        # run_with_result_async is used by _get_async, which is called in _refresh_async
-        mock_led_driver.run_with_result_async.assert_not_called()
+        # run_with_result is used by _get_async, which is called in _refresh_async
+        mock_led_driver.run_with_result.assert_not_called()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -708,7 +710,7 @@ class TestLEDGetSetValues:
 
     def test_set_values_restores_brightness(self, logo_led, mock_led_driver):
         """set_values should restore brightness."""
-        mock_led_driver.run_command_async.reset_mock()
+        mock_led_driver.run_command.reset_mock()
         logo_led.set_values({"brightness": 42.0})
         assert logo_led.brightness == 42.0
 

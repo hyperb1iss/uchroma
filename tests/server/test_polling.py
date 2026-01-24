@@ -126,10 +126,10 @@ class MockPollingDevice(PollingMixin):
     def has_quirk(self, *quirks: Quirks) -> bool:
         return Quirks.HYPERPOLLING in quirks and self._has_hyperpolling
 
-    def run_with_result(self, command: Commands, *args: int) -> bytes | None:
+    def run_with_result_sync(self, command: Commands, *args: int) -> bytes | None:
         return self._mock_results.get(command)
 
-    def run_command(self, command: Commands, *args: int) -> bool:
+    def run_command_sync(self, command: Commands, *args: int) -> bool:
         self._last_command = (command, args)
         return True
 

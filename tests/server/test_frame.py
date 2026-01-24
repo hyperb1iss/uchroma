@@ -23,7 +23,7 @@ from uchroma.server.types import BaseCommand
 
 
 def run_commit(frame, layers, **kwargs):
-    return asyncio.run(frame.commit_async(layers, **kwargs))
+    return asyncio.run(frame.commit(layers, **kwargs))
 
 
 def run_reset(frame, **kwargs):
@@ -43,8 +43,7 @@ def mock_driver():
     driver.logger = MagicMock()
     driver.fx_manager = MagicMock()
     driver.fx_manager.activate = MagicMock()
-    driver.run_command = MagicMock()
-    driver.run_command_async = AsyncMock(return_value=True)
+    driver.run_command = AsyncMock(return_value=True)
     driver.run_report = MagicMock()
     driver.get_report = MagicMock()
     driver.has_quirk = MagicMock(return_value=False)
@@ -55,10 +54,10 @@ def mock_driver():
     driver.hid_device = MagicMock()
 
     @asynccontextmanager
-    async def device_open_async():
+    async def device_open():
         yield
 
-    driver.device_open_async = device_open_async
+    driver.device_open = device_open
     return driver
 
 
@@ -438,9 +437,9 @@ class TestFrameSetFrameDataSingle:
 
         run_commit(frame_1x15, [layer], show=False)
 
-        # Should call run_command_async for single-row device
-        mock_driver.run_command_async.assert_called_once()
-        call_args = mock_driver.run_command_async.call_args
+        # Should call run_command for single-row device
+        mock_driver.run_command.assert_called_once()
+        call_args = mock_driver.run_command.call_args
         assert call_args[0][0] == Frame.Command.SET_FRAME_DATA_SINGLE
 
     def test_set_frame_data_single_transaction_id(self, frame_1x15, mock_driver):
@@ -448,7 +447,7 @@ class TestFrameSetFrameDataSingle:
         layer = frame_1x15.create_layer()
         run_commit(frame_1x15, [layer], show=False)
 
-        call_kwargs = mock_driver.run_command_async.call_args_list[0][1]
+        call_kwargs = mock_driver.run_command.call_args_list[0][1]
         assert call_kwargs["transaction_id"] == 0x80
 
     def test_set_frame_data_single_segments_wide(self, mock_driver):
@@ -460,10 +459,10 @@ class TestFrameSetFrameDataSingle:
 
         max_cols = (hid.DATA_SIZE - 2) // 3
         expected_segments = (frame.width + max_cols - 1) // max_cols
-        assert mock_driver.run_command_async.call_count == expected_segments
+        assert mock_driver.run_command.call_count == expected_segments
 
-        first_args = mock_driver.run_command_async.call_args_list[0][0]
-        second_args = mock_driver.run_command_async.call_args_list[1][0]
+        first_args = mock_driver.run_command.call_args_list[0][0]
+        second_args = mock_driver.run_command.call_args_list[1][0]
 
         assert first_args[1] == 0
         assert first_args[2] == max_cols
@@ -489,7 +488,7 @@ class TestFrameSetFrameDataMatrix:
         run_commit(frame_6x22, [layer], show=False)
 
         mock_send_frame_async.assert_called_once()
-        mock_driver.run_command_async.assert_not_called()
+        mock_driver.run_command.assert_not_called()
 
     def test_set_frame_data_matrix_passes_row_offsets_none(
         self, frame_6x22, mock_driver, mock_send_frame_async
@@ -588,7 +587,7 @@ class TestFrameCommit:
 
         with (
             patch.object(Frame, "compose", wraps=Frame.compose) as mock_compose,
-            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()),
         ):
             run_commit(frame_6x22, [layer], show=False)
             mock_compose.assert_called_once_with([layer])
@@ -597,7 +596,7 @@ class TestFrameCommit:
         """commit calls _set_frame_data with composed image."""
         layer = frame_6x22.create_layer()
 
-        with patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()) as mock_set:
+        with patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()) as mock_set:
             run_commit(frame_6x22, [layer], show=False)
             mock_set.assert_called_once()
 
@@ -606,8 +605,8 @@ class TestFrameCommit:
         layer = frame_6x22.create_layer()
 
         with (
-            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
-            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()) as mock_custom,
+            patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame", new=AsyncMock()) as mock_custom,
         ):
             run_commit(frame_6x22, [layer], show=True)
 
@@ -618,8 +617,8 @@ class TestFrameCommit:
         layer = frame_6x22.create_layer()
 
         with (
-            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
-            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()) as mock_custom,
+            patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame", new=AsyncMock()) as mock_custom,
         ):
             run_commit(frame_6x22, [layer], show=False)
 
@@ -630,8 +629,8 @@ class TestFrameCommit:
         layer = frame_6x22.create_layer()
 
         with (
-            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
-            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()) as mock_custom,
+            patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame", new=AsyncMock()) as mock_custom,
         ):
             run_commit(frame_6x22, [layer])
 
@@ -642,8 +641,8 @@ class TestFrameCommit:
         layer = frame_6x22.create_layer()
 
         with (
-            patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()),
-            patch.object(frame_6x22, "_set_custom_frame_async", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()),
+            patch.object(frame_6x22, "_set_custom_frame", new=AsyncMock()),
         ):
             result = run_commit(frame_6x22, [layer])
 
@@ -653,7 +652,7 @@ class TestFrameCommit:
         """commit passes frame_id to _set_frame_data."""
         layer = frame_6x22.create_layer()
 
-        with patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()) as mock_set:
+        with patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()) as mock_set:
             run_commit(frame_6x22, [layer], frame_id=0x01, show=False)
             mock_set.assert_called_once()
             assert mock_set.call_args.args[1] == 0x01
@@ -662,7 +661,7 @@ class TestFrameCommit:
         """commit with frame_id=None uses DEFAULT_FRAME_ID."""
         layer = frame_6x22.create_layer()
 
-        with patch.object(frame_6x22, "_set_frame_data_async", new=AsyncMock()) as mock_set:
+        with patch.object(frame_6x22, "_set_frame_data", new=AsyncMock()) as mock_set:
             run_commit(frame_6x22, [layer], frame_id=None, show=False)
             assert mock_set.call_args.args[1] is None
 
@@ -677,7 +676,7 @@ class TestFrameReset:
 
     def test_reset_commits_empty_layer(self, frame_6x22, mock_driver):
         """reset commits an empty (black) layer."""
-        with patch.object(frame_6x22, "commit_async", new=AsyncMock()) as mock_commit:
+        with patch.object(frame_6x22, "commit", new=AsyncMock()) as mock_commit:
             run_reset(frame_6x22)
 
             mock_commit.assert_called_once()
@@ -687,7 +686,7 @@ class TestFrameReset:
 
     def test_reset_uses_show_false(self, frame_6x22, mock_driver):
         """reset commits with show=False."""
-        with patch.object(frame_6x22, "commit_async", new=AsyncMock()) as mock_commit:
+        with patch.object(frame_6x22, "commit", new=AsyncMock()) as mock_commit:
             run_reset(frame_6x22)
 
             call_kwargs = mock_commit.call_args.kwargs
@@ -695,7 +694,7 @@ class TestFrameReset:
 
     def test_reset_returns_frame_instance(self, frame_6x22, mock_driver):
         """reset returns the Frame instance for chaining."""
-        with patch.object(frame_6x22, "commit_async", new=AsyncMock()):
+        with patch.object(frame_6x22, "commit", new=AsyncMock()):
             result = run_reset(frame_6x22)
 
         assert result is frame_6x22
@@ -719,24 +718,24 @@ class TestFrameSetFrameData:
         """_set_frame_data calls _set_frame_data_single for height=1."""
         img = np.zeros((1, 15, 3), dtype=np.uint8)
 
-        with patch.object(frame_1x15, "_set_frame_data_single") as mock_single:
-            frame_1x15._set_frame_data(img)
+        with patch.object(frame_1x15, "_set_frame_data_single", new=AsyncMock()) as mock_single:
+            asyncio.run(frame_1x15._set_frame_data(img))
             mock_single.assert_called_once()
 
     def test_set_frame_data_routes_to_matrix_for_height_gt_1(self, frame_6x22, mock_driver):
         """_set_frame_data calls _set_frame_data_matrix for height>1."""
         img = np.zeros((6, 22, 3), dtype=np.uint8)
 
-        with patch.object(frame_6x22, "_set_frame_data_matrix") as mock_matrix:
-            frame_6x22._set_frame_data(img)
+        with patch.object(frame_6x22, "_set_frame_data_matrix", new=AsyncMock()) as mock_matrix:
+            asyncio.run(frame_6x22._set_frame_data(img))
             mock_matrix.assert_called_once()
 
     def test_set_frame_data_uses_default_frame_id(self, frame_1x15, mock_driver):
         """_set_frame_data uses DEFAULT_FRAME_ID when None passed."""
         img = np.zeros((1, 15, 3), dtype=np.uint8)
 
-        with patch.object(frame_1x15, "_set_frame_data_single") as mock_single:
-            frame_1x15._set_frame_data(img, frame_id=None)
+        with patch.object(frame_1x15, "_set_frame_data_single", new=AsyncMock()) as mock_single:
+            asyncio.run(frame_1x15._set_frame_data(img, frame_id=None))
             # frame_id should be DEFAULT_FRAME_ID (0xFF)
             call_args = mock_single.call_args[0]
             assert call_args[1] == Frame.DEFAULT_FRAME_ID
@@ -765,7 +764,7 @@ class TestFrameIntegration:
 
         # Should complete without error
         assert result is frame_6x22
-        assert mock_driver.run_command_async.called
+        assert mock_driver.run_command.called
         assert mock_send_frame_async.called
 
     def test_multiple_layer_composition(self, frame_6x22, mock_driver, mock_send_frame_async):
