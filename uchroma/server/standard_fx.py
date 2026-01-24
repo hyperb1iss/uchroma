@@ -116,9 +116,7 @@ class StandardFX(FXModule):
         super().__init__(*args, **kwargs)
         self._report = None
 
-    async def _set_effect_basic(
-        self, effect: FX, *args, transaction_id: int | None = None
-    ) -> bool:
+    async def _set_effect_basic(self, effect: FX, *args, transaction_id: int | None = None) -> bool:
         if self._report is None:
             self._report = self._driver.get_report(
                 *StandardFX.Command.SET_EFFECT.value, transaction_id=transaction_id
@@ -287,7 +285,9 @@ class StandardFX(FXModule):
 
             :return: True if successful
             """
-            return await self._fxmod.set_effect(FX.MORPH, 0x04, self.speed, self.color, self.base_color)
+            return await self._fxmod.set_effect(
+                FX.MORPH, 0x04, self.speed, self.color, self.base_color
+            )
 
     class FireFX(BaseFX):
         description = Unicode("Keys on fire")

@@ -8,6 +8,9 @@
     "lint": "prettier --check .",
     "lint:fix": "prettier --write ."
   },
+  "overrides": {
+    "lodash-es": "^4.17.23"
+  },
   "devDependencies": {
     "mermaid": "^11.12.2",
     "prettier": "^3.8.0",
