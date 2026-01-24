@@ -94,11 +94,7 @@ class KrakenFX(FXModule):
     class DisableFX(BaseFX):
         description = Unicode("Disable all effects")
 
-        def apply(self) -> bool:
-            # Headset FX uses async - call via apply_async()
-            return False
-
-        async def apply_async(self) -> bool:
+        async def apply(self) -> bool:
             """
             Disable all effects
 
@@ -111,11 +107,7 @@ class KrakenFX(FXModule):
     class SpectrumFX(BaseFX):
         description = Unicode("Cycle thru all colors of the spectrum")
 
-        def apply(self) -> bool:
-            # Headset FX uses async - call via apply_async()
-            return False
-
-        async def apply_async(self) -> bool:
+        async def apply(self) -> bool:
             """
             Cycle thru all colors of the spectrum
 
@@ -129,11 +121,7 @@ class KrakenFX(FXModule):
         description = Unicode("Static color")
         color = ColorTrait(default_value="green").tag(config=True)
 
-        def apply(self) -> bool:
-            # Headset FX uses async - call via apply_async()
-            return False
-
-        async def apply_async(self) -> bool:
+        async def apply(self) -> bool:
             """
             Sets lighting to a static color
 
@@ -153,11 +141,7 @@ class KrakenFX(FXModule):
             config=True
         )
 
-        def apply(self) -> bool:
-            # Headset FX uses async - call via apply_async()
-            return False
-
-        async def apply_async(self) -> bool:
+        async def apply(self) -> bool:
             """
             Breathing color effect. Accepts up to three colors on v2 hardware
 
@@ -313,9 +297,9 @@ class UChromaHeadset(BaseUChromaDevice):
                 result.extend(bytes(arg))
         return bytes(result) if result else None
 
-    async def _run_command_async(self, command: BaseCommand, *args) -> bool:
+    async def _run_command(self, command: BaseCommand, *args) -> bool:
         """
-        Run a command against the Kraken hardware (async).
+        Run a command against the Kraken hardware.
 
         :param command: The command tuple
         :param args: Argument list (varargs)
@@ -335,9 +319,9 @@ class UChromaHeadset(BaseUChromaDevice):
             self.logger.exception("Caught exception running command", exc_info=err)
             return False
 
-    async def _run_with_result_async(self, command: BaseCommand, *args) -> bytes | None:
+    async def _run_with_result(self, command: BaseCommand, *args) -> bytes | None:
         """
-        Run a command against the Kraken hardware and fetch the result (async).
+        Run a command against the Kraken hardware and fetch the result.
 
         :param command: The command tuple
         :param args: Argument list (varargs)
@@ -359,16 +343,16 @@ class UChromaHeadset(BaseUChromaDevice):
 
     async def _get_serial_number(self) -> str | None:
         """Get the serial number from the hardware directly."""
-        result = await self._run_with_result_async(UChromaHeadset.Command.GET_SERIAL)
+        result = await self._run_with_result(UChromaHeadset.Command.GET_SERIAL)
         return self._decode_serial(result)
 
     async def _get_firmware_version(self) -> bytes | None:
         """Get the firmware version from the hardware directly."""
-        return await self._run_with_result_async(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
+        return await self._run_with_result(UChromaHeadset.Command.GET_FIRMWARE_VERSION)
 
     async def _get_led_mode(self) -> "EffectBits":
         if self._mode is None:
-            value = await self._run_with_result_async(self._cmd_get_led)
+            value = await self._run_with_result(self._cmd_get_led)
             bits = 0
             if value:
                 bits = value[0]
@@ -376,7 +360,7 @@ class UChromaHeadset(BaseUChromaDevice):
         return self._mode
 
     async def _set_led_mode(self, bits: EffectBits) -> bool:
-        status = await self._run_command_async(self._cmd_set_led, bits.value)
+        status = await self._run_command(self._cmd_set_led, bits.value)
         if status:
             self._mode = bits
         return status
@@ -386,7 +370,7 @@ class UChromaHeadset(BaseUChromaDevice):
         if bits.color_count == 0:
             return None
 
-        value = await self._run_with_result_async(self._cmd_get_rgb[bits.color_count - 1])
+        value = await self._run_with_result(self._cmd_get_rgb[bits.color_count - 1])
         if value is None:
             return None
 
@@ -415,7 +399,7 @@ class UChromaHeadset(BaseUChromaDevice):
             args.append(to_color(color))
             args.append(brightness)
 
-        return await self._run_command_async(self._cmd_set_rgb[len(colors) - 1], *args)
+        return await self._run_command(self._cmd_set_rgb[len(colors) - 1], *args)
 
     async def get_current_effect(self) -> EffectBits:
         """
@@ -449,14 +433,14 @@ class UChromaHeadset(BaseUChromaDevice):
                 return 100.0
             return 0.0
 
-        value = await self._run_with_result_async(self._cmd_get_rgb[bits.color_count - 1])
+        value = await self._run_with_result(self._cmd_get_rgb[bits.color_count - 1])
         if value is None:
             return 0.0
 
         self._cached_brightness = scale_brightness(value[3], True)
         return self._cached_brightness
 
-    async def _set_brightness_async(self, level: float) -> bool:
+    async def _set_brightness(self, level: float) -> bool:
         success = await self._set_brightness_impl(level)
         if success:
             self._cached_brightness = level
@@ -477,17 +461,13 @@ class UChromaHeadset(BaseUChromaDevice):
     def brightness(self, level: float):
         self.set_brightness(level)
 
-    def _set_brightness(self, level: float) -> bool:
-        """Sync stub - headset uses async. Use _set_brightness_async instead."""
-        return False
-
     async def _set_brightness_impl(self, level: float) -> bool:
         """Set the brightness level (async)."""
         bits = await self._get_led_mode()
         if bits.color_count == 0:
             return False
 
-        value = await self._run_with_result_async(self._cmd_get_rgb[bits.color_count - 1])
+        value = await self._run_with_result(self._cmd_get_rgb[bits.color_count - 1])
         if value is None:
             return False
 
@@ -497,4 +477,4 @@ class UChromaHeadset(BaseUChromaDevice):
         for num in range(bits.color_count):
             data[(num * 4) + 3] = scaled_level
 
-        return await self._run_command_async(self._cmd_set_rgb[bits.color_count - 1], data)
+        return await self._run_command(self._cmd_set_rgb[bits.color_count - 1], data)

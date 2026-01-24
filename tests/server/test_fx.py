@@ -24,7 +24,7 @@ class MockFX(BaseFX):
 
     description = Unicode("Mock effect for testing", read_only=True)
 
-    def apply(self) -> bool:
+    async def apply(self) -> bool:
         return True
 
 
@@ -34,7 +34,7 @@ class MockHiddenFX(BaseFX):
     hidden = True
     description = Unicode("Hidden mock effect", read_only=True)
 
-    def apply(self) -> bool:
+    async def apply(self) -> bool:
         return True
 
 
@@ -45,7 +45,7 @@ class MockFXWithTraits(BaseFX):
     color = Unicode("red")
     speed = Unicode("fast")
 
-    def apply(self) -> bool:
+    async def apply(self) -> bool:
         return True
 
 
@@ -54,7 +54,7 @@ class MockDisableFX(BaseFX):
 
     description = Unicode("Disable effect", read_only=True)
 
-    def apply(self) -> bool:
+    async def apply(self) -> bool:
         return True
 
 
@@ -63,7 +63,7 @@ class MockFailingFX(BaseFX):
 
     description = Unicode("Failing effect", read_only=True)
 
-    def apply(self) -> bool:
+    async def apply(self) -> bool:
         return False
 
 
@@ -78,32 +78,32 @@ class _SampleFXModule(FXModule):
     class StaticFX(BaseFX):
         description = Unicode("Static effect", read_only=True)
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             return True
 
     class WaveFX(BaseFX):
         description = Unicode("Wave effect", read_only=True)
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             return True
 
     class SpectrumFX(BaseFX):
         description = Unicode("Spectrum effect", read_only=True)
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             return True
 
     class DisableFX(BaseFX):
         description = Unicode("Disable effect", read_only=True)
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             return True
 
     class HiddenSecretFX(BaseFX):
         hidden = True
         description = Unicode("Secret effect", read_only=True)
 
-        def apply(self) -> bool:
+        async def apply(self) -> bool:
             return True
 
 
@@ -185,7 +185,7 @@ class TestBaseFX:
         """BaseFX default description should be _unimplemented_."""
 
         class MinimalFX(BaseFX):
-            def apply(self) -> bool:
+            async def apply(self) -> bool:
                 return True
 
         fx = MinimalFX(None, mock_driver)
@@ -207,7 +207,7 @@ class TestBaseFX:
     def test_apply_returns_bool(self, mock_driver):
         """apply() should return a boolean."""
         fx = MockFX(None, mock_driver)
-        result = fx.apply()
+        result = asyncio.run(fx.apply())
         assert isinstance(result, bool)
         assert result is True
 
@@ -406,7 +406,7 @@ class TestFXManager:
                 color = Unicode("red")
                 speed = Unicode("slow")
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_hardware.supported_fx = ["configurable"]
@@ -429,7 +429,7 @@ class TestFXManager:
                 description = Unicode("Simple effect", read_only=True)
                 valid_trait = Unicode("default")
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_hardware.supported_fx = ["simple"]
@@ -460,7 +460,7 @@ class TestFXManager:
                 description = Unicode("Test effect", read_only=True)
                 setting = Unicode("value")
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_hardware.supported_fx = ["test"]
@@ -485,7 +485,7 @@ class TestFXManager:
             class CustomFrameFX(BaseFX):
                 description = Unicode("Custom frame", read_only=True)
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_hardware.supported_fx = ["custom_frame"]
@@ -552,7 +552,7 @@ class TestFXManager:
                 description = Unicode("Config effect", read_only=True)
                 speed = Unicode("normal")
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_hardware.supported_fx = ["config"]
@@ -611,7 +611,7 @@ class TestFXManager:
                 description = Unicode("Custom frame", read_only=True)
                 some_trait = Unicode("default")
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_hardware.supported_fx = ["custom_frame"]
@@ -647,7 +647,7 @@ class TestFXManager:
             class FailingFX(BaseFX):
                 description = Unicode("Failing effect", read_only=True)
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return False
 
         mock_hardware.supported_fx = ["failing"]
@@ -690,7 +690,7 @@ class TestEdgeCases:
                 pass
 
             class ValidFX(BaseFX):
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     return True
 
         mock_driver.hardware.supported_fx = ["valid", "not_an"]
@@ -713,7 +713,7 @@ class TestEdgeCases:
             class CountingFX(BaseFX):
                 description = Unicode("Counting effect", read_only=True)
 
-                def apply(self) -> bool:
+                async def apply(self) -> bool:
                     nonlocal apply_count
                     apply_count += 1
                     return True

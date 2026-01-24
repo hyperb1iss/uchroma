@@ -29,11 +29,8 @@ class BaseFX(HasTraits):
         self._driver = driver
 
     @abstractmethod
-    def apply(self) -> bool:
+    async def apply(self) -> bool:
         return False
-
-    async def apply_async(self) -> bool:
-        return await asyncio.to_thread(self.apply)
 
 
 class FXModule:
@@ -120,7 +117,7 @@ class FXManager(HasTraits):
         return self._fxmod.create_fx(fx_name)
 
     async def _activate(self, fx_name, fx) -> bool:
-        if await fx.apply_async():
+        if await fx.apply():
             if fx_name != self.current_fx[0]:
                 self.current_fx = (fx_name, fx)
             if fx_name == CUSTOM:
