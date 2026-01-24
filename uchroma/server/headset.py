@@ -440,7 +440,7 @@ class UChromaHeadset(BaseUChromaDevice):
         self._cached_brightness = scale_brightness(value[3], True)
         return self._cached_brightness
 
-    async def _set_brightness(self, level: float) -> bool:
+    async def _set_brightness_async(self, level: float) -> bool:
         success = await self._set_brightness_impl(level)
         if success:
             self._cached_brightness = level
