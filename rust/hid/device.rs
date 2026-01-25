@@ -2,12 +2,12 @@
 
 use crate::hid::{DeviceInfo, HidError, Result};
 use nusb::transfer::{ControlIn, ControlOut, ControlType, Recipient};
-use nusb::MaybeFuture;
 use pyo3::prelude::*;
 use pyo3_async_runtimes::tokio::future_into_py;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use tokio::time::timeout;
 
 /// HID device handle for feature report communication.
 #[pyclass]
@@ -39,6 +39,9 @@ const HID_REPORT_TYPE_FEATURE: u16 = 0x03;
 // Default timeout for USB transfers
 const DEFAULT_TIMEOUT: Duration = Duration::from_millis(1000);
 
+// Timeout for opening a device (claiming interface, etc)
+const DEVICE_OPEN_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// Create a new single-threaded tokio runtime.
 /// Returns HidError if runtime creation fails (e.g., under resource pressure).
 pub(crate) fn get_or_create_runtime() -> Result<tokio::runtime::Runtime> {
@@ -51,27 +54,12 @@ pub(crate) fn get_or_create_runtime() -> Result<tokio::runtime::Runtime> {
 #[pymethods]
 impl HidDevice {
     /// Open a HID device from DeviceInfo.
+    ///
+    /// Uses a timeout to prevent hanging on misbehaving USB devices.
     #[new]
     fn new(info: DeviceInfo) -> Result<Self> {
-        // Find the device by bus/address
-        let dev_info = nusb::list_devices()
-            .wait()?
-            .find(|d| matches_info(d, &info))
-            .ok_or_else(|| HidError::DeviceNotFound(format!("{:?}", info)))?;
-
-        let device = dev_info.open().wait()?;
-        // On Linux, detach kernel driver before claiming (e.g., hid-generic)
-        #[cfg(target_os = "linux")]
-        let interface = device
-            .detach_and_claim_interface(info.interface_number as u8)
-            .wait()?;
-        #[cfg(not(target_os = "linux"))]
-        let interface = device.claim_interface(info.interface_number as u8).wait()?;
-
-        Ok(Self {
-            interface: Arc::new(Mutex::new(Some(interface))),
-            info,
-        })
+        let rt = get_or_create_runtime()?;
+        rt.block_on(Self::open_with_timeout(info))
     }
 
     /// Close the device.
@@ -188,35 +176,60 @@ impl HidDevice {
 }
 
 /// Open a HID device asynchronously from DeviceInfo.
+///
+/// Uses a timeout to prevent hanging on misbehaving USB devices.
 #[pyfunction]
 pub fn open_device_async<'py>(py: Python<'py>, info: DeviceInfo) -> PyResult<Bound<'py, PyAny>> {
     future_into_py(py, async move {
-        let dev_info = nusb::list_devices()
+        HidDevice::open_with_timeout(info)
             .await
-            .map_err(HidError::UsbError)?
-            .find(|d| matches_info(d, &info))
-            .ok_or_else(|| HidError::DeviceNotFound(format!("{:?}", info)))?;
-
-        let device = dev_info.open().await.map_err(HidError::UsbError)?;
-        #[cfg(target_os = "linux")]
-        let interface = device
-            .detach_and_claim_interface(info.interface_number as u8)
-            .await
-            .map_err(HidError::UsbError)?;
-        #[cfg(not(target_os = "linux"))]
-        let interface = device
-            .claim_interface(info.interface_number as u8)
-            .await
-            .map_err(HidError::UsbError)?;
-
-        Ok(HidDevice {
-            interface: Arc::new(Mutex::new(Some(interface))),
-            info,
-        })
+            .map_err(PyErr::from)
     })
 }
 
 impl HidDevice {
+    /// Internal async device open with timeout protection.
+    async fn open_with_timeout(info: DeviceInfo) -> Result<Self> {
+        let open_future = async {
+            // Find the device by bus/address
+            let dev_info = nusb::list_devices()
+                .await
+                .map_err(HidError::UsbError)?
+                .find(|d| matches_info(d, &info))
+                .ok_or_else(|| HidError::DeviceNotFound(format!("{:?}", info)))?;
+
+            let device = dev_info.open().await.map_err(HidError::UsbError)?;
+
+            // On Linux, detach kernel driver before claiming (e.g., hid-generic)
+            #[cfg(target_os = "linux")]
+            let interface = device
+                .detach_and_claim_interface(info.interface_number as u8)
+                .await
+                .map_err(HidError::UsbError)?;
+            #[cfg(not(target_os = "linux"))]
+            let interface = device
+                .claim_interface(info.interface_number as u8)
+                .await
+                .map_err(HidError::UsbError)?;
+
+            Ok::<_, HidError>(interface)
+        };
+
+        let interface = timeout(DEVICE_OPEN_TIMEOUT, open_future)
+            .await
+            .map_err(|_| {
+                HidError::Timeout(format!(
+                    "Device open timed out after {:?}: {:?}",
+                    DEVICE_OPEN_TIMEOUT, info
+                ))
+            })??;
+
+        Ok(Self {
+            interface: Arc::new(Mutex::new(Some(interface))),
+            info,
+        })
+    }
+
     pub(crate) fn interface_clone(&self) -> Arc<Mutex<Option<nusb::Interface>>> {
         self.interface.clone()
     }

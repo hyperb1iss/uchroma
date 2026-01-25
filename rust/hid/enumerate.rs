@@ -5,6 +5,15 @@ use nusb::descriptors::ConfigurationDescriptor;
 use nusb::MaybeFuture;
 use pyo3::prelude::*;
 use pyo3_async_runtimes::tokio::future_into_py;
+use std::time::Duration;
+use tokio::time::timeout;
+
+/// Timeout for opening a single USB device during enumeration.
+/// Prevents hanging on misbehaving devices.
+const DEVICE_OPEN_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Timeout for listing all USB devices.
+const LIST_DEVICES_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Enumerate HID devices, optionally filtered by vendor/product ID.
 ///
@@ -74,7 +83,10 @@ pub fn enumerate_devices_async<'py>(
     future_into_py(py, async move {
         let mut results = Vec::new();
 
-        let dev_infos = nusb::list_devices().await.map_err(HidError::UsbError)?;
+        let dev_infos = timeout(LIST_DEVICES_TIMEOUT, nusb::list_devices())
+            .await
+            .map_err(|_| HidError::Timeout("USB device enumeration timed out".into()))?
+            .map_err(HidError::UsbError)?;
         for dev_info in dev_infos {
             if vendor_id != 0 && dev_info.vendor_id() != vendor_id {
                 continue;
@@ -83,9 +95,11 @@ pub fn enumerate_devices_async<'py>(
                 continue;
             }
 
-            let device: nusb::Device = match dev_info.open().await.map_err(HidError::UsbError) {
-                Ok(d) => d,
-                Err(_) => continue,
+            // Timeout protects against misbehaving USB devices that hang on open
+            let device: nusb::Device = match timeout(DEVICE_OPEN_TIMEOUT, dev_info.open()).await {
+                Ok(Ok(d)) => d,
+                Ok(Err(_)) => continue, // Device error, skip
+                Err(_) => continue,     // Timeout, skip
             };
 
             let config: ConfigurationDescriptor = match device.active_configuration() {

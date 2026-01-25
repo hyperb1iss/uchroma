@@ -23,6 +23,9 @@ pub enum HidError {
 
     #[error("Protocol error: {0}")]
     ProtocolError(String),
+
+    #[error("Timeout: {0}")]
+    Timeout(String),
 }
 
 impl From<HidError> for PyErr {

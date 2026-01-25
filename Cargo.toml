@@ -16,7 +16,7 @@ numpy = "0.27"
 
 # Async HID support
 nusb = { version = "0.2", features = ["tokio"] }
-tokio = { version = "1.43", features = ["rt-multi-thread", "sync"] }
+tokio = { version = "1.43", features = ["rt-multi-thread", "sync", "time"] }
 pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
 thiserror = "2.0"
 
