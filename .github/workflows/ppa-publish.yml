@@ -1,0 +1,164 @@
+name: Publish to PPA
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      releases:
+        description: 'Ubuntu releases (comma-separated)'
+        required: true
+        default: 'oracular,plucky,questing'
+      ref:
+        description: 'Branch or tag to build from'
+        required: false
+        default: 'main'
+      include_orig:
+        description: 'Include orig tarball (-sa vs -sd)'
+        required: false
+        type: boolean
+        default: true
+      ppa_revision:
+        description: 'PPA revision number (ppa1, ppa2, etc.)'
+        required: false
+        default: 'ppa1'
+
+env:
+  DEBFULLNAME: "Stefanie Jane"
+  DEBEMAIL: "stef@hyperbliss.tech"
+  DEFAULT_RELEASES: "oracular,plucky,questing"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      upstream_version: ${{ steps.version.outputs.upstream_version }}
+      full_version: ${{ steps.version.outputs.full_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Get version
+        id: version
+        run: |
+          # Get full debian version, strip PPA suffix, then strip debian revision (-1, -2, etc)
+          FULL_VERSION=$(head -1 debian/changelog | sed -E 's/.*\(([^)]+)\).*/\1/' | sed -E 's/~.*//')
+          UPSTREAM_VERSION=$(echo "$FULL_VERSION" | sed -E 's/-[0-9]+$//')
+          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "upstream_version=$UPSTREAM_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set release matrix
+        id: set-matrix
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            RELEASES="${{ env.DEFAULT_RELEASES }}"
+          else
+            RELEASES="${{ inputs.releases }}"
+          fi
+          JSON=$(echo "$RELEASES" | tr ',' '\n' | jq -R . | jq -s -c .)
+          echo "matrix={\"release\":$JSON}" >> $GITHUB_OUTPUT
+
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential devscripts debhelper dput \
+            python3-all python3-dev python3-maturin python3-installer \
+            cargo rustc libudev-dev
+
+      - name: Prepare version
+        id: ppa
+        run: |
+          UPSTREAM="${{ needs.prepare.outputs.upstream_version }}"
+          FULL="${{ needs.prepare.outputs.full_version }}"
+          PPA_REV="${{ inputs.ppa_revision || 'ppa1' }}"
+          PPA_VERSION="${FULL}~${PPA_REV}~${{ matrix.release }}1"
+
+          # Determine debuild flags
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual run: use explicit input
+            if [ "${{ inputs.include_orig }}" == "true" ]; then
+              echo "debuild_flags=-sa" >> $GITHUB_OUTPUT
+            else
+              echo "debuild_flags=-sd" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Release: auto-detect from debian revision
+            DEB_REV=$(echo "$FULL" | sed -E 's/.*-([0-9]+)$/\1/')
+            if [ "$DEB_REV" -gt 1 ]; then
+              echo "debuild_flags=-sd" >> $GITHUB_OUTPUT
+            else
+              echo "debuild_flags=-sa" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+          echo "version=$PPA_VERSION" >> $GITHUB_OUTPUT
+          echo "upstream=$UPSTREAM" >> $GITHUB_OUTPUT
+          echo "Building: uchroma $PPA_VERSION for ${{ matrix.release }}"
+
+      - name: Update changelog
+        run: |
+          dch -b -v "${{ steps.ppa.outputs.version }}" \
+              -D "${{ matrix.release }}" \
+              --force-distribution \
+              "PPA release for ${{ matrix.release }}"
+
+      - name: Create orig tarball
+        # Always create locally - dpkg-source needs it even when using -sd
+        # The -sd flag only skips uploading, not building
+        run: |
+          UPSTREAM="${{ steps.ppa.outputs.upstream }}"
+          tar --exclude='debian' --exclude='.git' --exclude='.github' \
+              --exclude='target' --exclude='dist' --exclude='*.egg-info' \
+              -cJf "../uchroma_${UPSTREAM}.orig.tar.xz" .
+
+      - name: Build source package
+        run: debuild -S ${{ steps.ppa.outputs.debuild_flags }} -k${{ secrets.GPG_KEY_ID }}
+
+      - name: Setup dput
+        run: |
+          cat > ~/.dput.cf << EOF
+          [ppa]
+          fqdn = ppa.launchpad.net
+          method = ftp
+          incoming = ~${{ secrets.LAUNCHPAD_USER }}/ppa/ubuntu/
+          login = anonymous
+          allow_unsigned_uploads = 0
+          EOF
+
+      - name: Upload to PPA
+        run: dput ppa ../uchroma_${{ steps.ppa.outputs.version }}_source.changes
+
+  summary:
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## PPA Publish Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** uchroma" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.prepare.outputs.full_version }}" >> $GITHUB_STEP_SUMMARY
